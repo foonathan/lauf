@@ -33,18 +33,16 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
     auto ip = fn->bytecode_begin();
     while (ip != fn->bytecode_end())
     {
-        switch (lauf::op(*ip))
+        switch (lauf::op(*ip++))
         {
         case lauf::op::push: {
-            auto constant = (ip[1] << 8) | ip[2];
+            auto constant = LAUF_BC_READ16(ip);
             *stack_ptr++  = fn->constant_begin()[constant];
-            ip += 3;
             break;
         }
         case lauf::op::pop: {
-            auto count = (ip[1] << 8) | ip[2];
+            auto count = LAUF_BC_READ16(ip);
             stack_ptr -= count;
-            ip += 3;
             break;
         }
         }

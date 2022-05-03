@@ -10,11 +10,11 @@
 
 struct lauf_BuilderImpl
 {
-    const char*                name;
-    lauf_FunctionSignature     sig;
-    std::size_t                cur_stack_size, max_stack_size;
-    std::vector<lauf_Value>    constants;
-    std::vector<unsigned char> bytecode;
+    const char*             name;
+    lauf_FunctionSignature  sig;
+    std::size_t             cur_stack_size, max_stack_size;
+    std::vector<lauf_Value> constants;
+    lauf::bytecode_builder  bytecode;
 
     lauf_BuilderImpl() : name(nullptr), sig{}, cur_stack_size(0), max_stack_size(0) {}
 };
@@ -35,7 +35,7 @@ void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_Function
     b->sig            = sig;
     b->cur_stack_size = b->max_stack_size = 0;
     b->constants.clear();
-    b->bytecode.clear();
+    std::move(b->bytecode).reset();
 }
 
 lauf_Function lauf_builder_finish_function(lauf_Builder b)
@@ -52,9 +52,8 @@ lauf_StackIndex lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
     auto idx = b->constants.size();
     b->constants.push_back(constant);
 
-    b->bytecode.emplace_back(static_cast<unsigned char>(lauf::op::push));
-    b->bytecode.emplace_back(idx >> 8);
-    b->bytecode.emplace_back(idx & 0xFF);
+    b->bytecode.op(lauf::op::push);
+    b->bytecode.uint16(idx);
 
     auto stack_idx = b->cur_stack_size;
     ++b->cur_stack_size;
@@ -67,8 +66,7 @@ void lauf_builder_pop(lauf_Builder b, lauf_StackIndex idx)
 {
     auto diff = b->cur_stack_size - idx.impl;
 
-    b->bytecode.emplace_back(static_cast<unsigned char>(lauf::op::pop));
-    b->bytecode.emplace_back(diff >> 8);
-    b->bytecode.emplace_back(diff & 0xFF);
+    b->bytecode.op(lauf::op::pop);
+    b->bytecode.uint16(diff);
 }
 
