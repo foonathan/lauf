@@ -7,6 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef enum lauf_ValueType
+{
+    LAUF_VALUE_TYPE_INT,
+} lauf_ValueType;
+
 typedef int64_t lauf_ValueInt;
 
 typedef union lauf_Value

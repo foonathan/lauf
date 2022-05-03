@@ -3,7 +3,7 @@
 
 get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf ABSOLUTE)
 
-add_library(lauf_core STATIC)
+add_library(lauf_core)
 target_compile_features(lauf_core PRIVATE cxx_std_17)
 target_include_directories(lauf_core PUBLIC ../include)
 target_sources(lauf_core PUBLIC

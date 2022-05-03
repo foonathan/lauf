@@ -18,18 +18,11 @@ void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_Function
 lauf_Function lauf_builder_finish_function(lauf_Builder b);
 
 //=== instructions ===//
-/// A reference to a stack value.
-/// It is invalidated when the value is popped.
-typedef struct lauf_StackIndexImpl
-{
-    size_t impl;
-} lauf_StackIndex;
-
 /// Pushes the specified constant integer onto the stack.
-lauf_StackIndex lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value);
+void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value);
 
-/// Pops the specified stack value and everything on top of it.
-void lauf_builder_pop(lauf_Builder b, lauf_StackIndex idx);
+/// Pops the top N values from the stack.
+void lauf_builder_pop(lauf_Builder b, size_t n);
 
 #endif // LAUF_BUILDER_H_INCLUDED
 

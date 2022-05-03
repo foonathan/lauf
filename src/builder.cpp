@@ -5,6 +5,7 @@
 
 #include "detail/bytecode.hpp"
 #include "detail/function.hpp"
+#include "detail/stack_check.hpp"
 
 #include <vector>
 
@@ -12,11 +13,11 @@ struct lauf_BuilderImpl
 {
     const char*             name;
     lauf_FunctionSignature  sig;
-    std::size_t             cur_stack_size, max_stack_size;
+    lauf::stack_checker     stack;
     std::vector<lauf_Value> constants;
     lauf::bytecode_builder  bytecode;
 
-    lauf_BuilderImpl() : name(nullptr), sig{}, cur_stack_size(0), max_stack_size(0) {}
+    lauf_BuilderImpl() : name(nullptr), sig{} {}
 };
 
 lauf_Builder lauf_builder(void)
@@ -31,20 +32,26 @@ void lauf_builder_destroy(lauf_Builder b)
 
 void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_FunctionSignature sig)
 {
-    b->name           = name;
-    b->sig            = sig;
-    b->cur_stack_size = b->max_stack_size = 0;
+    b->name = name;
+    b->sig  = sig;
+    std::move(b->stack).reset();
     b->constants.clear();
     std::move(b->bytecode).reset();
+
+    b->stack.push_unknown(b->sig.input_count);
 }
 
 lauf_Function lauf_builder_finish_function(lauf_Builder b)
 {
-    return lauf::create_function(b->name, b->sig, b->max_stack_size, b->constants.data(),
+    b->stack.pop(b->sig.output_count);
+
+    if (!b->stack)
+        return nullptr;
+    return lauf::create_function(b->name, b->sig, b->stack.max_stack_size(), b->constants.data(),
                                  b->constants.size(), b->bytecode.data(), b->bytecode.size());
 }
 
-lauf_StackIndex lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
+void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
 {
     lauf_Value constant;
     constant.as_int = value;
@@ -55,18 +62,14 @@ lauf_StackIndex lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
     b->bytecode.op(lauf::op::push);
     b->bytecode.uint16(idx);
 
-    auto stack_idx = b->cur_stack_size;
-    ++b->cur_stack_size;
-    if (b->cur_stack_size > b->max_stack_size)
-        b->max_stack_size = b->cur_stack_size;
-    return {stack_idx};
+    b->stack.push(LAUF_VALUE_TYPE_INT);
 }
 
-void lauf_builder_pop(lauf_Builder b, lauf_StackIndex idx)
+void lauf_builder_pop(lauf_Builder b, size_t n)
 {
-    auto diff = b->cur_stack_size - idx.impl;
-
     b->bytecode.op(lauf::op::pop);
-    b->bytecode.uint16(diff);
+    b->bytecode.uint16(n);
+
+    b->stack.pop(n);
 }
 

@@ -12,9 +12,9 @@ int main()
         auto b = lauf_builder();
         lauf_builder_start_function(b, "test", lauf_FunctionSignature{0, 1});
 
-        auto v42 = lauf_builder_push_int(b, 42);
-        auto v11 = lauf_builder_push_int(b, 11);
-        lauf_builder_pop(b, v11);
+        lauf_builder_push_int(b, 42);
+        lauf_builder_push_int(b, 11);
+        lauf_builder_pop(b, 1);
 
         return lauf_builder_finish_function(b);
     }();
