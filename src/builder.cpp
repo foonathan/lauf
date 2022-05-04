@@ -68,10 +68,26 @@ void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
 {
     LAUF_ERROR_CONTEXT(push_int);
 
-    auto idx = b->constants.insert(value);
-
-    b->bytecode.op(lauf::op::push);
-    b->bytecode.uint16(b->handler, ctx, idx);
+    if (value == 0)
+    {
+        b->bytecode.op(lauf::op::push_zero);
+    }
+    else if (0 < value && value <= UINT16_MAX)
+    {
+        b->bytecode.op(lauf::op::push_small_zext);
+        b->bytecode.uint16(b->handler, ctx, static_cast<uint16_t>(value));
+    }
+    else if (-UINT16_MAX <= value && value < 0)
+    {
+        b->bytecode.op(lauf::op::push_small_neg);
+        b->bytecode.uint16(b->handler, ctx, static_cast<uint16_t>(-value));
+    }
+    else
+    {
+        auto idx = b->constants.insert(value);
+        b->bytecode.op(lauf::op::push);
+        b->bytecode.uint16(b->handler, ctx, idx);
+    }
 
     b->stack.push();
 }
@@ -80,8 +96,15 @@ void lauf_builder_pop(lauf_Builder b, size_t n)
 {
     LAUF_ERROR_CONTEXT(pop);
 
-    b->bytecode.op(lauf::op::pop);
-    b->bytecode.uint16(b->handler, ctx, n);
+    if (n == 1)
+    {
+        b->bytecode.op(lauf::op::pop_one);
+    }
+    else
+    {
+        b->bytecode.op(lauf::op::pop);
+        b->bytecode.uint16(b->handler, ctx, n);
+    }
 
     b->stack.pop(b->handler, ctx, n);
 }

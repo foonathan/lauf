@@ -40,9 +40,30 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
             *stack_ptr++  = fn->constant_begin()[constant];
             break;
         }
+        case lauf::op::push_zero: {
+            *stack_ptr++ = lauf_Value{};
+            break;
+        }
+        case lauf::op::push_small_zext: {
+            lauf_Value constant;
+            constant.as_int = LAUF_BC_READ16(ip);
+            *stack_ptr++    = constant;
+            break;
+        }
+        case lauf::op::push_small_neg: {
+            lauf_Value constant;
+            constant.as_int = -LAUF_BC_READ16(ip);
+            *stack_ptr++    = constant;
+            break;
+        }
+
         case lauf::op::pop: {
             auto count = LAUF_BC_READ16(ip);
             stack_ptr -= count;
+            break;
+        }
+        case lauf::op::pop_one: {
+            stack_ptr--;
             break;
         }
         }

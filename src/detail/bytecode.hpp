@@ -19,8 +19,19 @@ enum class op : unsigned char
 {
     // push constant_index : uint16
     push,
+    // push_zero
+    push_zero,
+    // push_small_zext constant : uint16
+    // Pushes a 16 bit constant by extending it with zeroes.
+    push_small_zext,
+    // push_small_neg constant : uint16
+    // Pushes a 16 bit constant by extending it with zeroes and then negating it.
+    push_small_neg,
+
     // pop count : uint16
     pop,
+    // pop
+    pop_one,
 };
 
 class bytecode_builder

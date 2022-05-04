@@ -1,6 +1,7 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
+#include <climits>
 #include <cstdio>
 
 #include <lauf/builder.h>
@@ -12,7 +13,7 @@ int main()
         auto b = lauf_builder();
         lauf_builder_start_function(b, "test", lauf_FunctionSignature{0, 1});
 
-        lauf_builder_push_int(b, 42);
+        lauf_builder_push_int(b, -42);
         lauf_builder_push_int(b, 11);
         lauf_builder_pop(b, 1);
 
