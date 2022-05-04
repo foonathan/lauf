@@ -7,18 +7,19 @@
 
 lauf_Function lauf::create_function(const char* name, lauf_FunctionSignature sig,
                                     size_t max_stack_size, const lauf_Value* constants,
-                                    size_t constant_count, const unsigned char* bytecode,
+                                    size_t constant_count, const std::uint32_t* bytecode,
                                     size_t bytecode_size)
 {
-    auto memory_needed
-        = sizeof(lauf_FunctionImpl) + sizeof(lauf_Value) * constant_count + bytecode_size;
+    auto memory_needed = sizeof(lauf_FunctionImpl) + sizeof(lauf_Value) * constant_count
+                         + sizeof(std::uint32_t) * bytecode_size;
     auto memory = ::operator new(memory_needed);
 
     auto result = ::new (memory)
         lauf_FunctionImpl{name, sig, max_stack_size, constant_count, bytecode_size};
     std::memcpy(const_cast<lauf_Value*>(result->constant_begin()), constants,
                 constant_count * sizeof(lauf_Value));
-    std::memcpy(const_cast<unsigned char*>(result->bytecode_begin()), bytecode, bytecode_size);
+    std::memcpy(const_cast<std::uint32_t*>(result->bytecode_begin()), bytecode,
+                bytecode_size * sizeof(std::uint32_t));
     return result;
 }
 

@@ -15,42 +15,48 @@ namespace lauf
 {
 static_assert(CHAR_BIT == 8);
 
+constexpr auto UINT24_MAX = 0xFF'FFFF;
+
+// Instruction is 32 bits.
+// * op code are the least significant 8 bits
+// * payload are the remaining 24 bits
 enum class op : unsigned char
 {
-    // push constant_index : uint16
+    // payload: constant index
     push,
-    // push_zero
+    // payload: none
     push_zero,
-    // push_small_zext constant : uint16
-    // Pushes a 16 bit constant by extending it with zeroes.
+    // payload: constant
+    // Pushes a 24 bit constant by extending it with zeroes.
     push_small_zext,
-    // push_small_neg constant : uint16
-    // Pushes a 16 bit constant by extending it with zeroes and then negating it.
+    // payload: constant
+    // Pushes a 24 bit constant by extending it with zeroes and then negating it.
     push_small_neg,
 
-    // pop count : uint16
+    // payload: constant index
     pop,
-    // pop
+    // payload: none
     pop_one,
 };
+
+#define LAUF_BC_OP(Inst) static_cast<lauf::op>(Inst)
+#define LAUF_BC_PAYLOAD24(Inst) ((Inst) >> 8)
 
 class bytecode_builder
 {
 public:
-    void op(op o)
+    void op(enum op o)
     {
         _bc.push_back(static_cast<unsigned char>(o));
     }
 
-    void uint16(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, std::size_t value)
+    void op(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, enum op o, std::size_t payload)
     {
-        _bc.emplace_back((value >> 8) & 0xFF);
-        _bc.emplace_back((value >> 0) & 0xFF);
-
-        if (value > UINT16_MAX)
+        _bc.push_back((payload & UINT24_MAX) << 8 | static_cast<unsigned char>(o));
+        if (payload > UINT24_MAX)
         {
             handler.errors = true;
-            handler.encoding_error(ctx, 16, value);
+            handler.encoding_error(ctx, 24, payload);
         }
     }
 
@@ -59,7 +65,7 @@ public:
         return _bc.size();
     }
 
-    const unsigned char* data() const
+    const std::uint32_t* data() const
     {
         return _bc.data();
     }
@@ -70,11 +76,9 @@ public:
     }
 
 private:
-    std::vector<unsigned char> _bc;
+    std::vector<std::uint32_t> _bc;
 };
 } // namespace lauf
-
-#define LAUF_BC_READ16(Ip) ((Ip) += 2, std::uint16_t((Ip)[-2] << 8 | (Ip)[-1]))
 
 #endif // SRC_DETAIL_BYTECODE_HPP_INCLUDED
 

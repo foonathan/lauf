@@ -72,21 +72,20 @@ void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
     {
         b->bytecode.op(lauf::op::push_zero);
     }
-    else if (0 < value && value <= UINT16_MAX)
+    else if (0 < value && value <= lauf::UINT24_MAX)
     {
-        b->bytecode.op(lauf::op::push_small_zext);
-        b->bytecode.uint16(b->handler, ctx, static_cast<uint16_t>(value));
+        auto payload = value & lauf::UINT24_MAX;
+        b->bytecode.op(b->handler, ctx, lauf::op::push_small_zext, payload);
     }
-    else if (-UINT16_MAX <= value && value < 0)
+    else if (-lauf::UINT24_MAX <= value && value < 0)
     {
-        b->bytecode.op(lauf::op::push_small_neg);
-        b->bytecode.uint16(b->handler, ctx, static_cast<uint16_t>(-value));
+        auto payload = (-value) & lauf::UINT24_MAX;
+        b->bytecode.op(b->handler, ctx, lauf::op::push_small_neg, payload);
     }
     else
     {
         auto idx = b->constants.insert(value);
-        b->bytecode.op(lauf::op::push);
-        b->bytecode.uint16(b->handler, ctx, idx);
+        b->bytecode.op(b->handler, ctx, lauf::op::push, idx);
     }
 
     b->stack.push();
@@ -97,14 +96,9 @@ void lauf_builder_pop(lauf_Builder b, size_t n)
     LAUF_ERROR_CONTEXT(pop);
 
     if (n == 1)
-    {
         b->bytecode.op(lauf::op::pop_one);
-    }
     else
-    {
-        b->bytecode.op(lauf::op::pop);
-        b->bytecode.uint16(b->handler, ctx, n);
-    }
+        b->bytecode.op(b->handler, ctx, lauf::op::pop, n);
 
     b->stack.pop(b->handler, ctx, n);
 }

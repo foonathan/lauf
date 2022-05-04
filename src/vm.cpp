@@ -30,13 +30,13 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
     std::memcpy(stack_ptr, input, sizeof(lauf_Value) * fn->signature.input_count);
     stack_ptr += fn->signature.input_count;
 
-    auto ip = fn->bytecode_begin();
-    while (ip != fn->bytecode_end())
+    for (auto ip = fn->bytecode_begin(); ip != fn->bytecode_end(); ++ip)
     {
-        switch (lauf::op(*ip++))
+        auto inst = *ip;
+        switch (LAUF_BC_OP(inst))
         {
         case lauf::op::push: {
-            auto constant = LAUF_BC_READ16(ip);
+            auto constant = LAUF_BC_PAYLOAD24(inst);
             *stack_ptr++  = fn->constant_begin()[constant];
             break;
         }
@@ -46,19 +46,19 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
         }
         case lauf::op::push_small_zext: {
             lauf_Value constant;
-            constant.as_int = LAUF_BC_READ16(ip);
+            constant.as_int = LAUF_BC_PAYLOAD24(inst);
             *stack_ptr++    = constant;
             break;
         }
         case lauf::op::push_small_neg: {
             lauf_Value constant;
-            constant.as_int = -LAUF_BC_READ16(ip);
+            constant.as_int = -lauf_ValueInt(LAUF_BC_PAYLOAD24(inst));
             *stack_ptr++    = constant;
             break;
         }
 
         case lauf::op::pop: {
-            auto count = LAUF_BC_READ16(ip);
+            auto count = LAUF_BC_PAYLOAD24(inst);
             stack_ptr -= count;
             break;
         }

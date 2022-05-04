@@ -5,6 +5,7 @@
 #define SRC_DETAIL_FUNCTION_HPP_INCLUDED
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <lauf/function.h>
 #include <lauf/value.h>
@@ -27,12 +28,12 @@ struct alignas(std::max_align_t) lauf_FunctionImpl
         return constant_begin() + constant_count;
     }
 
-    const unsigned char* bytecode_begin() const
+    const std::uint32_t* bytecode_begin() const
     {
         auto memory = static_cast<const void*>(constant_end());
-        return static_cast<const unsigned char*>(memory);
+        return static_cast<const std::uint32_t*>(memory);
     }
-    const unsigned char* bytecode_end() const
+    const std::uint32_t* bytecode_end() const
     {
         return bytecode_begin() + bytecode_size;
     }
@@ -42,7 +43,7 @@ namespace lauf
 {
 lauf_Function create_function(const char* name, lauf_FunctionSignature sig, size_t max_stack_size,
                               const lauf_Value* constants, size_t constant_count,
-                              const unsigned char* bytecode, size_t bytecode_size);
+                              const std::uint32_t* bytecode, size_t bytecode_size);
 } // namespace lauf
 
 #endif // SRC_DETAIL_FUNCTION_HPP_INCLUDED
