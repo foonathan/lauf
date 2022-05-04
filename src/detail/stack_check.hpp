@@ -6,21 +6,17 @@
 
 #include <cstddef>
 #include <cstdio>
-#include <lauf/value.h>
-#include <vector>
 
 namespace lauf
 {
 class stack_checker
 {
 public:
-    stack_checker() : _max_size(0), _errors(false) {}
+    stack_checker() : _cur_size(0), _max_size(0), _errors(false) {}
 
     void reset() &&
     {
-        _max_size = 0;
-        _errors   = false;
-        _stack.clear();
+        *this = {};
     }
 
     explicit operator bool() const
@@ -30,42 +26,37 @@ public:
 
     std::size_t cur_stack_size() const
     {
-        return _stack.size();
+        return _cur_size;
     }
     std::size_t max_stack_size() const
     {
         return _max_size;
     }
 
-    void push(lauf_ValueType type, std::size_t n = 1)
+    void push(std::size_t n = 1)
     {
-        for (auto i = std::size_t(0); i != n; ++i)
-            _stack.push_back(type);
-        _max_size = std::max(_stack.size(), _max_size);
-    }
-    void push_unknown(std::size_t n = 1)
-    {
-        push(lauf_ValueType(-1), n);
+        _cur_size += n;
+        if (_cur_size > _max_size)
+            _max_size = _cur_size;
     }
 
     void pop(std::size_t n)
     {
-        if (_stack.size() < n)
+        if (_cur_size < n)
         {
             std::fprintf(stderr,
                          "stack error: Attempt to pop %zu value(s) from stack of size %zu.\n", n,
-                         _stack.size());
+                         _cur_size);
             _errors = true;
             return;
         }
 
-        _stack.erase(_stack.end() - n, _stack.end());
+        _cur_size -= n;
     }
 
 private:
-    std::size_t                 _max_size;
-    std::vector<lauf_ValueType> _stack;
-    bool                        _errors;
+    std::size_t _cur_size, _max_size;
+    bool        _errors;
 };
 } // namespace lauf
 

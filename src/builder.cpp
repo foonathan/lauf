@@ -34,11 +34,11 @@ void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_Function
 {
     b->name = name;
     b->sig  = sig;
-    std::move(b->stack).reset();
+    std::move(b->stack).reset(); // NOLINT
     b->constants.clear();
     std::move(b->bytecode).reset();
 
-    b->stack.push_unknown(b->sig.input_count);
+    b->stack.push(b->sig.input_count);
 }
 
 lauf_Function lauf_builder_finish_function(lauf_Builder b)
@@ -62,7 +62,7 @@ void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
     b->bytecode.op(lauf::op::push);
     b->bytecode.uint16(idx);
 
-    b->stack.push(LAUF_VALUE_TYPE_INT);
+    b->stack.push();
 }
 
 void lauf_builder_pop(lauf_Builder b, size_t n)
