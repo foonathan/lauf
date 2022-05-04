@@ -4,6 +4,7 @@
 #include <lauf/builder.h>
 
 #include "detail/bytecode.hpp"
+#include "detail/constant_pool.hpp"
 #include "detail/function.hpp"
 #include "detail/stack_check.hpp"
 #include <vector>
@@ -12,11 +13,11 @@ struct lauf_BuilderImpl
 {
     lauf_ErrorHandler handler;
 
-    const char*             name;
-    lauf_FunctionSignature  sig;
-    lauf::stack_checker     stack;
-    std::vector<lauf_Value> constants;
-    lauf::bytecode_builder  bytecode;
+    const char*            name;
+    lauf_FunctionSignature sig;
+    lauf::stack_checker    stack;
+    lauf::constant_pool    constants;
+    lauf::bytecode_builder bytecode;
 
     lauf_BuilderImpl() : handler(lauf_default_error_handler), name(nullptr), sig{} {}
 };
@@ -44,7 +45,7 @@ void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_Function
     b->name = name;
     b->sig  = sig;
     std::move(b->stack).reset(); // NOLINT
-    b->constants.clear();
+    std::move(b->constants).reset();
     std::move(b->bytecode).reset();
 
     b->stack.push(b->sig.input_count);
@@ -67,11 +68,7 @@ void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
 {
     LAUF_ERROR_CONTEXT(push_int);
 
-    lauf_Value constant;
-    constant.as_int = value;
-
-    auto idx = b->constants.size();
-    b->constants.push_back(constant);
+    auto idx = b->constants.insert(value);
 
     b->bytecode.op(lauf::op::push);
     b->bytecode.uint16(b->handler, ctx, idx);

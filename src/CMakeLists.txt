@@ -15,7 +15,9 @@ target_sources(lauf_core PUBLIC
                 )
 target_sources(lauf_core PRIVATE
                 detail/bytecode.hpp
+                detail/constant_pool.hpp
                 detail/function.hpp
+                detail/stack_check.hpp
                 builder.cpp
                 error.cpp
                 function.cpp
