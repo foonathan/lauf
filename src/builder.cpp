@@ -7,6 +7,7 @@
 #include "detail/constant_pool.hpp"
 #include "detail/function.hpp"
 #include "detail/stack_check.hpp"
+#include <cassert>
 #include <vector>
 
 struct lauf_BuilderImpl
@@ -101,5 +102,18 @@ void lauf_builder_pop(lauf_Builder b, size_t n)
         b->bytecode.op(b->handler, ctx, lauf::op::pop, n);
 
     b->stack.pop(b->handler, ctx, n);
+}
+
+void lauf_builder_call(lauf_Builder b, lauf_Function fn)
+{
+    LAUF_ERROR_CONTEXT(call);
+    assert(fn->is_builtin); // unimplemented
+
+    auto idx = b->constants.insert(reinterpret_cast<void*>(fn->builtin.fn));
+    b->bytecode.op(b->handler, ctx, lauf::op::call_builtin, idx);
+
+    auto [input_count, output_count] = lauf_function_signature(fn);
+    b->stack.pop(b->handler, ctx, input_count);
+    b->stack.push(output_count);
 }
 

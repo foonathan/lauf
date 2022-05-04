@@ -24,5 +24,8 @@ void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value);
 /// Pops the top N values from the stack.
 void lauf_builder_pop(lauf_Builder b, size_t n);
 
+/// Calls the given function.
+void lauf_builder_call(lauf_Builder b, lauf_Function fn);
+
 #endif // LAUF_BUILDER_H_INCLUDED
 

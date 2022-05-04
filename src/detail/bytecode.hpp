@@ -37,6 +37,9 @@ enum class op : unsigned char
     pop,
     // payload: none
     pop_one,
+
+    // payload: constant index for the function
+    call_builtin,
 };
 
 #define LAUF_BC_OP(Inst) static_cast<lauf::op>(Inst)

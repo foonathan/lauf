@@ -24,11 +24,12 @@ void lauf_vm_destroy(lauf_VM vm)
 
 void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf_Value* output)
 {
-    vm->stack.resize(fn->max_stack_size);
+    auto [input_count, output_count] = lauf_function_signature(fn);
+    vm->stack.resize(fn->bytecode.max_stack_size);
     auto stack_ptr = vm->stack.data();
 
-    std::memcpy(stack_ptr, input, sizeof(lauf_Value) * fn->signature.input_count);
-    stack_ptr += fn->signature.input_count;
+    std::memcpy(stack_ptr, input, sizeof(lauf_Value) * input_count);
+    stack_ptr += input_count;
 
     for (auto ip = fn->bytecode_begin(); ip != fn->bytecode_end(); ++ip)
     {
@@ -36,8 +37,8 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
         switch (LAUF_BC_OP(inst))
         {
         case lauf::op::push: {
-            auto constant = LAUF_BC_PAYLOAD24(inst);
-            *stack_ptr++  = fn->constant_begin()[constant];
+            auto idx     = LAUF_BC_PAYLOAD24(inst);
+            *stack_ptr++ = fn->get_constant(idx);
             break;
         }
         case lauf::op::push_zero: {
@@ -66,10 +67,17 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
             stack_ptr--;
             break;
         }
+
+        case lauf::op::call_builtin: {
+            auto idx     = LAUF_BC_PAYLOAD24(inst);
+            auto builtin = reinterpret_cast<lauf_BuiltinFunction*>(fn->get_constant(idx).as_ptr);
+            stack_ptr += builtin(stack_ptr);
+            break;
+        }
         }
     }
 
-    stack_ptr -= fn->signature.output_count;
-    std::memcpy(output, stack_ptr, sizeof(lauf_Value) * fn->signature.output_count);
+    stack_ptr -= output_count;
+    std::memcpy(output, stack_ptr, sizeof(lauf_Value) * output_count);
 }
 

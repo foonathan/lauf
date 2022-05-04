@@ -29,10 +29,17 @@ public:
         return idx;
     }
 
-    template <typename T>
-    std::size_t insert(T value)
+    std::size_t insert(lauf_ValueInt value)
     {
-        return insert(lauf_Value{value});
+        lauf_Value v;
+        v.as_int = value;
+        return insert(v);
+    }
+    std::size_t insert(lauf_ValuePtr value)
+    {
+        lauf_Value v;
+        v.as_ptr = value;
+        return insert(v);
     }
 
     std::size_t size() const

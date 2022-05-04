@@ -8,10 +8,12 @@
 #include <stdint.h>
 
 typedef int64_t lauf_ValueInt;
+typedef void*   lauf_ValuePtr;
 
 typedef union lauf_Value
 {
     lauf_ValueInt as_int;
+    lauf_ValuePtr as_ptr;
 } lauf_Value;
 
 #endif // LAUF_VALUE_H_INCLUDED
