@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <lauf/error.h>
+
 namespace lauf
 {
 static_assert(CHAR_BIT == 8);
@@ -29,10 +31,16 @@ public:
         _bc.push_back(static_cast<unsigned char>(o));
     }
 
-    void uint16(std::uint16_t value)
+    void uint16(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, std::size_t value)
     {
-        _bc.emplace_back(value << 8);
-        _bc.emplace_back(value & 0xFF);
+        _bc.emplace_back((value >> 8) & 0xFF);
+        _bc.emplace_back((value >> 0) & 0xFF);
+
+        if (value > UINT16_MAX)
+        {
+            handler.errors = true;
+            handler.encoding_error(ctx, 16, value);
+        }
     }
 
     std::size_t size() const

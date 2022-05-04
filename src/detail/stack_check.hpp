@@ -5,23 +5,18 @@
 #define SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
 
 #include <cstddef>
-#include <cstdio>
+#include <lauf/error.h>
 
 namespace lauf
 {
 class stack_checker
 {
 public:
-    stack_checker() : _cur_size(0), _max_size(0), _errors(false) {}
+    stack_checker() : _cur_size(0), _max_size(0) {}
 
     void reset() &&
     {
         *this = {};
-    }
-
-    explicit operator bool() const
-    {
-        return !_errors;
     }
 
     std::size_t cur_stack_size() const
@@ -40,23 +35,22 @@ public:
             _max_size = _cur_size;
     }
 
-    void pop(std::size_t n)
+    void pop(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, std::size_t n)
     {
         if (_cur_size < n)
         {
-            std::fprintf(stderr,
-                         "stack error: Attempt to pop %zu value(s) from stack of size %zu.\n", n,
-                         _cur_size);
-            _errors = true;
-            return;
+            handler.errors = true;
+            handler.stack_underflow(ctx, _cur_size, n);
+            _cur_size = 0;
         }
-
-        _cur_size -= n;
+        else
+        {
+            _cur_size -= n;
+        }
     }
 
 private:
     std::size_t _cur_size, _max_size;
-    bool        _errors;
 };
 } // namespace lauf
 

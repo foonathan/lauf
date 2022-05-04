@@ -3,6 +3,7 @@
 
 // Check that everything compiles as C.
 #include <lauf/builder.h>
+#include <lauf/error.h>
 #include <lauf/function.h>
 #include <lauf/value.h>
 #include <lauf/vm.h>
