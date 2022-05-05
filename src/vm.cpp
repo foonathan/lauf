@@ -33,35 +33,117 @@ void lauf_vm_destroy(lauf_VM vm)
     ::operator delete(vm);
 }
 
-void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf_Value* output)
+namespace
 {
-    auto stack_ptr = vm->stack_begin();
-    auto stack_end = vm->stack_begin() + vm->stack_size;
+class stack_allocator
+{
+public:
+    explicit stack_allocator(unsigned char* memory, size_t size) : _cur(memory), _end(_cur + size)
+    {}
 
-    auto constants = fn->constants();
-    auto ip        = fn->bytecode_begin();
-
-    auto vstack_ptr = reinterpret_cast<lauf_Value*>(stack_ptr);
-    stack_ptr += fn->max_vstack_size;
-    if (stack_ptr > stack_end)
+    const void* marker() const
     {
-        vm->handler.stack_overflow({fn->name, "call"}, vm->stack_size);
-        return;
+        return _cur;
+    }
+    void unwind(const void* marker)
+    {
+        _cur = (unsigned char*)(marker);
     }
 
-    while (true)
+    template <typename T>
+    bool push(const T& object)
     {
-        auto inst = *ip;
+        static_assert(std::is_trivially_copyable_v<T>);
+
+        if (_cur + sizeof(T) > _end)
+            return false;
+
+        std::memcpy(_cur, &object, sizeof(T));
+        _cur += sizeof(T);
+        return true;
+    }
+
+    template <typename T>
+    void pop(T& result)
+    {
+        static_assert(std::is_trivially_copyable_v<T>);
+        std::memcpy(&result, _cur -= sizeof(T), sizeof(T));
+    }
+    template <typename T>
+    T pop()
+    {
+        T result;
+        pop(result);
+        return result;
+    }
+
+    void* allocate(std::size_t size, std::size_t alignment)
+    {
+        auto misaligned   = reinterpret_cast<std::uintptr_t>(_cur) & (alignment - 1);
+        auto align_offset = misaligned != 0 ? (alignment - misaligned) : 0;
+        if (_cur + align_offset + size > _end)
+            return nullptr;
+
+        _cur += align_offset;
+        auto memory = _cur;
+        _cur += size;
+        return memory;
+    }
+    template <typename T>
+    T* allocate(std::size_t n = 1)
+    {
+        return static_cast<T*>(allocate(n * sizeof(T), alignof(T)));
+    }
+
+private:
+    unsigned char* _cur;
+    unsigned char* _end;
+};
+
+struct stack_frame
+{
+    const void*          base;
+    lauf_Function        fn;
+    const std::uint32_t* ip;
+    const lauf_Value*    arguments;
+    lauf_Value*          vstack_ptr;
+
+    stack_frame(lauf_Value* output)
+    : base(nullptr), fn(nullptr), ip(nullptr), arguments(nullptr), vstack_ptr(output)
+    {}
+
+    stack_frame(stack_allocator& stack, lauf_Function fn, const lauf_Value* arguments)
+    : base(stack.marker()), fn(fn), ip(fn->bytecode_begin()), arguments(arguments),
+      vstack_ptr(stack.allocate<lauf_Value>(fn->max_vstack_size))
+    {}
+};
+} // namespace
+
+void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf_Value* output)
+{
+    stack_allocator stack(vm->stack_begin(), vm->stack_size);
+    stack.push(stack_frame(output));
+
+    stack_frame frame(stack, fn, input);
+    while (frame.ip != nullptr)
+    {
+        auto inst = *frame.ip;
         switch (LAUF_BC_OP(inst))
         {
         case lauf::op::return_: {
-            vstack_ptr -= fn->output_count;
-            std::memcpy(output, vstack_ptr, sizeof(lauf_Value) * fn->output_count);
-            return;
+            auto output_count = frame.fn->output_count;
+            auto outputs      = frame.vstack_ptr - output_count;
+
+            stack.unwind(frame.base);
+            stack.pop<stack_frame>(frame);
+
+            std::memcpy(frame.vstack_ptr, outputs, sizeof(lauf_Value) * output_count);
+            frame.vstack_ptr += output_count;
+            break;
         }
         case lauf::op::jump: {
             auto offset = LAUF_BC_PAYLOAD(inst);
-            ip += offset;
+            frame.ip += offset;
             break;
         }
         case lauf::op::jump_if: {
@@ -69,99 +151,111 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
             auto cc      = static_cast<lauf::condition_code>(payload & 0b111);
             auto offset  = static_cast<size_t>(payload >> 3);
 
-            auto top = *--vstack_ptr;
+            auto top = *--frame.vstack_ptr;
             switch (cc)
             {
             case lauf::condition_code::if_zero:
                 if (top.as_int == 0)
-                    ip += offset;
+                    frame.ip += offset;
                 else
-                    ++ip;
+                    ++frame.ip;
                 break;
             case lauf::condition_code::if_nonzero:
                 if (top.as_int != 0)
-                    ip += offset;
+                    frame.ip += offset;
                 else
-                    ++ip;
+                    ++frame.ip;
                 break;
             case lauf::condition_code::cmp_lt:
                 if (top.as_int < 0)
-                    ip += offset;
+                    frame.ip += offset;
                 else
-                    ++ip;
+                    ++frame.ip;
                 break;
             case lauf::condition_code::cmp_le:
                 if (top.as_int <= 0)
-                    ip += offset;
+                    frame.ip += offset;
                 else
-                    ++ip;
+                    ++frame.ip;
                 break;
             case lauf::condition_code::cmp_gt:
                 if (top.as_int > 0)
-                    ip += offset;
+                    frame.ip += offset;
                 else
-                    ++ip;
+                    ++frame.ip;
                 break;
             case lauf::condition_code::cmp_ge:
                 if (top.as_int >= 0)
-                    ip += offset;
+                    frame.ip += offset;
                 else
-                    ++ip;
+                    ++frame.ip;
                 break;
             }
             break;
         }
 
         case lauf::op::push: {
-            auto idx      = LAUF_BC_PAYLOAD(inst);
-            *vstack_ptr++ = constants[idx];
-            ++ip;
+            auto idx            = LAUF_BC_PAYLOAD(inst);
+            *frame.vstack_ptr++ = frame.fn->constants()[idx];
+            ++frame.ip;
             break;
         }
         case lauf::op::push_zero: {
-            *vstack_ptr++ = lauf_Value{};
-            ++ip;
+            *frame.vstack_ptr++ = lauf_Value{};
+            ++frame.ip;
             break;
         }
         case lauf::op::push_small_zext: {
             lauf_Value constant;
-            constant.as_int = LAUF_BC_PAYLOAD(inst);
-            *vstack_ptr++   = constant;
-            ++ip;
+            constant.as_int     = LAUF_BC_PAYLOAD(inst);
+            *frame.vstack_ptr++ = constant;
+            ++frame.ip;
             break;
         }
         case lauf::op::push_small_neg: {
             lauf_Value constant;
-            constant.as_int = -lauf_ValueInt(LAUF_BC_PAYLOAD(inst));
-            *vstack_ptr++   = constant;
-            ++ip;
+            constant.as_int     = -lauf_ValueInt(LAUF_BC_PAYLOAD(inst));
+            *frame.vstack_ptr++ = constant;
+            ++frame.ip;
             break;
         }
 
         case lauf::op::argument: {
-            auto idx      = LAUF_BC_PAYLOAD(inst);
-            *vstack_ptr++ = input[idx];
-            ++ip;
+            auto idx            = LAUF_BC_PAYLOAD(inst);
+            *frame.vstack_ptr++ = frame.arguments[idx];
+            ++frame.ip;
             break;
         }
 
         case lauf::op::pop: {
             auto count = LAUF_BC_PAYLOAD(inst);
-            vstack_ptr -= count;
-            ++ip;
+            frame.vstack_ptr -= count;
+            ++frame.ip;
             break;
         }
         case lauf::op::pop_one: {
-            vstack_ptr--;
-            ++ip;
+            frame.vstack_ptr--;
+            ++frame.ip;
             break;
         }
 
+        case lauf::op::call: {
+            auto idx    = LAUF_BC_PAYLOAD(inst);
+            auto callee = reinterpret_cast<lauf_Function>(frame.fn->constants()[idx].as_ptr);
+
+            auto args = (frame.vstack_ptr -= callee->input_count);
+            ++frame.ip;
+
+            stack.push(frame);
+            frame = stack_frame(stack, callee, args);
+            break;
+        }
         case lauf::op::call_builtin: {
             auto idx      = LAUF_BC_PAYLOAD(inst);
-            auto callback = reinterpret_cast<lauf_BuiltinFunctionCallback*>(constants[idx].as_ptr);
-            vstack_ptr    = callback(vstack_ptr);
-            ++ip;
+            auto callback = reinterpret_cast<lauf_BuiltinFunctionCallback*>(
+                frame.fn->constants()[idx].as_ptr);
+            frame.vstack_ptr = callback(frame.vstack_ptr);
+            ++frame.ip;
             break;
         }
         }

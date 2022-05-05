@@ -72,11 +72,15 @@ enum class op : unsigned char
     pop_one,
 
     // payload: constant index for the function
+    call,
+    // payload: constant index for the function
     call_builtin,
 };
 
 #define LAUF_BC_OP(Inst) static_cast<lauf::op>(Inst)
 #define LAUF_BC_PAYLOAD(Inst) ((Inst) >> 8)
+
+using bytecode = const std::uint32_t*;
 
 class bytecode_builder
 {

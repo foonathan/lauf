@@ -23,17 +23,19 @@ int main()
 {
     auto fn = [] {
         auto b = lauf_builder();
+
+        lauf_builder_function(b, "add", {2, 1});
+        lauf_builder_argument(b, 0);
+        lauf_builder_argument(b, 1);
+        lauf_builder_call_builtin(b, add);
+        lauf_builder_return(b);
+        auto fn_add = lauf_builder_end_function(b);
+
         lauf_builder_function(b, "test", {1, 1});
 
-        lauf_BuilderIf if_;
         lauf_builder_argument(b, 0);
-        lauf_builder_if(b, &if_, LAUF_IF_NONZERO);
-        lauf_builder_int(b, 42);
-        lauf_builder_call_builtin(b, increment);
-        lauf_builder_return(b);
-        lauf_builder_end_if(b, &if_);
-
         lauf_builder_int(b, 11);
+        lauf_builder_call(b, fn_add);
         lauf_builder_return(b);
 
         return lauf_builder_end_function(b);
@@ -41,7 +43,7 @@ int main()
 
     auto vm = lauf_vm(lauf_default_vm_options);
 
-    lauf_Value input = {.as_int = 0};
+    lauf_Value input = {.as_int = 42};
     lauf_Value output;
     lauf_vm_execute(vm, fn, &input, &output);
     std::printf("result: %ld\n", output.as_int);

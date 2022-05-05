@@ -50,8 +50,12 @@ void lauf_builder_argument(lauf_Builder b, size_t idx);
 /// Pops the top N values from the vstack.
 void lauf_builder_pop(lauf_Builder b, size_t n);
 
+/// Calls the given function.
+/// It pops arguments from the vstack and pushes its output.
+void lauf_builder_call(lauf_Builder b, lauf_Function fn);
+
 /// Calls the given builtin function.
-/// It pops arguments from the stack and pushes its output.
+/// It pops arguments from the vstack and pushes its output.
 void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn);
 
 LAUF_HEADER_END

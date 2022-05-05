@@ -188,9 +188,20 @@ void lauf_builder_pop(lauf_Builder b, size_t n)
     b->vstack.pop(b->handler, ctx, n);
 }
 
-void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn)
+void lauf_builder_call(lauf_Builder b, lauf_Function fn)
 {
     LAUF_ERROR_CONTEXT(call);
+
+    auto idx = b->constants.insert(fn);
+    b->bytecode.op(b->handler, ctx, lauf::op::call, idx);
+
+    b->vstack.pop(b->handler, ctx, fn->input_count);
+    b->vstack.push(fn->output_count);
+}
+
+void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn)
+{
+    LAUF_ERROR_CONTEXT(call_builtin);
 
     auto idx = b->constants.insert(reinterpret_cast<void*>(fn.impl));
     b->bytecode.op(b->handler, ctx, lauf::op::call_builtin, idx);
