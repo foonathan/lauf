@@ -5,10 +5,9 @@
 
 #include "detail/function.hpp"
 
-lauf_Function lauf::create_function(const char* name, lauf_FunctionSignature sig,
-                                    uint16_t max_stack_size, const lauf_Value* constants,
-                                    size_t constant_count, const std::uint32_t* bytecode,
-                                    size_t bytecode_size)
+lauf_Function lauf::create_function(const char* name, lauf_Signature sig, uint16_t max_stack_size,
+                                    const lauf_Value* constants, size_t constant_count,
+                                    const std::uint32_t* bytecode, size_t bytecode_size)
 {
     auto memory_needed = sizeof(lauf_FunctionImpl) + sizeof(std::uint32_t) * bytecode_size
                          + sizeof(lauf_Value) * constant_count;
@@ -40,7 +39,7 @@ const char* lauf_function_name(lauf_Function fn)
     return fn->name;
 }
 
-lauf_FunctionSignature lauf_function_signature(lauf_Function fn)
+lauf_Signature lauf_function_signature(lauf_Function fn)
 {
     return {fn->input_count, fn->output_count};
 }

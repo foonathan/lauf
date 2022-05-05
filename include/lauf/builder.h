@@ -16,7 +16,7 @@ lauf_Builder lauf_builder(void);
 
 void lauf_builder_destroy(lauf_Builder b);
 
-void lauf_builder_function(lauf_Builder b, const char* name, lauf_FunctionSignature sig);
+void lauf_builder_function(lauf_Builder b, const char* name, lauf_Signature sig);
 
 lauf_Function lauf_builder_end_function(lauf_Builder b);
 

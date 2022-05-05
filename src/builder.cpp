@@ -15,7 +15,7 @@ struct lauf_BuilderImpl
     lauf_ErrorHandler handler;
 
     const char*            name;
-    lauf_FunctionSignature sig;
+    lauf_Signature         sig;
     lauf::stack_checker    stack;
     lauf::constant_pool    constants;
     lauf::bytecode_builder bytecode;
@@ -39,7 +39,7 @@ void lauf_builder_destroy(lauf_Builder b)
     delete b;
 }
 
-void lauf_builder_function(lauf_Builder b, const char* name, lauf_FunctionSignature sig)
+void lauf_builder_function(lauf_Builder b, const char* name, lauf_Signature sig)
 {
     b->handler.errors = false;
 

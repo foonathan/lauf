@@ -10,13 +10,13 @@ LAUF_HEADER_START
 
 union lauf_Value;
 
-typedef struct lauf_FunctionSignature
+typedef struct lauf_Signature
 {
     /// The number of values the function pops from the stack as parameters.
     uint8_t input_count;
     /// The number of values the function pushes on the stack as return values.
     uint8_t output_count;
-} lauf_FunctionSignature;
+} lauf_Signature;
 
 //=== function ===//
 typedef struct lauf_FunctionImpl* lauf_Function;
@@ -25,14 +25,14 @@ void lauf_function_destroy(lauf_Function fn);
 
 const char* lauf_function_name(lauf_Function fn);
 
-lauf_FunctionSignature lauf_function_signature(lauf_Function fn);
+lauf_Signature lauf_function_signature(lauf_Function fn);
 
 //=== builtin function ===//
 typedef union lauf_Value* lauf_BuiltinFunctionCallback(union lauf_Value* stack_ptr);
 
 typedef struct lauf_BuiltinFunction
 {
-    lauf_FunctionSignature        signature;
+    lauf_Signature                signature;
     lauf_BuiltinFunctionCallback* impl;
 } lauf_BuiltinFunction;
 

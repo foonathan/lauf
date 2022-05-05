@@ -23,7 +23,7 @@ int main()
 {
     auto fn = [] {
         auto b = lauf_builder();
-        lauf_builder_function(b, "test", lauf_FunctionSignature{1, 1});
+        lauf_builder_function(b, "test", {1, 1});
 
         lauf_BuilderIf if_;
         lauf_builder_argument(b, 0);
