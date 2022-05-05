@@ -15,7 +15,7 @@ struct alignas(std::max_align_t) lauf_FunctionImpl
 {
     const char* name;
     uint32_t    bytecode_size;
-    uint16_t    max_stack_size;
+    uint16_t    max_vstack_size;
     uint8_t     input_count;
     uint8_t     output_count;
 
@@ -38,7 +38,7 @@ struct alignas(std::max_align_t) lauf_FunctionImpl
 
 namespace lauf
 {
-lauf_Function create_function(const char* name, lauf_Signature sig, uint16_t max_stack_size,
+lauf_Function create_function(const char* name, lauf_Signature sig, uint16_t max_vstack_size,
                               const lauf_Value* constants, size_t constant_count,
                               const std::uint32_t* bytecode, size_t bytecode_size);
 } // namespace lauf

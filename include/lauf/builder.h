@@ -41,13 +41,13 @@ void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_);
 void lauf_builder_return(lauf_Builder b);
 
 //=== expressions ===//
-/// Pushes the specified constant integer onto the stack.
+/// Pushes the specified constant integer onto the vstack.
 void lauf_builder_int(lauf_Builder b, lauf_ValueInt value);
 
-/// Pushes the argument with the specified index onto the stack.
+/// Pushes the argument with the specified index onto the vstack.
 void lauf_builder_argument(lauf_Builder b, size_t idx);
 
-/// Pops the top N values from the stack.
+/// Pops the top N values from the vstack.
 void lauf_builder_pop(lauf_Builder b, size_t n);
 
 /// Calls the given builtin function.

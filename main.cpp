@@ -39,10 +39,13 @@ int main()
         return lauf_builder_end_function(b);
     }();
 
+    auto vm = lauf_vm(lauf_default_vm_options);
+
     lauf_Value input = {.as_int = 0};
     lauf_Value output;
-    lauf_vm_execute(lauf_vm(), fn, &input, &output);
-
+    lauf_vm_execute(vm, fn, &input, &output);
     std::printf("result: %ld\n", output.as_int);
+
+    lauf_vm_destroy(vm);
 }
 

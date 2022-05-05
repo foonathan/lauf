@@ -16,7 +16,7 @@ struct lauf_BuilderImpl
 
     const char*            name;
     lauf_Signature         sig;
-    lauf::stack_checker    stack;
+    lauf::stack_checker    vstack;
     lauf::constant_pool    constants;
     lauf::bytecode_builder bytecode;
 
@@ -45,7 +45,7 @@ void lauf_builder_function(lauf_Builder b, const char* name, lauf_Signature sig)
 
     b->name = name;
     b->sig  = sig;
-    std::move(b->stack).reset(); // NOLINT
+    std::move(b->vstack).reset(); // NOLINT
     std::move(b->constants).reset();
     std::move(b->bytecode).reset();
 }
@@ -54,11 +54,11 @@ lauf_Function lauf_builder_end_function(lauf_Builder b)
 {
     LAUF_ERROR_CONTEXT(end_function);
 
-    b->stack.assert_empty(b->handler, ctx);
+    b->vstack.assert_empty(b->handler, ctx);
 
-    if (b->stack.max_stack_size() > UINT16_MAX)
+    if (b->vstack.max_stack_size() > UINT16_MAX)
     {
-        b->handler.encoding_error(ctx, 16, b->stack.max_stack_size());
+        b->handler.encoding_error(ctx, 16, b->vstack.max_stack_size());
         b->handler.errors = true;
     }
 
@@ -71,7 +71,7 @@ lauf_Function lauf_builder_end_function(lauf_Builder b)
     if (b->handler.errors)
         return nullptr;
     else
-        return lauf::create_function(b->name, b->sig, b->stack.max_stack_size(),
+        return lauf::create_function(b->name, b->sig, b->vstack.max_stack_size(),
                                      b->constants.data(), b->constants.size(), //
                                      b->bytecode.data(), b->bytecode.size());
 }
@@ -93,8 +93,8 @@ void lauf_builder_if(lauf_Builder b, lauf_BuilderIf* if_, lauf_Condition conditi
         break;
     }
 
-    b->stack.pop(b->handler, ctx);
-    b->stack.assert_empty(b->handler, ctx);
+    b->vstack.pop(b->handler, ctx);
+    b->vstack.assert_empty(b->handler, ctx);
 }
 
 void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_)
@@ -106,7 +106,7 @@ void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_)
     // Patch jump_if to current position.
     b->bytecode.patch_jump_if(b->handler, ctx, if_->_jump_if, b->bytecode.size());
 
-    b->stack.assert_empty(b->handler, ctx);
+    b->vstack.assert_empty(b->handler, ctx);
 }
 
 void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_)
@@ -125,7 +125,7 @@ void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_)
         b->bytecode.patch_jump(b->handler, ctx, if_->_jump_end, b->bytecode.size());
     }
 
-    b->stack.assert_empty(b->handler, ctx);
+    b->vstack.assert_empty(b->handler, ctx);
 }
 
 void lauf_builder_return(lauf_Builder b)
@@ -133,7 +133,7 @@ void lauf_builder_return(lauf_Builder b)
     LAUF_ERROR_CONTEXT(return );
 
     b->bytecode.op(lauf::op::return_);
-    b->stack.pop(b->handler, ctx, b->sig.output_count);
+    b->vstack.pop(b->handler, ctx, b->sig.output_count);
 }
 
 void lauf_builder_int(lauf_Builder b, lauf_ValueInt value)
@@ -160,7 +160,7 @@ void lauf_builder_int(lauf_Builder b, lauf_ValueInt value)
         b->bytecode.op(b->handler, ctx, lauf::op::push, idx);
     }
 
-    b->stack.push();
+    b->vstack.push();
 }
 
 void lauf_builder_argument(lauf_Builder b, size_t idx)
@@ -173,7 +173,7 @@ void lauf_builder_argument(lauf_Builder b, size_t idx)
     }
 
     b->bytecode.op(b->handler, ctx, lauf::op::argument, idx);
-    b->stack.push();
+    b->vstack.push();
 }
 
 void lauf_builder_pop(lauf_Builder b, size_t n)
@@ -185,7 +185,7 @@ void lauf_builder_pop(lauf_Builder b, size_t n)
     else
         b->bytecode.op(b->handler, ctx, lauf::op::pop, n);
 
-    b->stack.pop(b->handler, ctx, n);
+    b->vstack.pop(b->handler, ctx, n);
 }
 
 void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn)
@@ -195,7 +195,7 @@ void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn)
     auto idx = b->constants.insert(reinterpret_cast<void*>(fn.impl));
     b->bytecode.op(b->handler, ctx, lauf::op::call_builtin, idx);
 
-    b->stack.pop(b->handler, ctx, fn.signature.input_count);
-    b->stack.push(fn.signature.output_count);
+    b->vstack.pop(b->handler, ctx, fn.signature.input_count);
+    b->vstack.push(fn.signature.output_count);
 }
 

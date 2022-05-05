@@ -37,16 +37,16 @@ typedef struct lauf_BuiltinFunction
 } lauf_BuiltinFunction;
 
 #define LAUF_BUILTIN_FUNCTION(Name, InputCount, OutputCount)                                       \
-    static union lauf_Value*   Name##_impl(union lauf_Value* stack_ptr);                           \
+    static union lauf_Value*   Name##_impl(union lauf_Value* vstack_ptr);                          \
     const lauf_BuiltinFunction Name = {{InputCount, OutputCount}, &Name##_impl};                   \
-    static union lauf_Value*   Name##_impl(union lauf_Value* stack_ptr)
+    static union lauf_Value*   Name##_impl(union lauf_Value* vstack_ptr)
 
 #define LAUF_BUILTIN_UNARY_OP(Name)                                                                \
     static union lauf_Value Name##_op_impl(union lauf_Value value);                                \
     LAUF_BUILTIN_FUNCTION(Name, 1, 1)                                                              \
     {                                                                                              \
-        stack_ptr[-1] = Name##_op_impl(stack_ptr[-1]);                                             \
-        return stack_ptr;                                                                          \
+        vstack_ptr[-1] = Name##_op_impl(vstack_ptr[-1]);                                           \
+        return vstack_ptr;                                                                         \
     }                                                                                              \
     static union lauf_Value Name##_op_impl(union lauf_Value value)
 
@@ -54,8 +54,8 @@ typedef struct lauf_BuiltinFunction
     static union lauf_Value Name##_op_impl(union lauf_Value lhs, union lauf_Value rhs);            \
     LAUF_BUILTIN_FUNCTION(Name, 2, 1)                                                              \
     {                                                                                              \
-        stack_ptr[-2] = Name##_op_impl(stack_ptr[-2], stack_ptr[-1]);                              \
-        return stack_ptr - 1;                                                                      \
+        vstack_ptr[-2] = Name##_op_impl(vstack_ptr[-2], vstack_ptr[-1]);                           \
+        return vstack_ptr - 1;                                                                     \
     }                                                                                              \
     static union lauf_Value Name##_op_impl(union lauf_Value lhs, union lauf_Value rhs)
 

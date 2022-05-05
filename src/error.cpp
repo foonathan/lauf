@@ -13,6 +13,12 @@ void index_error(lauf_ErrorContext context, size_t size, size_t index)
                  context.function, context.instruction, index, size);
 }
 
+void stack_overflow(lauf_ErrorContext context, size_t stack_size)
+{
+    std::fprintf(stderr, "[lauf] %s:%s: stack overflow of stack with size %zu\n", context.function,
+                 context.instruction, stack_size);
+}
+
 void stack_underflow(lauf_ErrorContext context, size_t stack_size, size_t pop_count)
 {
     std::fprintf(
@@ -35,5 +41,5 @@ void encoding_error(lauf_ErrorContext context, unsigned max_bits, size_t value)
 } // namespace
 
 const lauf_ErrorHandler lauf_default_error_handler
-    = {false, index_error, stack_underflow, stack_nonempty, encoding_error};
+    = {false, index_error, stack_overflow, stack_underflow, stack_nonempty, encoding_error};
 

@@ -5,39 +5,58 @@
 
 #include "detail/bytecode.hpp"
 #include "detail/function.hpp"
-#include <vector>
 
-struct lauf_VMImpl
-{
-    std::vector<lauf_Value> stack;
+const lauf_VMOptions lauf_default_vm_options = {
+    lauf_default_error_handler,
+    size_t(1) * 1024 * 1024,
 };
 
-lauf_VM lauf_vm(void)
+struct alignas(std::max_align_t) lauf_VMImpl
 {
-    return new lauf_VMImpl{};
+    lauf_ErrorHandler handler;
+    size_t            stack_size;
+
+    unsigned char* stack_begin()
+    {
+        return reinterpret_cast<unsigned char*>(this + 1);
+    }
+};
+
+lauf_VM lauf_vm(lauf_VMOptions options)
+{
+    auto memory = ::operator new(sizeof(lauf_VMImpl) + options.max_stack_size);
+    return ::new (memory) lauf_VMImpl{options.error_handler, options.max_stack_size};
 }
 
 void lauf_vm_destroy(lauf_VM vm)
 {
-    delete vm;
+    ::operator delete(vm);
 }
 
 void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf_Value* output)
 {
+    auto stack_ptr = vm->stack_begin();
+    auto stack_end = vm->stack_begin() + vm->stack_size;
+
     auto constants = fn->constants();
+    auto ip        = fn->bytecode_begin();
 
-    vm->stack.resize(fn->max_stack_size);
-    auto stack_ptr = vm->stack.data();
+    auto vstack_ptr = reinterpret_cast<lauf_Value*>(stack_ptr);
+    stack_ptr += fn->max_vstack_size;
+    if (stack_ptr > stack_end)
+    {
+        vm->handler.stack_overflow({fn->name, "call"}, vm->stack_size);
+        return;
+    }
 
-    auto ip = fn->bytecode_begin();
     while (true)
     {
         auto inst = *ip;
         switch (LAUF_BC_OP(inst))
         {
         case lauf::op::return_: {
-            stack_ptr -= fn->output_count;
-            std::memcpy(output, stack_ptr, sizeof(lauf_Value) * fn->output_count);
+            vstack_ptr -= fn->output_count;
+            std::memcpy(output, vstack_ptr, sizeof(lauf_Value) * fn->output_count);
             return;
         }
         case lauf::op::jump: {
@@ -50,7 +69,7 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
             auto cc      = static_cast<lauf::condition_code>(payload & 0b111);
             auto offset  = static_cast<size_t>(payload >> 3);
 
-            auto top = *--stack_ptr;
+            auto top = *--vstack_ptr;
             switch (cc)
             {
             case lauf::condition_code::if_zero:
@@ -94,46 +113,46 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
         }
 
         case lauf::op::push: {
-            auto idx     = LAUF_BC_PAYLOAD(inst);
-            *stack_ptr++ = constants[idx];
+            auto idx      = LAUF_BC_PAYLOAD(inst);
+            *vstack_ptr++ = constants[idx];
             ++ip;
             break;
         }
         case lauf::op::push_zero: {
-            *stack_ptr++ = lauf_Value{};
+            *vstack_ptr++ = lauf_Value{};
             ++ip;
             break;
         }
         case lauf::op::push_small_zext: {
             lauf_Value constant;
             constant.as_int = LAUF_BC_PAYLOAD(inst);
-            *stack_ptr++    = constant;
+            *vstack_ptr++   = constant;
             ++ip;
             break;
         }
         case lauf::op::push_small_neg: {
             lauf_Value constant;
             constant.as_int = -lauf_ValueInt(LAUF_BC_PAYLOAD(inst));
-            *stack_ptr++    = constant;
+            *vstack_ptr++   = constant;
             ++ip;
             break;
         }
 
         case lauf::op::argument: {
-            auto idx     = LAUF_BC_PAYLOAD(inst);
-            *stack_ptr++ = input[idx];
+            auto idx      = LAUF_BC_PAYLOAD(inst);
+            *vstack_ptr++ = input[idx];
             ++ip;
             break;
         }
 
         case lauf::op::pop: {
             auto count = LAUF_BC_PAYLOAD(inst);
-            stack_ptr -= count;
+            vstack_ptr -= count;
             ++ip;
             break;
         }
         case lauf::op::pop_one: {
-            stack_ptr--;
+            vstack_ptr--;
             ++ip;
             break;
         }
@@ -141,7 +160,7 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
         case lauf::op::call_builtin: {
             auto idx      = LAUF_BC_PAYLOAD(inst);
             auto callback = reinterpret_cast<lauf_BuiltinFunctionCallback*>(constants[idx].as_ptr);
-            stack_ptr     = callback(stack_ptr);
+            vstack_ptr    = callback(vstack_ptr);
             ++ip;
             break;
         }
