@@ -13,26 +13,12 @@
 
 struct alignas(std::max_align_t) lauf_FunctionImpl
 {
-    struct bytecode_function
-    {
-        uint32_t max_stack_size;
-        uint32_t constant_count;
-        size_t   bytecode_size;
-    };
-    struct builtin_function
-    {
-        lauf_BuiltinFunction* fn;
-    };
-
     const char* name;
-    uint64_t    is_builtin : 1;
-    uint64_t    input_count : 31;
-    uint64_t    output_count : 31;
-    union
-    {
-        bytecode_function bytecode;
-        builtin_function  builtin;
-    };
+    uint32_t    max_stack_size;
+    uint16_t    constant_count;
+    uint8_t     input_count;
+    uint8_t     output_count;
+    size_t      bytecode_size;
 
     const lauf_Value* constant_begin() const
     {
@@ -41,12 +27,7 @@ struct alignas(std::max_align_t) lauf_FunctionImpl
     }
     const lauf_Value* constant_end() const
     {
-        return constant_begin() + bytecode.constant_count;
-    }
-
-    const lauf_Value& get_constant(std::size_t idx) const
-    {
-        return constant_begin()[idx];
+        return constant_begin() + constant_count;
     }
 
     const std::uint32_t* bytecode_begin() const
@@ -56,7 +37,7 @@ struct alignas(std::max_align_t) lauf_FunctionImpl
     }
     const std::uint32_t* bytecode_end() const
     {
-        return bytecode_begin() + bytecode.bytecode_size;
+        return bytecode_begin() + bytecode_size;
     }
 };
 

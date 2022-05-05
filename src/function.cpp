@@ -14,33 +14,20 @@ lauf_Function lauf::create_function(const char* name, lauf_FunctionSignature sig
                          + sizeof(std::uint32_t) * bytecode_size;
     auto memory = ::operator new(memory_needed);
 
-    auto result                     = ::new (memory) lauf_FunctionImpl{};
-    result->name                    = name;
-    result->is_builtin              = false;
-    result->input_count             = sig.input_count;
-    result->output_count            = sig.output_count;
-    result->bytecode.max_stack_size = max_stack_size;
+    auto result            = ::new (memory) lauf_FunctionImpl{};
+    result->name           = name;
+    result->input_count    = sig.input_count;
+    result->output_count   = sig.output_count;
+    result->max_stack_size = max_stack_size;
 
-    result->bytecode.constant_count = constant_count;
+    result->constant_count = constant_count;
     std::memcpy(const_cast<lauf_Value*>(result->constant_begin()), constants,
                 constant_count * sizeof(lauf_Value));
 
-    result->bytecode.bytecode_size = bytecode_size;
+    result->bytecode_size = bytecode_size;
     std::memcpy(const_cast<std::uint32_t*>(result->bytecode_begin()), bytecode,
                 bytecode_size * sizeof(std::uint32_t));
 
-    return result;
-}
-
-lauf_Function lauf_builtin_function(const char* name, lauf_FunctionSignature sig,
-                                    lauf_BuiltinFunction* fn)
-{
-    auto result          = new lauf_FunctionImpl{};
-    result->name         = name;
-    result->is_builtin   = true;
-    result->input_count  = sig.input_count;
-    result->output_count = sig.output_count;
-    result->builtin.fn   = fn;
     return result;
 }
 
@@ -57,10 +44,5 @@ const char* lauf_function_name(lauf_Function fn)
 lauf_FunctionSignature lauf_function_signature(lauf_Function fn)
 {
     return {fn->input_count, fn->output_count};
-}
-
-bool lauf_function_is_builtin(lauf_Function fn)
-{
-    return fn->is_builtin;
 }
 

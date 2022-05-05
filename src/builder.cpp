@@ -104,16 +104,14 @@ void lauf_builder_pop(lauf_Builder b, size_t n)
     b->stack.pop(b->handler, ctx, n);
 }
 
-void lauf_builder_call(lauf_Builder b, lauf_Function fn)
+void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn)
 {
     LAUF_ERROR_CONTEXT(call);
-    assert(fn->is_builtin); // unimplemented
 
-    auto idx = b->constants.insert(reinterpret_cast<void*>(fn->builtin.fn));
+    auto idx = b->constants.insert(reinterpret_cast<void*>(fn.impl));
     b->bytecode.op(b->handler, ctx, lauf::op::call_builtin, idx);
 
-    auto [input_count, output_count] = lauf_function_signature(fn);
-    b->stack.pop(b->handler, ctx, input_count);
-    b->stack.push(output_count);
+    b->stack.pop(b->handler, ctx, fn.signature.input_count);
+    b->stack.push(fn.signature.output_count);
 }
 

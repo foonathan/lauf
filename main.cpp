@@ -7,13 +7,17 @@
 #include <lauf/builder.h>
 #include <lauf/vm.h>
 
-ptrdiff_t fn_increment(lauf_Value* stack_ptr)
+LAUF_BUILTIN_UNARY_OP(increment)
 {
-    auto& top = stack_ptr[-1];
-    top.as_int++;
-    return 0;
+    value.as_int++;
+    return value;
 }
-const auto increment = lauf_builtin_function("increment", {1, 1}, &fn_increment);
+
+LAUF_BUILTIN_BINARY_OP(add)
+{
+    lhs.as_int += rhs.as_int;
+    return lhs;
+}
 
 int main()
 {
@@ -22,7 +26,9 @@ int main()
         lauf_builder_start_function(b, "test", lauf_FunctionSignature{0, 1});
 
         lauf_builder_push_int(b, 42);
-        lauf_builder_call(b, increment);
+        lauf_builder_push_int(b, 11);
+        lauf_builder_call_builtin(b, increment);
+        lauf_builder_call_builtin(b, add);
 
         return lauf_builder_finish_function(b);
     }();
