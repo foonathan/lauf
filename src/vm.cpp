@@ -24,7 +24,7 @@ void lauf_vm_destroy(lauf_VM vm)
 
 void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf_Value* output)
 {
-    auto constants = fn->constant_begin();
+    auto constants = fn->constants();
 
     vm->stack.resize(fn->max_stack_size);
     auto stack_ptr = vm->stack.data();

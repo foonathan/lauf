@@ -57,6 +57,18 @@ lauf_Function lauf_builder_finish_function(lauf_Builder b)
     LAUF_ERROR_CONTEXT(return );
     b->stack.pop(b->handler, ctx, b->sig.output_count);
 
+    if (b->stack.max_stack_size() > UINT16_MAX)
+    {
+        b->handler.encoding_error(ctx, 16, b->stack.max_stack_size());
+        b->handler.errors = true;
+    }
+
+    if (b->bytecode.size() > UINT32_MAX)
+    {
+        b->handler.encoding_error(ctx, 32, b->bytecode.size());
+        b->handler.errors = true;
+    }
+
     if (b->handler.errors)
         return nullptr;
     else
