@@ -45,6 +45,8 @@ enum class condition_code : unsigned char
 // * payload are the remaining 24 bits
 enum class op : unsigned char
 {
+    // payload: none,
+    return_,
     // payload: relative offset
     jump,
     // payload: condition code (3 bits) + relative offset (21 bits)

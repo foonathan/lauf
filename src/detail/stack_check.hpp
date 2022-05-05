@@ -49,6 +49,16 @@ public:
         }
     }
 
+    void assert_empty(lauf_ErrorHandler& handler, lauf_ErrorContext ctx)
+    {
+        if (_cur_size > 0)
+        {
+            handler.errors = true;
+            handler.stack_nonempty(ctx, _cur_size);
+        }
+        _cur_size = 0;
+    }
+
 private:
     std::size_t _cur_size, _max_size;
 };

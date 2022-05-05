@@ -16,11 +16,11 @@ lauf_Builder lauf_builder(void);
 
 void lauf_builder_destroy(lauf_Builder b);
 
-void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_FunctionSignature sig);
+void lauf_builder_function(lauf_Builder b, const char* name, lauf_FunctionSignature sig);
 
-lauf_Function lauf_builder_finish_function(lauf_Builder b);
+lauf_Function lauf_builder_end_function(lauf_Builder b);
 
-//=== if ===//
+//=== statements ===//
 typedef enum lauf_Condition
 {
     LAUF_IF_ZERO,
@@ -38,7 +38,9 @@ void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_);
 
 void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_);
 
-//=== instructions ===//
+void lauf_builder_return(lauf_Builder b);
+
+//=== expressions ===//
 /// Pushes the specified constant integer onto the stack.
 void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value);
 

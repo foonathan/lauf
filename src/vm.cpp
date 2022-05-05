@@ -32,11 +32,17 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
     std::memcpy(stack_ptr, input, sizeof(lauf_Value) * fn->input_count);
     stack_ptr += fn->input_count;
 
-    for (auto ip = fn->bytecode_begin(); ip != fn->bytecode_end();)
+    auto ip = fn->bytecode_begin();
+    while (true)
     {
         auto inst = *ip;
         switch (LAUF_BC_OP(inst))
         {
+        case lauf::op::return_: {
+            stack_ptr -= fn->output_count;
+            std::memcpy(output, stack_ptr, sizeof(lauf_Value) * fn->output_count);
+            return;
+        }
         case lauf::op::jump: {
             auto offset = LAUF_BC_PAYLOAD(inst);
             ip += offset;
@@ -137,8 +143,5 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
         }
         }
     }
-
-    stack_ptr -= fn->output_count;
-    std::memcpy(output, stack_ptr, sizeof(lauf_Value) * fn->output_count);
 }
 

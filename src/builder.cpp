@@ -39,7 +39,7 @@ void lauf_builder_destroy(lauf_Builder b)
     delete b;
 }
 
-void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_FunctionSignature sig)
+void lauf_builder_function(lauf_Builder b, const char* name, lauf_FunctionSignature sig)
 {
     b->handler.errors = false;
 
@@ -52,10 +52,11 @@ void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_Function
     b->stack.push(b->sig.input_count);
 }
 
-lauf_Function lauf_builder_finish_function(lauf_Builder b)
+lauf_Function lauf_builder_end_function(lauf_Builder b)
 {
-    LAUF_ERROR_CONTEXT(return );
-    b->stack.pop(b->handler, ctx, b->sig.output_count);
+    LAUF_ERROR_CONTEXT(end_function);
+
+    b->stack.assert_empty(b->handler, ctx);
 
     if (b->stack.max_stack_size() > UINT16_MAX)
     {
@@ -81,6 +82,8 @@ void lauf_builder_if(lauf_Builder b, lauf_BuilderIf* if_, lauf_Condition conditi
 {
     LAUF_ERROR_CONTEXT(if);
 
+    if_->_jump_end = std::size_t(-1);
+
     // We generate a jump for the else, so negate the condition.
     switch (condition)
     {
@@ -92,7 +95,8 @@ void lauf_builder_if(lauf_Builder b, lauf_BuilderIf* if_, lauf_Condition conditi
         break;
     }
 
-    if_->_jump_end = std::size_t(-1);
+    b->stack.pop(b->handler, ctx, 1);
+    b->stack.assert_empty(b->handler, ctx);
 }
 
 void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_)
@@ -103,6 +107,8 @@ void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_)
     if_->_jump_end = b->bytecode.jump();
     // Patch jump_if to current position.
     b->bytecode.patch_jump_if(b->handler, ctx, if_->_jump_if, b->bytecode.size());
+
+    b->stack.assert_empty(b->handler, ctx);
 }
 
 void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_)
@@ -120,6 +126,16 @@ void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_)
         // (jump_if already patched as part of the else).
         b->bytecode.patch_jump(b->handler, ctx, if_->_jump_end, b->bytecode.size());
     }
+
+    b->stack.assert_empty(b->handler, ctx);
+}
+
+void lauf_builder_return(lauf_Builder b)
+{
+    LAUF_ERROR_CONTEXT(return );
+
+    b->bytecode.op(lauf::op::return_);
+    b->stack.pop(b->handler, ctx, b->sig.output_count);
 }
 
 void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)

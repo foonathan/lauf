@@ -18,6 +18,7 @@ typedef struct lauf_ErrorHandler
 {
     bool errors;
     void (*stack_underflow)(lauf_ErrorContext context, size_t stack_size, size_t pop_count);
+    void (*stack_nonempty)(lauf_ErrorContext context, size_t stack_size);
     void (*encoding_error)(lauf_ErrorContext context, unsigned max_bits, size_t value);
 } lauf_ErrorHandler;
 
