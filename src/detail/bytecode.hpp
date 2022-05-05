@@ -63,6 +63,9 @@ enum class op : unsigned char
     // Pushes a 24 bit constant by extending it with zeroes and then negating it.
     push_small_neg,
 
+    // payload: argument index
+    argument,
+
     // payload: constant index
     pop,
     // payload: none

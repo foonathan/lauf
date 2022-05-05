@@ -48,8 +48,6 @@ void lauf_builder_function(lauf_Builder b, const char* name, lauf_FunctionSignat
     std::move(b->stack).reset(); // NOLINT
     std::move(b->constants).reset();
     std::move(b->bytecode).reset();
-
-    b->stack.push(b->sig.input_count);
 }
 
 lauf_Function lauf_builder_end_function(lauf_Builder b)
@@ -95,7 +93,7 @@ void lauf_builder_if(lauf_Builder b, lauf_BuilderIf* if_, lauf_Condition conditi
         break;
     }
 
-    b->stack.pop(b->handler, ctx, 1);
+    b->stack.pop(b->handler, ctx);
     b->stack.assert_empty(b->handler, ctx);
 }
 
@@ -138,9 +136,9 @@ void lauf_builder_return(lauf_Builder b)
     b->stack.pop(b->handler, ctx, b->sig.output_count);
 }
 
-void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
+void lauf_builder_int(lauf_Builder b, lauf_ValueInt value)
 {
-    LAUF_ERROR_CONTEXT(push_int);
+    LAUF_ERROR_CONTEXT(int);
 
     if (value == 0)
     {
@@ -162,6 +160,19 @@ void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
         b->bytecode.op(b->handler, ctx, lauf::op::push, idx);
     }
 
+    b->stack.push();
+}
+
+void lauf_builder_argument(lauf_Builder b, size_t idx)
+{
+    LAUF_ERROR_CONTEXT(argument);
+    if (idx >= b->sig.input_count)
+    {
+        b->handler.errors = true;
+        b->handler.index_error(ctx, b->sig.input_count, idx);
+    }
+
+    b->bytecode.op(b->handler, ctx, lauf::op::argument, idx);
     b->stack.push();
 }
 

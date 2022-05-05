@@ -42,12 +42,16 @@ void lauf_builder_return(lauf_Builder b);
 
 //=== expressions ===//
 /// Pushes the specified constant integer onto the stack.
-void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value);
+void lauf_builder_int(lauf_Builder b, lauf_ValueInt value);
+
+/// Pushes the argument with the specified index onto the stack.
+void lauf_builder_argument(lauf_Builder b, size_t idx);
 
 /// Pops the top N values from the stack.
 void lauf_builder_pop(lauf_Builder b, size_t n);
 
 /// Calls the given builtin function.
+/// It pops arguments from the stack and pushes its output.
 void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn);
 
 LAUF_HEADER_END

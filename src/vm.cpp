@@ -29,9 +29,6 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
     vm->stack.resize(fn->max_stack_size);
     auto stack_ptr = vm->stack.data();
 
-    std::memcpy(stack_ptr, input, sizeof(lauf_Value) * fn->input_count);
-    stack_ptr += fn->input_count;
-
     auto ip = fn->bytecode_begin();
     while (true)
     {
@@ -118,6 +115,13 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
             lauf_Value constant;
             constant.as_int = -lauf_ValueInt(LAUF_BC_PAYLOAD(inst));
             *stack_ptr++    = constant;
+            ++ip;
+            break;
+        }
+
+        case lauf::op::argument: {
+            auto idx     = LAUF_BC_PAYLOAD(inst);
+            *stack_ptr++ = input[idx];
             ++ip;
             break;
         }

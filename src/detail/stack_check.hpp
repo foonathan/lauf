@@ -35,7 +35,7 @@ public:
             _max_size = _cur_size;
     }
 
-    void pop(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, std::size_t n)
+    void pop(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, std::size_t n = 1)
     {
         if (_cur_size < n)
         {
