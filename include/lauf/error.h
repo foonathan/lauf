@@ -4,8 +4,9 @@
 #ifndef LAUF_ERROR_H_INCLUDED
 #define LAUF_ERROR_H_INCLUDED
 
-#include <stdbool.h>
-#include <stddef.h>
+#include <lauf/config.h>
+
+LAUF_HEADER_START
 
 typedef struct lauf_ErrorContext
 {
@@ -21,6 +22,8 @@ typedef struct lauf_ErrorHandler
 } lauf_ErrorHandler;
 
 extern const lauf_ErrorHandler lauf_default_error_handler;
+
+LAUF_HEADER_END
 
 #endif // LAUF_ERROR_H_INCLUDED
 

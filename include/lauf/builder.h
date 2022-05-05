@@ -4,8 +4,11 @@
 #ifndef LAUF_BUILDER_H_INCLUDED
 #define LAUF_BUILDER_H_INCLUDED
 
+#include <lauf/config.h>
 #include <lauf/function.h>
 #include <lauf/value.h>
+
+LAUF_HEADER_START
 
 typedef struct lauf_BuilderImpl* lauf_Builder;
 
@@ -26,6 +29,8 @@ void lauf_builder_pop(lauf_Builder b, size_t n);
 
 /// Calls the given function.
 void lauf_builder_call(lauf_Builder b, lauf_Function fn);
+
+LAUF_HEADER_END
 
 #endif // LAUF_BUILDER_H_INCLUDED
 

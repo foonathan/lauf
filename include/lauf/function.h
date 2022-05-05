@@ -4,8 +4,9 @@
 #ifndef LAUF_FUNCTION_H_INCLUDED
 #define LAUF_FUNCTION_H_INCLUDED
 
-#include <stdbool.h>
-#include <stddef.h>
+#include <lauf/config.h>
+
+LAUF_HEADER_START
 
 typedef struct lauf_FunctionImpl* lauf_Function;
 
@@ -30,6 +31,8 @@ const char* lauf_function_name(lauf_Function fn);
 lauf_FunctionSignature lauf_function_signature(lauf_Function fn);
 
 bool lauf_function_is_builtin(lauf_Function fn);
+
+LAUF_HEADER_END
 
 #endif // LAUF_FUNCTION_H_INCLUDED
 
