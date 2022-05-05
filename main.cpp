@@ -26,9 +26,15 @@ int main()
         lauf_builder_start_function(b, "test", lauf_FunctionSignature{0, 1});
 
         lauf_builder_push_int(b, 42);
-        lauf_builder_push_int(b, 11);
+        lauf_builder_push_int(b, 1);
+
+        lauf_BuilderIf if_;
+        lauf_builder_if(b, &if_, LAUF_IF_NONZERO);
         lauf_builder_call_builtin(b, increment);
+        lauf_builder_else(b, &if_);
+        lauf_builder_push_int(b, 2);
         lauf_builder_call_builtin(b, add);
+        lauf_builder_end_if(b, &if_);
 
         return lauf_builder_finish_function(b);
     }();

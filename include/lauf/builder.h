@@ -20,6 +20,24 @@ void lauf_builder_start_function(lauf_Builder b, const char* name, lauf_Function
 
 lauf_Function lauf_builder_finish_function(lauf_Builder b);
 
+//=== if ===//
+typedef enum lauf_Condition
+{
+    LAUF_IF_ZERO,
+    LAUF_IF_NONZERO,
+} lauf_Condition;
+
+typedef struct lauf_BuilderIf
+{
+    size_t _jump_if, _jump_end;
+} lauf_BuilderIf;
+
+void lauf_builder_if(lauf_Builder b, lauf_BuilderIf* if_, lauf_Condition condition);
+
+void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_);
+
+void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_);
+
 //=== instructions ===//
 /// Pushes the specified constant integer onto the stack.
 void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value);

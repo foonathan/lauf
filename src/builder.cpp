@@ -77,6 +77,51 @@ lauf_Function lauf_builder_finish_function(lauf_Builder b)
                                      b->bytecode.data(), b->bytecode.size());
 }
 
+void lauf_builder_if(lauf_Builder b, lauf_BuilderIf* if_, lauf_Condition condition)
+{
+    LAUF_ERROR_CONTEXT(if);
+
+    // We generate a jump for the else, so negate the condition.
+    switch (condition)
+    {
+    case LAUF_IF_ZERO:
+        if_->_jump_if = b->bytecode.jump_if(lauf::condition_code::if_nonzero);
+        break;
+    case LAUF_IF_NONZERO:
+        if_->_jump_if = b->bytecode.jump_if(lauf::condition_code::if_zero);
+        break;
+    }
+
+    if_->_jump_end = std::size_t(-1);
+}
+
+void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_)
+{
+    LAUF_ERROR_CONTEXT(else);
+
+    // Create jump that skips the else.
+    if_->_jump_end = b->bytecode.jump();
+    // Patch jump_if to current position.
+    b->bytecode.patch_jump_if(b->handler, ctx, if_->_jump_if, b->bytecode.size());
+}
+
+void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_)
+{
+    LAUF_ERROR_CONTEXT(end_if);
+
+    if (if_->_jump_end == std::size_t(-1)) // no else
+    {
+        // Patch jump_if to current position.
+        b->bytecode.patch_jump_if(b->handler, ctx, if_->_jump_if, b->bytecode.size());
+    }
+    else
+    {
+        // Patch jump_end to current position.
+        // (jump_if already patched as part of the else).
+        b->bytecode.patch_jump(b->handler, ctx, if_->_jump_end, b->bytecode.size());
+    }
+}
+
 void lauf_builder_push_int(lauf_Builder b, lauf_ValueInt value)
 {
     LAUF_ERROR_CONTEXT(push_int);
