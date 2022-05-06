@@ -1,3 +1,6 @@
+// Does nothing.
+LAUF_BC_OP(nop, bc_inst_none)
+
 // Return from current function.
 LAUF_BC_OP(return_, bc_inst_none)
 // Increments ip by offset.

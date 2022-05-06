@@ -137,6 +137,10 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
         auto inst = *frame.ip;
         switch (inst.tag.op)
         {
+        case bc_op::nop: {
+            ++frame.ip;
+            break;
+        }
         case bc_op::return_: {
             auto output_count = frame.fn->output_count;
             auto outputs      = frame.vstack_ptr - output_count;

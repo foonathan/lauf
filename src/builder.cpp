@@ -8,7 +8,6 @@
 #include "detail/stack_check.hpp"
 #include "detail/verify.hpp"
 #include "impl/module.hpp"
-#include <cassert>
 #include <lauf/builtin.h>
 #include <vector>
 

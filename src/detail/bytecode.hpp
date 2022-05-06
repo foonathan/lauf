@@ -4,6 +4,7 @@
 #ifndef SRC_DETAIL_BYTECODE_HPP_INCLUDED
 #define SRC_DETAIL_BYTECODE_HPP_INCLUDED
 
+#include "verify.hpp"
 #include <lauf/config.h>
 
 namespace lauf::_detail
@@ -14,6 +15,18 @@ enum class bc_op : uint8_t
 #include "bc_ops.h"
 #undef LAUF_BC_OP
 };
+
+inline const char* to_string(bc_op op)
+{
+    switch (op)
+    {
+#define LAUF_BC_OP(Name, Type)                                                                     \
+case bc_op::Name:                                                                                  \
+    return #Name;
+#include "bc_ops.h"
+#undef LAUF_BC_OP
+    }
+}
 
 // Conditions for conditional jumps.
 enum class condition_code : unsigned char
@@ -45,24 +58,42 @@ struct bc_inst_none
 {
     bc_op    op : 8;
     uint32_t _padding : 24;
+
+    bc_inst_none() : op{} {}
+    explicit bc_inst_none(bc_op op) : op(op) {}
 };
 
 struct bc_inst_constant
 {
     bc_op    op : 8;
     uint32_t constant : 24;
+
+    explicit bc_inst_constant(bc_op op, uint32_t c) : op(op), constant(c)
+    {
+        LAUF_VERIFY(constant == c, to_string(op), "encoding error");
+    }
 };
 
 struct bc_inst_constant_idx
 {
     bc_op           op : 8;
     bc_constant_idx constant_idx : 24;
+
+    explicit bc_inst_constant_idx(bc_op op, bc_constant_idx idx) : op(op), constant_idx(idx)
+    {
+        LAUF_VERIFY(constant_idx == idx, to_string(op), "encoding error");
+    }
 };
 
 struct bc_inst_offset
 {
     bc_op   op : 8;
     int32_t offset : 24;
+
+    explicit bc_inst_offset(bc_op op, int32_t o) : op(op), offset(o)
+    {
+        LAUF_VERIFY(offset == o, to_string(op), "encoding error");
+    }
 };
 
 struct bc_inst_cc_offset
@@ -70,6 +101,11 @@ struct bc_inst_cc_offset
     bc_op          op : 8;
     condition_code cc : 3;
     int32_t        offset : 21;
+
+    explicit bc_inst_cc_offset(bc_op op, condition_code cc, int32_t o) : op(op), cc(cc), offset(o)
+    {
+        LAUF_VERIFY(offset == o, to_string(op), "encoding error");
+    }
 };
 
 union bc_instruction
@@ -79,13 +115,15 @@ union bc_instruction
 #define LAUF_BC_OP(Name, Type) Type Name;
 #include "bc_ops.h"
 #undef LAUF_BC_OP
+
+    bc_instruction() : tag() {}
 };
 static_assert(sizeof(bc_instruction) == sizeof(uint32_t));
 
 #define LAUF_BC_INSTRUCTION(Op, ...)                                                               \
     [&] {                                                                                          \
         lauf::_detail::bc_instruction inst;                                                        \
-        inst.Op = {lauf::_detail::bc_op::Op, __VA_ARGS__};                                         \
+        inst.Op = decltype(inst.Op){lauf::_detail::bc_op::Op, __VA_ARGS__};                        \
         return inst;                                                                               \
     }()
 } // namespace lauf::_detail
