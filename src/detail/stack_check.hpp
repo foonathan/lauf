@@ -35,7 +35,7 @@ public:
             _max_size = _cur_size;
     }
 
-    void pop(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, std::size_t n = 1)
+    void pop(lauf_error_handler& handler, lauf_error_context ctx, std::size_t n = 1)
     {
         if (_cur_size < n)
         {
@@ -49,7 +49,7 @@ public:
         }
     }
 
-    void assert_empty(lauf_ErrorHandler& handler, lauf_ErrorContext ctx)
+    void assert_empty(lauf_error_handler& handler, lauf_error_context ctx)
     {
         if (_cur_size > 0)
         {

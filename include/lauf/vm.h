@@ -11,22 +11,22 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_VMImpl* lauf_VM;
+typedef struct lauf_vm_impl* lauf_vm;
 
-typedef struct lauf_VMOptions
+typedef struct lauf_vm_options
 {
-    lauf_ErrorHandler error_handler;
+    lauf_error_handler error_handler;
     /// The maximal stack size in bytes.
     size_t max_stack_size;
-} lauf_VMOptions;
+} lauf_vm_options;
 
-extern const lauf_VMOptions lauf_default_vm_options;
+extern const lauf_vm_options lauf_default_vm_options;
 
-lauf_VM lauf_vm(lauf_VMOptions options);
+lauf_vm lauf_vm_create(lauf_vm_options options);
 
-void lauf_vm_destroy(lauf_VM vm);
+void lauf_vm_destroy(lauf_vm vm);
 
-void lauf_vm_execute(lauf_VM vm, lauf_module mod, lauf_function fn, const lauf_value* input,
+void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_value* input,
                      lauf_value* output);
 
 LAUF_HEADER_END

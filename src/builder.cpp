@@ -23,7 +23,7 @@ struct function_decl
 
 struct lauf_builder_impl
 {
-    lauf_ErrorHandler handler;
+    lauf_error_handler handler;
 
     const char*                mod_name;
     lauf::constant_pool        constants;
@@ -40,7 +40,7 @@ struct lauf_builder_impl
 };
 
 #define LAUF_ERROR_CONTEXT(Instruction)                                                            \
-    [[maybe_unused]] const lauf_ErrorContext ctx                                                   \
+    [[maybe_unused]] const lauf_error_context ctx                                                  \
     {                                                                                              \
         b->functions[b->cur_fn].name, #Instruction                                                 \
     }

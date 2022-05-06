@@ -46,7 +46,7 @@ int main()
         return std::make_pair(lauf_build_finish(b), fn_test);
     }();
 
-    auto vm = lauf_vm(lauf_default_vm_options);
+    auto vm = lauf_vm_create(lauf_default_vm_options);
 
     lauf_value input = {.as_int = 42};
     lauf_value output;

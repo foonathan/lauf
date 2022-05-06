@@ -89,7 +89,7 @@ public:
     {
         _bc.push_back(static_cast<unsigned char>(o));
     }
-    void op(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, enum op o, std::size_t payload)
+    void op(lauf_error_handler& handler, lauf_error_context ctx, enum op o, std::size_t payload)
     {
         _bc.push_back((payload & UINT24_MAX) << 8 | static_cast<unsigned char>(o));
         if (payload > UINT24_MAX)
@@ -105,7 +105,7 @@ public:
         _bc.push_back(static_cast<unsigned char>(op::jump));
         return idx;
     }
-    void patch_jump(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, std::size_t idx,
+    void patch_jump(lauf_error_handler& handler, lauf_error_context ctx, std::size_t idx,
                     std::size_t dest)
     {
         auto offset = dest - idx;
@@ -124,7 +124,7 @@ public:
                       | static_cast<unsigned char>(op::jump_if));
         return idx;
     }
-    void patch_jump_if(lauf_ErrorHandler& handler, lauf_ErrorContext ctx, std::size_t idx,
+    void patch_jump_if(lauf_error_handler& handler, lauf_error_context ctx, std::size_t idx,
                        std::size_t dest)
     {
         auto offset = dest - idx;

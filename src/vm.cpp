@@ -8,15 +8,15 @@
 #include <cstring>
 #include <lauf/builtin.h>
 
-const lauf_VMOptions lauf_default_vm_options = {
+const lauf_vm_options lauf_default_vm_options = {
     lauf_default_error_handler,
     size_t(1) * 1024 * 1024,
 };
 
-struct alignas(std::max_align_t) lauf_VMImpl
+struct alignas(std::max_align_t) lauf_vm_impl
 {
-    lauf_ErrorHandler handler;
-    size_t            stack_size;
+    lauf_error_handler handler;
+    size_t             stack_size;
 
     unsigned char* stack_begin()
     {
@@ -24,13 +24,13 @@ struct alignas(std::max_align_t) lauf_VMImpl
     }
 };
 
-lauf_VM lauf_vm(lauf_VMOptions options)
+lauf_vm lauf_vm_create(lauf_vm_options options)
 {
-    auto memory = ::operator new(sizeof(lauf_VMImpl) + options.max_stack_size);
-    return ::new (memory) lauf_VMImpl{options.error_handler, options.max_stack_size};
+    auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_stack_size);
+    return ::new (memory) lauf_vm_impl{options.error_handler, options.max_stack_size};
 }
 
-void lauf_vm_destroy(lauf_VM vm)
+void lauf_vm_destroy(lauf_vm vm)
 {
     ::operator delete(vm);
 }
@@ -121,7 +121,7 @@ struct stack_frame
 };
 } // namespace
 
-void lauf_vm_execute(lauf_VM vm, lauf_module mod, lauf_function fn, const lauf_value* input,
+void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_value* input,
                      lauf_value* output)
 {
     stack_allocator stack(vm->stack_begin(), vm->stack_size);
