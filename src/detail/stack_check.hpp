@@ -5,9 +5,8 @@
 #define SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
 
 #include <cstddef>
-#include <lauf/error.h>
 
-namespace lauf
+namespace lauf::_detail
 {
 class stack_checker
 {
@@ -35,34 +34,19 @@ public:
             _max_size = _cur_size;
     }
 
-    void pop(lauf_error_handler& handler, lauf_error_context ctx, std::size_t n = 1)
+    bool pop(std::size_t n = 1)
     {
         if (_cur_size < n)
-        {
-            handler.errors = true;
-            handler.stack_underflow(ctx, _cur_size, n);
-            _cur_size = 0;
-        }
-        else
-        {
-            _cur_size -= n;
-        }
-    }
+            return false;
 
-    void assert_empty(lauf_error_handler& handler, lauf_error_context ctx)
-    {
-        if (_cur_size > 0)
-        {
-            handler.errors = true;
-            handler.stack_nonempty(ctx, _cur_size);
-        }
-        _cur_size = 0;
+        _cur_size -= n;
+        return true;
     }
 
 private:
     std::size_t _cur_size, _max_size;
 };
-} // namespace lauf
+} // namespace lauf::_detail
 
 #endif // SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
 

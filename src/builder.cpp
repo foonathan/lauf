@@ -6,6 +6,7 @@
 #include "detail/bytecode.hpp"
 #include "detail/constant_pool.hpp"
 #include "detail/stack_check.hpp"
+#include "detail/verify.hpp"
 #include "impl/module.hpp"
 #include <cassert>
 #include <lauf/builtin.h>
@@ -32,15 +33,13 @@ struct call_patch
 
 struct lauf_builder_impl
 {
-    lauf_error_handler handler;
-
     const char*                mod_name;
     constant_pool              constants;
     std::vector<function_decl> functions;
     std::vector<call_patch>    call_patches;
 
     size_t                      cur_fn;
-    lauf::stack_checker         vstack;
+    stack_checker               vstack;
     std::vector<bc_instruction> bytecode;
 
     lauf_signature signature() const
@@ -49,15 +48,9 @@ struct lauf_builder_impl
     }
 };
 
-#define LAUF_ERROR_CONTEXT(Instruction)                                                            \
-    [[maybe_unused]] const lauf_error_context ctx                                                  \
-    {                                                                                              \
-        b->functions[b->cur_fn].name, #Instruction                                                 \
-    }
-
 lauf_builder lauf_build(const char* mod_name)
 {
-    return new lauf_builder_impl{lauf_default_error_handler, mod_name};
+    return new lauf_builder_impl{mod_name};
 }
 
 lauf_module lauf_build_finish(lauf_builder b)
@@ -98,8 +91,6 @@ lauf_builder_function lauf_build_declare_function(lauf_builder b, const char* fn
 
 void lauf_build_start_function(lauf_builder b, lauf_builder_function fn)
 {
-    b->handler.errors = false;
-
     std::move(b->vstack).reset(); // NOLINT
     b->bytecode.clear();
     b->cur_fn = fn._fn;
@@ -107,18 +98,10 @@ void lauf_build_start_function(lauf_builder b, lauf_builder_function fn)
 
 lauf_function lauf_build_finish_function(lauf_builder b)
 {
-    LAUF_ERROR_CONTEXT(end_function);
-
-    b->vstack.assert_empty(b->handler, ctx);
-
-    if (b->vstack.max_stack_size() > UINT16_MAX)
-    {
-        b->handler.encoding_error(ctx, 16, b->vstack.max_stack_size());
-        b->handler.errors = true;
-    }
-
-    if (b->handler.errors)
-        return nullptr;
+    LAUF_VERIFY(b->vstack.cur_stack_size() == 0, "finish_function",
+                "stack not empty on function finish");
+    LAUF_VERIFY(b->vstack.max_stack_size() <= UINT16_MAX, "finish_function",
+                "max function stack size exceeds 16 bit limit");
 
     auto& fn_decl       = b->functions[b->cur_fn];
     auto  fn            = lauf_impl_allocate_function(b->bytecode.size());
@@ -135,8 +118,6 @@ lauf_function lauf_build_finish_function(lauf_builder b)
 
 lauf_builder_if lauf_build_if(lauf_builder b, lauf_condition condition)
 {
-    LAUF_ERROR_CONTEXT(if);
-
     lauf_builder_if if_;
     if_._jump_end = std::size_t(-1);
     if_._jump_if  = b->bytecode.size();
@@ -156,15 +137,13 @@ lauf_builder_if lauf_build_if(lauf_builder b, lauf_condition condition)
     }
     b->bytecode.push_back(inst);
 
-    b->vstack.pop(b->handler, ctx);
-    b->vstack.assert_empty(b->handler, ctx);
+    LAUF_VERIFY_RESULT(b->vstack.pop(), "if", "missing value for condition");
+    LAUF_VERIFY(b->vstack.cur_stack_size() == 0, "if", "trailing values after if condition");
     return if_;
 }
 
 void lauf_build_else(lauf_builder b, lauf_builder_if* if_)
 {
-    LAUF_ERROR_CONTEXT(else);
-
     // Create jump that skips the else.
     if_->_jump_end = b->bytecode.size();
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(jump, 0));
@@ -172,13 +151,11 @@ void lauf_build_else(lauf_builder b, lauf_builder_if* if_)
     // Patch jump_if to current position.
     b->bytecode[if_->_jump_if].jump_if.offset = b->bytecode.size() - if_->_jump_if;
 
-    b->vstack.assert_empty(b->handler, ctx);
+    LAUF_VERIFY(b->vstack.cur_stack_size() == 0, "else", "trailing values after if block");
 }
 
 void lauf_build_end_if(lauf_builder b, lauf_builder_if* if_)
 {
-    LAUF_ERROR_CONTEXT(end_if);
-
     if (if_->_jump_end == std::size_t(-1)) // no else
     {
         // Patch jump_if to current position.
@@ -191,21 +168,18 @@ void lauf_build_end_if(lauf_builder b, lauf_builder_if* if_)
         b->bytecode[if_->_jump_end].jump.offset = b->bytecode.size() - if_->_jump_end;
     }
 
-    b->vstack.assert_empty(b->handler, ctx);
+    LAUF_VERIFY(b->vstack.cur_stack_size() == 0, "end_if", "trailing values after else block");
 }
 
 void lauf_build_return(lauf_builder b)
 {
-    LAUF_ERROR_CONTEXT(return );
-
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(return_));
-    b->vstack.pop(b->handler, ctx, b->signature().output_count);
+    LAUF_VERIFY_RESULT(b->vstack.pop(b->signature().output_count), "return",
+                       "missing values for return");
 }
 
 void lauf_build_int(lauf_builder b, lauf_value_int value)
 {
-    LAUF_ERROR_CONTEXT(int);
-
     if (value == 0)
     {
         b->bytecode.push_back(LAUF_BC_INSTRUCTION(push_zero));
@@ -229,12 +203,7 @@ void lauf_build_int(lauf_builder b, lauf_value_int value)
 
 void lauf_build_argument(lauf_builder b, size_t idx)
 {
-    LAUF_ERROR_CONTEXT(argument);
-    if (idx >= b->signature().input_count)
-    {
-        b->handler.errors = true;
-        b->handler.index_error(ctx, b->signature().input_count, idx);
-    }
+    LAUF_VERIFY(idx < b->signature().input_count, "argument", "argument index out of range");
 
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(argument, uint32_t(idx)));
     b->vstack.push();
@@ -242,36 +211,31 @@ void lauf_build_argument(lauf_builder b, size_t idx)
 
 void lauf_build_pop(lauf_builder b, size_t n)
 {
-    LAUF_ERROR_CONTEXT(pop);
-
     if (n == 1)
         b->bytecode.push_back(LAUF_BC_INSTRUCTION(pop_one));
     else
         b->bytecode.push_back(LAUF_BC_INSTRUCTION(pop, uint32_t(n)));
 
-    b->vstack.pop(b->handler, ctx, n);
+    LAUF_VERIFY_RESULT(b->vstack.pop(n), "pop", "not enough values to pop");
 }
 
 void lauf_build_call(lauf_builder b, lauf_function fn)
 {
-    LAUF_ERROR_CONTEXT(call);
-
     auto idx = b->constants.insert(fn);
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(call, idx));
 
-    b->vstack.pop(b->handler, ctx, fn->input_count);
+    LAUF_VERIFY_RESULT(b->vstack.pop(fn->input_count), "call", "missing arguments for call");
     b->vstack.push(fn->output_count);
 }
 
 void lauf_build_call_decl(lauf_builder b, lauf_builder_function fn)
 {
-    LAUF_ERROR_CONTEXT(call);
-
     auto index = b->bytecode.size();
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(call, bc_constant_idx{}));
 
     auto fn_decl = b->functions[fn._fn];
-    b->vstack.pop(b->handler, ctx, fn_decl.sig.input_count);
+    LAUF_VERIFY_RESULT(b->vstack.pop(fn_decl.sig.input_count), "call",
+                       "missing arguments for call");
     b->vstack.push(fn_decl.sig.output_count);
 
     b->call_patches.push_back({b->cur_fn, index, fn._fn});
@@ -279,12 +243,11 @@ void lauf_build_call_decl(lauf_builder b, lauf_builder_function fn)
 
 void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn)
 {
-    LAUF_ERROR_CONTEXT(call_builtin);
-
     auto idx = b->constants.insert(reinterpret_cast<void*>(fn.impl));
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(call_builtin, idx));
 
-    b->vstack.pop(b->handler, ctx, fn.signature.input_count);
+    LAUF_VERIFY_RESULT(b->vstack.pop(fn.signature.input_count), "call_builtin",
+                       "missing arguments for call");
     b->vstack.push(fn.signature.output_count);
 }
 

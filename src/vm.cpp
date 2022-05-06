@@ -15,14 +15,12 @@
 using namespace lauf::_detail;
 
 const lauf_vm_options lauf_default_vm_options = {
-    lauf_default_error_handler,
     size_t(1) * 1024 * 1024,
 };
 
 struct alignas(std::max_align_t) lauf_vm_impl
 {
-    lauf_error_handler handler;
-    size_t             stack_size;
+    size_t stack_size;
 
     unsigned char* stack_begin()
     {
@@ -33,7 +31,7 @@ struct alignas(std::max_align_t) lauf_vm_impl
 lauf_vm lauf_vm_create(lauf_vm_options options)
 {
     auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_stack_size);
-    return ::new (memory) lauf_vm_impl{options.error_handler, options.max_stack_size};
+    return ::new (memory) lauf_vm_impl{options.max_stack_size};
 }
 
 void lauf_vm_destroy(lauf_vm vm)

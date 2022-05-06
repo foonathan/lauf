@@ -5,7 +5,6 @@
 #define SRC_DETAIL_BYTECODE_HPP_INCLUDED
 
 #include <lauf/config.h>
-#include <lauf/error.h>
 
 namespace lauf::_detail
 {

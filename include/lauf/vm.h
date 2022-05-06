@@ -5,7 +5,6 @@
 #define LAUF_VM_H_INCLUDED
 
 #include <lauf/config.h>
-#include <lauf/error.h>
 #include <lauf/module.h>
 #include <lauf/value.h>
 
@@ -15,7 +14,6 @@ typedef struct lauf_vm_impl* lauf_vm;
 
 typedef struct lauf_vm_options
 {
-    lauf_error_handler error_handler;
     /// The maximal stack size in bytes.
     size_t max_stack_size;
 } lauf_vm_options;

@@ -9,7 +9,6 @@ target_include_directories(lauf_core PUBLIC ../include)
 target_sources(lauf_core PUBLIC
                 ${include_dir}/builder.h
                 ${include_dir}/config.h
-                ${include_dir}/error.h
                 ${include_dir}/module.h
                 ${include_dir}/value.h
                 ${include_dir}/vm.h)
@@ -19,8 +18,8 @@ target_sources(lauf_core PRIVATE
                 detail/bytecode.hpp
                 detail/constant_pool.hpp
                 detail/stack_check.hpp
+                detail/verify.hpp
                 builder.cpp
-                error.cpp
                 module.cpp
                 vm.cpp)
 target_sources(lauf_core PRIVATE lauf.c)
