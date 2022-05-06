@@ -8,7 +8,9 @@
 #include <lauf/value.h>
 #include <vector>
 
-namespace lauf
+#include "bytecode.hpp"
+
+namespace lauf::_detail
 {
 class constant_pool
 {
@@ -18,24 +20,24 @@ public:
         _constants.clear();
     }
 
-    std::size_t insert(lauf_value value)
+    bc_constant_idx insert(lauf_value value)
     {
         for (auto idx = std::size_t(0); idx != _constants.size(); ++idx)
             if (std::memcmp(&_constants[idx], &value, sizeof(lauf_value)) == 0)
-                return idx;
+                return bc_constant_idx(idx);
 
         auto idx = _constants.size();
         _constants.push_back(value);
-        return idx;
+        return bc_constant_idx(idx);
     }
 
-    std::size_t insert(lauf_value_int value)
+    auto insert(lauf_value_int value)
     {
         lauf_value v;
         v.as_int = value;
         return insert(v);
     }
-    std::size_t insert(lauf_value_ptr value)
+    auto insert(lauf_value_ptr value)
     {
         lauf_value v;
         v.as_ptr = value;
@@ -54,7 +56,7 @@ public:
 private:
     std::vector<lauf_value> _constants;
 };
-} // namespace lauf
+} // namespace lauf::_detail
 
 #endif // SRC_DETAIL_CONSTANT_POOL_HPP_INCLUDED
 

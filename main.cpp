@@ -103,7 +103,7 @@ int main()
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_int = 35};
+    lauf_value input = {.as_int = 3};
     lauf_value output;
     lauf_vm_execute(vm, mod, fn, &input, &output);
     std::printf("result: %ld\n", output.as_int);

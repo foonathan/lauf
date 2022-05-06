@@ -4,6 +4,7 @@
 #ifndef SRC_IMPL_MODULE_HPP_INCLUDED
 #define SRC_IMPL_MODULE_HPP_INCLUDED
 
+#include "../detail/bytecode.hpp"
 #include <lauf/module.h>
 #include <lauf/value.h>
 
@@ -17,10 +18,10 @@ struct lauf_function_impl
     uint8_t       input_count;
     uint8_t       output_count;
 
-    const uint32_t* bytecode() const
+    const lauf::_detail::bc_instruction* bytecode() const
     {
         auto memory = static_cast<const void*>(this + 1);
-        return static_cast<const uint32_t*>(memory);
+        return static_cast<const lauf::_detail::bc_instruction*>(memory);
     }
 };
 static_assert(sizeof(lauf_function_impl) == 2 * sizeof(void*) + 8);
@@ -39,10 +40,10 @@ struct alignas(lauf_value) lauf_module_impl
         auto memory = static_cast<void*>(this + 1);
         return static_cast<lauf_value*>(memory);
     }
-    const lauf_value& get_constant(size_t idx) const
+    const lauf_value& get_constant(lauf::_detail::bc_constant_idx idx) const
     {
         auto memory = static_cast<const void*>(this + 1);
-        return static_cast<const lauf_value*>(memory)[idx];
+        return static_cast<const lauf_value*>(memory)[static_cast<size_t>(idx)];
     }
 };
 static_assert(sizeof(lauf_module_impl) == 2 * sizeof(void*));

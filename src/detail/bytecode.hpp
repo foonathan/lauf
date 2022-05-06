@@ -4,19 +4,17 @@
 #ifndef SRC_DETAIL_BYTECODE_HPP_INCLUDED
 #define SRC_DETAIL_BYTECODE_HPP_INCLUDED
 
-#include <climits>
-#include <cstddef>
-#include <cstdint>
-#include <vector>
-
+#include <lauf/config.h>
 #include <lauf/error.h>
 
-namespace lauf
+namespace lauf::_detail
 {
-static_assert(CHAR_BIT == 8);
-
-constexpr auto UINT21_MAX = 0x1F'FFFF;
-constexpr auto UINT24_MAX = 0xFF'FFFF;
+enum class bc_op : uint8_t
+{
+#define LAUF_BC_OP(Name, Type) Name,
+#include "bc_ops.h"
+#undef LAUF_BC_OP
+};
 
 // Conditions for conditional jumps.
 enum class condition_code : unsigned char
@@ -40,138 +38,58 @@ enum class condition_code : unsigned char
     cmp_ge = 7
 };
 
-// Instruction is 32 bits.
-// * op code are the least significant 8 bits
-// * payload are the remaining 24 bits
-enum class op : unsigned char
+enum class bc_constant_idx : uint32_t
 {
-    // payload: none,
-    return_,
-    // payload: relative offset
-    jump,
-    // payload: condition code (3 bits) + relative offset (21 bits)
-    jump_if,
-
-    // payload: constant index
-    push,
-    // payload: none
-    push_zero,
-    // payload: constant
-    // Pushes a 24 bit constant by extending it with zeroes.
-    push_small_zext,
-    // payload: constant
-    // Pushes a 24 bit constant by extending it with zeroes and then negating it.
-    push_small_neg,
-
-    // payload: argument index
-    argument,
-
-    // payload: constant index
-    pop,
-    // payload: none
-    pop_one,
-
-    // payload: constant index for the function
-    call,
-    // payload: constant index for the function
-    call_builtin,
 };
 
-#define LAUF_BC_OP(Inst) static_cast<lauf::op>(Inst)
-#define LAUF_BC_PAYLOAD(Inst) ((Inst) >> 8)
-
-using bytecode = const std::uint32_t*;
-
-class bytecode_builder
+struct bc_inst_none
 {
-public:
-    void op(enum op o)
-    {
-        _bc.push_back(static_cast<unsigned char>(o));
-    }
-    void op(lauf_error_handler& handler, lauf_error_context ctx, enum op o, std::size_t payload)
-    {
-        _bc.push_back((payload & UINT24_MAX) << 8 | static_cast<unsigned char>(o));
-        if (payload > UINT24_MAX)
-        {
-            handler.errors = true;
-            handler.encoding_error(ctx, 24, payload);
-        }
-    }
-
-    std::size_t jump()
-    {
-        auto idx = _bc.size();
-        _bc.push_back(static_cast<unsigned char>(op::jump));
-        return idx;
-    }
-    void patch_jump(lauf_error_handler& handler, lauf_error_context ctx, std::size_t idx,
-                    std::size_t dest)
-    {
-        auto offset = dest - idx;
-        _bc[idx] |= (offset & UINT24_MAX) << 8;
-        if (offset > UINT24_MAX)
-        {
-            handler.errors = true;
-            handler.encoding_error(ctx, 24, offset);
-        }
-    }
-
-    std::size_t jump_if(condition_code cc)
-    {
-        auto idx = _bc.size();
-        _bc.push_back((static_cast<unsigned char>(cc) & 0b111) << 8
-                      | static_cast<unsigned char>(op::jump_if));
-        return idx;
-    }
-    void patch_jump_if(lauf_error_handler& handler, lauf_error_context ctx, std::size_t idx,
-                       std::size_t dest)
-    {
-        auto offset = dest - idx;
-        _bc[idx] |= (offset & UINT21_MAX) << 11;
-        if (offset > UINT21_MAX)
-        {
-            handler.errors = true;
-            handler.encoding_error(ctx, 21, offset);
-        }
-    }
-
-    std::size_t call()
-    {
-        auto idx = _bc.size();
-        _bc.push_back(static_cast<unsigned char>(op::call));
-        return idx;
-    }
-    void patch_call(lauf_error_handler& handler, lauf_error_context ctx, std::size_t idx,
-                    std::size_t constant_idx)
-    {
-        _bc[idx] |= (constant_idx & UINT24_MAX) << 8;
-        if (constant_idx > UINT21_MAX)
-        {
-            handler.errors = true;
-            handler.encoding_error(ctx, 24, constant_idx);
-        }
-    }
-
-    std::size_t size() const
-    {
-        return _bc.size();
-    }
-
-    const std::uint32_t* data() const
-    {
-        return _bc.data();
-    }
-
-    void reset() &&
-    {
-        _bc.clear();
-    }
-
-private:
-    std::vector<std::uint32_t> _bc;
+    bc_op    op : 8;
+    uint32_t _padding : 24;
 };
-} // namespace lauf
+
+struct bc_inst_constant
+{
+    bc_op    op : 8;
+    uint32_t constant : 24;
+};
+
+struct bc_inst_constant_idx
+{
+    bc_op           op : 8;
+    bc_constant_idx constant_idx : 24;
+};
+
+struct bc_inst_offset
+{
+    bc_op   op : 8;
+    int32_t offset : 24;
+};
+
+struct bc_inst_cc_offset
+{
+    bc_op          op : 8;
+    condition_code cc : 3;
+    int32_t        offset : 21;
+};
+
+union bc_instruction
+{
+    bc_inst_none tag;
+
+#define LAUF_BC_OP(Name, Type) Type Name;
+#include "bc_ops.h"
+#undef LAUF_BC_OP
+};
+static_assert(sizeof(bc_instruction) == sizeof(uint32_t));
+
+#define LAUF_BC_INSTRUCTION(Op, ...)                                                               \
+    [&] {                                                                                          \
+        lauf::_detail::bc_instruction inst;                                                        \
+        inst.Op = {lauf::_detail::bc_op::Op, __VA_ARGS__};                                         \
+        return inst;                                                                               \
+    }()
+} // namespace lauf::_detail
 
 #endif // SRC_DETAIL_BYTECODE_HPP_INCLUDED
 
