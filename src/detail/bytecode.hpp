@@ -109,8 +109,8 @@ public:
                     std::size_t dest)
     {
         auto offset = dest - idx;
-        _bc[idx] |= (offset & UINT21_MAX) << 8;
-        if (offset > UINT21_MAX)
+        _bc[idx] |= (offset & UINT24_MAX) << 8;
+        if (offset > UINT24_MAX)
         {
             handler.errors = true;
             handler.encoding_error(ctx, 24, offset);
@@ -133,6 +133,23 @@ public:
         {
             handler.errors = true;
             handler.encoding_error(ctx, 21, offset);
+        }
+    }
+
+    std::size_t call()
+    {
+        auto idx = _bc.size();
+        _bc.push_back(static_cast<unsigned char>(op::call));
+        return idx;
+    }
+    void patch_call(lauf_error_handler& handler, lauf_error_context ctx, std::size_t idx,
+                    std::size_t constant_idx)
+    {
+        _bc[idx] |= (constant_idx & UINT24_MAX) << 8;
+        if (constant_idx > UINT21_MAX)
+        {
+            handler.errors = true;
+            handler.encoding_error(ctx, 24, constant_idx);
         }
     }
 

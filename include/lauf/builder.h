@@ -54,6 +54,7 @@ void lauf_build_argument(lauf_builder b, size_t idx);
 void lauf_build_pop(lauf_builder b, size_t n);
 
 void lauf_build_call(lauf_builder b, lauf_function fn);
+void lauf_build_call_decl(lauf_builder b, lauf_builder_function fn);
 void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn);
 
 LAUF_HEADER_END

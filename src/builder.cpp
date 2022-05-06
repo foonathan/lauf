@@ -19,6 +19,13 @@ struct function_decl
     lauf_signature sig;
     lauf_function  fn;
 };
+
+struct call_patch
+{
+    std::size_t caller;
+    std::size_t bc_index;
+    std::size_t callee;
+};
 } // namespace
 
 struct lauf_builder_impl
@@ -28,6 +35,7 @@ struct lauf_builder_impl
     const char*                mod_name;
     lauf::constant_pool        constants;
     std::vector<function_decl> functions;
+    std::vector<call_patch>    call_patches;
 
     size_t                 cur_fn;
     lauf::stack_checker    vstack;
@@ -52,6 +60,13 @@ lauf_builder lauf_build(const char* mod_name)
 
 lauf_module lauf_build_finish(lauf_builder b)
 {
+    for (auto [caller, bc_index, callee] : b->call_patches)
+    {
+        auto constant_idx = b->constants.insert(b->functions[callee].fn);
+        auto bytecode     = const_cast<uint32_t*>(b->functions[caller].fn->bytecode());
+        bytecode[bc_index] |= (constant_idx & lauf::UINT24_MAX) << 8;
+    }
+
     auto mod = lauf_impl_allocate_module(b->constants.size());
     std::memcpy(mod->constant_data(), b->constants.data(),
                 b->constants.size() * sizeof(lauf_value));
@@ -239,6 +254,19 @@ void lauf_build_call(lauf_builder b, lauf_function fn)
 
     b->vstack.pop(b->handler, ctx, fn->input_count);
     b->vstack.push(fn->output_count);
+}
+
+void lauf_build_call_decl(lauf_builder b, lauf_builder_function fn)
+{
+    LAUF_ERROR_CONTEXT(call);
+
+    auto index = b->bytecode.call();
+
+    auto fn_decl = b->functions[fn._fn];
+    b->vstack.pop(b->handler, ctx, fn_decl.sig.input_count);
+    b->vstack.push(fn_decl.sig.output_count);
+
+    b->call_patches.push_back({b->cur_fn, index, fn._fn});
 }
 
 void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn)
