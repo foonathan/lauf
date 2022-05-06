@@ -5,52 +5,90 @@
 
 #include "detail/bytecode.hpp"
 #include "detail/constant_pool.hpp"
-#include "detail/function.hpp"
 #include "detail/stack_check.hpp"
+#include "impl/module.hpp"
 #include <cassert>
+#include <lauf/builtin.h>
 #include <vector>
 
-struct lauf_BuilderImpl
+namespace
+{
+struct function_decl
+{
+    const char*    name;
+    lauf_signature sig;
+    lauf_function  fn;
+};
+} // namespace
+
+struct lauf_builder_impl
 {
     lauf_ErrorHandler handler;
 
-    const char*            name;
-    lauf_Signature         sig;
+    const char*                mod_name;
+    lauf::constant_pool        constants;
+    std::vector<function_decl> functions;
+
+    size_t                 cur_fn;
     lauf::stack_checker    vstack;
-    lauf::constant_pool    constants;
     lauf::bytecode_builder bytecode;
 
-    lauf_BuilderImpl() : handler(lauf_default_error_handler), name(nullptr), sig{} {}
+    lauf_signature signature() const
+    {
+        return functions[cur_fn].sig;
+    }
 };
 
 #define LAUF_ERROR_CONTEXT(Instruction)                                                            \
     [[maybe_unused]] const lauf_ErrorContext ctx                                                   \
     {                                                                                              \
-        b->name, #Instruction                                                                      \
+        b->functions[b->cur_fn].name, #Instruction                                                 \
     }
 
-lauf_Builder lauf_builder(void)
+lauf_builder lauf_build(const char* mod_name)
 {
-    return new lauf_BuilderImpl();
+    return new lauf_builder_impl{lauf_default_error_handler, mod_name};
 }
 
-void lauf_builder_destroy(lauf_Builder b)
+lauf_module lauf_build_finish(lauf_builder b)
 {
-    delete b;
+    auto mod = lauf_impl_allocate_module(b->constants.size());
+    std::memcpy(mod->constant_data(), b->constants.data(),
+                b->constants.size() * sizeof(lauf_value));
+
+    auto cur_fn = lauf_function(nullptr);
+    for (auto& fn : b->functions)
+    {
+        if (fn.fn == nullptr)
+            continue;
+
+        if (cur_fn != nullptr)
+            cur_fn->next_function = fn.fn;
+        else
+            mod->first_function = fn.fn;
+    }
+
+    return mod;
 }
 
-void lauf_builder_function(lauf_Builder b, const char* name, lauf_Signature sig)
+lauf_builder_function lauf_build_declare_function(lauf_builder b, const char* fn_name,
+                                                  lauf_signature signature)
+{
+    auto idx = b->functions.size();
+    b->functions.push_back({fn_name, signature, nullptr});
+    return {idx};
+}
+
+void lauf_build_start_function(lauf_builder b, lauf_builder_function fn)
 {
     b->handler.errors = false;
 
-    b->name = name;
-    b->sig  = sig;
     std::move(b->vstack).reset(); // NOLINT
-    std::move(b->constants).reset();
     std::move(b->bytecode).reset();
+    b->cur_fn = fn._fn;
 }
 
-lauf_Function lauf_builder_end_function(lauf_Builder b)
+lauf_function lauf_build_finish_function(lauf_builder b)
 {
     LAUF_ERROR_CONTEXT(end_function);
 
@@ -62,42 +100,46 @@ lauf_Function lauf_builder_end_function(lauf_Builder b)
         b->handler.errors = true;
     }
 
-    if (b->bytecode.size() > UINT32_MAX)
-    {
-        b->handler.encoding_error(ctx, 32, b->bytecode.size());
-        b->handler.errors = true;
-    }
-
     if (b->handler.errors)
         return nullptr;
-    else
-        return lauf::create_function(b->name, b->sig, b->vstack.max_stack_size(),
-                                     b->constants.data(), b->constants.size(), //
-                                     b->bytecode.data(), b->bytecode.size());
+
+    auto& fn_decl       = b->functions[b->cur_fn];
+    auto  fn            = lauf_impl_allocate_function(b->bytecode.size());
+    fn->next_function   = nullptr;
+    fn->name            = fn_decl.name;
+    fn->max_vstack_size = b->vstack.max_stack_size();
+    fn->input_count     = fn_decl.sig.input_count;
+    fn->output_count    = fn_decl.sig.output_count;
+    std::memcpy(const_cast<uint32_t*>(fn->bytecode()), b->bytecode.data(),
+                b->bytecode.size() * sizeof(uint32_t));
+    fn_decl.fn = fn;
+    return fn;
 }
 
-void lauf_builder_if(lauf_Builder b, lauf_BuilderIf* if_, lauf_Condition condition)
+lauf_builder_if lauf_build_if(lauf_builder b, lauf_condition condition)
 {
     LAUF_ERROR_CONTEXT(if);
 
-    if_->_jump_end = std::size_t(-1);
+    lauf_builder_if if_;
+    if_._jump_end = std::size_t(-1);
 
     // We generate a jump for the else, so negate the condition.
     switch (condition)
     {
     case LAUF_IF_ZERO:
-        if_->_jump_if = b->bytecode.jump_if(lauf::condition_code::if_nonzero);
+        if_._jump_if = b->bytecode.jump_if(lauf::condition_code::if_nonzero);
         break;
     case LAUF_IF_NONZERO:
-        if_->_jump_if = b->bytecode.jump_if(lauf::condition_code::if_zero);
+        if_._jump_if = b->bytecode.jump_if(lauf::condition_code::if_zero);
         break;
     }
 
     b->vstack.pop(b->handler, ctx);
     b->vstack.assert_empty(b->handler, ctx);
+    return if_;
 }
 
-void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_)
+void lauf_build_else(lauf_builder b, lauf_builder_if* if_)
 {
     LAUF_ERROR_CONTEXT(else);
 
@@ -109,7 +151,7 @@ void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_)
     b->vstack.assert_empty(b->handler, ctx);
 }
 
-void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_)
+void lauf_build_end_if(lauf_builder b, lauf_builder_if* if_)
 {
     LAUF_ERROR_CONTEXT(end_if);
 
@@ -128,15 +170,15 @@ void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_)
     b->vstack.assert_empty(b->handler, ctx);
 }
 
-void lauf_builder_return(lauf_Builder b)
+void lauf_build_return(lauf_builder b)
 {
     LAUF_ERROR_CONTEXT(return );
 
     b->bytecode.op(lauf::op::return_);
-    b->vstack.pop(b->handler, ctx, b->sig.output_count);
+    b->vstack.pop(b->handler, ctx, b->signature().output_count);
 }
 
-void lauf_builder_int(lauf_Builder b, lauf_ValueInt value)
+void lauf_build_int(lauf_builder b, lauf_value_int value)
 {
     LAUF_ERROR_CONTEXT(int);
 
@@ -163,20 +205,20 @@ void lauf_builder_int(lauf_Builder b, lauf_ValueInt value)
     b->vstack.push();
 }
 
-void lauf_builder_argument(lauf_Builder b, size_t idx)
+void lauf_build_argument(lauf_builder b, size_t idx)
 {
     LAUF_ERROR_CONTEXT(argument);
-    if (idx >= b->sig.input_count)
+    if (idx >= b->signature().input_count)
     {
         b->handler.errors = true;
-        b->handler.index_error(ctx, b->sig.input_count, idx);
+        b->handler.index_error(ctx, b->signature().input_count, idx);
     }
 
     b->bytecode.op(b->handler, ctx, lauf::op::argument, idx);
     b->vstack.push();
 }
 
-void lauf_builder_pop(lauf_Builder b, size_t n)
+void lauf_build_pop(lauf_builder b, size_t n)
 {
     LAUF_ERROR_CONTEXT(pop);
 
@@ -188,7 +230,7 @@ void lauf_builder_pop(lauf_Builder b, size_t n)
     b->vstack.pop(b->handler, ctx, n);
 }
 
-void lauf_builder_call(lauf_Builder b, lauf_Function fn)
+void lauf_build_call(lauf_builder b, lauf_function fn)
 {
     LAUF_ERROR_CONTEXT(call);
 
@@ -199,7 +241,7 @@ void lauf_builder_call(lauf_Builder b, lauf_Function fn)
     b->vstack.push(fn->output_count);
 }
 
-void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn)
+void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn)
 {
     LAUF_ERROR_CONTEXT(call_builtin);
 

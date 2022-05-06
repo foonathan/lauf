@@ -10,18 +10,18 @@ target_sources(lauf_core PUBLIC
                 ${include_dir}/builder.h
                 ${include_dir}/config.h
                 ${include_dir}/error.h
-                ${include_dir}/function.h
+                ${include_dir}/module.h
                 ${include_dir}/value.h
-                ${include_dir}/vm.h
-                )
+                ${include_dir}/vm.h)
+target_sources(lauf_core PRIVATE
+                impl/module.hpp)
 target_sources(lauf_core PRIVATE
                 detail/bytecode.hpp
                 detail/constant_pool.hpp
-                detail/function.hpp
                 detail/stack_check.hpp
                 builder.cpp
                 error.cpp
-                function.cpp
+                module.cpp
                 vm.cpp)
 target_sources(lauf_core PRIVATE lauf.c)
 

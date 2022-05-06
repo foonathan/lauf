@@ -8,14 +8,14 @@
 
 LAUF_HEADER_START
 
-typedef int64_t lauf_ValueInt;
-typedef void*   lauf_ValuePtr;
+typedef int64_t lauf_value_int;
+typedef void*   lauf_value_ptr;
 
-typedef union lauf_Value
+typedef union lauf_value
 {
-    lauf_ValueInt as_int;
-    lauf_ValuePtr as_ptr;
-} lauf_Value;
+    lauf_value_int as_int;
+    lauf_value_ptr as_ptr;
+} lauf_value;
 
 LAUF_HEADER_END
 

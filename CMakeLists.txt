@@ -8,4 +8,5 @@ add_subdirectory(src)
 
 add_executable(lauf_prototype main.cpp)
 target_link_libraries(lauf_prototype PRIVATE lauf_core)
+target_compile_features(lauf_prototype PRIVATE cxx_std_17)
 

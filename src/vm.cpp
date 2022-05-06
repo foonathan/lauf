@@ -4,7 +4,9 @@
 #include <lauf/vm.h>
 
 #include "detail/bytecode.hpp"
-#include "detail/function.hpp"
+#include "impl/module.hpp"
+#include <cstring>
+#include <lauf/builtin.h>
 
 const lauf_VMOptions lauf_default_vm_options = {
     lauf_default_error_handler,
@@ -103,23 +105,24 @@ private:
 struct stack_frame
 {
     const void*          base;
-    lauf_Function        fn;
+    lauf_function        fn;
     const std::uint32_t* ip;
-    const lauf_Value*    arguments;
-    lauf_Value*          vstack_ptr;
+    const lauf_value*    arguments;
+    lauf_value*          vstack_ptr;
 
-    stack_frame(lauf_Value* output)
+    stack_frame(lauf_value* output)
     : base(nullptr), fn(nullptr), ip(nullptr), arguments(nullptr), vstack_ptr(output)
     {}
 
-    stack_frame(stack_allocator& stack, lauf_Function fn, const lauf_Value* arguments)
-    : base(stack.marker()), fn(fn), ip(fn->bytecode_begin()), arguments(arguments),
-      vstack_ptr(stack.allocate<lauf_Value>(fn->max_vstack_size))
+    stack_frame(stack_allocator& stack, lauf_function fn, const lauf_value* arguments)
+    : base(stack.marker()), fn(fn), ip(fn->bytecode()), arguments(arguments),
+      vstack_ptr(stack.allocate<lauf_value>(fn->max_vstack_size))
     {}
 };
 } // namespace
 
-void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf_Value* output)
+void lauf_vm_execute(lauf_VM vm, lauf_module mod, lauf_function fn, const lauf_value* input,
+                     lauf_value* output)
 {
     stack_allocator stack(vm->stack_begin(), vm->stack_size);
     stack.push(stack_frame(output));
@@ -137,7 +140,7 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
             stack.unwind(frame.base);
             stack.pop<stack_frame>(frame);
 
-            std::memcpy(frame.vstack_ptr, outputs, sizeof(lauf_Value) * output_count);
+            std::memcpy(frame.vstack_ptr, outputs, sizeof(lauf_value) * output_count);
             frame.vstack_ptr += output_count;
             break;
         }
@@ -196,25 +199,25 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
 
         case lauf::op::push: {
             auto idx            = LAUF_BC_PAYLOAD(inst);
-            *frame.vstack_ptr++ = frame.fn->constants()[idx];
+            *frame.vstack_ptr++ = mod->get_constant(idx);
             ++frame.ip;
             break;
         }
         case lauf::op::push_zero: {
-            *frame.vstack_ptr++ = lauf_Value{};
+            *frame.vstack_ptr++ = lauf_value{};
             ++frame.ip;
             break;
         }
         case lauf::op::push_small_zext: {
-            lauf_Value constant;
+            lauf_value constant;
             constant.as_int     = LAUF_BC_PAYLOAD(inst);
             *frame.vstack_ptr++ = constant;
             ++frame.ip;
             break;
         }
         case lauf::op::push_small_neg: {
-            lauf_Value constant;
-            constant.as_int     = -lauf_ValueInt(LAUF_BC_PAYLOAD(inst));
+            lauf_value constant;
+            constant.as_int     = -lauf_value_int(LAUF_BC_PAYLOAD(inst));
             *frame.vstack_ptr++ = constant;
             ++frame.ip;
             break;
@@ -241,7 +244,7 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
 
         case lauf::op::call: {
             auto idx    = LAUF_BC_PAYLOAD(inst);
-            auto callee = reinterpret_cast<lauf_Function>(frame.fn->constants()[idx].as_ptr);
+            auto callee = reinterpret_cast<lauf_function>(mod->get_constant(idx).as_ptr);
 
             auto args = (frame.vstack_ptr -= callee->input_count);
             ++frame.ip;
@@ -252,8 +255,7 @@ void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf
         }
         case lauf::op::call_builtin: {
             auto idx      = LAUF_BC_PAYLOAD(inst);
-            auto callback = reinterpret_cast<lauf_BuiltinFunctionCallback*>(
-                frame.fn->constants()[idx].as_ptr);
+            auto callback = reinterpret_cast<lauf_builtin_function*>(mod->get_constant(idx).as_ptr);
             frame.vstack_ptr = callback(frame.vstack_ptr);
             ++frame.ip;
             break;

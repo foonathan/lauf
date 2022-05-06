@@ -6,7 +6,7 @@
 
 #include <lauf/config.h>
 #include <lauf/error.h>
-#include <lauf/function.h>
+#include <lauf/module.h>
 #include <lauf/value.h>
 
 LAUF_HEADER_START
@@ -26,7 +26,8 @@ lauf_VM lauf_vm(lauf_VMOptions options);
 
 void lauf_vm_destroy(lauf_VM vm);
 
-void lauf_vm_execute(lauf_VM vm, lauf_Function fn, const lauf_Value* input, lauf_Value* output);
+void lauf_vm_execute(lauf_VM vm, lauf_module mod, lauf_function fn, const lauf_value* input,
+                     lauf_value* output);
 
 LAUF_HEADER_END
 

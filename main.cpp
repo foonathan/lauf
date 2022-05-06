@@ -3,8 +3,10 @@
 
 #include <climits>
 #include <cstdio>
+#include <utility>
 
 #include <lauf/builder.h>
+#include <lauf/builtin.h>
 #include <lauf/vm.h>
 
 LAUF_BUILTIN_UNARY_OP(increment)
@@ -21,31 +23,34 @@ LAUF_BUILTIN_BINARY_OP(add)
 
 int main()
 {
-    auto fn = [] {
-        auto b = lauf_builder();
+    auto [mod, fn] = [] {
+        auto b = lauf_build("test");
 
-        lauf_builder_function(b, "add", {2, 1});
-        lauf_builder_argument(b, 0);
-        lauf_builder_argument(b, 1);
-        lauf_builder_call_builtin(b, add);
-        lauf_builder_return(b);
-        auto fn_add = lauf_builder_end_function(b);
+        auto add_decl  = lauf_build_declare_function(b, "add", {2, 1});
+        auto test_decl = lauf_build_declare_function(b, "test", {1, 1});
 
-        lauf_builder_function(b, "test", {1, 1});
+        lauf_build_start_function(b, add_decl);
+        lauf_build_argument(b, 0);
+        lauf_build_argument(b, 1);
+        lauf_build_call_builtin(b, add);
+        lauf_build_return(b);
+        auto fn_add = lauf_build_finish_function(b);
 
-        lauf_builder_argument(b, 0);
-        lauf_builder_int(b, 11);
-        lauf_builder_call(b, fn_add);
-        lauf_builder_return(b);
+        lauf_build_start_function(b, test_decl);
+        lauf_build_argument(b, 0);
+        lauf_build_int(b, 11);
+        lauf_build_call(b, fn_add);
+        lauf_build_return(b);
+        auto fn_test = lauf_build_finish_function(b);
 
-        return lauf_builder_end_function(b);
+        return std::make_pair(lauf_build_finish(b), fn_test);
     }();
 
     auto vm = lauf_vm(lauf_default_vm_options);
 
-    lauf_Value input = {.as_int = 42};
-    lauf_Value output;
-    lauf_vm_execute(vm, fn, &input, &output);
+    lauf_value input = {.as_int = 42};
+    lauf_value output;
+    lauf_vm_execute(vm, mod, fn, &input, &output);
     std::printf("result: %ld\n", output.as_int);
 
     lauf_vm_destroy(vm);

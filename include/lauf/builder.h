@@ -5,58 +5,56 @@
 #define LAUF_BUILDER_H_INCLUDED
 
 #include <lauf/config.h>
-#include <lauf/function.h>
+#include <lauf/module.h>
 #include <lauf/value.h>
 
 LAUF_HEADER_START
 
-typedef struct lauf_BuilderImpl* lauf_Builder;
+struct lauf_builtin;
 
-lauf_Builder lauf_builder(void);
+typedef struct lauf_builder_impl* lauf_builder;
 
-void lauf_builder_destroy(lauf_Builder b);
+lauf_builder lauf_build(const char* mod_name);
 
-void lauf_builder_function(lauf_Builder b, const char* name, lauf_Signature sig);
+lauf_module lauf_build_finish(lauf_builder b);
 
-lauf_Function lauf_builder_end_function(lauf_Builder b);
+//=== functions ===//
+typedef struct lauf_builder_function
+{
+    size_t _fn;
+} lauf_builder_function;
+
+lauf_builder_function lauf_build_declare_function(lauf_builder b, const char* fn_name,
+                                                  lauf_signature signature);
+void                  lauf_build_start_function(lauf_builder b, lauf_builder_function fn);
+lauf_function         lauf_build_finish_function(lauf_builder b);
 
 //=== statements ===//
-typedef enum lauf_Condition
+typedef enum lauf_condition
 {
     LAUF_IF_ZERO,
     LAUF_IF_NONZERO,
-} lauf_Condition;
+} lauf_condition;
 
-typedef struct lauf_BuilderIf
+typedef struct lauf_builder_if
 {
     size_t _jump_if, _jump_end;
-} lauf_BuilderIf;
+} lauf_builder_if;
 
-void lauf_builder_if(lauf_Builder b, lauf_BuilderIf* if_, lauf_Condition condition);
+lauf_builder_if lauf_build_if(lauf_builder b, lauf_condition condition);
+void            lauf_build_else(lauf_builder b, lauf_builder_if* if_);
+void            lauf_build_end_if(lauf_builder b, lauf_builder_if* if_);
 
-void lauf_builder_else(lauf_Builder b, lauf_BuilderIf* if_);
-
-void lauf_builder_end_if(lauf_Builder b, lauf_BuilderIf* if_);
-
-void lauf_builder_return(lauf_Builder b);
+void lauf_build_return(lauf_builder b);
 
 //=== expressions ===//
-/// Pushes the specified constant integer onto the vstack.
-void lauf_builder_int(lauf_Builder b, lauf_ValueInt value);
+void lauf_build_int(lauf_builder b, lauf_value_int value);
+void lauf_build_argument(lauf_builder b, size_t idx);
 
-/// Pushes the argument with the specified index onto the vstack.
-void lauf_builder_argument(lauf_Builder b, size_t idx);
+void lauf_build_pop(lauf_builder b, size_t n);
 
-/// Pops the top N values from the vstack.
-void lauf_builder_pop(lauf_Builder b, size_t n);
-
-/// Calls the given function.
-/// It pops arguments from the vstack and pushes its output.
-void lauf_builder_call(lauf_Builder b, lauf_Function fn);
-
-/// Calls the given builtin function.
-/// It pops arguments from the vstack and pushes its output.
-void lauf_builder_call_builtin(lauf_Builder b, lauf_BuiltinFunction fn);
+void lauf_build_call(lauf_builder b, lauf_function fn);
+void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn);
 
 LAUF_HEADER_END
 

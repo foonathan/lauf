@@ -18,10 +18,10 @@ public:
         _constants.clear();
     }
 
-    std::size_t insert(lauf_Value value)
+    std::size_t insert(lauf_value value)
     {
         for (auto idx = std::size_t(0); idx != _constants.size(); ++idx)
-            if (std::memcmp(&_constants[idx], &value, sizeof(lauf_Value)) == 0)
+            if (std::memcmp(&_constants[idx], &value, sizeof(lauf_value)) == 0)
                 return idx;
 
         auto idx = _constants.size();
@@ -29,15 +29,15 @@ public:
         return idx;
     }
 
-    std::size_t insert(lauf_ValueInt value)
+    std::size_t insert(lauf_value_int value)
     {
-        lauf_Value v;
+        lauf_value v;
         v.as_int = value;
         return insert(v);
     }
-    std::size_t insert(lauf_ValuePtr value)
+    std::size_t insert(lauf_value_ptr value)
     {
-        lauf_Value v;
+        lauf_value v;
         v.as_ptr = value;
         return insert(v);
     }
@@ -46,13 +46,13 @@ public:
     {
         return _constants.size();
     }
-    const lauf_Value* data() const
+    const lauf_value* data() const
     {
         return _constants.data();
     }
 
 private:
-    std::vector<lauf_Value> _constants;
+    std::vector<lauf_value> _constants;
 };
 } // namespace lauf
 
