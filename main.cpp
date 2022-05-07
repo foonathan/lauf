@@ -47,37 +47,8 @@ LAUF_BUILTIN_UNARY_OP(is_zero_or_one)
 
 int main()
 {
-#if 0
-    auto [mod, fn] = [] {
-        auto mod = lauf_build_module("test");
-
-        auto test       = lauf_build_function(mod, "test", {1, 1});
-        auto entry      = lauf_build_entry_block(test, {1, 0});
-        auto if_zero    = lauf_build_block(test, {0, 1});
-        auto if_nonzero = lauf_build_block(test, {0, 1});
-        auto exit       = lauf_build_block(test, {1, 1});
-
-        lauf_build_argument(entry, 0);
-        lauf_finish_block_branch(entry, LAUF_IF_ZERO, if_zero, if_nonzero);
-
-        lauf_build_int(if_zero, 1);
-        lauf_finish_block_jump(if_zero, exit);
-
-        lauf_build_argument(if_nonzero, 0);
-        lauf_build_argument(if_nonzero, 0);
-        lauf_build_call_builtin(if_nonzero, decrement);
-        lauf_build_recurse(if_nonzero);
-        lauf_build_call_builtin(if_nonzero, multiply);
-        lauf_finish_block_jump(if_nonzero, exit);
-
-        lauf_finish_block_return(exit);
-
-        auto fn_test = lauf_finish_function(test);
-        return std::make_pair(lauf_finish_module(mod), fn_test);
-    }();
-#endif
-
     auto parser = lauf_frontend_text_create_parser();
+    lauf_frontend_text_register_builtin(parser, "print", print);
     lauf_frontend_text_register_builtin(parser, "is_zero_or_one", is_zero_or_one);
     lauf_frontend_text_register_builtin(parser, "decrement", decrement);
     lauf_frontend_text_register_builtin(parser, "add", add);
@@ -108,8 +79,34 @@ int main()
                 return;
             }
         }
+
+        function @fib_iter(1 => 1) {
+            block %entry(0 => 3) { # => 0 1 n
+                int 0;
+                int 1;
+                argument 0;
+
+                pick 0;
+                branch if_false %exit %loop;
+            }
+            block %loop(3 => 3) { # a b n => b (a+b) (n-1)
+                pick 1;            # => a b n b
+                roll 3;            # => b n b a
+                call_builtin @add; # => b n (b+a)
+
+                roll 1;                   # => b (b+a) n
+                call_builtin @decrement;  # => b (b+a) (n-1)
+
+                pick 0;
+                branch if_false %exit %loop;
+            }
+            block %exit(3 => 1) { # a b n => a
+                drop 2;
+                return;
+            }
+        }
     )");
-    auto fn  = lauf_module_function_begin(mod)[0];
+    auto fn  = lauf_module_function_begin(mod)[1];
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 

@@ -47,7 +47,9 @@ void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
 void lauf_build_int(lauf_block_builder b, lauf_value_int value);
 void lauf_build_argument(lauf_block_builder b, size_t idx);
 
-void lauf_build_pop(lauf_block_builder b, size_t n);
+void lauf_build_drop(lauf_block_builder b, size_t n);
+void lauf_build_pick(lauf_block_builder b, size_t n);
+void lauf_build_roll(lauf_block_builder b, size_t n);
 
 void lauf_build_recurse(lauf_block_builder b);
 void lauf_build_call(lauf_block_builder b, lauf_function_builder fn);

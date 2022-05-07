@@ -20,10 +20,16 @@ LAUF_BC_OP(push_small_neg, bc_inst_constant)
 // Pushes nth argument.
 LAUF_BC_OP(argument, bc_inst_constant)
 
-// Pops n values from stack.
-LAUF_BC_OP(pop, bc_inst_constant)
-// Pops 1 value from stack.
-LAUF_BC_OP(pop_one, bc_inst_none)
+// Drops n values from stack.
+LAUF_BC_OP(drop, bc_inst_constant)
+// Duplicates the nth item on top of the stack.
+LAUF_BC_OP(pick, bc_inst_constant)
+// Duplicates the item on top of the stack (pick 0)
+LAUF_BC_OP(dup, bc_inst_none)
+// Moves the nth item to the top of the stack.
+LAUF_BC_OP(roll, bc_inst_constant)
+// Swaps the top two items of the stack (roll 1)
+LAUF_BC_OP(swap, bc_inst_none)
 
 // Call function.
 LAUF_BC_OP(call, bc_inst_function_idx)

@@ -64,17 +64,26 @@ struct inst_int
     static constexpr auto rule  = LEXY_KEYWORD("int", identifier) >> dsl::integer<lauf_value_int>;
     static constexpr auto build = &lauf_build_int;
 };
-
 struct inst_argument
 {
     static constexpr auto rule  = LEXY_KEYWORD("argument", identifier) >> dsl::integer<size_t>;
     static constexpr auto build = &lauf_build_argument;
 };
 
-struct inst_pop
+struct inst_drop
 {
-    static constexpr auto rule  = LEXY_KEYWORD("pop", identifier) >> dsl::integer<size_t>;
-    static constexpr auto build = &lauf_build_pop;
+    static constexpr auto rule  = LEXY_KEYWORD("drop", identifier) >> dsl::integer<size_t>;
+    static constexpr auto build = &lauf_build_drop;
+};
+struct inst_pick
+{
+    static constexpr auto rule  = LEXY_KEYWORD("pick", identifier) >> dsl::integer<size_t>;
+    static constexpr auto build = &lauf_build_pick;
+};
+struct inst_roll
+{
+    static constexpr auto rule  = LEXY_KEYWORD("roll", identifier) >> dsl::integer<size_t>;
+    static constexpr auto build = &lauf_build_roll;
 };
 
 struct inst_recurse
@@ -82,12 +91,10 @@ struct inst_recurse
     static constexpr auto rule  = LEXY_KEYWORD("recurse", identifier);
     static constexpr auto build = &lauf_build_recurse;
 };
-
 struct inst_call
 {
     static constexpr auto rule = LEXY_KEYWORD("call", identifier) >> dsl::p<global_label>;
 };
-
 struct inst_call_builtin
 {
     static constexpr auto rule = LEXY_KEYWORD("call_builtin", identifier) >> dsl::p<global_label>;
@@ -96,8 +103,10 @@ struct inst_call_builtin
 struct inst
 {
     static constexpr auto rule
-        = (dsl::p<inst_int> | dsl::p<inst_argument> | dsl::p<inst_pop> //
-           | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin>)+dsl::semicolon;
+        = (dsl::p<inst_int> | dsl::p<inst_argument>                                //
+           | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>             //
+           | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin>) //
+        +dsl::semicolon;
     static constexpr auto value = lexy::forward<void>;
 };
 

@@ -230,7 +230,7 @@ void lauf_finish_block_return(lauf_block_builder b)
                 "missing or too many values for return");
     LAUF_VERIFY(b->sig.output_count == output_count, "return",
                 "invalid signature for terminator block");
-    b->vstack.pop(b->fn->sig.output_count);
+    b->vstack.drop(b->fn->sig.output_count);
 }
 
 void lauf_finish_block_jump(lauf_block_builder b, lauf_block_builder dest)
@@ -252,7 +252,7 @@ void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
     b->terminator.if_true   = if_true;
     b->terminator.if_false  = if_false;
 
-    LAUF_VERIFY_RESULT(b->vstack.pop(), "branch", "missing value for condition");
+    LAUF_VERIFY_RESULT(b->vstack.drop(), "branch", "missing value for condition");
     LAUF_VERIFY(b->vstack.cur_stack_size() == b->sig.output_count, "branch",
                 "invalid stack size on block exit");
     LAUF_VERIFY(b->sig.output_count == if_true->sig.input_count
@@ -288,18 +288,35 @@ void lauf_build_argument(lauf_block_builder b, size_t idx)
 {
     LAUF_VERIFY(idx < b->fn->sig.input_count, "argument", "argument index out of range");
 
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(argument, uint32_t(idx)));
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(argument, idx));
     b->vstack.push();
 }
 
-void lauf_build_pop(lauf_block_builder b, size_t n)
+void lauf_build_drop(lauf_block_builder b, size_t n)
 {
-    if (n == 1)
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(pop_one));
-    else
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(pop, uint32_t(n)));
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(drop, n));
+    LAUF_VERIFY_RESULT(b->vstack.drop(n), "drop", "not enough values to pop");
+}
 
-    LAUF_VERIFY_RESULT(b->vstack.pop(n), "pop", "not enough values to pop");
+void lauf_build_pick(lauf_block_builder b, size_t n)
+{
+    if (n == 0)
+        b->bytecode.push_back(LAUF_BC_INSTRUCTION(dup));
+    else
+        b->bytecode.push_back(LAUF_BC_INSTRUCTION(pick, n));
+    LAUF_VERIFY(n < b->vstack.cur_stack_size(), "pick", "invalid stack index");
+    b->vstack.push();
+}
+
+void lauf_build_roll(lauf_block_builder b, size_t n)
+{
+    if (n == 0)
+    {} // noop
+    else if (n == 1)
+        b->bytecode.push_back(LAUF_BC_INSTRUCTION(swap));
+    else
+        b->bytecode.push_back(LAUF_BC_INSTRUCTION(roll, n));
+    LAUF_VERIFY(n < b->vstack.cur_stack_size(), "roll", "invalid stack index");
 }
 
 void lauf_build_recurse(lauf_block_builder b)
@@ -311,7 +328,7 @@ void lauf_build_call(lauf_block_builder b, lauf_function_builder fn)
 {
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(call, fn->index));
 
-    LAUF_VERIFY_RESULT(b->vstack.pop(fn->sig.input_count), "call", "missing arguments for call");
+    LAUF_VERIFY_RESULT(b->vstack.drop(fn->sig.input_count), "call", "missing arguments for call");
     b->vstack.push(fn->sig.output_count);
 }
 
@@ -320,7 +337,7 @@ void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
     auto idx = b->fn->mod->constants.insert(reinterpret_cast<void*>(fn.impl));
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(call_builtin, idx));
 
-    LAUF_VERIFY_RESULT(b->vstack.pop(fn.signature.input_count), "call_builtin",
+    LAUF_VERIFY_RESULT(b->vstack.drop(fn.signature.input_count), "call_builtin",
                        "missing arguments for call");
     b->vstack.push(fn.signature.output_count);
 }

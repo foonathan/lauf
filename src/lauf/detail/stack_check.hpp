@@ -34,7 +34,7 @@ public:
             _max_size = _cur_size;
     }
 
-    bool pop(std::size_t n = 1)
+    bool drop(std::size_t n = 1)
     {
         if (_cur_size < n)
             return false;

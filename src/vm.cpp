@@ -11,6 +11,7 @@
 #include <lauf/impl/module.hpp>
 #include <new>
 #include <type_traits>
+#include <utility>
 
 using namespace lauf::_detail;
 
@@ -233,14 +234,41 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             break;
         }
 
-        case bc_op::pop: {
-            auto count = inst.argument.constant;
+        case bc_op::drop: {
+            auto count = inst.drop.constant;
             frame.vstack_ptr -= count;
             ++frame.ip;
             break;
         }
-        case bc_op::pop_one: {
-            frame.vstack_ptr--;
+        case bc_op::pick: {
+            auto index          = ptrdiff_t(inst.pick.constant);
+            auto value          = frame.vstack_ptr[-index - 1];
+            *frame.vstack_ptr++ = value;
+            ++frame.ip;
+            break;
+        }
+        case bc_op::dup: {
+            *frame.vstack_ptr = frame.vstack_ptr[-1];
+            ++frame.vstack_ptr;
+            ++frame.ip;
+            break;
+        }
+        case bc_op::roll: {
+            auto index = ptrdiff_t(inst.roll.constant);
+
+            // Remember the new element that is on top of the stack.
+            auto value = frame.vstack_ptr[-index - 1];
+            // Move [-index, 0] to [-index - 1, -1]
+            std::memmove(frame.vstack_ptr - index - 1, frame.vstack_ptr - index,
+                         index * sizeof(lauf_value));
+            // Add the new item on the top.
+            frame.vstack_ptr[-1] = value;
+
+            ++frame.ip;
+            break;
+        }
+        case bc_op::swap: {
+            std::swap(frame.vstack_ptr[-1], frame.vstack_ptr[-2]);
             ++frame.ip;
             break;
         }
