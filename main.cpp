@@ -59,7 +59,7 @@ int main()
             block %entry(0 => 0) {
                 argument 0;
                 call_builtin @is_zero_or_one;
-                branch if_true %base %recurse;
+                branch if_true %base else %recurse;
             }
             block %base(0 => 1) {
                 argument 0;
@@ -87,7 +87,7 @@ int main()
                 argument 0;
 
                 pick 0;
-                branch if_false %exit %loop;
+                branch if_false %exit else %loop;
             }
             block %loop(3 => 3) { # a b n => b (a+b) (n-1)
                 pick 1;            # => a b n b
@@ -98,7 +98,7 @@ int main()
                 call_builtin @decrement;  # => b (b+a) (n-1)
 
                 pick 0;
-                branch if_false %exit %loop;
+                branch if_false %exit else %loop;
             }
             block %exit(3 => 1) { # a b n => a
                 drop 2;

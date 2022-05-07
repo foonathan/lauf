@@ -131,7 +131,8 @@ struct term_branch
         = lexy::symbol_table<lauf_condition>.map<LEXY_SYMBOL("if_true")>(LAUF_IF_TRUE).map<LEXY_SYMBOL("if_false")>(LAUF_IF_FALSE);
 
     static constexpr auto rule = LEXY_KEYWORD("branch", identifier)
-                                 >> dsl::symbol<ccs> + dsl::p<block_label> + dsl::p<block_label>;
+                                 >> dsl::symbol<ccs> + dsl::p<block_label> //
+                                        + LEXY_KEYWORD("else", identifier) + dsl::p<block_label>;
     static constexpr auto value
         = lexy::bind(lexy::construct<block_terminator>, block_terminator::branch, lexy::_2,
                      lexy::_3, lexy::_1);
