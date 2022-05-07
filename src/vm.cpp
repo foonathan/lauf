@@ -3,12 +3,15 @@
 
 #include <lauf/vm.h>
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <lauf/builtin.h>
 #include <lauf/detail/bytecode.hpp>
+#include <lauf/detail/stack_allocator.hpp>
 #include <lauf/impl/module.hpp>
+#include <lauf/type.h>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -42,71 +45,6 @@ void lauf_vm_destroy(lauf_vm vm)
 
 namespace
 {
-class stack_allocator
-{
-public:
-    explicit stack_allocator(unsigned char* memory, size_t size) : _cur(memory), _end(_cur + size)
-    {}
-
-    const void* marker() const
-    {
-        return _cur;
-    }
-    void unwind(const void* marker)
-    {
-        _cur = (unsigned char*)(marker);
-    }
-
-    template <typename T>
-    bool push(const T& object)
-    {
-        static_assert(std::is_trivially_copyable_v<T>);
-
-        if (_cur + sizeof(T) > _end)
-            return false;
-
-        std::memcpy(_cur, &object, sizeof(T));
-        _cur += sizeof(T);
-        return true;
-    }
-
-    template <typename T>
-    void pop(T& result)
-    {
-        static_assert(std::is_trivially_copyable_v<T>);
-        std::memcpy(&result, _cur -= sizeof(T), sizeof(T));
-    }
-    template <typename T>
-    T pop()
-    {
-        T result;
-        pop(result);
-        return result;
-    }
-
-    void* allocate(std::size_t size, std::size_t alignment)
-    {
-        auto misaligned   = reinterpret_cast<std::uintptr_t>(_cur) & (alignment - 1);
-        auto align_offset = misaligned != 0 ? (alignment - misaligned) : 0;
-        if (_cur + align_offset + size > _end)
-            return nullptr;
-
-        _cur += align_offset;
-        auto memory = _cur;
-        _cur += size;
-        return memory;
-    }
-    template <typename T>
-    T* allocate(std::size_t n = 1)
-    {
-        return static_cast<T*>(allocate(n * sizeof(T), alignof(T)));
-    }
-
-private:
-    unsigned char* _cur;
-    unsigned char* _end;
-};
-
 struct stack_frame
 {
     const void*           base;
@@ -122,7 +60,14 @@ struct stack_frame
     stack_frame(stack_allocator& stack, lauf_function fn, const lauf_value* arguments)
     : base(stack.marker()), fn(fn), ip(fn->bytecode()), arguments(arguments),
       vstack_ptr(stack.allocate<lauf_value>(fn->max_vstack_size))
-    {}
+    {
+        stack.allocate(fn->local_stack_size, alignof(lauf_value));
+    }
+
+    std::size_t local_variable_offset(const stack_allocator& stack) const
+    {
+        return stack.to_address(base) + fn->max_vstack_size * sizeof(lauf_value);
+    }
 };
 } // namespace
 
@@ -233,6 +178,13 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             ++frame.ip;
             break;
         }
+        case bc_op::local_addr: {
+            frame.vstack_ptr->as_address
+                = frame.local_variable_offset(stack) + inst.local_addr.constant;
+            ++frame.vstack_ptr;
+            ++frame.ip;
+            break;
+        }
 
         case bc_op::drop: {
             auto count = inst.drop.constant;
@@ -284,9 +236,31 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             break;
         }
         case bc_op::call_builtin: {
-            auto idx      = inst.call_builtin.constant_idx;
-            auto callback = reinterpret_cast<lauf_builtin_function*>(mod->get_constant(idx).as_ptr);
+            auto idx         = inst.call_builtin.constant_idx;
+            auto callback    = (lauf_builtin_function*)(mod->get_constant(idx).as_native_ptr);
             frame.vstack_ptr = callback(frame.vstack_ptr);
+            ++frame.ip;
+            break;
+        }
+
+        case bc_op::load_field: {
+            auto type_idx = inst.load_field.constant_idx;
+            auto type     = static_cast<lauf_type>(mod->get_constant(type_idx).as_native_ptr);
+
+            auto object          = stack.to_pointer(frame.vstack_ptr[-1].as_address);
+            frame.vstack_ptr[-1] = type->load_field(object, inst.load_field.field);
+
+            ++frame.ip;
+            break;
+        }
+        case bc_op::store_field: {
+            auto type_idx = inst.store_field.constant_idx;
+            auto type     = static_cast<lauf_type>(mod->get_constant(type_idx).as_native_ptr);
+
+            auto object = stack.to_pointer(frame.vstack_ptr[-1].as_address);
+            type->store_field(object, inst.store_field.field, frame.vstack_ptr[-2]);
+            frame.vstack_ptr -= 2;
+
             ++frame.ip;
             break;
         }

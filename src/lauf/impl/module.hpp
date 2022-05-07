@@ -12,7 +12,8 @@
 struct lauf_function_impl
 {
     const char* name;
-    uint32_t    _padding;
+    uint16_t    _padding;
+    uint16_t    local_stack_size;
     uint16_t    max_vstack_size;
     uint8_t     input_count;
     uint8_t     output_count;

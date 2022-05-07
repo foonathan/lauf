@@ -10,6 +10,7 @@ set(header_files
         ${include_dir}/builder.h
         ${include_dir}/config.h
         ${include_dir}/module.h
+        ${include_dir}/type.h
         ${include_dir}/value.h
         ${include_dir}/vm.h
 
@@ -18,6 +19,7 @@ set(src_header_files
         lauf/impl/module.hpp
         lauf/detail/bytecode.hpp
         lauf/detail/constant_pool.hpp
+        lauf/detail/stack_allocator.hpp
         lauf/detail/stack_check.hpp
         lauf/detail/verify.hpp)
 set(src_files

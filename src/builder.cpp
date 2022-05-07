@@ -8,6 +8,7 @@
 #include <lauf/builtin.h>
 #include <lauf/detail/bytecode.hpp>
 #include <lauf/detail/constant_pool.hpp>
+#include <lauf/detail/stack_allocator.hpp>
 #include <lauf/detail/stack_check.hpp>
 #include <lauf/detail/verify.hpp>
 #include <lauf/impl/module.hpp>
@@ -78,6 +79,7 @@ struct lauf_function_builder_impl
     const char*                         name;
     lauf_function                       fn;
     std::deque<lauf_block_builder_impl> blocks;
+    stack_allocator_layout              locals;
     lauf_signature                      sig;
     bc_function_idx                     index;
 
@@ -147,9 +149,10 @@ lauf_function lauf_finish_function(lauf_function_builder b)
     }();
 
     // Allocate the function and set its header.
-    auto result             = lauf_impl_allocate_function(bytecode_size_estimate);
-    result->name            = b->name;
-    result->max_vstack_size = [&] {
+    auto result              = lauf_impl_allocate_function(bytecode_size_estimate);
+    result->name             = b->name;
+    result->local_stack_size = b->locals.total_size();
+    result->max_vstack_size  = [&] {
         auto result = std::size_t(0);
         for (auto& block : b->blocks)
             if (block.vstack.max_stack_size() > result)
@@ -213,6 +216,12 @@ lauf_function lauf_finish_function(lauf_function_builder b)
 
     b->fn = result;
     return result;
+}
+
+lauf_local_variable lauf_build_local_variable(lauf_function_builder b, lauf_layout layout)
+{
+    auto addr = b->locals.allocate(layout.size, layout.alignment);
+    return {addr};
 }
 
 //=== block builder ===//
@@ -292,6 +301,12 @@ void lauf_build_argument(lauf_block_builder b, size_t idx)
     b->vstack.push();
 }
 
+void lauf_build_local_addr(lauf_block_builder b, lauf_local_variable var)
+{
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(local_addr, var._addr));
+    b->vstack.push();
+}
+
 void lauf_build_drop(lauf_block_builder b, size_t n)
 {
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(drop, n));
@@ -340,5 +355,26 @@ void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
     LAUF_VERIFY_RESULT(b->vstack.drop(fn.signature.input_count), "call_builtin",
                        "missing arguments for call");
     b->vstack.push(fn.signature.output_count);
+}
+
+void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field)
+{
+    LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
+
+    auto idx = b->fn->mod->constants.insert(type);
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(load_field, field, idx));
+
+    LAUF_VERIFY_RESULT(b->vstack.drop(), "load_field", "missing object address");
+    b->vstack.push();
+}
+
+void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field)
+{
+    LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
+
+    auto idx = b->fn->mod->constants.insert(type);
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(store_field, field, idx));
+
+    LAUF_VERIFY_RESULT(b->vstack.drop(2), "store_field", "missing object address or value");
 }
 

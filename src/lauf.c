@@ -5,6 +5,7 @@
 #include <lauf/builder.h>
 #include <lauf/config.h>
 #include <lauf/module.h>
+#include <lauf/type.h>
 #include <lauf/value.h>
 #include <lauf/vm.h>
 

@@ -77,10 +77,25 @@ enum class bc_constant_idx : uint32_t
 struct bc_inst_constant_idx
 {
     bc_op           op : 8;
-    bc_constant_idx constant_idx : 24;
+    bc_constant_idx constant_idx : 16;
+    uint32_t        _padding : 8;
 
     explicit bc_inst_constant_idx(bc_op op, bc_constant_idx idx) : op(op), constant_idx(idx)
     {
+        LAUF_VERIFY(constant_idx == idx, to_string(op), "encoding error");
+    }
+};
+
+struct bc_inst_field_constant_idx
+{
+    bc_op           op : 8;
+    uint32_t        field : 8;
+    bc_constant_idx constant_idx : 16;
+
+    explicit bc_inst_field_constant_idx(bc_op op, size_t f, bc_constant_idx idx)
+    : op(op), field(f), constant_idx(idx)
+    {
+        LAUF_VERIFY(field == f, to_string(op), "encoding error");
         LAUF_VERIFY(constant_idx == idx, to_string(op), "encoding error");
     }
 };

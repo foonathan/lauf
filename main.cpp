@@ -3,6 +3,7 @@
 
 #include <climits>
 #include <cstdio>
+#include <new>
 #include <utility>
 
 #include <lauf/builder.h>
@@ -45,6 +46,16 @@ LAUF_BUILTIN_UNARY_OP(is_zero_or_one)
     return value;
 }
 
+const lauf_type_data type_int
+    = {{sizeof(lauf_value_int), alignof(lauf_value_int)},
+       1,
+       [](const void* address, size_t) {
+           return lauf_value{.as_int = *static_cast<const lauf_value_int*>(address)};
+       },
+       [](void* address, size_t, lauf_value value) {
+           ::new (address) lauf_value_int(value.as_int);
+       }};
+
 int main()
 {
     auto parser = lauf_frontend_text_create_parser();
@@ -52,6 +63,7 @@ int main()
     lauf_frontend_text_register_builtin(parser, "is_zero_or_one", is_zero_or_one);
     lauf_frontend_text_register_builtin(parser, "decrement", decrement);
     lauf_frontend_text_register_builtin(parser, "add", add);
+    lauf_frontend_text_register_type(parser, "Int", &type_int);
     auto mod = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
@@ -81,27 +93,31 @@ int main()
         }
 
         function @fib_iter(1 => 1) {
-            block %entry(0 => 3) { # => 0 1 n
-                int 0;
-                int 1;
+            local %a : @Int;
+            local %b : @Int;
+            block %entry(0 => 1) {
+                int 0; local_addr %a; store_field @Int.0;
+                int 1; local_addr %b; store_field @Int.0;
+
                 argument 0;
-
-                pick 0;
-                branch if_false %exit else %loop;
+                pick 0; branch if_false %exit else %loop;
             }
-            block %loop(3 => 3) { # a b n => b (a+b) (n-1)
-                pick 1;            # => a b n b
-                roll 3;            # => b n b a
-                call_builtin @add; # => b n (b+a)
+            block %loop(1 => 1) { # n => (n-1)
+                local_addr %b; load_field @Int.0; # => b
 
-                roll 1;                   # => b (b+a) n
-                call_builtin @decrement;  # => b (b+a) (n-1)
+                pick 0;                           # => b b
+                local_addr %a; load_field @Int.0; # => b b a
+                call_builtin @add;                # => b (b+a)
 
-                pick 0;
-                branch if_false %exit else %loop;
+                local_addr %b; store_field @Int.0;
+                local_addr %a; store_field @Int.0;
+
+                call_builtin @decrement;
+                pick 0; branch if_false %exit else %loop;
             }
-            block %exit(3 => 1) { # a b n => a
-                drop 2;
+            block %exit(1 => 1) {
+                drop 1;
+                local_addr %a; load_field @Int.0;
                 return;
             }
         }

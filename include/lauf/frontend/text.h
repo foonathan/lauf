@@ -7,6 +7,7 @@
 #include <lauf/builtin.h>
 #include <lauf/config.h>
 #include <lauf/module.h>
+#include <lauf/type.h>
 
 LAUF_HEADER_START
 
@@ -16,6 +17,8 @@ lauf_frontend_text_parser lauf_frontend_text_create_parser(void);
 
 void lauf_frontend_text_register_builtin(lauf_frontend_text_parser p, const char* name,
                                          lauf_builtin builtin);
+void lauf_frontend_text_register_type(lauf_frontend_text_parser p, const char* name,
+                                      lauf_type type);
 
 /// Parses a module from text; `data` can be freed later.
 lauf_module lauf_frontend_text(lauf_frontend_text_parser p, const char* data, size_t size);
