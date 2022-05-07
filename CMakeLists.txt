@@ -1,7 +1,7 @@
 # Copyright (C) 2022 Jonathan Müller and lauf contributors
 # SPDX-License-Identifier: BSL-1.0
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.11)
 project(lauf VERSION 0.0.0 LANGUAGES C CXX)
 
 add_subdirectory(src)

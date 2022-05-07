@@ -14,8 +14,8 @@ struct lauf_builtin;
 
 typedef enum lauf_condition
 {
-    LAUF_IF_ZERO,
-    LAUF_IF_NONZERO,
+    LAUF_IF_TRUE,
+    LAUF_IF_FALSE,
 } lauf_condition;
 
 //=== module builder ===//
@@ -35,8 +35,6 @@ lauf_function lauf_finish_function(lauf_function_builder b);
 
 //=== block builder ===//
 typedef struct lauf_block_builder_impl* lauf_block_builder;
-
-lauf_block_builder lauf_build_entry_block(lauf_function_builder b, lauf_signature sig);
 
 lauf_block_builder lauf_build_block(lauf_function_builder b, lauf_signature sig);
 

@@ -42,3 +42,13 @@ const char* lauf_module_get_name(lauf_module mod)
     return mod->name;
 }
 
+lauf_function* lauf_module_function_begin(lauf_module mod)
+{
+    return mod->function_begin();
+}
+
+lauf_function* lauf_module_function_end(lauf_module mod)
+{
+    return mod->function_end();
+}
+

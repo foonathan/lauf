@@ -8,3 +8,5 @@
 #include <lauf/value.h>
 #include <lauf/vm.h>
 
+#include <lauf/frontend/text.h>
+

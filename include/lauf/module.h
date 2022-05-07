@@ -38,6 +38,9 @@ void lauf_module_destroy(lauf_module mod);
 /// The name of the module for debugging purposes.
 const char* lauf_module_get_name(lauf_module mod);
 
+lauf_function* lauf_module_function_begin(lauf_module mod);
+lauf_function* lauf_module_function_end(lauf_module mod);
+
 LAUF_HEADER_END
 
 #endif // LAUF_MODULE_H_INCLUDED

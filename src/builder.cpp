@@ -64,7 +64,9 @@ struct lauf_block_builder_impl
 
     lauf_block_builder_impl(lauf_function_builder parent, lauf_signature sig)
     : fn(parent), sig(sig), start_offset(0)
-    {}
+    {
+        vstack.push(sig.input_count);
+    }
 
     lauf_block_builder_impl(const lauf_block_builder_impl&) = delete;
     lauf_block_builder_impl& operator=(const lauf_block_builder_impl&) = delete;
@@ -82,15 +84,14 @@ struct lauf_function_builder_impl
     lauf_function_builder_impl(size_t index, lauf_module_builder mod, const char* name,
                                lauf_signature sig)
     : mod(mod), name(name), fn(nullptr), sig(sig), index(bc_function_idx(index))
-    {
-        blocks.emplace_back(this, sig);
-    }
+    {}
 
     lauf_function_builder_impl(const lauf_function_builder_impl&) = delete;
     lauf_function_builder_impl& operator=(const lauf_function_builder_impl&) = delete;
 
     lauf_block_builder entry_block()
     {
+        assert(!blocks.empty());
         return &blocks[0];
     }
 };
@@ -116,9 +117,11 @@ lauf_module lauf_finish_module(lauf_module_builder b)
     for (auto idx = std::size_t(0); idx != b->functions.size(); ++idx)
         result->function_begin()[idx] = b->functions[idx].fn;
 
-    std::memcpy(result->constant_data(), b->constants.data(),
-                b->constants.size() * sizeof(lauf_value));
+    if (b->constants.size() != 0)
+        std::memcpy(result->constant_data(), b->constants.data(),
+                    b->constants.size() * sizeof(lauf_value));
 
+    delete b;
     return result;
 }
 
@@ -191,12 +194,12 @@ lauf_function lauf_finish_function(lauf_function_builder b)
         case block_terminator::branch:
             switch (term.condition)
             {
-            case LAUF_IF_ZERO:
+            case LAUF_IF_FALSE:
                 result->bytecode()[position]
                     = LAUF_BC_INSTRUCTION(jump_if, condition_code::if_zero,
                                           term.if_true->start_offset - position);
                 break;
-            case LAUF_IF_NONZERO:
+            case LAUF_IF_TRUE:
                 result->bytecode()[position]
                     = LAUF_BC_INSTRUCTION(jump_if, condition_code::if_nonzero,
                                           term.if_true->start_offset - position);
@@ -213,13 +216,6 @@ lauf_function lauf_finish_function(lauf_function_builder b)
 }
 
 //=== block builder ===//
-lauf_block_builder lauf_build_entry_block(lauf_function_builder b, lauf_signature sig)
-{
-    auto result = b->entry_block();
-    result->sig = sig;
-    return result;
-}
-
 lauf_block_builder lauf_build_block(lauf_function_builder b, lauf_signature sig)
 {
     return &b->blocks.emplace_back(b, sig);
