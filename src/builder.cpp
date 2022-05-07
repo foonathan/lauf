@@ -56,12 +56,15 @@ struct lauf_block_builder_impl
 {
     lauf_function_builder       fn;
     block_terminator            terminator;
+    lauf_signature              sig;
     stack_checker               vstack;
     std::vector<bc_instruction> bytecode;
     // Set while finishing the function, to resolve jumps to the beginning of the block.
     ptrdiff_t start_offset;
 
-    lauf_block_builder_impl(lauf_function_builder parent) : fn(parent), start_offset(0) {}
+    lauf_block_builder_impl(lauf_function_builder parent, lauf_signature sig)
+    : fn(parent), sig(sig), start_offset(0)
+    {}
 
     lauf_block_builder_impl(const lauf_block_builder_impl&) = delete;
     lauf_block_builder_impl& operator=(const lauf_block_builder_impl&) = delete;
@@ -80,7 +83,7 @@ struct lauf_function_builder_impl
                                lauf_signature sig)
     : mod(mod), name(name), fn(nullptr), sig(sig), index(bc_function_idx(index))
     {
-        blocks.emplace_back(this);
+        blocks.emplace_back(this, sig);
     }
 
     lauf_function_builder_impl(const lauf_function_builder_impl&) = delete;
@@ -210,14 +213,16 @@ lauf_function lauf_finish_function(lauf_function_builder b)
 }
 
 //=== block builder ===//
-lauf_block_builder lauf_build_entry_block(lauf_function_builder b)
+lauf_block_builder lauf_build_entry_block(lauf_function_builder b, lauf_signature sig)
 {
-    return b->entry_block();
+    auto result = b->entry_block();
+    result->sig = sig;
+    return result;
 }
 
-lauf_block_builder lauf_build_block(lauf_function_builder b)
+lauf_block_builder lauf_build_block(lauf_function_builder b, lauf_signature sig)
 {
-    return &b->blocks.emplace_back(b);
+    return &b->blocks.emplace_back(b, sig);
 }
 
 void lauf_finish_block_return(lauf_block_builder b)
@@ -227,6 +232,8 @@ void lauf_finish_block_return(lauf_block_builder b)
     auto output_count = b->fn->sig.output_count;
     LAUF_VERIFY(b->vstack.cur_stack_size() == output_count, "return",
                 "missing or too many values for return");
+    LAUF_VERIFY(b->sig.output_count == output_count, "return",
+                "invalid signature for terminator block");
     b->vstack.pop(b->fn->sig.output_count);
 }
 
@@ -235,7 +242,10 @@ void lauf_finish_block_jump(lauf_block_builder b, lauf_block_builder dest)
     b->terminator.kind = block_terminator::jump;
     b->terminator.dest = dest;
 
-    LAUF_VERIFY(b->vstack.cur_stack_size() == 0, "jump", "stack not empty on block end");
+    LAUF_VERIFY(b->vstack.cur_stack_size() == b->sig.output_count, "jump",
+                "invalid stack size on block exit");
+    LAUF_VERIFY(b->sig.output_count == dest->sig.input_count, "jump",
+                "cannot jump to block expecting a different stack size");
 }
 
 void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
@@ -247,7 +257,11 @@ void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
     b->terminator.if_false  = if_false;
 
     LAUF_VERIFY_RESULT(b->vstack.pop(), "branch", "missing value for condition");
-    LAUF_VERIFY(b->vstack.cur_stack_size() == 0, "branch", "stack not empty on block end");
+    LAUF_VERIFY(b->vstack.cur_stack_size() == b->sig.output_count, "branch",
+                "invalid stack size on block exit");
+    LAUF_VERIFY(b->sig.output_count == if_true->sig.input_count
+                    && b->sig.output_count == if_false->sig.input_count,
+                "branch", "cannot jump to block expecting a different stack size");
 }
 
 //=== instructions ===//

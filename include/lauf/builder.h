@@ -36,9 +36,9 @@ lauf_function lauf_finish_function(lauf_function_builder b);
 //=== block builder ===//
 typedef struct lauf_block_builder_impl* lauf_block_builder;
 
-lauf_block_builder lauf_build_entry_block(lauf_function_builder b);
+lauf_block_builder lauf_build_entry_block(lauf_function_builder b, lauf_signature sig);
 
-lauf_block_builder lauf_build_block(lauf_function_builder b);
+lauf_block_builder lauf_build_block(lauf_function_builder b, lauf_signature sig);
 
 void lauf_finish_block_return(lauf_block_builder b);
 void lauf_finish_block_jump(lauf_block_builder b, lauf_block_builder dest);

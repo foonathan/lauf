@@ -49,22 +49,25 @@ int main()
         auto mod = lauf_build_module("test");
 
         auto test       = lauf_build_function(mod, "test", {1, 1});
-        auto entry      = lauf_build_entry_block(test);
-        auto if_zero    = lauf_build_block(test);
-        auto if_nonzero = lauf_build_block(test);
+        auto entry      = lauf_build_entry_block(test, {1, 0});
+        auto if_zero    = lauf_build_block(test, {0, 1});
+        auto if_nonzero = lauf_build_block(test, {0, 1});
+        auto exit       = lauf_build_block(test, {1, 1});
 
         lauf_build_argument(entry, 0);
         lauf_finish_block_branch(entry, LAUF_IF_ZERO, if_zero, if_nonzero);
 
         lauf_build_int(if_zero, 1);
-        lauf_finish_block_return(if_zero);
+        lauf_finish_block_jump(if_zero, exit);
 
         lauf_build_argument(if_nonzero, 0);
         lauf_build_argument(if_nonzero, 0);
         lauf_build_call_builtin(if_nonzero, decrement);
         lauf_build_recurse(if_nonzero);
         lauf_build_call_builtin(if_nonzero, multiply);
-        lauf_finish_block_return(if_nonzero);
+        lauf_finish_block_jump(if_nonzero, exit);
+
+        lauf_finish_block_return(exit);
 
         auto fn_test = lauf_finish_function(test);
         return std::make_pair(lauf_finish_module(mod), fn_test);
