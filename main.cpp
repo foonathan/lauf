@@ -46,15 +46,7 @@ LAUF_BUILTIN_UNARY_OP(is_zero_or_one)
     return value;
 }
 
-const lauf_type_data type_int
-    = {{sizeof(lauf_value_int), alignof(lauf_value_int)},
-       1,
-       [](const void* address, size_t) {
-           return lauf_value{.as_int = *static_cast<const lauf_value_int*>(address)};
-       },
-       [](void* address, size_t, lauf_value value) {
-           ::new (address) lauf_value_int(value.as_int);
-       }};
+LAUF_NATIVE_PRIMITIVE_TYPE(type_int, lauf_value_int, as_int);
 
 int main()
 {
