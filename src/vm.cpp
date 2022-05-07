@@ -3,12 +3,12 @@
 
 #include <lauf/vm.h>
 
-#include "detail/bytecode.hpp"
-#include "impl/module.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <lauf/builtin.h>
+#include <lauf/detail/bytecode.hpp>
+#include <lauf/impl/module.hpp>
 #include <new>
 #include <type_traits>
 

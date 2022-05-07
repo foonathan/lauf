@@ -4,7 +4,7 @@
 #ifndef SRC_IMPL_MODULE_HPP_INCLUDED
 #define SRC_IMPL_MODULE_HPP_INCLUDED
 
-#include "../detail/bytecode.hpp"
+#include <lauf/detail/bytecode.hpp>
 #include <lauf/module.h>
 #include <lauf/value.h>
 

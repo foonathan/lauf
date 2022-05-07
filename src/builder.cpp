@@ -3,14 +3,14 @@
 
 #include <lauf/builder.h>
 
-#include "detail/bytecode.hpp"
-#include "detail/constant_pool.hpp"
-#include "detail/stack_check.hpp"
-#include "detail/verify.hpp"
-#include "impl/module.hpp"
 #include <cassert>
 #include <deque>
 #include <lauf/builtin.h>
+#include <lauf/detail/bytecode.hpp>
+#include <lauf/detail/constant_pool.hpp>
+#include <lauf/detail/stack_check.hpp>
+#include <lauf/detail/verify.hpp>
+#include <lauf/impl/module.hpp>
 #include <vector>
 
 using namespace lauf::_detail;

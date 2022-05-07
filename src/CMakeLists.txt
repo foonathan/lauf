@@ -2,25 +2,27 @@
 # SPDX-License-Identifier: BSL-1.0
 
 get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf ABSOLUTE)
+set(header_files
+        ${include_dir}/builder.h
+        ${include_dir}/config.h
+        ${include_dir}/module.h
+        ${include_dir}/value.h
+        ${include_dir}/vm.h)
+set(src_header_files
+        lauf/impl/module.hpp
+        lauf/detail/bytecode.hpp
+        lauf/detail/constant_pool.hpp
+        lauf/detail/stack_check.hpp
+        lauf/detail/verify.hpp)
+set(src_files
+        builder.cpp
+        module.cpp
+        vm.cpp)
 
 add_library(lauf_core)
 target_compile_features(lauf_core PRIVATE cxx_std_17)
-target_include_directories(lauf_core PUBLIC ../include)
-target_sources(lauf_core PUBLIC
-                ${include_dir}/builder.h
-                ${include_dir}/config.h
-                ${include_dir}/module.h
-                ${include_dir}/value.h
-                ${include_dir}/vm.h)
-target_sources(lauf_core PRIVATE
-                impl/module.hpp)
-target_sources(lauf_core PRIVATE
-                detail/bytecode.hpp
-                detail/constant_pool.hpp
-                detail/stack_check.hpp
-                detail/verify.hpp
-                builder.cpp
-                module.cpp
-                vm.cpp)
-target_sources(lauf_core PRIVATE lauf.c)
+target_include_directories(lauf_core PUBLIC ../include .)
+target_sources(lauf_core PUBLIC ${header_files})
+target_sources(lauf_core PRIVATE ${src_header_files})
+target_sources(lauf_core PRIVATE lauf.c ${src_files})
 

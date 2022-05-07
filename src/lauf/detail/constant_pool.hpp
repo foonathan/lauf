@@ -5,10 +5,9 @@
 #define SRC_DETAIL_CONSTANT_POOL_HPP_INCLUDED
 
 #include <cstring>
+#include <lauf/detail/bytecode.hpp>
 #include <lauf/value.h>
 #include <vector>
-
-#include "bytecode.hpp"
 
 namespace lauf::_detail
 {

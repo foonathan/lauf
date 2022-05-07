@@ -4,8 +4,8 @@
 #ifndef SRC_DETAIL_BYTECODE_HPP_INCLUDED
 #define SRC_DETAIL_BYTECODE_HPP_INCLUDED
 
-#include "verify.hpp"
 #include <lauf/config.h>
+#include <lauf/detail/verify.hpp>
 
 namespace lauf::_detail
 {
