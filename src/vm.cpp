@@ -246,8 +246,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
         }
 
         case bc_op::call: {
-            auto idx    = inst.call.constant_idx;
-            auto callee = reinterpret_cast<lauf_function>(mod->get_constant(idx).as_ptr);
+            auto callee = mod->get_function(inst.call.function_idx);
 
             auto args = (frame.vstack_ptr -= callee->input_count);
             ++frame.ip;

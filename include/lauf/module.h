@@ -38,11 +38,6 @@ void lauf_module_destroy(lauf_module mod);
 /// The name of the module for debugging purposes.
 const char* lauf_module_get_name(lauf_module mod);
 
-/// Iterates over the functions of a module (in unspecified order).
-/// If `cur == nullptr`, return first function of module.
-/// Otherwise, returns next function of module.
-lauf_function lauf_module_function_iter(lauf_module mod, lauf_function cur);
-
 LAUF_HEADER_END
 
 #endif // LAUF_MODULE_H_INCLUDED

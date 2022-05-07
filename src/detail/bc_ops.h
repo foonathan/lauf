@@ -25,7 +25,7 @@ LAUF_BC_OP(pop, bc_inst_constant)
 // Pops 1 value from stack.
 LAUF_BC_OP(pop_one, bc_inst_none)
 
-// Call function, constant is lauf_function object.
-LAUF_BC_OP(call, bc_inst_constant_idx)
+// Call function.
+LAUF_BC_OP(call, bc_inst_function_idx)
 // Call builtin, constant is lauf_builtin_function.
 LAUF_BC_OP(call_builtin, bc_inst_constant_idx)

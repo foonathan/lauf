@@ -46,59 +46,28 @@ LAUF_BUILTIN_UNARY_OP(is_zero_or_one)
 int main()
 {
     auto [mod, fn] = [] {
-        auto b = lauf_build("test");
+        auto mod = lauf_build_module("test");
 
-        auto fac_decl = lauf_build_declare_function(b, "fac", {1, 1});
-        lauf_build_start_function(b, fac_decl);
-        {
-            lauf_build_argument(b, 0);
-            auto if_ = lauf_build_if(b, LAUF_IF_ZERO);
-            {
-                lauf_build_int(b, 1);
-                lauf_build_return(b);
-            }
-            lauf_build_else(b, &if_);
-            {
-                lauf_build_argument(b, 0);
-                lauf_build_call_builtin(b, decrement);
-                lauf_build_call_decl(b, fac_decl);
-                lauf_build_argument(b, 0);
-                lauf_build_call_builtin(b, multiply);
-                lauf_build_return(b);
-            }
-            lauf_build_end_if(b, &if_);
-        }
-        auto fn_fac = lauf_build_finish_function(b);
+        auto test       = lauf_build_function(mod, "test", {1, 1});
+        auto entry      = lauf_build_entry_block(test);
+        auto if_zero    = lauf_build_block(test);
+        auto if_nonzero = lauf_build_block(test);
 
-        auto fib_decl = lauf_build_declare_function(b, "fib", {1, 1});
-        lauf_build_start_function(b, fib_decl);
-        {
-            lauf_build_argument(b, 0);
-            lauf_build_call_builtin(b, is_zero_or_one);
-            auto if_ = lauf_build_if(b, LAUF_IF_NONZERO);
-            {
-                lauf_build_argument(b, 0);
-                lauf_build_return(b);
-            }
-            lauf_build_else(b, &if_);
-            {
-                lauf_build_argument(b, 0);
-                lauf_build_call_builtin(b, decrement);
-                lauf_build_call_decl(b, fib_decl);
+        lauf_build_argument(entry, 0);
+        lauf_finish_block_branch(entry, LAUF_IF_ZERO, if_zero, if_nonzero);
 
-                lauf_build_argument(b, 0);
-                lauf_build_call_builtin(b, decrement);
-                lauf_build_call_builtin(b, decrement);
-                lauf_build_call_decl(b, fib_decl);
+        lauf_build_int(if_zero, 1);
+        lauf_finish_block_return(if_zero);
 
-                lauf_build_call_builtin(b, add);
-                lauf_build_return(b);
-            }
-            lauf_build_end_if(b, &if_);
-        }
-        auto fn_fib = lauf_build_finish_function(b);
+        lauf_build_argument(if_nonzero, 0);
+        lauf_build_argument(if_nonzero, 0);
+        lauf_build_call_builtin(if_nonzero, decrement);
+        lauf_build_recurse(if_nonzero);
+        lauf_build_call_builtin(if_nonzero, multiply);
+        lauf_finish_block_return(if_nonzero);
 
-        return std::make_pair(lauf_build_finish(b), fn_fib);
+        auto fn_test = lauf_finish_function(test);
+        return std::make_pair(lauf_finish_module(mod), fn_test);
     }();
 
     auto vm = lauf_vm_create(lauf_default_vm_options);

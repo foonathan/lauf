@@ -50,10 +50,6 @@ enum class condition_code : unsigned char
     cmp_ge = 7
 };
 
-enum class bc_constant_idx : uint32_t
-{
-};
-
 struct bc_inst_none
 {
     bc_op    op : 8;
@@ -74,6 +70,10 @@ struct bc_inst_constant
     }
 };
 
+enum class bc_constant_idx : uint32_t
+{
+};
+
 struct bc_inst_constant_idx
 {
     bc_op           op : 8;
@@ -85,12 +85,27 @@ struct bc_inst_constant_idx
     }
 };
 
+enum class bc_function_idx : uint32_t
+{
+};
+
+struct bc_inst_function_idx
+{
+    bc_op           op : 8;
+    bc_function_idx function_idx : 24;
+
+    explicit bc_inst_function_idx(bc_op op, bc_function_idx idx) : op(op), function_idx(idx)
+    {
+        LAUF_VERIFY(function_idx == idx, to_string(op), "encoding error");
+    }
+};
+
 struct bc_inst_offset
 {
     bc_op   op : 8;
     int32_t offset : 24;
 
-    explicit bc_inst_offset(bc_op op, int32_t o) : op(op), offset(o)
+    explicit bc_inst_offset(bc_op op, ptrdiff_t o) : op(op), offset(static_cast<int32_t>(o))
     {
         LAUF_VERIFY(offset == o, to_string(op), "encoding error");
     }
@@ -102,7 +117,8 @@ struct bc_inst_cc_offset
     condition_code cc : 3;
     int32_t        offset : 21;
 
-    explicit bc_inst_cc_offset(bc_op op, condition_code cc, int32_t o) : op(op), cc(cc), offset(o)
+    explicit bc_inst_cc_offset(bc_op op, condition_code cc, ptrdiff_t o)
+    : op(op), cc(cc), offset(static_cast<int32_t>(o))
     {
         LAUF_VERIFY(offset == o, to_string(op), "encoding error");
     }
