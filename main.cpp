@@ -60,21 +60,20 @@ int main()
         module @mod;
 
         function @fib(1 => 1) {
-            block %entry(0 => 0) {
-                argument 0;
+            block %entry(1 => 1) {
+                pick 0;
                 call_builtin @is_zero_or_one;
                 branch if_true %base else %recurse;
             }
-            block %base(0 => 1) {
-                argument 0;
+            block %base(1 => 1) {
                 return;
             }
-            block %recurse(0 => 1) {
-                argument 0;
+            block %recurse(1 => 1) {
+                pick 0;
                 call_builtin @decrement;
                 recurse;
 
-                argument 0;
+                roll 1;
                 call_builtin @decrement;
                 call_builtin @decrement;
                 recurse;
@@ -87,11 +86,10 @@ int main()
         function @fib_iter(1 => 1) {
             local %a : @Int;
             local %b : @Int;
-            block %entry(0 => 1) {
+            block %entry(1 => 1) {
                 int 0; local_addr %a; store_field @Int.0;
                 int 1; local_addr %b; store_field @Int.0;
 
-                argument 0;
                 pick 0; branch if_false %exit else %loop;
             }
             block %loop(1 => 1) { # n => (n-1)
@@ -113,8 +111,23 @@ int main()
                 return;
             }
         }
+
+        function @test(1 => 1) {
+            block %entry(1 => 1) {
+                pick 0; branch if_false %a else %b;
+            }
+            block %a(1 => 1) {
+                drop 1;
+                int 42;
+                return;
+            }
+            block %b(1 => 1) {
+                call_builtin @decrement;
+                return;
+            }
+        }
     )");
-    auto fn  = lauf_module_function_begin(mod)[1];
+    auto fn  = lauf_module_function_begin(mod)[0];
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 

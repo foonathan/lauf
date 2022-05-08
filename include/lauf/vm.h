@@ -14,8 +14,7 @@ typedef struct lauf_vm_impl* lauf_vm;
 
 typedef struct lauf_vm_options
 {
-    /// The maximal stack size in bytes.
-    size_t max_stack_size;
+    size_t max_value_stack_size;
 } lauf_vm_options;
 
 extern const lauf_vm_options lauf_default_vm_options;

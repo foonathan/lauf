@@ -21,9 +21,6 @@ LAUF_BC_OP(push_small_zext, bc_inst_constant)
 // _ => constant
 LAUF_BC_OP(push_small_neg, bc_inst_constant)
 
-// Pushes nth argument.
-// _ => arg
-LAUF_BC_OP(argument, bc_inst_constant)
 // Push the address of a local variable, constant is address relative to function local begin.
 // _ => (local_base_addr + constant)
 LAUF_BC_OP(local_addr, bc_inst_constant)

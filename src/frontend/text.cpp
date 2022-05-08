@@ -65,11 +65,6 @@ struct inst_int
     static constexpr auto rule  = LEXY_KEYWORD("int", identifier) >> dsl::integer<lauf_value_int>;
     static constexpr auto build = &lauf_build_int;
 };
-struct inst_argument
-{
-    static constexpr auto rule  = LEXY_KEYWORD("argument", identifier) >> dsl::integer<size_t>;
-    static constexpr auto build = &lauf_build_argument;
-};
 struct inst_local_addr
 {
     static constexpr auto rule = LEXY_KEYWORD("local_addr", identifier) >> dsl::p<local_label>;
@@ -119,7 +114,7 @@ struct inst_store_field
 struct inst
 {
     static constexpr auto rule
-        = (dsl::p<inst_int> | dsl::p<inst_argument> | dsl::p<inst_local_addr>     //
+        = (dsl::p<inst_int> | dsl::p<inst_local_addr>                             //
            | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>            //
            | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin> //
            | dsl::p<inst_load_field> | dsl::p<inst_store_field>)                  //

@@ -64,7 +64,8 @@ struct bc_inst_constant
     bc_op    op : 8;
     uint32_t constant : 24;
 
-    explicit bc_inst_constant(bc_op op, size_t c) : op(op), constant(uint32_t(c))
+    template <typename T>
+    explicit bc_inst_constant(bc_op op, T c) : op(op), constant(uint32_t(c))
     {
         LAUF_VERIFY(constant == c, to_string(op), "encoding error");
     }

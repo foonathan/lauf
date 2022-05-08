@@ -19,23 +19,24 @@
 using namespace lauf::_detail;
 
 const lauf_vm_options lauf_default_vm_options = {
-    size_t(1) * 1024 * 1024,
+    size_t(512) * 1024,
 };
 
-struct alignas(std::max_align_t) lauf_vm_impl
+struct alignas(lauf_value) lauf_vm_impl
 {
-    size_t stack_size;
+    size_t          value_stack_size;
+    stack_allocator memory_stack;
 
-    unsigned char* stack_begin()
+    lauf_value* value_stack()
     {
-        return reinterpret_cast<unsigned char*>(this + 1);
+        return reinterpret_cast<lauf_value*>(this + 1);
     }
 };
 
 lauf_vm lauf_vm_create(lauf_vm_options options)
 {
-    auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_stack_size);
-    return ::new (memory) lauf_vm_impl{options.max_stack_size};
+    auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_value_stack_size);
+    return ::new (memory) lauf_vm_impl{options.max_value_stack_size};
 }
 
 void lauf_vm_destroy(lauf_vm vm)
@@ -47,224 +48,194 @@ namespace
 {
 struct stack_frame
 {
-    const void*           base;
-    lauf_function         fn;
-    const bc_instruction* ip;
-    const lauf_value*     arguments;
-    lauf_value*           vstack_ptr;
-
-    stack_frame(lauf_value* output)
-    : base(nullptr), fn(nullptr), ip(nullptr), arguments(nullptr), vstack_ptr(output)
-    {}
-
-    stack_frame(stack_allocator& stack, lauf_function fn, const lauf_value* arguments)
-    : base(stack.marker()), fn(fn), ip(fn->bytecode()), arguments(arguments),
-      vstack_ptr(stack.allocate<lauf_value>(fn->max_vstack_size))
-    {
-        stack.allocate(fn->local_stack_size, alignof(lauf_value));
-    }
-
-    std::size_t local_variable_offset(const stack_allocator& stack) const
-    {
-        return stack.to_address(base) + fn->max_vstack_size * sizeof(lauf_value);
-    }
+    bc_instruction*         return_ip;
+    stack_allocator::marker unwind;
+    stack_frame*            prev;
+    void*                   locals;
 };
+
 } // namespace
 
 void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_value* input,
                      lauf_value* output)
 {
-    stack_allocator stack(vm->stack_begin(), vm->stack_size);
-    stack.push(stack_frame(output));
+    auto vstack_ptr = vm->value_stack();
+    std::memcpy(vstack_ptr, input, fn->input_count * sizeof(lauf_value));
+    vstack_ptr += fn->input_count;
 
-    stack_frame frame(stack, fn, input);
-    while (frame.ip != nullptr)
+    auto frame = stack_frame{nullptr, vm->memory_stack.top(), nullptr, nullptr};
+    frame.prev = &frame;
+
+    auto locals = vm->memory_stack.allocate(fn->local_stack_size, alignof(std::max_align_t));
+    auto ip     = fn->bytecode();
+    while (ip != nullptr)
     {
-        auto inst = *frame.ip;
+        auto inst = *ip;
         switch (inst.tag.op)
         {
-        case bc_op::nop: {
-            ++frame.ip;
+        case bc_op::nop:
+            ++ip;
             break;
-        }
+
         case bc_op::return_: {
-            auto output_count = frame.fn->output_count;
-            auto outputs      = frame.vstack_ptr - output_count;
-
-            stack.unwind(frame.base);
-            stack.pop<stack_frame>(frame);
-
-            std::memcpy(frame.vstack_ptr, outputs, sizeof(lauf_value) * output_count);
-            frame.vstack_ptr += output_count;
+            auto marker = frame.unwind;
+            ip          = frame.return_ip;
+            frame       = *frame.prev;
+            vm->memory_stack.unwind(marker);
             break;
         }
-        case bc_op::jump: {
-            frame.ip += inst.jump.offset;
+        case bc_op::call: {
+            auto callee = mod->get_function(inst.call.function_idx);
+
+            auto marker     = vm->memory_stack.top();
+            auto prev_frame = vm->memory_stack.push(frame);
+            frame           = stack_frame{ip + 1, marker, prev_frame, locals};
+
+            ip     = callee->bytecode();
+            locals = vm->memory_stack.allocate(callee->local_stack_size, alignof(std::max_align_t));
             break;
         }
+
+        case bc_op::jump:
+            ip += inst.jump.offset;
+            break;
         case bc_op::jump_if: {
-            auto offset = inst.jump_if.offset;
-            auto top    = *--frame.vstack_ptr;
+            auto top_value = vstack_ptr[-1];
+            --vstack_ptr;
             switch (inst.jump_if.cc)
             {
             case condition_code::if_zero:
-                if (top.as_int == 0)
-                    frame.ip += offset;
+                if (top_value.as_int == 0)
+                    ip += inst.jump_if.offset;
                 else
-                    ++frame.ip;
+                    ++ip;
                 break;
             case condition_code::if_nonzero:
-                if (top.as_int != 0)
-                    frame.ip += offset;
+                if (top_value.as_int != 0)
+                    ip += inst.jump_if.offset;
                 else
-                    ++frame.ip;
+                    ++ip;
                 break;
             case condition_code::cmp_lt:
-                if (top.as_int < 0)
-                    frame.ip += offset;
+                if (top_value.as_int < 0)
+                    ip += inst.jump_if.offset;
                 else
-                    ++frame.ip;
+                    ++ip;
                 break;
             case condition_code::cmp_le:
-                if (top.as_int <= 0)
-                    frame.ip += offset;
+                if (top_value.as_int <= 0)
+                    ip += inst.jump_if.offset;
                 else
-                    ++frame.ip;
+                    ++ip;
                 break;
             case condition_code::cmp_gt:
-                if (top.as_int > 0)
-                    frame.ip += offset;
+                if (top_value.as_int > 0)
+                    ip += inst.jump_if.offset;
                 else
-                    ++frame.ip;
+                    ++ip;
                 break;
             case condition_code::cmp_ge:
-                if (top.as_int >= 0)
-                    frame.ip += offset;
+                if (top_value.as_int >= 0)
+                    ip += inst.jump_if.offset;
                 else
-                    ++frame.ip;
+                    ++ip;
                 break;
             }
             break;
         }
 
-        case bc_op::push: {
-            *frame.vstack_ptr++ = mod->get_constant(inst.push.constant_idx);
-            ++frame.ip;
+        case bc_op::push:
+            *vstack_ptr = mod->get_constant(inst.push.constant_idx);
+            ++vstack_ptr;
+            ++ip;
             break;
-        }
-        case bc_op::push_zero: {
-            *frame.vstack_ptr++ = lauf_value{};
-            ++frame.ip;
+        case bc_op::push_zero:
+            vstack_ptr->as_int = 0;
+            ++vstack_ptr;
+            ++ip;
             break;
-        }
-        case bc_op::push_small_zext: {
-            lauf_value constant;
-            constant.as_int     = inst.push_small_zext.constant;
-            *frame.vstack_ptr++ = constant;
-            ++frame.ip;
+        case bc_op::push_small_zext:
+            vstack_ptr->as_int = inst.push_small_zext.constant;
+            ++vstack_ptr;
+            ++ip;
             break;
-        }
-        case bc_op::push_small_neg: {
-            lauf_value constant;
-            constant.as_int     = -lauf_value_int(inst.push_small_neg.constant);
-            *frame.vstack_ptr++ = constant;
-            ++frame.ip;
+        case bc_op::push_small_neg:
+            vstack_ptr->as_int = -lauf_value_int(inst.push_small_zext.constant);
+            ++vstack_ptr;
+            ++ip;
             break;
-        }
+        case bc_op::local_addr:
+            vstack_ptr->as_ptr
+                = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.local_addr.constant);
+            ++vstack_ptr;
+            ++ip;
+            break;
 
-        case bc_op::argument: {
-            auto idx            = inst.argument.constant;
-            *frame.vstack_ptr++ = frame.arguments[idx];
-            ++frame.ip;
+        case bc_op::drop:
+            vstack_ptr -= ptrdiff_t(inst.drop.constant);
+            ++ip;
             break;
-        }
-        case bc_op::local_addr: {
-            frame.vstack_ptr->as_address
-                = frame.local_variable_offset(stack) + inst.local_addr.constant;
-            ++frame.vstack_ptr;
-            ++frame.ip;
-            break;
-        }
-
-        case bc_op::drop: {
-            auto count = inst.drop.constant;
-            frame.vstack_ptr -= count;
-            ++frame.ip;
-            break;
-        }
         case bc_op::pick: {
-            auto index          = ptrdiff_t(inst.pick.constant);
-            auto value          = frame.vstack_ptr[-index - 1];
-            *frame.vstack_ptr++ = value;
-            ++frame.ip;
+            auto index  = ptrdiff_t(inst.pick.constant);
+            auto value  = vstack_ptr[-index - 1];
+            *vstack_ptr = value;
+            ++vstack_ptr;
+            ++ip;
             break;
         }
         case bc_op::dup: {
-            *frame.vstack_ptr = frame.vstack_ptr[-1];
-            ++frame.vstack_ptr;
-            ++frame.ip;
+            *vstack_ptr = vstack_ptr[-1];
+            ++vstack_ptr;
+            ++ip;
             break;
         }
         case bc_op::roll: {
-            auto index = ptrdiff_t(inst.roll.constant);
-
-            // Remember the new element that is on top of the stack.
-            auto value = frame.vstack_ptr[-index - 1];
-            // Move [-index, 0] to [-index - 1, -1]
-            std::memmove(frame.vstack_ptr - index - 1, frame.vstack_ptr - index,
-                         index * sizeof(lauf_value));
-            // Add the new item on the top.
-            frame.vstack_ptr[-1] = value;
-
-            ++frame.ip;
+            auto index = ptrdiff_t(inst.pick.constant);
+            auto value = vstack_ptr[-index - 1];
+            std::memmove(vstack_ptr - index - 1, vstack_ptr - index, index * sizeof(lauf_value));
+            vstack_ptr[-1] = value;
+            ++ip;
             break;
         }
         case bc_op::swap: {
-            std::swap(frame.vstack_ptr[-1], frame.vstack_ptr[-2]);
-            ++frame.ip;
+            std::swap(vstack_ptr[-1], vstack_ptr[-2]);
+            ++ip;
             break;
         }
 
-        case bc_op::call: {
-            auto callee = mod->get_function(inst.call.function_idx);
-
-            auto args = (frame.vstack_ptr -= callee->input_count);
-            ++frame.ip;
-
-            stack.push(frame);
-            frame = stack_frame(stack, callee, args);
-            break;
-        }
         case bc_op::call_builtin: {
-            auto idx         = inst.call_builtin.constant_idx;
-            auto callback    = (lauf_builtin_function*)(mod->get_constant(idx).as_native_ptr);
-            frame.vstack_ptr = callback(frame.vstack_ptr);
-            ++frame.ip;
+            auto callee = reinterpret_cast<lauf_builtin_function*>(
+                mod->get_constant(inst.call_builtin.constant_idx).as_ptr);
+            vstack_ptr = callee(vstack_ptr);
+            ++ip;
             break;
         }
-
         case bc_op::load_field: {
-            auto type_idx = inst.load_field.constant_idx;
-            auto type     = static_cast<lauf_type>(mod->get_constant(type_idx).as_native_ptr);
+            auto type
+                = static_cast<lauf_type>(mod->get_constant(inst.load_field.constant_idx).as_ptr);
 
-            auto object          = stack.to_pointer(frame.vstack_ptr[-1].as_address);
-            frame.vstack_ptr[-1] = type->load_field(object, inst.load_field.field);
+            auto object    = vstack_ptr[-1].as_ptr;
+            vstack_ptr[-1] = type->load_field(object, inst.load_field.field);
 
-            ++frame.ip;
+            ++ip;
             break;
         }
-        case bc_op::store_field: {
-            auto type_idx = inst.store_field.constant_idx;
-            auto type     = static_cast<lauf_type>(mod->get_constant(type_idx).as_native_ptr);
+        case bc_op::store_field:
+            auto type
+                = static_cast<lauf_type>(mod->get_constant(inst.store_field.constant_idx).as_ptr);
 
-            auto object = stack.to_pointer(frame.vstack_ptr[-1].as_address);
-            type->store_field(object, inst.store_field.field, frame.vstack_ptr[-2]);
-            frame.vstack_ptr -= 2;
+            auto object = vstack_ptr[-1].as_ptr;
+            type->store_field(object, inst.store_field.field, vstack_ptr[-2]);
+            vstack_ptr -= 2;
 
-            ++frame.ip;
+            ++ip;
             break;
-        }
         }
     }
+
+    vstack_ptr -= fn->output_count;
+    std::memcpy(output, vstack_ptr, fn->output_count * sizeof(lauf_value));
+
+    vm->memory_stack.reset();
 }
 

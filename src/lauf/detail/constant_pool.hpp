@@ -36,10 +36,16 @@ public:
         v.as_int = value;
         return insert(v);
     }
-    auto insert(lauf_value_native_ptr value)
+    auto insert(lauf_value_ptr value)
     {
         lauf_value v;
-        v.as_native_ptr = value;
+        v.as_ptr = value;
+        return insert(v);
+    }
+    auto insert(const void* value)
+    {
+        lauf_value v;
+        v.as_ptr = const_cast<void*>(value);
         return insert(v);
     }
 

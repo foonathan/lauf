@@ -79,7 +79,7 @@ struct lauf_function_builder_impl
     const char*                         name;
     lauf_function                       fn;
     std::deque<lauf_block_builder_impl> blocks;
-    stack_allocator_layout              locals;
+    stack_allocator_offset              locals;
     lauf_signature                      sig;
     bc_function_idx                     index;
 
@@ -151,7 +151,7 @@ lauf_function lauf_finish_function(lauf_function_builder b)
     // Allocate the function and set its header.
     auto result              = lauf_impl_allocate_function(bytecode_size_estimate);
     result->name             = b->name;
-    result->local_stack_size = b->locals.total_size();
+    result->local_stack_size = static_cast<uint16_t>(b->locals.size());
     result->max_vstack_size  = [&] {
         auto result = std::size_t(0);
         for (auto& block : b->blocks)
@@ -168,8 +168,9 @@ lauf_function lauf_finish_function(lauf_function_builder b)
     for (auto& block : b->blocks)
     {
         block.start_offset = bytecode - result->bytecode();
-        std::memcpy(bytecode, block.bytecode.data(),
-                    block.bytecode.size() * sizeof(bc_instruction));
+        if (!block.bytecode.empty())
+            std::memcpy(bytecode, block.bytecode.data(),
+                        block.bytecode.size() * sizeof(bc_instruction));
         // We reserve space for all necessary jump instructions.
         bytecode += block.bytecode.size() + block.terminator.max_instruction_count();
     }
@@ -227,6 +228,9 @@ lauf_local_variable lauf_build_local_variable(lauf_function_builder b, lauf_layo
 //=== block builder ===//
 lauf_block_builder lauf_build_block(lauf_function_builder b, lauf_signature sig)
 {
+    if (b->blocks.empty())
+        LAUF_VERIFY(sig.input_count == b->sig.input_count, "block",
+                    "entry block starts with function arguments");
     return &b->blocks.emplace_back(b, sig);
 }
 
@@ -290,14 +294,6 @@ void lauf_build_int(lauf_block_builder b, lauf_value_int value)
         b->bytecode.push_back(LAUF_BC_INSTRUCTION(push, idx));
     }
 
-    b->vstack.push();
-}
-
-void lauf_build_argument(lauf_block_builder b, size_t idx)
-{
-    LAUF_VERIFY(idx < b->fn->sig.input_count, "argument", "argument index out of range");
-
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(argument, idx));
     b->vstack.push();
 }
 
