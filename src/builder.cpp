@@ -364,6 +364,14 @@ void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
     b->vstack.push(fn.signature.output_count);
 }
 
+void lauf_build_array_element(lauf_block_builder b, lauf_type type)
+{
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(array_element, type->layout.size));
+
+    LAUF_VERIFY_RESULT(b->vstack.drop(2), "array_element", "missing object address or index");
+    b->vstack.push();
+}
+
 void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field)
 {
     LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");

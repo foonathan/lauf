@@ -116,21 +116,32 @@ int main()
         }
 
         function @test(1 => 1) {
+            local %array : @Int[3];
             block %entry(1 => 1) {
-                pick 0; branch if_false %a else %b;
-            }
-            block %a(1 => 1) {
-                drop 1;
+                int 2;
+                local_addr %array;
+                array_element @Int;
+                store_field @Int.0;
+
                 int 42;
-                return;
-            }
-            block %b(1 => 1) {
-                call_builtin @decrement;
+                int 1;
+                local_addr %array;
+                array_element @Int;
+                store_field @Int.0;
+
+                int 11;
+                local_addr %array;
+                store_field @Int.0;
+
+                int 1;
+                local_addr %array;
+                array_element @Int;
+                load_field @Int.0;
                 return;
             }
         }
     )");
-    auto fn  = lauf_module_function_begin(mod)[0];
+    auto fn  = lauf_module_function_begin(mod)[2];
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 

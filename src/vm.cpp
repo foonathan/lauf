@@ -211,6 +211,18 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             ++ip;
             break;
         }
+
+        case bc_op::array_element: {
+            auto idx       = vstack_ptr[-2].as_uint;
+            auto elem_size = ptrdiff_t(inst.array_element.constant);
+            auto addr      = vstack_ptr[-1].as_ptr;
+
+            --vstack_ptr;
+            vstack_ptr[-1].as_ptr = static_cast<unsigned char*>(addr) + idx * elem_size;
+
+            ++ip;
+            break;
+        }
         case bc_op::load_field: {
             auto type
                 = static_cast<lauf_type>(mod->get_constant(inst.load_field.constant_idx).as_ptr);

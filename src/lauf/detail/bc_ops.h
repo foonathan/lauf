@@ -48,6 +48,9 @@ LAUF_BC_OP(call, bc_inst_function_idx)
 // in => out
 LAUF_BC_OP(call_builtin, bc_inst_constant_idx)
 
+// Computes the address of an array element, constant is elem_size.
+// idx addr => (addr + elem_size * idx)
+LAUF_BC_OP(array_element, bc_inst_constant)
 // Load a field from a type, constant is lauf_type*.
 // addr => value
 LAUF_BC_OP(load_field, bc_inst_field_constant_idx)
