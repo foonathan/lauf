@@ -195,23 +195,34 @@ lauf_function lauf_finish_function(lauf_function_builder b)
                 = LAUF_BC_INSTRUCTION(jump, term.dest->start_offset - position);
             break;
 
-        case block_terminator::branch:
-            switch (term.condition)
-            {
-            case LAUF_IF_FALSE:
-                result->bytecode()[position]
-                    = LAUF_BC_INSTRUCTION(jump_if, condition_code::if_zero,
-                                          term.if_true->start_offset - position);
-                break;
-            case LAUF_IF_TRUE:
-                result->bytecode()[position]
-                    = LAUF_BC_INSTRUCTION(jump_if, condition_code::if_nonzero,
-                                          term.if_true->start_offset - position);
-                break;
-            }
+        case block_terminator::branch: {
+            auto cc = [&] {
+                switch (term.condition)
+                {
+                case LAUF_IF_FALSE:
+                    return condition_code::if_zero;
+                case LAUF_IF_TRUE:
+                    return condition_code::if_nonzero;
+                case LAUF_CMP_EQ:
+                    return condition_code::cmp_eq;
+                case LAUF_CMP_NE:
+                    return condition_code::cmp_ne;
+                case LAUF_CMP_LT:
+                    return condition_code::cmp_lt;
+                case LAUF_CMP_LE:
+                    return condition_code::cmp_le;
+                case LAUF_CMP_GT:
+                    return condition_code::cmp_gt;
+                case LAUF_CMP_GE:
+                    return condition_code::cmp_ge;
+                }
+            }();
+            result->bytecode()[position]
+                = LAUF_BC_INSTRUCTION(jump_if, cc, term.if_true->start_offset - position);
             result->bytecode()[position + 1]
                 = LAUF_BC_INSTRUCTION(jump, term.if_false->start_offset - (position + 1));
             break;
+        }
         }
     }
 

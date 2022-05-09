@@ -17,6 +17,13 @@ typedef enum lauf_condition
 {
     LAUF_IF_TRUE,
     LAUF_IF_FALSE,
+
+    LAUF_CMP_EQ,
+    LAUF_CMP_NE,
+    LAUF_CMP_LT,
+    LAUF_CMP_LE,
+    LAUF_CMP_GE,
+    LAUF_CMP_GT,
 } lauf_condition;
 
 //=== module builder ===//
