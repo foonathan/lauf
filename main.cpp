@@ -56,24 +56,27 @@ int main()
     lauf_frontend_text_register_builtin(parser, "decrement", decrement);
     lauf_frontend_text_register_builtin(parser, "add", add);
     lauf_frontend_text_register_type(parser, "Int", &type_int);
+    lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);
     auto mod = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
         function @fib(1 => 1) {
-            block %entry(1 => 1) {
-                pick 0;
+            local %arg : @Value;
+            block %entry(1 => 0) {
+                pick 0; local_addr %arg; store_field @Value.0;
                 call_builtin @is_zero_or_one;
                 branch if_true %base else %recurse;
             }
-            block %base(1 => 1) {
+            block %base(0 => 1) {
+                local_addr %arg; load_field @Value.0;
                 return;
             }
-            block %recurse(1 => 1) {
-                pick 0;
+            block %recurse(0 => 1) {
+                local_addr %arg; load_field @Value.0;
                 call_builtin @decrement;
                 recurse;
 
-                roll 1;
+                local_addr %arg; load_field @Value.0;
                 call_builtin @decrement;
                 call_builtin @decrement;
                 recurse;

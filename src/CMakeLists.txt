@@ -25,6 +25,7 @@ set(src_header_files
 set(src_files
         builder.cpp
         module.cpp
+        type.cpp
         vm.cpp
 
         frontend/text.cpp)

@@ -80,6 +80,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
         case bc_op::return_: {
             auto marker = frame.unwind;
             ip          = frame.return_ip;
+            locals      = frame.locals;
             frame       = *frame.prev;
             vm->memory_stack.unwind(marker);
             break;

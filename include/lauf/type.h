@@ -30,6 +30,8 @@ typedef struct lauf_type_data
 
 typedef const lauf_type_data* lauf_type;
 
+extern const lauf_type_data lauf_value_type;
+
 /// Generates lauf_type_data for `NativeType` that is primitive.
 #define LAUF_NATIVE_PRIMITIVE_TYPE(Name, NativeType, PrimitiveField)                               \
     static lauf_value Name##_load_field(const void* object_address, size_t)                        \

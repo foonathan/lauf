@@ -168,9 +168,9 @@ public:
     std::uintptr_t allocate(std::size_t size, std::size_t alignment)
     {
         _cur += align_offset(_cur, alignment);
-        auto result = _cur;
+        auto result = _cur - _begin;
         _cur += size;
-        return _cur;
+        return result;
     }
 
     template <typename T>
