@@ -49,20 +49,20 @@ struct alignas(lauf_value) lauf_module_impl
         return function_begin()[static_cast<size_t>(idx)];
     }
 
-    lauf_value* constant_data()
+    lauf_value* literal_data()
     {
         auto memory = static_cast<void*>(function_end());
         return static_cast<lauf_value*>(memory);
     }
-    const lauf_value& get_constant(lauf::_detail::bc_constant_idx idx)
+    const lauf_value& get_literal(lauf::_detail::bc_literal_idx idx)
     {
-        return constant_data()[static_cast<size_t>(idx)];
+        return literal_data()[static_cast<size_t>(idx)];
     }
 };
 static_assert(sizeof(lauf_module_impl) == 2 * sizeof(void*));
 static_assert(sizeof(lauf_module_impl) % alignof(lauf_value) == 0);
 
-lauf_module lauf_impl_allocate_module(size_t function_count, size_t constant_count);
+lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_count);
 
 #endif // SRC_IMPL_MODULE_HPP_INCLUDED
 

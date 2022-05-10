@@ -101,7 +101,7 @@ struct lauf_function_builder_impl
 struct lauf_module_builder_impl
 {
     const char*                            name;
-    constant_pool                          constants;
+    constant_pool                          literals;
     std::deque<lauf_function_builder_impl> functions;
 };
 
@@ -113,15 +113,15 @@ lauf_module_builder lauf_build_module(const char* name)
 
 lauf_module lauf_finish_module(lauf_module_builder b)
 {
-    auto result            = lauf_impl_allocate_module(b->functions.size(), b->constants.size());
+    auto result            = lauf_impl_allocate_module(b->functions.size(), b->literals.size());
     result->function_count = b->functions.size();
 
     for (auto idx = std::size_t(0); idx != b->functions.size(); ++idx)
         result->function_begin()[idx] = b->functions[idx].fn;
 
-    if (b->constants.size() != 0)
-        std::memcpy(result->constant_data(), b->constants.data(),
-                    b->constants.size() * sizeof(lauf_value));
+    if (b->literals.size() != 0)
+        std::memcpy(result->literal_data(), b->literals.data(),
+                    b->literals.size() * sizeof(lauf_value));
 
     delete b;
     return result;
@@ -301,7 +301,7 @@ void lauf_build_int(lauf_block_builder b, lauf_value_int value)
     }
     else
     {
-        auto idx = b->fn->mod->constants.insert(value);
+        auto idx = b->fn->mod->literals.insert(value);
         b->bytecode.push_back(LAUF_BC_INSTRUCTION(push, idx));
     }
 
@@ -356,7 +356,7 @@ void lauf_build_call(lauf_block_builder b, lauf_function_builder fn)
 
 void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
 {
-    auto idx = b->fn->mod->constants.insert(reinterpret_cast<void*>(fn.impl));
+    auto idx = b->fn->mod->literals.insert(reinterpret_cast<void*>(fn.impl));
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(call_builtin, idx));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(fn.signature.input_count), "call_builtin",
@@ -376,7 +376,7 @@ void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field)
 {
     LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
 
-    auto idx = b->fn->mod->constants.insert(type);
+    auto idx = b->fn->mod->literals.insert(type);
     // If the last instruction is a store of the same field, turn it into a save instead.
     if (!b->bytecode.empty() && b->bytecode.back() == LAUF_BC_INSTRUCTION(store_field, field, idx))
         b->bytecode.back().store_field.op = bc_op::save_field;
@@ -391,7 +391,7 @@ void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field)
 {
     LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
 
-    auto idx = b->fn->mod->constants.insert(type);
+    auto idx = b->fn->mod->literals.insert(type);
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(store_field, field, idx));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(2), "store_field", "missing object address or value");

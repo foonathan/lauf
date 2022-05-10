@@ -146,7 +146,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
         }
 
         case bc_op::push:
-            *vstack_ptr = mod->get_constant(inst.push.constant_idx);
+            *vstack_ptr = mod->get_literal(inst.push.literal_idx);
             ++vstack_ptr;
             ++ip;
             break;
@@ -156,25 +156,25 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             ++ip;
             break;
         case bc_op::push_small_zext:
-            vstack_ptr->as_int = inst.push_small_zext.constant;
+            vstack_ptr->as_int = inst.push_small_zext.literal;
             ++vstack_ptr;
             ++ip;
             break;
         case bc_op::push_small_neg:
-            vstack_ptr->as_int = -lauf_value_int(inst.push_small_zext.constant);
+            vstack_ptr->as_int = -lauf_value_int(inst.push_small_zext.literal);
             ++vstack_ptr;
             ++ip;
             break;
 
         case bc_op::local_addr:
             vstack_ptr->as_ptr
-                = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.local_addr.constant);
+                = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.local_addr.literal);
             ++vstack_ptr;
             ++ip;
             break;
         case bc_op::array_element: {
             auto idx       = vstack_ptr[-2].as_uint;
-            auto elem_size = ptrdiff_t(inst.array_element.constant);
+            auto elem_size = ptrdiff_t(inst.array_element.literal);
             auto addr      = vstack_ptr[-1].as_ptr;
 
             --vstack_ptr;
@@ -185,11 +185,11 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
         }
 
         case bc_op::drop:
-            vstack_ptr -= ptrdiff_t(inst.drop.constant);
+            vstack_ptr -= ptrdiff_t(inst.drop.literal);
             ++ip;
             break;
         case bc_op::pick: {
-            auto index  = ptrdiff_t(inst.pick.constant);
+            auto index  = ptrdiff_t(inst.pick.literal);
             auto value  = vstack_ptr[-index - 1];
             *vstack_ptr = value;
             ++vstack_ptr;
@@ -203,7 +203,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             break;
         }
         case bc_op::roll: {
-            auto index = ptrdiff_t(inst.pick.constant);
+            auto index = ptrdiff_t(inst.pick.literal);
             auto value = vstack_ptr[-index - 1];
             std::memmove(vstack_ptr - index - 1, vstack_ptr - index, index * sizeof(lauf_value));
             vstack_ptr[-1] = value;
@@ -218,7 +218,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
 
         case bc_op::call_builtin: {
             auto callee = reinterpret_cast<lauf_builtin_function*>(
-                mod->get_constant(inst.call_builtin.constant_idx).as_ptr);
+                mod->get_literal(inst.call_builtin.literal_idx).as_ptr);
             vstack_ptr = callee(vstack_ptr);
             ++ip;
             break;
@@ -226,7 +226,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
 
         case bc_op::load_field: {
             auto type
-                = static_cast<lauf_type>(mod->get_constant(inst.load_field.constant_idx).as_ptr);
+                = static_cast<lauf_type>(mod->get_literal(inst.load_field.literal_idx).as_ptr);
 
             auto object    = vstack_ptr[-1].as_ptr;
             vstack_ptr[-1] = type->load_field(object, inst.load_field.field);
@@ -237,7 +237,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
         case bc_op::store_field:
         case bc_op::save_field: {
             auto type
-                = static_cast<lauf_type>(mod->get_constant(inst.store_field.constant_idx).as_ptr);
+                = static_cast<lauf_type>(mod->get_literal(inst.store_field.literal_idx).as_ptr);
 
             auto object = vstack_ptr[-1].as_ptr;
             type->store_field(object, inst.store_field.field, vstack_ptr[-2]);
@@ -248,7 +248,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
         }
 
         case bc_op::load_value: {
-            auto object = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.load_value.constant);
+            auto object = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.load_value.literal);
 
             *vstack_ptr = *reinterpret_cast<lauf_value*>(object);
             ++vstack_ptr;
@@ -258,8 +258,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
         }
         case bc_op::store_value:
         case bc_op::save_value: {
-            auto object
-                = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.store_value.constant);
+            auto object = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.store_value.literal);
 
             ::new (object) lauf_value(vstack_ptr[-1]);
             if (inst.tag.op == bc_op::store_value)

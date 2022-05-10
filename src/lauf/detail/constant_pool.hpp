@@ -19,15 +19,15 @@ public:
         _constants.clear();
     }
 
-    bc_constant_idx insert(lauf_value value)
+    bc_literal_idx insert(lauf_value value)
     {
         for (auto idx = std::size_t(0); idx != _constants.size(); ++idx)
             if (std::memcmp(&_constants[idx], &value, sizeof(lauf_value)) == 0)
-                return bc_constant_idx(idx);
+                return bc_literal_idx(idx);
 
         auto idx = _constants.size();
         _constants.push_back(value);
-        return bc_constant_idx(idx);
+        return bc_literal_idx(idx);
     }
 
     auto insert(lauf_value_int value)

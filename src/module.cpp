@@ -23,10 +23,10 @@ lauf_signature lauf_function_get_signature(lauf_function fn)
 }
 
 //=== module ===//
-lauf_module lauf_impl_allocate_module(size_t function_count, size_t constant_count)
+lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_count)
 {
     auto memory = ::operator new(sizeof(lauf_module_impl) + function_count * sizeof(lauf_function)
-                                 + constant_count * sizeof(lauf_value));
+                                 + literal_count * sizeof(lauf_value));
     return ::new (memory) lauf_module_impl{};
 }
 

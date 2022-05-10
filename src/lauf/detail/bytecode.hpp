@@ -59,45 +59,45 @@ struct bc_inst_none
     explicit bc_inst_none(bc_op op) : op(op) {}
 };
 
-struct bc_inst_constant
+struct bc_inst_literal
 {
     bc_op    op : 8;
-    uint32_t constant : 24;
+    uint32_t literal : 24;
 
     template <typename T>
-    explicit bc_inst_constant(bc_op op, T c) : op(op), constant(uint32_t(c))
+    explicit bc_inst_literal(bc_op op, T v) : op(op), literal(uint32_t(v))
     {
-        LAUF_VERIFY(constant == c, to_string(op), "encoding error");
+        LAUF_VERIFY(literal == v, to_string(op), "encoding error");
     }
 };
 
-enum class bc_constant_idx : uint32_t
+enum class bc_literal_idx : uint32_t
 {
 };
 
-struct bc_inst_constant_idx
+struct bc_inst_literal_idx
 {
-    bc_op           op : 8;
-    bc_constant_idx constant_idx : 16;
-    uint32_t        _padding : 8;
+    bc_op          op : 8;
+    bc_literal_idx literal_idx : 16;
+    uint32_t       _padding : 8;
 
-    explicit bc_inst_constant_idx(bc_op op, bc_constant_idx idx) : op(op), constant_idx(idx)
+    explicit bc_inst_literal_idx(bc_op op, bc_literal_idx idx) : op(op), literal_idx(idx)
     {
-        LAUF_VERIFY(constant_idx == idx, to_string(op), "encoding error");
+        LAUF_VERIFY(literal_idx == idx, to_string(op), "encoding error");
     }
 };
 
-struct bc_inst_field_constant_idx
+struct bc_inst_field_literal_idx
 {
-    bc_op           op : 8;
-    uint32_t        field : 8;
-    bc_constant_idx constant_idx : 16;
+    bc_op          op : 8;
+    uint32_t       field : 8;
+    bc_literal_idx literal_idx : 16;
 
-    explicit bc_inst_field_constant_idx(bc_op op, size_t f, bc_constant_idx idx)
-    : op(op), field(f), constant_idx(idx)
+    explicit bc_inst_field_literal_idx(bc_op op, size_t f, bc_literal_idx idx)
+    : op(op), field(f), literal_idx(idx)
     {
         LAUF_VERIFY(field == f, to_string(op), "encoding error");
-        LAUF_VERIFY(constant_idx == idx, to_string(op), "encoding error");
+        LAUF_VERIFY(literal_idx == idx, to_string(op), "encoding error");
     }
 };
 
