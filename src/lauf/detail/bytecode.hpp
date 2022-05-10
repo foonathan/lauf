@@ -149,6 +149,15 @@ union bc_instruction
 #undef LAUF_BC_OP
 
     bc_instruction() : tag() {}
+
+    friend bool operator==(bc_instruction lhs, bc_instruction rhs)
+    {
+        return lhs.tag.op == rhs.tag.op && uint32_t(lhs.tag._padding) == uint32_t(rhs.tag._padding);
+    }
+    friend bool operator!=(bc_instruction lhs, bc_instruction rhs)
+    {
+        return !(lhs == rhs);
+    }
 };
 static_assert(sizeof(bc_instruction) == sizeof(uint32_t));
 

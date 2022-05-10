@@ -165,12 +165,24 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             ++vstack_ptr;
             ++ip;
             break;
+
         case bc_op::local_addr:
             vstack_ptr->as_ptr
                 = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.local_addr.constant);
             ++vstack_ptr;
             ++ip;
             break;
+        case bc_op::array_element: {
+            auto idx       = vstack_ptr[-2].as_uint;
+            auto elem_size = ptrdiff_t(inst.array_element.constant);
+            auto addr      = vstack_ptr[-1].as_ptr;
+
+            --vstack_ptr;
+            vstack_ptr[-1].as_ptr = static_cast<unsigned char*>(addr) + idx * elem_size;
+
+            ++ip;
+            break;
+        }
 
         case bc_op::drop:
             vstack_ptr -= ptrdiff_t(inst.drop.constant);
@@ -212,17 +224,6 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             break;
         }
 
-        case bc_op::array_element: {
-            auto idx       = vstack_ptr[-2].as_uint;
-            auto elem_size = ptrdiff_t(inst.array_element.constant);
-            auto addr      = vstack_ptr[-1].as_ptr;
-
-            --vstack_ptr;
-            vstack_ptr[-1].as_ptr = static_cast<unsigned char*>(addr) + idx * elem_size;
-
-            ++ip;
-            break;
-        }
         case bc_op::load_field: {
             auto type
                 = static_cast<lauf_type>(mod->get_constant(inst.load_field.constant_idx).as_ptr);
@@ -233,17 +234,19 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             ++ip;
             break;
         }
-        case bc_op::store_field: {
+        case bc_op::store_field:
+        case bc_op::save_field: {
             auto type
                 = static_cast<lauf_type>(mod->get_constant(inst.store_field.constant_idx).as_ptr);
 
             auto object = vstack_ptr[-1].as_ptr;
             type->store_field(object, inst.store_field.field, vstack_ptr[-2]);
-            vstack_ptr -= 2;
+            vstack_ptr -= (inst.tag.op == bc_op::save_field ? 1 : 2);
 
             ++ip;
             break;
         }
+
         case bc_op::load_value: {
             auto object = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.load_value.constant);
 
@@ -253,11 +256,14 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             ++ip;
             break;
         }
-        case bc_op::store_value: {
-            auto object = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.load_value.constant);
+        case bc_op::store_value:
+        case bc_op::save_value: {
+            auto object
+                = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.store_value.constant);
 
             ::new (object) lauf_value(vstack_ptr[-1]);
-            --vstack_ptr;
+            if (inst.tag.op == bc_op::store_value)
+                --vstack_ptr;
 
             ++ip;
             break;

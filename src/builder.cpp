@@ -377,7 +377,11 @@ void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field)
     LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
 
     auto idx = b->fn->mod->constants.insert(type);
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(load_field, field, idx));
+    // If the last instruction is a store of the same field, turn it into a save instead.
+    if (!b->bytecode.empty() && b->bytecode.back() == LAUF_BC_INSTRUCTION(store_field, field, idx))
+        b->bytecode.back().store_field.op = bc_op::save_field;
+    else
+        b->bytecode.push_back(LAUF_BC_INSTRUCTION(load_field, field, idx));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(), "load_field", "missing object address");
     b->vstack.push();
@@ -395,7 +399,11 @@ void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field)
 
 void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(load_value, var._addr));
+    // If the last instruction is a store of the same address, turn it into a save instead.
+    if (!b->bytecode.empty() && b->bytecode.back() == LAUF_BC_INSTRUCTION(store_value, var._addr))
+        b->bytecode.back().store_value.op = bc_op::save_value;
+    else
+        b->bytecode.push_back(LAUF_BC_INSTRUCTION(load_value, var._addr));
     b->vstack.push();
 }
 
