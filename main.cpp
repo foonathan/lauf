@@ -9,6 +9,7 @@
 #include <lauf/builder.h>
 #include <lauf/builtin.h>
 #include <lauf/frontend/text.h>
+#include <lauf/linker.h>
 #include <lauf/module.h>
 #include <lauf/vm.h>
 
@@ -57,7 +58,7 @@ int main()
     lauf_frontend_text_register_builtin(parser, "add", add);
     lauf_frontend_text_register_type(parser, "Int", &type_int);
     lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);
-    auto mod = lauf_frontend_text_cstr(parser, R"(
+    auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
         function @fib(1 => 1) {
@@ -141,13 +142,14 @@ int main()
             }
         }
     )");
-    auto fn  = lauf_module_function_begin(mod)[0];
+    auto fn      = lauf_module_function_begin(mod)[0];
+    auto program = lauf_link_single_module(mod, fn);
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
     lauf_value input = {.as_int = 35};
     lauf_value output;
-    lauf_vm_execute(vm, mod, fn, &input, &output);
+    lauf_vm_execute(vm, program, &input, &output);
     std::printf("result: %ld\n", output.as_int);
 
     lauf_vm_destroy(vm);

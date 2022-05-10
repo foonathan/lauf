@@ -7,7 +7,7 @@
 #include <deque>
 #include <lauf/builtin.h>
 #include <lauf/detail/bytecode.hpp>
-#include <lauf/detail/constant_pool.hpp>
+#include <lauf/detail/literal_pool.hpp>
 #include <lauf/detail/stack_allocator.hpp>
 #include <lauf/detail/stack_check.hpp>
 #include <lauf/detail/verify.hpp>
@@ -101,7 +101,7 @@ struct lauf_function_builder_impl
 struct lauf_module_builder_impl
 {
     const char*                            name;
-    constant_pool                          literals;
+    literal_pool                           literals;
     std::deque<lauf_function_builder_impl> functions;
 };
 

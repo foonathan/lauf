@@ -5,7 +5,7 @@
 #define LAUF_VM_H_INCLUDED
 
 #include <lauf/config.h>
-#include <lauf/module.h>
+#include <lauf/program.h>
 #include <lauf/value.h>
 
 LAUF_HEADER_START
@@ -23,8 +23,7 @@ lauf_vm lauf_vm_create(lauf_vm_options options);
 
 void lauf_vm_destroy(lauf_vm vm);
 
-void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_value* input,
-                     lauf_value* output);
+void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output);
 
 LAUF_HEADER_END
 

@@ -9,7 +9,9 @@ get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf A
 set(header_files
         ${include_dir}/builder.h
         ${include_dir}/config.h
+        ${include_dir}/linker.h
         ${include_dir}/module.h
+        ${include_dir}/program.h
         ${include_dir}/type.h
         ${include_dir}/value.h
         ${include_dir}/vm.h
@@ -17,14 +19,17 @@ set(header_files
         ${include_dir}/frontend/text.h)
 set(src_header_files
         lauf/impl/module.hpp
+        lauf/impl/program.hpp
         lauf/detail/bytecode.hpp
-        lauf/detail/constant_pool.hpp
+        lauf/detail/literal_pool.hpp
         lauf/detail/stack_allocator.hpp
         lauf/detail/stack_check.hpp
         lauf/detail/verify.hpp)
 set(src_files
         builder.cpp
+        linker.cpp
         module.cpp
+        program.cpp
         type.cpp
         vm.cpp
 

@@ -4,7 +4,9 @@
 // Check that everything compiles as C.
 #include <lauf/builder.h>
 #include <lauf/config.h>
+#include <lauf/linker.h>
 #include <lauf/module.h>
+#include <lauf/program.h>
 #include <lauf/type.h>
 #include <lauf/value.h>
 #include <lauf/vm.h>

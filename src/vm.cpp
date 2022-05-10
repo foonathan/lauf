@@ -11,6 +11,7 @@
 #include <lauf/detail/bytecode.hpp>
 #include <lauf/detail/stack_allocator.hpp>
 #include <lauf/impl/module.hpp>
+#include <lauf/impl/program.hpp>
 #include <lauf/type.h>
 #include <new>
 #include <type_traits>
@@ -56,9 +57,10 @@ struct stack_frame
 
 } // namespace
 
-void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_value* input,
-                     lauf_value* output)
+void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
+    auto [mod, fn] = program(prog);
+
     auto vstack_ptr = vm->value_stack();
     std::memcpy(vstack_ptr, input, fn->input_count * sizeof(lauf_value));
     vstack_ptr += fn->input_count;
