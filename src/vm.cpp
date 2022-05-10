@@ -233,7 +233,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
             ++ip;
             break;
         }
-        case bc_op::store_field:
+        case bc_op::store_field: {
             auto type
                 = static_cast<lauf_type>(mod->get_constant(inst.store_field.constant_idx).as_ptr);
 
@@ -243,6 +243,25 @@ void lauf_vm_execute(lauf_vm vm, lauf_module mod, lauf_function fn, const lauf_v
 
             ++ip;
             break;
+        }
+        case bc_op::load_value: {
+            auto object = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.load_value.constant);
+
+            *vstack_ptr = *reinterpret_cast<lauf_value*>(object);
+            ++vstack_ptr;
+
+            ++ip;
+            break;
+        }
+        case bc_op::store_value: {
+            auto object = static_cast<unsigned char*>(locals) + ptrdiff_t(inst.load_value.constant);
+
+            ::new (object) lauf_value(vstack_ptr[-1]);
+            --vstack_ptr;
+
+            ++ip;
+            break;
+        }
         }
     }
 

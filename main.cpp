@@ -63,20 +63,20 @@ int main()
         function @fib(1 => 1) {
             local %arg : @Value;
             block %entry(1 => 0) {
-                pick 0; local_addr %arg; store_field @Value.0;
-                call_builtin @is_zero_or_one;
+                store_value %arg;
+                load_value %arg; call_builtin @is_zero_or_one;
                 branch if_true %base else %recurse;
             }
             block %base(0 => 1) {
-                local_addr %arg; load_field @Value.0;
+                load_value %arg;
                 return;
             }
             block %recurse(0 => 1) {
-                local_addr %arg; load_field @Value.0;
+                load_value %arg;
                 call_builtin @decrement;
                 recurse;
 
-                local_addr %arg; load_field @Value.0;
+                load_value %arg;
                 call_builtin @decrement;
                 call_builtin @decrement;
                 recurse;
@@ -141,11 +141,11 @@ int main()
             }
         }
     )");
-    auto fn  = lauf_module_function_begin(mod)[2];
+    auto fn  = lauf_module_function_begin(mod)[0];
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_int = 10};
+    lauf_value input = {.as_int = 35};
     lauf_value output;
     lauf_vm_execute(vm, mod, fn, &input, &output);
     std::printf("result: %ld\n", output.as_int);

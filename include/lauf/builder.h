@@ -73,6 +73,8 @@ void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn);
 void lauf_build_array_element(lauf_block_builder b, lauf_type type);
 void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field);
 void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field);
+void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var);
+void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var);
 
 LAUF_HEADER_END
 

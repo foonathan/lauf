@@ -393,3 +393,15 @@ void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field)
     LAUF_VERIFY_RESULT(b->vstack.drop(2), "store_field", "missing object address or value");
 }
 
+void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var)
+{
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(load_value, var._addr));
+    b->vstack.push();
+}
+
+void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var)
+{
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(store_value, var._addr));
+    LAUF_VERIFY_RESULT(b->vstack.drop(), "store_value", "missing value");
+}
+

@@ -57,4 +57,10 @@ LAUF_BC_OP(load_field, bc_inst_field_constant_idx)
 // Store a field to a type, constant is lauf_type*.
 // value addr => _
 LAUF_BC_OP(store_field, bc_inst_field_constant_idx)
+// Load a stack value from a constant address.
+// _ => value
+LAUF_BC_OP(load_value, bc_inst_constant)
+// Store a stack value to a constant address.
+// value => _
+LAUF_BC_OP(store_value, bc_inst_constant)
 
