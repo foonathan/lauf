@@ -308,6 +308,14 @@ void lauf_build_int(lauf_block_builder b, lauf_value_int value)
     b->vstack.push();
 }
 
+void lauf_build_ptr(lauf_block_builder b, lauf_value_ptr ptr)
+{
+    auto idx = b->fn->mod->literals.insert(ptr);
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(push, idx));
+
+    b->vstack.push();
+}
+
 void lauf_build_local_addr(lauf_block_builder b, lauf_local_variable var)
 {
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(local_addr, var._addr));

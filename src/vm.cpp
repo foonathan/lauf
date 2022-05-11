@@ -180,7 +180,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
             auto addr      = vstack_ptr[-1].as_ptr;
 
             --vstack_ptr;
-            vstack_ptr[-1].as_ptr = static_cast<unsigned char*>(addr) + idx * elem_size;
+            vstack_ptr[-1].as_ptr = (unsigned char*)(addr) + idx * elem_size;
 
             ++ip;
             break;
@@ -219,8 +219,8 @@ void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         }
 
         case bc_op::call_builtin: {
-            auto callee = reinterpret_cast<lauf_builtin_function*>(
-                mod->get_literal(inst.call_builtin.literal_idx).as_ptr);
+            auto callee
+                = (lauf_builtin_function*)(mod->get_literal(inst.call_builtin.literal_idx).as_ptr);
             vstack_ptr = callee(vstack_ptr);
             ++ip;
             break;
@@ -241,7 +241,7 @@ void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
             auto type
                 = static_cast<lauf_type>(mod->get_literal(inst.store_field.literal_idx).as_ptr);
 
-            auto object = vstack_ptr[-1].as_ptr;
+            auto object = const_cast<void*>(vstack_ptr[-1].as_ptr);
             type->store_field(object, inst.store_field.field, vstack_ptr[-2]);
             vstack_ptr -= (inst.tag.op == bc_op::save_field ? 1 : 2);
 

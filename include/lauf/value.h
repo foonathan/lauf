@@ -8,9 +8,9 @@
 
 LAUF_HEADER_START
 
-typedef int64_t  lauf_value_int;
-typedef uint64_t lauf_value_uint;
-typedef void*    lauf_value_ptr;
+typedef int64_t     lauf_value_int;
+typedef uint64_t    lauf_value_uint;
+typedef const void* lauf_value_ptr;
 
 typedef union lauf_value
 {

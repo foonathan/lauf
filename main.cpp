@@ -18,6 +18,11 @@ LAUF_BUILTIN_UNARY_OP(print)
     std::printf("%lu\n", value.as_int);
     return value;
 }
+LAUF_BUILTIN_UNARY_OP(print_str)
+{
+    std::printf("%s\n", static_cast<const char*>(value.as_ptr));
+    return value;
+}
 
 LAUF_BUILTIN_UNARY_OP(increment)
 {
@@ -53,6 +58,7 @@ int main()
 {
     auto parser = lauf_frontend_text_create_parser();
     lauf_frontend_text_register_builtin(parser, "print", print);
+    lauf_frontend_text_register_builtin(parser, "print_str", print_str);
     lauf_frontend_text_register_builtin(parser, "is_zero_or_one", is_zero_or_one);
     lauf_frontend_text_register_builtin(parser, "decrement", decrement);
     lauf_frontend_text_register_builtin(parser, "add", add);
@@ -116,38 +122,23 @@ int main()
             }
         }
 
+        const @data = "hello", 65, 0;
+
         function @test(1 => 1) {
-            local %array : @Int[3];
             block %entry(1 => 1) {
-                int 2;
-                local_addr %array;
-                array_element @Int;
-                store_field @Int.0;
-
-                int 42;
-                int 1;
-                local_addr %array;
-                array_element @Int;
-                store_field @Int.0;
-
-                int 11;
-                local_addr %array;
-                store_field @Int.0;
-
-                int 1;
-                local_addr %array;
-                array_element @Int;
-                load_field @Int.0;
+                ptr @data;
+                call_builtin @print_str;
+                drop 1;
                 return;
             }
         }
     )");
-    auto fn      = lauf_module_function_begin(mod)[0];
+    auto fn      = lauf_module_function_begin(mod)[2];
     auto program = lauf_link_single_module(mod, fn);
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_int = 35};
+    lauf_value input = {.as_int = 10};
     lauf_value output;
     lauf_vm_execute(vm, program, &input, &output);
     std::printf("result: %ld\n", output.as_int);

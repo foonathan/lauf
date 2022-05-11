@@ -42,12 +42,6 @@ public:
         v.as_ptr = value;
         return insert(v);
     }
-    auto insert(const void* value)
-    {
-        lauf_value v;
-        v.as_ptr = const_cast<void*>(value);
-        return insert(v);
-    }
 
     std::size_t size() const
     {

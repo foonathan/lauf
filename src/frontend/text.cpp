@@ -23,7 +23,7 @@ struct lauf_frontend_text_parser_impl
     std::vector<lauf_module>                 modules;
     std::map<std::string_view, lauf_builtin> builtins;
     std::map<std::string_view, lauf_type>    types;
-    std::set<std::string>                    names;
+    std::set<std::string>                    data;
 };
 
 namespace
@@ -64,6 +64,10 @@ struct inst_int
 {
     static constexpr auto rule  = LEXY_KEYWORD("int", identifier) >> dsl::integer<lauf_value_int>;
     static constexpr auto build = &lauf_build_int;
+};
+struct inst_ptr
+{
+    static constexpr auto rule = LEXY_KEYWORD("ptr", identifier) >> dsl::p<global_label>;
 };
 struct inst_local_addr
 {
@@ -126,7 +130,7 @@ struct inst_store_value
 struct inst
 {
     static constexpr auto rule
-        = (dsl::p<inst_int> | dsl::p<inst_local_addr>                                        //
+        = (dsl::p<inst_int> | dsl::p<inst_ptr> | dsl::p<inst_local_addr>                     //
            | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>                       //
            | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin>            //
            | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
@@ -215,6 +219,33 @@ struct function
 };
 
 //=== module ===//
+struct const_
+{
+    struct byte
+    {
+        static constexpr auto rule
+            = LEXY_LIT("0x") >> dsl::integer<unsigned char>(dsl::digits<dsl::hex>)
+              | dsl::integer<unsigned char>;
+        static constexpr auto value = lexy::construct<char>;
+    };
+
+    struct string
+    {
+        static constexpr auto rule  = dsl::quoted(dsl::ascii::print);
+        static constexpr auto value = lexy::as_string<std::string>;
+    };
+
+    struct data
+    {
+        static constexpr auto rule = dsl::list(dsl::p<byte> | dsl::p<string>, dsl::sep(dsl::comma));
+        static constexpr auto value = lexy::as_string<std::string>;
+    };
+
+    static constexpr auto rule
+        = LEXY_KEYWORD("const", identifier)
+          >> dsl::p<global_label> + dsl::equal_sign + dsl::p<data> + dsl::semicolon;
+};
+
 struct module_
 {
     struct header
@@ -227,7 +258,8 @@ struct module_
     static constexpr auto whitespace
         = dsl::ascii::space | LEXY_LIT("#") >> dsl::until(dsl::newline).or_eof();
 
-    static constexpr auto rule = dsl::p<header> >> dsl::while_(dsl::p<function>) + dsl::eof;
+    static constexpr auto rule
+        = dsl::p<header> >> dsl::while_(dsl::p<function> | dsl::p<const_>) + dsl::eof;
 };
 } // namespace lauf::text_grammar
 
@@ -252,11 +284,12 @@ struct builder
     mutable std::vector<partial_block>                      blocks;
     mutable std::map<std::string_view, lauf_block_builder>  block_labels;
     mutable std::map<std::string_view, lauf_local_variable> local_labels;
+    mutable std::map<std::string_view, lauf_value_ptr>      data_labels;
 
     auto value_of(lauf::text_grammar::module_::header) const
     {
         return lexy::callback([&](std::string_view name) {
-            auto result = parser->names.emplace(name);
+            auto result = parser->data.emplace(name);
             mod         = lauf_build_module(result.first->c_str());
         });
     }
@@ -266,6 +299,14 @@ struct builder
             auto result = lauf_finish_module(mod);
             parser->modules.push_back(result);
             return result;
+        });
+    }
+
+    auto value_of(lauf::text_grammar::const_) const
+    {
+        return lexy::callback([&](std::string_view name, std::string&& data) {
+            auto result       = parser->data.emplace(std::move(data));
+            data_labels[name] = result.first->c_str();
         });
     }
 
@@ -279,7 +320,7 @@ struct builder
             }
             else
             {
-                auto result           = parser->names.emplace(name);
+                auto result           = parser->data.emplace(name);
                 cur_function          = lauf_build_function(mod, result.first->c_str(), sig);
                 function_labels[name] = cur_function;
             }
@@ -356,6 +397,12 @@ struct builder
     {
         return lexy::callback(
             [&](const auto&... args) { Inst::build(blocks[cur_block].builder, args...); });
+    }
+    auto value_of(lauf::text_grammar::inst_ptr) const
+    {
+        return lexy::callback([&](std::string_view name) {
+            lauf_build_ptr(blocks[cur_block].builder, data_labels.at(name));
+        });
     }
     auto value_of(lauf::text_grammar::inst_local_addr) const
     {
