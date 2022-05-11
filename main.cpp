@@ -127,8 +127,8 @@ int main()
         function @test(1 => 1) {
             block %entry(1 => 1) {
                 ptr @data;
-                call_builtin @print_str;
-                drop 1;
+                assert if_true;
+                int 42;
                 return;
             }
         }
@@ -140,8 +140,8 @@ int main()
 
     lauf_value input = {.as_int = 10};
     lauf_value output;
-    lauf_vm_execute(vm, program, &input, &output);
-    std::printf("result: %ld\n", output.as_int);
+    if (lauf_vm_execute(vm, program, &input, &output))
+        std::printf("result: %ld\n", output.as_int);
 
     lauf_vm_destroy(vm);
     lauf_frontend_text_destroy_parser(parser);

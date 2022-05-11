@@ -128,6 +128,32 @@ lauf_module lauf_finish_module(lauf_module_builder b)
 }
 
 //=== function builder ===//
+namespace
+{
+condition_code translate_condition(lauf_condition cond)
+{
+    switch (cond)
+    {
+    case LAUF_IF_FALSE:
+        return condition_code::if_zero;
+    case LAUF_IF_TRUE:
+        return condition_code::if_nonzero;
+    case LAUF_CMP_EQ:
+        return condition_code::cmp_eq;
+    case LAUF_CMP_NE:
+        return condition_code::cmp_ne;
+    case LAUF_CMP_LT:
+        return condition_code::cmp_lt;
+    case LAUF_CMP_LE:
+        return condition_code::cmp_le;
+    case LAUF_CMP_GT:
+        return condition_code::cmp_gt;
+    case LAUF_CMP_GE:
+        return condition_code::cmp_ge;
+    }
+}
+} // namespace
+
 lauf_function_builder lauf_build_function(lauf_module_builder b, const char* name,
                                           lauf_signature sig)
 {
@@ -196,27 +222,7 @@ lauf_function lauf_finish_function(lauf_function_builder b)
             break;
 
         case block_terminator::branch: {
-            auto cc = [&] {
-                switch (term.condition)
-                {
-                case LAUF_IF_FALSE:
-                    return condition_code::if_zero;
-                case LAUF_IF_TRUE:
-                    return condition_code::if_nonzero;
-                case LAUF_CMP_EQ:
-                    return condition_code::cmp_eq;
-                case LAUF_CMP_NE:
-                    return condition_code::cmp_ne;
-                case LAUF_CMP_LT:
-                    return condition_code::cmp_lt;
-                case LAUF_CMP_LE:
-                    return condition_code::cmp_le;
-                case LAUF_CMP_GT:
-                    return condition_code::cmp_gt;
-                case LAUF_CMP_GE:
-                    return condition_code::cmp_ge;
-                }
-            }();
+            auto cc = translate_condition(term.condition);
             result->bytecode()[position]
                 = LAUF_BC_INSTRUCTION(jump_if, cc, term.if_true->start_offset - position);
             result->bytecode()[position + 1]
@@ -419,5 +425,17 @@ void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var)
 {
     b->bytecode.push_back(LAUF_BC_INSTRUCTION(store_value, var._addr));
     LAUF_VERIFY_RESULT(b->vstack.drop(), "store_value", "missing value");
+}
+
+void lauf_build_panic(lauf_block_builder b)
+{
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(panic));
+    LAUF_VERIFY_RESULT(b->vstack.drop(), "panic", "missing message");
+}
+
+void lauf_build_assert(lauf_block_builder b, lauf_condition condition)
+{
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(assert, translate_condition(condition)));
+    LAUF_VERIFY_RESULT(b->vstack.drop(2), "assert", "missing value or message");
 }
 

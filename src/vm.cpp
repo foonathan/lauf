@@ -19,14 +19,16 @@
 
 using namespace lauf::_detail;
 
-const lauf_vm_options lauf_default_vm_options = {
-    size_t(512) * 1024,
-};
+const lauf_vm_options lauf_default_vm_options
+    = {size_t(512) * 1024, [](lauf_panic_info, const char* message) {
+           std::fprintf(stderr, "[lauf] panic: %s\n", message);
+       }};
 
 struct alignas(lauf_value) lauf_vm_impl
 {
-    size_t          value_stack_size;
-    stack_allocator memory_stack;
+    lauf_panic_handler panic_handler;
+    size_t             value_stack_size;
+    stack_allocator    memory_stack;
 
     lauf_value* value_stack()
     {
@@ -37,7 +39,7 @@ struct alignas(lauf_value) lauf_vm_impl
 lauf_vm lauf_vm_create(lauf_vm_options options)
 {
     auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_value_stack_size);
-    return ::new (memory) lauf_vm_impl{options.max_value_stack_size};
+    return ::new (memory) lauf_vm_impl{options.panic_handler, options.max_value_stack_size};
 }
 
 void lauf_vm_destroy(lauf_vm vm)
@@ -55,9 +57,27 @@ struct stack_frame
     void*                   locals;
 };
 
+bool check_condition(condition_code cc, lauf_value value)
+{
+    switch (cc)
+    {
+    case condition_code::if_zero:
+        return value.as_int == 0;
+    case condition_code::if_nonzero:
+        return value.as_int != 0;
+    case condition_code::cmp_lt:
+        return value.as_int < 0;
+    case condition_code::cmp_le:
+        return value.as_int <= 0;
+    case condition_code::cmp_gt:
+        return value.as_int > 0;
+    case condition_code::cmp_ge:
+        return value.as_int >= 0;
+    }
+}
 } // namespace
 
-void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
+bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
     auto [mod, fn] = program(prog);
 
@@ -104,46 +124,11 @@ void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
             break;
         case bc_op::jump_if: {
             auto top_value = vstack_ptr[-1];
+            if (check_condition(inst.jump_if.cc, top_value))
+                ip += inst.jump_if.offset;
+            else
+                ++ip;
             --vstack_ptr;
-            switch (inst.jump_if.cc)
-            {
-            case condition_code::if_zero:
-                if (top_value.as_int == 0)
-                    ip += inst.jump_if.offset;
-                else
-                    ++ip;
-                break;
-            case condition_code::if_nonzero:
-                if (top_value.as_int != 0)
-                    ip += inst.jump_if.offset;
-                else
-                    ++ip;
-                break;
-            case condition_code::cmp_lt:
-                if (top_value.as_int < 0)
-                    ip += inst.jump_if.offset;
-                else
-                    ++ip;
-                break;
-            case condition_code::cmp_le:
-                if (top_value.as_int <= 0)
-                    ip += inst.jump_if.offset;
-                else
-                    ++ip;
-                break;
-            case condition_code::cmp_gt:
-                if (top_value.as_int > 0)
-                    ip += inst.jump_if.offset;
-                else
-                    ++ip;
-                break;
-            case condition_code::cmp_ge:
-                if (top_value.as_int >= 0)
-                    ip += inst.jump_if.offset;
-                else
-                    ++ip;
-                break;
-            }
             break;
         }
 
@@ -269,6 +254,25 @@ void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
             ++ip;
             break;
         }
+
+        case bc_op::panic: {
+            auto message = static_cast<const char*>(vstack_ptr[-1].as_ptr);
+            vm->panic_handler(nullptr, message);
+            return false;
+        }
+        case bc_op::assert: {
+            auto value   = vstack_ptr[-2];
+            auto message = static_cast<const char*>(vstack_ptr[-1].as_ptr);
+            if (check_condition(inst.assert.cc, value))
+            {
+                vm->panic_handler(nullptr, message);
+                return false;
+            }
+
+            vstack_ptr -= 2;
+            ++ip;
+            break;
+        }
         }
     }
 
@@ -276,5 +280,6 @@ void lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     std::memcpy(output, vstack_ptr, fn->output_count * sizeof(lauf_value));
 
     vm->memory_stack.reset();
+    return true;
 }
 

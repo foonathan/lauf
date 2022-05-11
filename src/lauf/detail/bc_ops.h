@@ -71,3 +71,10 @@ LAUF_BC_OP(store_value, bc_inst_literal)
 // value => value
 LAUF_BC_OP(save_value, bc_inst_literal)
 
+// Invokes the panic handler.
+// message => _
+LAUF_BC_OP(panic, bc_inst_none)
+// Invokes the panic handler if the condition is true.
+// value message => _
+LAUF_BC_OP(assert, bc_inst_cc)
+

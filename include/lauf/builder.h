@@ -77,6 +77,9 @@ void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field);
 void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var);
 void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var);
 
+void lauf_build_panic(lauf_block_builder b);
+void lauf_build_assert(lauf_block_builder b, lauf_condition condition);
+
 LAUF_HEADER_END
 
 #endif // LAUF_BUILDER_H_INCLUDED

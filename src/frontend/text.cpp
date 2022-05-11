@@ -59,6 +59,16 @@ struct global_label
     static constexpr auto value = lexy::as_string<std::string_view>;
 };
 
+static constexpr auto ccs = lexy::symbol_table<lauf_condition> //
+                                .map<LEXY_SYMBOL("if_true")>(LAUF_IF_TRUE)
+                                .map<LEXY_SYMBOL("if_false")>(LAUF_IF_FALSE)
+                                .map<LEXY_SYMBOL("cmp_eq")>(LAUF_CMP_EQ)
+                                .map<LEXY_SYMBOL("cmp_ne")>(LAUF_CMP_NE)
+                                .map<LEXY_SYMBOL("cmp_lt")>(LAUF_CMP_LT)
+                                .map<LEXY_SYMBOL("cmp_le")>(LAUF_CMP_LE)
+                                .map<LEXY_SYMBOL("cmp_gt")>(LAUF_CMP_GT)
+                                .map<LEXY_SYMBOL("cmp_ge")>(LAUF_CMP_GE);
+
 //=== instructions ===//
 struct inst_int
 {
@@ -127,6 +137,17 @@ struct inst_store_value
     static constexpr auto rule = LEXY_KEYWORD("store_value", identifier) >> dsl::p<local_label>;
 };
 
+struct inst_panic
+{
+    static constexpr auto rule  = LEXY_KEYWORD("panic", identifier);
+    static constexpr auto build = &lauf_build_panic;
+};
+struct inst_assert
+{
+    static constexpr auto rule  = LEXY_KEYWORD("assert", identifier) >> dsl::symbol<ccs>;
+    static constexpr auto build = &lauf_build_assert;
+};
+
 struct inst
 {
     static constexpr auto rule
@@ -134,7 +155,8 @@ struct inst
            | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>                       //
            | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin>            //
            | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
-           | dsl::p<inst_load_value> | dsl::p<inst_store_value>)                             //
+           | dsl::p<inst_load_value> | dsl::p<inst_store_value>                              //
+           | dsl::p<inst_panic> | dsl::p<inst_assert>)                                       //
         +dsl::semicolon;
     static constexpr auto value = lexy::forward<void>;
 };
@@ -156,9 +178,6 @@ struct term_jump
 
 struct term_branch
 {
-    static constexpr auto ccs
-        = lexy::symbol_table<lauf_condition>.map<LEXY_SYMBOL("if_true")>(LAUF_IF_TRUE).map<LEXY_SYMBOL("if_false")>(LAUF_IF_FALSE);
-
     static constexpr auto rule = LEXY_KEYWORD("branch", identifier)
                                  >> dsl::symbol<ccs> + dsl::p<local_label> //
                                         + LEXY_KEYWORD("else", identifier) + dsl::p<local_label>;

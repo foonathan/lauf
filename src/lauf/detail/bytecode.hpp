@@ -140,6 +140,15 @@ struct bc_inst_cc_offset
     }
 };
 
+struct bc_inst_cc
+{
+    bc_op          op : 8;
+    condition_code cc : 3;
+    int32_t        _padding : 21;
+
+    explicit bc_inst_cc(bc_op op, condition_code cc) : op(op), cc(cc) {}
+};
+
 union bc_instruction
 {
     bc_inst_none tag;
