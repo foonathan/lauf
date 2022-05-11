@@ -52,11 +52,31 @@ struct local_label
     static constexpr auto rule  = dsl::percent_sign >> identifier;
     static constexpr auto value = lexy::as_string<std::string_view>;
 };
-
 struct global_label
 {
     static constexpr auto rule  = dsl::at_sign >> identifier;
     static constexpr auto value = lexy::as_string<std::string_view>;
+};
+
+struct ref_local_var
+{
+    static constexpr auto rule = dsl::p<local_label>;
+};
+struct ref_function
+{
+    static constexpr auto rule = dsl::p<global_label>;
+};
+struct ref_data
+{
+    static constexpr auto rule = dsl::p<global_label>;
+};
+struct ref_builtin
+{
+    static constexpr auto rule = dsl::p<global_label>;
+};
+struct ref_type
+{
+    static constexpr auto rule = dsl::p<global_label>;
 };
 
 static constexpr auto ccs = lexy::symbol_table<lauf_condition> //
@@ -77,11 +97,13 @@ struct inst_int
 };
 struct inst_ptr
 {
-    static constexpr auto rule = LEXY_KEYWORD("ptr", identifier) >> dsl::p<global_label>;
+    static constexpr auto rule  = LEXY_KEYWORD("ptr", identifier) >> dsl::p<ref_data>;
+    static constexpr auto build = &lauf_build_ptr;
 };
 struct inst_local_addr
 {
-    static constexpr auto rule = LEXY_KEYWORD("local_addr", identifier) >> dsl::p<local_label>;
+    static constexpr auto rule  = LEXY_KEYWORD("local_addr", identifier) >> dsl::p<ref_local_var>;
+    static constexpr auto build = &lauf_build_local_addr;
 };
 
 struct inst_drop
@@ -107,34 +129,41 @@ struct inst_recurse
 };
 struct inst_call
 {
-    static constexpr auto rule = LEXY_KEYWORD("call", identifier) >> dsl::p<global_label>;
+    static constexpr auto rule  = LEXY_KEYWORD("call", identifier) >> dsl::p<ref_function>;
+    static constexpr auto build = &lauf_build_call;
 };
 struct inst_call_builtin
 {
-    static constexpr auto rule = LEXY_KEYWORD("call_builtin", identifier) >> dsl::p<global_label>;
+    static constexpr auto rule  = LEXY_KEYWORD("call_builtin", identifier) >> dsl::p<ref_builtin>;
+    static constexpr auto build = &lauf_build_call_builtin;
 };
 
 struct inst_array_element
 {
-    static constexpr auto rule = LEXY_KEYWORD("array_element", identifier) >> dsl::p<global_label>;
+    static constexpr auto rule  = LEXY_KEYWORD("array_element", identifier) >> dsl::p<ref_type>;
+    static constexpr auto build = &lauf_build_array_element;
 };
 struct inst_load_field
 {
     static constexpr auto rule = LEXY_KEYWORD("load_field", identifier)
-                                 >> dsl::p<global_label> + dsl::period + dsl::integer<size_t>;
+                                 >> dsl::p<ref_type> + dsl::period + dsl::integer<size_t>;
+    static constexpr auto build = &lauf_build_load_field;
 };
 struct inst_store_field
 {
     static constexpr auto rule = LEXY_KEYWORD("store_field", identifier)
-                                 >> dsl::p<global_label> + dsl::period + dsl::integer<size_t>;
+                                 >> dsl::p<ref_type> + dsl::period + dsl::integer<size_t>;
+    static constexpr auto build = &lauf_build_store_field;
 };
 struct inst_load_value
 {
-    static constexpr auto rule = LEXY_KEYWORD("load_value", identifier) >> dsl::p<local_label>;
+    static constexpr auto rule  = LEXY_KEYWORD("load_value", identifier) >> dsl::p<ref_local_var>;
+    static constexpr auto build = &lauf_build_load_value;
 };
 struct inst_store_value
 {
-    static constexpr auto rule = LEXY_KEYWORD("store_value", identifier) >> dsl::p<local_label>;
+    static constexpr auto rule  = LEXY_KEYWORD("store_value", identifier) >> dsl::p<ref_local_var>;
+    static constexpr auto build = &lauf_build_store_value;
 };
 
 struct inst_panic
@@ -217,7 +246,7 @@ struct local
 {
     static constexpr auto rule = [] {
         auto array_size = dsl::square_bracketed(dsl::integer<std::size_t>);
-        auto type       = dsl::p<global_label> + dsl::if_(array_size);
+        auto type       = dsl::p<ref_type> + dsl::if_(array_size);
 
         return LEXY_KEYWORD("local", identifier)
                >> dsl::p<local_label> + dsl::colon + type + dsl::semicolon;
@@ -302,7 +331,7 @@ struct builder
     mutable std::size_t                                     cur_block = 0;
     mutable std::vector<partial_block>                      blocks;
     mutable std::map<std::string_view, lauf_block_builder>  block_labels;
-    mutable std::map<std::string_view, lauf_local_variable> local_labels;
+    mutable std::map<std::string_view, lauf_local_variable> var_labels;
     mutable std::map<std::string_view, lauf_value_ptr>      data_labels;
 
     auto value_of(lauf::text_grammar::module_::header) const
@@ -374,7 +403,7 @@ struct builder
                        cur_block    = 0;
                        blocks.clear();
                        block_labels.clear();
-                       local_labels.clear();
+                       var_labels.clear();
                    });
     }
 
@@ -400,15 +429,40 @@ struct builder
     auto value_of(lauf::text_grammar::local) const
     {
         return lexy::callback(
-            [&](std::string_view name, std::string_view type) {
-                auto layout        = parser->types.at(type)->layout;
-                local_labels[name] = lauf_build_local_variable(cur_function, layout);
+            [&](std::string_view name, lauf_type type) {
+                var_labels[name] = lauf_build_local_variable(cur_function, type->layout);
             },
-            [&](std::string_view name, std::string_view type, std::size_t array_size) {
-                auto layout = parser->types.at(type)->layout;
+            [&](std::string_view name, lauf_type type, std::size_t array_size) {
+                auto layout = type->layout;
                 layout.size *= array_size;
-                local_labels[name] = lauf_build_local_variable(cur_function, layout);
+                var_labels[name] = lauf_build_local_variable(cur_function, layout);
             });
+    }
+
+    auto value_of(lauf::text_grammar::ref_local_var) const
+    {
+        return lexy::callback<lauf_local_variable>(
+            [&](std::string_view name) { return var_labels.at(name); });
+    }
+    auto value_of(lauf::text_grammar::ref_function) const
+    {
+        return lexy::callback<lauf_function_builder>(
+            [&](std::string_view name) { return function_labels.at(name); });
+    }
+    auto value_of(lauf::text_grammar::ref_data) const
+    {
+        return lexy::callback<const void*>(
+            [&](std::string_view name) { return data_labels.at(name); });
+    }
+    auto value_of(lauf::text_grammar::ref_builtin) const
+    {
+        return lexy::callback<lauf_builtin>(
+            [&](std::string_view name) { return parser->builtins.at(name); });
+    }
+    auto value_of(lauf::text_grammar::ref_type) const
+    {
+        return lexy::callback<lauf_type>(
+            [&](std::string_view name) { return parser->types.at(name); });
     }
 
     template <typename Inst, typename = decltype(Inst::build)>
@@ -416,60 +470,6 @@ struct builder
     {
         return lexy::callback(
             [&](const auto&... args) { Inst::build(blocks[cur_block].builder, args...); });
-    }
-    auto value_of(lauf::text_grammar::inst_ptr) const
-    {
-        return lexy::callback([&](std::string_view name) {
-            lauf_build_ptr(blocks[cur_block].builder, data_labels.at(name));
-        });
-    }
-    auto value_of(lauf::text_grammar::inst_local_addr) const
-    {
-        return lexy::callback([&](std::string_view name) {
-            lauf_build_local_addr(blocks[cur_block].builder, local_labels.at(name));
-        });
-    }
-    auto value_of(lauf::text_grammar::inst_call) const
-    {
-        return lexy::callback([&](std::string_view fn) {
-            lauf_build_call(blocks[cur_block].builder, function_labels.at(fn));
-        });
-    }
-    auto value_of(lauf::text_grammar::inst_call_builtin) const
-    {
-        return lexy::callback([&](std::string_view builtin) {
-            lauf_build_call_builtin(blocks[cur_block].builder, parser->builtins.at(builtin));
-        });
-    }
-    auto value_of(lauf::text_grammar::inst_array_element) const
-    {
-        return lexy::callback([&](std::string_view type) {
-            lauf_build_array_element(blocks[cur_block].builder, parser->types.at(type));
-        });
-    }
-    auto value_of(lauf::text_grammar::inst_load_field) const
-    {
-        return lexy::callback([&](std::string_view type, std::size_t field) {
-            lauf_build_load_field(blocks[cur_block].builder, parser->types.at(type), field);
-        });
-    }
-    auto value_of(lauf::text_grammar::inst_store_field) const
-    {
-        return lexy::callback([&](std::string_view type, std::size_t field) {
-            lauf_build_store_field(blocks[cur_block].builder, parser->types.at(type), field);
-        });
-    }
-    auto value_of(lauf::text_grammar::inst_load_value) const
-    {
-        return lexy::callback([&](std::string_view var) {
-            lauf_build_load_value(blocks[cur_block].builder, local_labels.at(var));
-        });
-    }
-    auto value_of(lauf::text_grammar::inst_store_value) const
-    {
-        return lexy::callback([&](std::string_view var) {
-            lauf_build_store_value(blocks[cur_block].builder, local_labels.at(var));
-        });
     }
 };
 } // namespace
