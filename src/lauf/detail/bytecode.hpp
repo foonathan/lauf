@@ -11,7 +11,7 @@ namespace lauf::_detail
 {
 enum class bc_op : uint8_t
 {
-#define LAUF_BC_OP(Name, Type) Name,
+#define LAUF_BC_OP(Name, Type, ...) Name,
 #include "bc_ops.h"
 #undef LAUF_BC_OP
 };
@@ -20,7 +20,7 @@ inline const char* to_string(bc_op op)
 {
     switch (op)
     {
-#define LAUF_BC_OP(Name, Type)                                                                     \
+#define LAUF_BC_OP(Name, Type, ...)                                                                \
 case bc_op::Name:                                                                                  \
     return #Name;
 #include "bc_ops.h"
@@ -153,7 +153,7 @@ union bc_instruction
 {
     bc_inst_none tag;
 
-#define LAUF_BC_OP(Name, Type) Type Name;
+#define LAUF_BC_OP(Name, Type, ...) Type Name;
 #include "bc_ops.h"
 #undef LAUF_BC_OP
 
