@@ -9,13 +9,14 @@
 #include <lauf/builder.h>
 #include <lauf/builtin.h>
 #include <lauf/frontend/text.h>
+#include <lauf/lib/int.h>
 #include <lauf/linker.h>
 #include <lauf/module.h>
 #include <lauf/vm.h>
 
 LAUF_BUILTIN_UNARY_OP(print)
 {
-    std::printf("%lu\n", value.as_int);
+    std::printf("%lu\n", value.as_sint);
     return value;
 }
 LAUF_BUILTIN_UNARY_OP(print_str)
@@ -24,45 +25,17 @@ LAUF_BUILTIN_UNARY_OP(print_str)
     return value;
 }
 
-LAUF_BUILTIN_UNARY_OP(increment)
-{
-    value.as_int++;
-    return value;
-}
-LAUF_BUILTIN_UNARY_OP(decrement)
-{
-    value.as_int--;
-    return value;
-}
-
-LAUF_BUILTIN_BINARY_OP(add)
-{
-    lhs.as_int += rhs.as_int;
-    return lhs;
-}
-LAUF_BUILTIN_BINARY_OP(multiply)
-{
-    lhs.as_int *= rhs.as_int;
-    return lhs;
-}
-
-LAUF_BUILTIN_UNARY_OP(is_zero_or_one)
-{
-    value.as_int = value.as_int == 0 || value.as_int == 1 ? 1 : 0;
-    return value;
-}
-
-LAUF_NATIVE_PRIMITIVE_TYPE(type_int, lauf_value_int, as_int);
-
 int main()
 {
     auto parser = lauf_frontend_text_create_parser();
     lauf_frontend_text_register_builtin(parser, "print", print);
     lauf_frontend_text_register_builtin(parser, "print_str", print_str);
-    lauf_frontend_text_register_builtin(parser, "is_zero_or_one", is_zero_or_one);
-    lauf_frontend_text_register_builtin(parser, "decrement", decrement);
-    lauf_frontend_text_register_builtin(parser, "add", add);
-    lauf_frontend_text_register_type(parser, "Int", &type_int);
+    lauf_frontend_text_register_builtin(parser, "add",
+                                        lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
+    lauf_frontend_text_register_builtin(parser, "sub",
+                                        lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
+    lauf_frontend_text_register_builtin(parser, "cmp", lauf_scmp_builtin());
+    lauf_frontend_text_register_type(parser, "Int", lauf_native_sint_type());
     lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
@@ -71,21 +44,23 @@ int main()
             local %arg : @Value;
             block %entry(1 => 0) {
                 store_value %arg;
-                load_value %arg; call_builtin @is_zero_or_one;
-                branch if_true %base else %recurse;
+
+                load_value %arg; int 0; call_builtin @cmp;
+                branch cmp_eq %base else %next_check;
+            }
+            block %next_check(0 => 1) {
+                load_value %arg; int 1; call_builtin @cmp;
+                branch cmp_eq %base else %recurse;
             }
             block %base(0 => 1) {
                 load_value %arg;
                 return;
             }
             block %recurse(0 => 1) {
-                load_value %arg;
-                call_builtin @decrement;
+                load_value %arg; int 1; call_builtin @sub;
                 recurse;
 
-                load_value %arg;
-                call_builtin @decrement;
-                call_builtin @decrement;
+                load_value %arg; int 2; call_builtin @sub;
                 recurse;
 
                 call_builtin @add;
@@ -112,7 +87,7 @@ int main()
                 local_addr %b; store_field @Int.0;
                 local_addr %a; store_field @Int.0;
 
-                call_builtin @decrement;
+                int 1; call_builtin @sub;
                 pick 0; branch if_false %exit else %loop;
             }
             block %exit(1 => 1) {
@@ -133,15 +108,15 @@ int main()
             }
         }
     )");
-    auto fn      = lauf_module_function_begin(mod)[2];
+    auto fn      = lauf_module_function_begin(mod)[0];
     auto program = lauf_link_single_module(mod, fn);
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_int = 10};
+    lauf_value input = {.as_sint = 35};
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))
-        std::printf("result: %ld\n", output.as_int);
+        std::printf("result: %ld\n", output.as_sint);
 
     lauf_vm_destroy(vm);
     lauf_frontend_text_destroy_parser(parser);

@@ -16,7 +16,9 @@ set(header_files
         ${include_dir}/value.h
         ${include_dir}/vm.h
 
-        ${include_dir}/frontend/text.h)
+        ${include_dir}/frontend/text.h
+
+        ${include_dir}/lib/int.h)
 set(src_header_files
         lauf/impl/module.hpp
         lauf/impl/program.hpp
@@ -33,7 +35,9 @@ set(src_files
         type.cpp
         vm.cpp
 
-        frontend/text.cpp)
+        frontend/text.cpp
+
+        lib/int.cpp)
 
 add_library(lauf_core)
 target_compile_features(lauf_core PRIVATE cxx_std_17)

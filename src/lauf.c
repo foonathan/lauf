@@ -13,3 +13,5 @@
 
 #include <lauf/frontend/text.h>
 
+#include <lauf/lib/int.h>
+

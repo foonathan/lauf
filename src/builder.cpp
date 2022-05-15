@@ -291,7 +291,7 @@ void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
 }
 
 //=== instructions ===//
-void lauf_build_int(lauf_block_builder b, lauf_value_int value)
+void lauf_build_int(lauf_block_builder b, lauf_value_sint value)
 {
     if (value == 0)
     {

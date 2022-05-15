@@ -30,10 +30,10 @@ public:
         return bc_literal_idx(idx);
     }
 
-    auto insert(lauf_value_int value)
+    auto insert(lauf_value_sint value)
     {
         lauf_value v;
-        v.as_int = value;
+        v.as_sint = value;
         return insert(v);
     }
     auto insert(lauf_value_ptr value)

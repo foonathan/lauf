@@ -62,17 +62,17 @@ bool check_condition(condition_code cc, lauf_value value)
     switch (cc)
     {
     case condition_code::if_zero:
-        return value.as_int == 0;
+        return value.as_sint == 0;
     case condition_code::if_nonzero:
-        return value.as_int != 0;
+        return value.as_sint != 0;
     case condition_code::cmp_lt:
-        return value.as_int < 0;
+        return value.as_sint < 0;
     case condition_code::cmp_le:
-        return value.as_int <= 0;
+        return value.as_sint <= 0;
     case condition_code::cmp_gt:
-        return value.as_int > 0;
+        return value.as_sint > 0;
     case condition_code::cmp_ge:
-        return value.as_int >= 0;
+        return value.as_sint >= 0;
     }
 }
 } // namespace
@@ -138,17 +138,17 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
             ++ip;
             break;
         case bc_op::push_zero:
-            vstack_ptr->as_int = 0;
+            vstack_ptr->as_sint = 0;
             ++vstack_ptr;
             ++ip;
             break;
         case bc_op::push_small_zext:
-            vstack_ptr->as_int = inst.push_small_zext.literal;
+            vstack_ptr->as_sint = inst.push_small_zext.literal;
             ++vstack_ptr;
             ++ip;
             break;
         case bc_op::push_small_neg:
-            vstack_ptr->as_int = -lauf_value_int(inst.push_small_zext.literal);
+            vstack_ptr->as_sint = -lauf_value_sint(inst.push_small_zext.literal);
             ++vstack_ptr;
             ++ip;
             break;

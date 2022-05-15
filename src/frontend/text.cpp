@@ -92,7 +92,7 @@ static constexpr auto ccs = lexy::symbol_table<lauf_condition> //
 //=== instructions ===//
 struct inst_int
 {
-    static constexpr auto rule  = LEXY_KEYWORD("int", identifier) >> dsl::integer<lauf_value_int>;
+    static constexpr auto rule  = LEXY_KEYWORD("int", identifier) >> dsl::integer<lauf_value_sint>;
     static constexpr auto build = &lauf_build_int;
 };
 struct inst_ptr

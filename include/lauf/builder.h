@@ -59,7 +59,7 @@ void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
                               lauf_block_builder if_true, lauf_block_builder if_false);
 
 //=== instructions ===//
-void lauf_build_int(lauf_block_builder b, lauf_value_int value);
+void lauf_build_int(lauf_block_builder b, lauf_value_sint value);
 void lauf_build_ptr(lauf_block_builder b, lauf_value_ptr ptr);
 void lauf_build_local_addr(lauf_block_builder b, lauf_local_variable var);
 
