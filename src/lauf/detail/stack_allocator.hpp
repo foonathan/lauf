@@ -75,37 +75,32 @@ public:
     stack_allocator& operator=(const stack_allocator& other) noexcept = delete;
 
     //=== allocation ===//
-    void* allocate(std::size_t size, std::size_t alignment)
+    void reserve_new_block()
     {
-        auto offset = align_offset(_cur_pos, alignment);
+        if (_cur_block->next == nullptr)
+        {
+            auto next        = block::allocate();
+            _cur_block->next = next;
+        }
+
+        _cur_block = _cur_block->next;
+        _cur_pos   = &_cur_block->memory[0];
+    }
+
+    template <std::size_t Alignment = 1>
+    void* allocate(std::size_t size)
+    {
+        auto offset = Alignment == 1 ? 0 : align_offset(_cur_pos, Alignment);
         if (remaining_capacity() < offset + size)
         {
-            if (_cur_block->next == nullptr)
-            {
-                auto next        = block::allocate();
-                _cur_block->next = next;
-            }
-
-            _cur_block = _cur_block->next;
-            _cur_pos   = &_cur_block->memory[0];
+            reserve_new_block();
+            offset = 0;
         }
 
         _cur_pos += offset;
         auto memory = _cur_pos;
         _cur_pos += size;
         return memory;
-    }
-
-    template <typename T>
-    T* allocate(std::size_t count = 1)
-    {
-        return static_cast<T*>(allocate(count * sizeof(T), alignof(T)));
-    }
-
-    template <typename T>
-    T* push(const T& object)
-    {
-        return ::new (allocate(sizeof(T), alignof(T))) T(object);
     }
 
     //=== unwinding ===//
@@ -177,6 +172,11 @@ public:
     std::uintptr_t allocate(std::size_t count = 1)
     {
         return allocate(count * sizeof(T), alignof(T));
+    }
+
+    void align_to(std::size_t alignment)
+    {
+        _cur += align_offset(_cur, alignment);
     }
 
 private:

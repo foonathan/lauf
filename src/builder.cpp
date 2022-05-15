@@ -174,6 +174,10 @@ lauf_function lauf_finish_function(lauf_function_builder b)
         return result;
     }();
 
+    // The local stack frame needs to be aligned properly.
+    // This means we can allocate it in the VM without worrying about alignment.
+    b->locals.align_to(alignof(std::max_align_t));
+
     // Allocate the function and set its header.
     auto result              = lauf_impl_allocate_function(bytecode_size_estimate);
     result->name             = b->name;

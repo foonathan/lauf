@@ -71,6 +71,19 @@ struct alignas(std::max_align_t) stack_frame
     stack_frame*            prev;
 };
 
+void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_ip,
+                      std::size_t local_stack_size)
+{
+    auto marker     = vm->memory_stack.top();
+    auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
+
+    // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
+    // it; the builder takes care of it when computing the stack size.
+    auto memory = vm->memory_stack.allocate(sizeof(stack_frame) + local_stack_size);
+    auto frame  = ::new (memory) stack_frame{return_ip, marker, prev_frame};
+    return frame + 1;
+}
+
 bool check_condition(condition_code cc, lauf_value value)
 {
     switch (cc)
@@ -232,8 +245,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         vstack_ptr[0] = input[i];
     }
 
-    vm->memory_stack.push(stack_frame{nullptr, vm->memory_stack.top(), nullptr});
-    auto frame_ptr = vm->memory_stack.allocate(fn->local_stack_size, alignof(std::max_align_t));
+    auto frame_ptr = new_stack_frame(vm, nullptr, nullptr, fn->local_stack_size);
     auto ip        = fn->bytecode();
     if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
         return false;
