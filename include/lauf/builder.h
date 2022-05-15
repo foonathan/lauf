@@ -15,8 +15,8 @@ struct lauf_builtin;
 
 typedef enum lauf_condition
 {
-    LAUF_IF_TRUE,
-    LAUF_IF_FALSE,
+    LAUF_IS_TRUE,
+    LAUF_IS_FALSE,
 
     LAUF_CMP_EQ,
     LAUF_CMP_NE,
@@ -78,7 +78,7 @@ void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var);
 void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var);
 
 void lauf_build_panic(lauf_block_builder b);
-void lauf_build_assert(lauf_block_builder b, lauf_condition condition);
+void lauf_build_panic_if(lauf_block_builder b, lauf_condition condition);
 
 LAUF_HEADER_END
 

@@ -80,8 +80,8 @@ struct ref_type
 };
 
 static constexpr auto ccs = lexy::symbol_table<lauf_condition> //
-                                .map<LEXY_SYMBOL("if_true")>(LAUF_IF_TRUE)
-                                .map<LEXY_SYMBOL("if_false")>(LAUF_IF_FALSE)
+                                .map<LEXY_SYMBOL("is_true")>(LAUF_IS_TRUE)
+                                .map<LEXY_SYMBOL("is_false")>(LAUF_IS_FALSE)
                                 .map<LEXY_SYMBOL("cmp_eq")>(LAUF_CMP_EQ)
                                 .map<LEXY_SYMBOL("cmp_ne")>(LAUF_CMP_NE)
                                 .map<LEXY_SYMBOL("cmp_lt")>(LAUF_CMP_LT)
@@ -171,10 +171,10 @@ struct inst_panic
     static constexpr auto rule  = LEXY_KEYWORD("panic", identifier);
     static constexpr auto build = &lauf_build_panic;
 };
-struct inst_assert
+struct inst_panic_if
 {
-    static constexpr auto rule  = LEXY_KEYWORD("assert", identifier) >> dsl::symbol<ccs>;
-    static constexpr auto build = &lauf_build_assert;
+    static constexpr auto rule  = LEXY_KEYWORD("panic_if", identifier) >> dsl::symbol<ccs>;
+    static constexpr auto build = &lauf_build_panic_if;
 };
 
 struct inst
@@ -185,7 +185,7 @@ struct inst
            | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin>            //
            | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
            | dsl::p<inst_load_value> | dsl::p<inst_store_value>                              //
-           | dsl::p<inst_panic> | dsl::p<inst_assert>)                                       //
+           | dsl::p<inst_panic> | dsl::p<inst_panic_if>)                                     //
         +dsl::semicolon;
     static constexpr auto value = lexy::forward<void>;
 };

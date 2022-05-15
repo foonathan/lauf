@@ -45,12 +45,8 @@ int main()
             block %entry(1 => 0) {
                 store_value %arg;
 
-                load_value %arg; int 0; call_builtin @cmp;
-                branch cmp_eq %base else %next_check;
-            }
-            block %next_check(0 => 1) {
                 load_value %arg; int 1; call_builtin @cmp;
-                branch cmp_eq %base else %recurse;
+                branch cmp_le %base else %recurse;
             }
             block %base(0 => 1) {
                 load_value %arg;
@@ -75,7 +71,7 @@ int main()
                 int 0; local_addr %a; store_field @Int.0;
                 int 1; local_addr %b; store_field @Int.0;
 
-                pick 0; branch if_false %exit else %loop;
+                pick 0; branch is_false %exit else %loop;
             }
             block %loop(1 => 1) { # n => (n-1)
                 local_addr %b; load_field @Int.0; # => b
@@ -88,7 +84,7 @@ int main()
                 local_addr %a; store_field @Int.0;
 
                 int 1; call_builtin @sub;
-                pick 0; branch if_false %exit else %loop;
+                pick 0; branch is_false %exit else %loop;
             }
             block %exit(1 => 1) {
                 drop 1;
@@ -102,7 +98,7 @@ int main()
         function @test(1 => 1) {
             block %entry(1 => 1) {
                 ptr @data;
-                assert if_true;
+                panic_if is_true;
                 int 42;
                 return;
             }

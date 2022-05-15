@@ -32,14 +32,14 @@ case bc_op::Name:                                                               
 enum class condition_code : unsigned char
 {
     // Top value has all bits zero.
-    if_zero = 0,
+    is_zero = 0,
     // Top value has not all bits zero.
-    if_nonzero = 1,
+    is_nonzero = 1,
 
     // Top value as integer == 0.
-    cmp_eq = if_zero,
+    cmp_eq = is_zero,
     // Top value as integer != 0.
-    cmp_ne = if_nonzero,
+    cmp_ne = is_nonzero,
     // Top value as integer < 0.
     cmp_lt = 4,
     // Top value as integer <= 0.

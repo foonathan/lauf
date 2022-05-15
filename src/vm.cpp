@@ -61,9 +61,9 @@ bool check_condition(condition_code cc, lauf_value value)
 {
     switch (cc)
     {
-    case condition_code::if_zero:
+    case condition_code::is_zero:
         return value.as_sint == 0;
-    case condition_code::if_nonzero:
+    case condition_code::is_nonzero:
         return value.as_sint != 0;
     case condition_code::cmp_lt:
         return value.as_sint < 0;
@@ -260,10 +260,10 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
             vm->panic_handler(nullptr, message);
             return false;
         }
-        case bc_op::assert: {
+        case bc_op::panic_if: {
             auto value   = vstack_ptr[-2];
             auto message = static_cast<const char*>(vstack_ptr[-1].as_ptr);
-            if (check_condition(inst.assert.cc, value))
+            if (check_condition(inst.panic_if.cc, value))
             {
                 vm->panic_handler(nullptr, message);
                 return false;

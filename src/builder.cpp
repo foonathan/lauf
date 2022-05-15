@@ -134,10 +134,10 @@ condition_code translate_condition(lauf_condition cond)
 {
     switch (cond)
     {
-    case LAUF_IF_FALSE:
-        return condition_code::if_zero;
-    case LAUF_IF_TRUE:
-        return condition_code::if_nonzero;
+    case LAUF_IS_FALSE:
+        return condition_code::is_zero;
+    case LAUF_IS_TRUE:
+        return condition_code::is_nonzero;
     case LAUF_CMP_EQ:
         return condition_code::cmp_eq;
     case LAUF_CMP_NE:
@@ -433,9 +433,9 @@ void lauf_build_panic(lauf_block_builder b)
     LAUF_VERIFY_RESULT(b->vstack.drop(), "panic", "missing message");
 }
 
-void lauf_build_assert(lauf_block_builder b, lauf_condition condition)
+void lauf_build_panic_if(lauf_block_builder b, lauf_condition condition)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(assert, translate_condition(condition)));
-    LAUF_VERIFY_RESULT(b->vstack.drop(2), "assert", "missing value or message");
+    b->bytecode.push_back(LAUF_BC_INSTRUCTION(panic_if, translate_condition(condition)));
+    LAUF_VERIFY_RESULT(b->vstack.drop(2), "panic_if", "missing value or message");
 }
 
