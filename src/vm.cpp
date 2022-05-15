@@ -26,7 +26,11 @@ const lauf_vm_options lauf_default_vm_options
 
 struct alignas(lauf_value) lauf_vm_impl
 {
-    lauf_module        mod;
+    struct
+    {
+        const lauf_value* literals;
+        lauf_function*    functions;
+    } state;
     lauf_panic_handler panic_handler;
     size_t             value_stack_size;
     stack_allocator    memory_stack;
@@ -35,13 +39,22 @@ struct alignas(lauf_value) lauf_vm_impl
     {
         return reinterpret_cast<lauf_value*>(this + 1) + value_stack_size;
     }
+
+    lauf_value get_literal(bc_literal_idx idx) const
+    {
+        return state.literals[size_t(idx)];
+    }
+    lauf_function get_function(bc_function_idx idx) const
+    {
+        return state.functions[size_t(idx)];
+    }
 };
 
 lauf_vm lauf_vm_create(lauf_vm_options options)
 {
     auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_value_stack_size);
-    return ::new (memory) lauf_vm_impl{nullptr, options.panic_handler,
-                                       options.max_value_stack_size / sizeof(lauf_value)};
+    return ::new (memory)
+        lauf_vm_impl{{}, options.panic_handler, options.max_value_stack_size / sizeof(lauf_value)};
 }
 
 void lauf_vm_destroy(lauf_vm vm)
@@ -209,7 +222,7 @@ bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
     auto [mod, fn] = program(prog);
-    vm->mod        = mod;
+    vm->state      = {mod->literal_data(), mod->function_begin()};
 
     auto vstack_ptr = vm->value_stack();
 

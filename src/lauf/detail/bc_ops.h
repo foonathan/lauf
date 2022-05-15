@@ -37,7 +37,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
 })
 
 LAUF_BC_OP(call, bc_inst_function_idx, {
-    auto callee = vm->mod->get_function(ip->call.function_idx);
+    auto callee = vm->get_function(ip->call.function_idx);
 
     auto marker     = vm->memory_stack.top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
@@ -50,8 +50,7 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
 })
 
 LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
-    auto callee
-        = (lauf_builtin_function*)(vm->mod->get_literal(ip->call_builtin.literal_idx).as_ptr);
+    auto callee = (lauf_builtin_function*)(vm->get_literal(ip->call_builtin.literal_idx).as_ptr);
     auto stack_change = ip->call_builtin.offset;
     ++ip;
     LAUF_DISPATCH_BUILTIN(callee, stack_change);
@@ -62,7 +61,7 @@ LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
 // _ => literal
 LAUF_BC_OP(push, bc_inst_literal_idx, {
     --vstack_ptr;
-    vstack_ptr[0] = vm->mod->get_literal(ip->push.literal_idx);
+    vstack_ptr[0] = vm->get_literal(ip->push.literal_idx);
 
     ++ip;
     LAUF_DISPATCH;
@@ -184,7 +183,7 @@ LAUF_BC_OP(swap, bc_inst_none, {
 // Load a field from a type, literal is lauf_type*.
 // addr => value
 LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
-    auto type = static_cast<lauf_type>(vm->mod->get_literal(ip->load_field.literal_idx).as_ptr);
+    auto type = static_cast<lauf_type>(vm->get_literal(ip->load_field.literal_idx).as_ptr);
 
     auto object   = vstack_ptr[0].as_ptr;
     vstack_ptr[0] = type->load_field(object, ip->load_field.field);
@@ -196,7 +195,7 @@ LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
 // Store a field to a type, literal is lauf_type*.
 // value addr => _
 LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
-    auto type = static_cast<lauf_type>(vm->mod->get_literal(ip->store_field.literal_idx).as_ptr);
+    auto type = static_cast<lauf_type>(vm->get_literal(ip->store_field.literal_idx).as_ptr);
 
     auto object = const_cast<void*>(vstack_ptr[0].as_ptr);
     type->store_field(object, ip->store_field.field, vstack_ptr[1]);
@@ -209,7 +208,7 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
 // Save a field from a type, literal is lauf_type*.
 // value addr => value
 LAUF_BC_OP(save_field, bc_inst_field_literal_idx, {
-    auto type = static_cast<lauf_type>(vm->mod->get_literal(ip->save_field.literal_idx).as_ptr);
+    auto type = static_cast<lauf_type>(vm->get_literal(ip->save_field.literal_idx).as_ptr);
 
     auto object = const_cast<void*>(vstack_ptr[0].as_ptr);
     type->store_field(object, ip->save_field.field, vstack_ptr[1]);

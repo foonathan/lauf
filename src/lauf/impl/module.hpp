@@ -44,19 +44,11 @@ struct alignas(lauf_value) lauf_module_impl
     {
         return function_begin() + function_count;
     }
-    lauf_function get_function(lauf::_detail::bc_function_idx idx)
-    {
-        return function_begin()[static_cast<size_t>(idx)];
-    }
 
     lauf_value* literal_data()
     {
         auto memory = static_cast<void*>(function_end());
         return static_cast<lauf_value*>(memory);
-    }
-    const lauf_value& get_literal(lauf::_detail::bc_literal_idx idx)
-    {
-        return literal_data()[static_cast<size_t>(idx)];
     }
 };
 static_assert(sizeof(lauf_module_impl) == 2 * sizeof(void*));
