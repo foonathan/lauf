@@ -78,33 +78,86 @@ bool check_condition(condition_code cc, lauf_value value)
 }
 } // namespace
 
+#if LAUF_HAS_TAIL_CALL
+// Each instruction is a function that tail calls the next one.
+
 namespace
 {
-#define LAUF_BC_OP(Name, Data, ...)                                                                \
-    bool execute_##Name(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,          \
-                        lauf_vm vm) __VA_ARGS__
-#define LAUF_DISPATCH [[clang::musttail]] return lauf_vm_dispatch(ip, vstack_ptr, frame_ptr, vm)
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm);
 
-#include "lauf/detail/bc_ops.h"
+#    define LAUF_BC_OP(Name, Data, ...)                                                            \
+        bool execute_##Name(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,      \
+                            lauf_vm vm) __VA_ARGS__
+#    define LAUF_DISPATCH LAUF_TAIL_CALL return dispatch(ip, vstack_ptr, frame_ptr, vm)
+#    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
+        LAUF_TAIL_CALL return Callee(ip, vstack_ptr, frame_ptr, vm)
 
-#undef LAUF_BC_OP
-#undef LAUF_DISPATCH
+#    include "lauf/detail/bc_ops.h"
 
-} // namespace
-  //
-bool lauf_vm_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
+#    undef LAUF_BC_OP
+#    undef LAUF_DISPATCH
+#    undef LAUF_DISPATCH_BUILTIN
+
+constexpr lauf_builtin_function* inst_fns[] = {
+#    define LAUF_BC_OP(Name, Data, ...) &execute_##Name,
+#    include "lauf/detail/bc_ops.h"
+#    undef LAUF_BC_OP
+};
+
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
 {
     if (ip == nullptr)
         return true;
-
-    lauf_builtin_function* fns[] = {
-#define LAUF_BC_OP(Name, Data, ...) &execute_##Name,
-#include "lauf/detail/bc_ops.h"
-#undef LAUF_BC_OP
-    };
-
-    [[clang::musttail]] return fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, vm);
+    LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, vm);
 }
+} // namespace
+
+bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                           lauf_vm vm)
+{
+    // ip can't be null after a builtin as it can't return.
+    LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, vm);
+}
+
+#else
+// Simple switch statement in a loop.
+
+namespace
+{
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
+{
+    while (ip != nullptr)
+    {
+        switch (ip->tag.op)
+        {
+#    define LAUF_BC_OP(Name, Data, ...)                                                            \
+    case bc_op::Name:                                                                              \
+        __VA_ARGS__
+#    define LAUF_DISPATCH break
+#    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
+        Callee(ip, vstack_ptr, frame_ptr, vm);                                                     \
+        vstack_ptr += (StackChange);                                                               \
+        break
+
+#    include "lauf/detail/bc_ops.h"
+
+#    undef LAUF_BC_OP
+#    undef LAUF_DISPATCH
+#    undef LAUF_DISPATCH_FN
+        }
+    }
+
+    return true;
+}
+} // namespace
+
+bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
+{
+    // We terminate the call here.
+    return true;
+}
+
+#endif
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
@@ -118,7 +171,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     vm->memory_stack.push(stack_frame{nullptr, vm->memory_stack.top(), nullptr});
     auto frame_ptr = vm->memory_stack.allocate(fn->local_stack_size, alignof(std::max_align_t));
     auto ip        = fn->bytecode();
-    if (!lauf_vm_dispatch(ip, vstack_ptr, frame_ptr, vm))
+    if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
         return false;
 
     vstack_ptr -= fn->output_count;

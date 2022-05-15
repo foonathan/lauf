@@ -14,9 +14,17 @@
 #include <lauf/module.h>
 #include <lauf/vm.h>
 
+const auto print = lauf_builtin{{1, 1},
+                                [](lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                                   lauf_vm vm) {
+                                    std::printf("%ld\n", vstack_ptr[-1].as_sint);
+                                    return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, vm);
+                                }};
+
 int main()
 {
     auto parser = lauf_frontend_text_create_parser();
+    lauf_frontend_text_register_builtin(parser, "print", print);
     lauf_frontend_text_register_builtin(parser, "add",
                                         lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
     lauf_frontend_text_register_builtin(parser, "sub",
@@ -84,9 +92,8 @@ int main()
 
         function @test(1 => 1) {
             block %entry(1 => 1) {
-                ptr @data;
-                panic_if is_true;
                 int 42;
+                call_builtin @add;
                 return;
             }
         }
@@ -96,7 +103,7 @@ int main()
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_sint = 10};
+    lauf_value input = {.as_sint = 35};
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);

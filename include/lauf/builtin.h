@@ -12,6 +12,9 @@ LAUF_HEADER_START
 typedef bool lauf_builtin_function(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
                                    lauf_vm vm);
 
+bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                           lauf_vm vm);
+
 typedef struct lauf_builtin
 {
     lauf_signature         signature;

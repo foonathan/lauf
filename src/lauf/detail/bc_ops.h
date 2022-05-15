@@ -49,11 +49,12 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
     LAUF_DISPATCH;
 })
 
-LAUF_BC_OP(call_builtin, bc_inst_literal_idx, {
+LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
     auto callee
         = (lauf_builtin_function*)(vm->mod->get_literal(ip->call_builtin.literal_idx).as_ptr);
+    auto stack_change = ip->call_builtin.offset;
     ++ip;
-    [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, vm);
+    LAUF_DISPATCH_BUILTIN(callee, stack_change);
 })
 
 //=== literals ===//

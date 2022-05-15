@@ -23,5 +23,16 @@
 #    define LAUF_HEADER_END
 #endif
 
+//=== attributes ===//
+#ifndef LAUF_TAIL_CALL
+#    if defined(__clang__)
+#        define LAUF_TAIL_CALL __attribute__((musttail))
+#        define LAUF_HAS_TAIL_CALL 1
+#    else
+#        define LAUF_TAIL_CALL
+#        define LLAUF_HAS_TAIL_CALL 0
+#    endif
+#endif
+
 #endif // LAUF_CONFIG_H_INCLUDED
 

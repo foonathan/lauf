@@ -52,7 +52,7 @@ namespace
     bool Name(lauf_vm_instruction* ip, lauf_value* stack_ptr, void* frame_ptr, lauf_vm vm)
 
 #define LAUF_BUILTIN_DISPATCH                                                                      \
-    [[clang::musttail]] return lauf_vm_dispatch(ip, stack_ptr, frame_ptr, vm)
+    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, stack_ptr, frame_ptr, vm)
 
 LAUF_BUILTIN_FN(sadd_report)
 {

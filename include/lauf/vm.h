@@ -32,8 +32,6 @@ lauf_vm lauf_vm_create(lauf_vm_options options);
 
 void lauf_vm_destroy(lauf_vm vm);
 
-bool lauf_vm_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm);
-
 /// Executes the given program, reading the input values from `input` and writing the output values
 /// to `output`. On success, returns true. On error, returns false after invoking the panic handler.
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output);

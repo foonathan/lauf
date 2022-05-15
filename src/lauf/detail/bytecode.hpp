@@ -101,6 +101,20 @@ struct bc_inst_field_literal_idx
     }
 };
 
+struct bc_inst_offset_literal_idx
+{
+    bc_op          op : 8;
+    int32_t        offset : 8;
+    bc_literal_idx literal_idx : 16;
+
+    explicit bc_inst_offset_literal_idx(bc_op op, int32_t o, bc_literal_idx idx)
+    : op(op), offset(o), literal_idx(idx)
+    {
+        LAUF_VERIFY(offset == o, to_string(op), "encoding error");
+        LAUF_VERIFY(literal_idx == idx, to_string(op), "encoding error");
+    }
+};
+
 enum class bc_function_idx : uint32_t
 {
 };
