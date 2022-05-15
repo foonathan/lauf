@@ -104,7 +104,7 @@ LAUF_BC_OP(push_small_neg, bc_inst_literal, {
 // Push the address of a local variable, literal is address relative to function local begin.
 // _ => (local_base_addr + literal)
 LAUF_BC_OP(local_addr, bc_inst_literal, {
-    ++vstack_ptr;
+    --vstack_ptr;
     vstack_ptr[0].as_ptr
         = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->local_addr.literal);
 
@@ -119,7 +119,7 @@ LAUF_BC_OP(array_element, bc_inst_literal, {
     auto elem_size = ptrdiff_t(ip->array_element.literal);
     auto addr      = vstack_ptr[0].as_ptr;
 
-    ++vstack_ptr;
+    --vstack_ptr;
     vstack_ptr[0].as_ptr = (unsigned char*)(addr) + idx * elem_size;
 
     ++ip;
