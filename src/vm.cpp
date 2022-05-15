@@ -80,6 +80,8 @@ bool check_condition(condition_code cc, lauf_value value)
 
 namespace
 {
+using inst_fn = bool(bc_instruction*, lauf_value*, void*, lauf_vm);
+
 bool dispatch(bc_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm);
 
 #define LAUF_INST_FN(Name)                                                                         \
@@ -110,6 +112,13 @@ LAUF_INST_FN(call)
     frame_ptr = vm->memory_stack.allocate(callee->local_stack_size, alignof(std::max_align_t));
 
     LAUF_INST_DISPATCH;
+}
+LAUF_INST_FN(call_builtin)
+{
+    // This isn't the exact type stored, see the definition of `lauf_builtin_dispatch()`.
+    auto callee = (inst_fn*)(vm->mod->get_literal(ip->call_builtin.literal_idx).as_ptr);
+    ++ip;
+    [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, vm);
 }
 
 LAUF_INST_FN(nop)
@@ -220,15 +229,6 @@ LAUF_INST_FN(swap)
     LAUF_INST_DISPATCH;
 }
 
-LAUF_INST_FN(call_builtin)
-{
-    auto callee
-        = (lauf_builtin_function*)(vm->mod->get_literal(ip->call_builtin.literal_idx).as_ptr);
-    vstack_ptr = callee(vstack_ptr);
-    ++ip;
-    LAUF_INST_DISPATCH;
-}
-
 LAUF_INST_FN(load_field)
 {
     auto type = static_cast<lauf_type>(vm->mod->get_literal(ip->load_field.literal_idx).as_ptr);
@@ -320,7 +320,7 @@ bool dispatch(bc_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_
     if (ip == nullptr)
         return true;
 
-    bool (*fns[])(bc_instruction*, lauf_value*, void*, lauf_vm) = {
+    inst_fn* fns[] = {
 #define LAUF_BC_OP(Name, Data) &execute_##Name,
 #include "lauf/detail/bc_ops.h"
 #undef LAUF_BC_OP
@@ -329,6 +329,15 @@ bool dispatch(bc_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_
     [[clang::musttail]] return fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, vm);
 }
 } // namespace
+
+bool lauf_builtin_dispatch(void* ip, union lauf_value* stack_ptr, void* frame_ptr, void* vm)
+{
+    // The only difference between the builtin signature and the actual signature are void* vs typed
+    // pointers. This does not matter for tail calls. However, clang will not generate tail calls
+    // unless the signature matches exactly, so we tweak it a bit.
+    auto fn = reinterpret_cast<lauf_builtin_function*>(&dispatch);
+    [[clang::musttail]] return fn(ip, stack_ptr, frame_ptr, vm);
+}
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {

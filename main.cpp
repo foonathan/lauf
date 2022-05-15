@@ -14,22 +14,9 @@
 #include <lauf/module.h>
 #include <lauf/vm.h>
 
-LAUF_BUILTIN_UNARY_OP(print)
-{
-    std::printf("%lu\n", value.as_sint);
-    return value;
-}
-LAUF_BUILTIN_UNARY_OP(print_str)
-{
-    std::printf("%s\n", static_cast<const char*>(value.as_ptr));
-    return value;
-}
-
 int main()
 {
     auto parser = lauf_frontend_text_create_parser();
-    lauf_frontend_text_register_builtin(parser, "print", print);
-    lauf_frontend_text_register_builtin(parser, "print_str", print_str);
     lauf_frontend_text_register_builtin(parser, "add",
                                         lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
     lauf_frontend_text_register_builtin(parser, "sub",
