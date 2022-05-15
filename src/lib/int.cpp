@@ -56,201 +56,201 @@ namespace
 
 LAUF_BUILTIN_FN(sadd_report)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    stack_ptr[-1].as_uint = __builtin_add_overflow(lhs, rhs, &stack_ptr[-2].as_sint) ? 1 : 0;
+    stack_ptr[0].as_uint = __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(sadd_wrap)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    __builtin_add_overflow(lhs, rhs, &stack_ptr[-2].as_sint);
+    __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint);
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(sadd_sat)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[-2].as_sint))
+    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint))
     {
         if (rhs < 0)
-            stack_ptr[-2].as_sint = lauf_value_sint_min;
+            stack_ptr[1].as_sint = lauf_value_sint_min;
         else
-            stack_ptr[-2].as_sint = lauf_value_sint_max;
+            stack_ptr[1].as_sint = lauf_value_sint_max;
     }
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 
 LAUF_BUILTIN_FN(ssub_report)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    stack_ptr[-1].as_uint = __builtin_sub_overflow(lhs, rhs, &stack_ptr[-2].as_sint) ? 1 : 0;
+    stack_ptr[0].as_uint = __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
 
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(ssub_wrap)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    __builtin_sub_overflow(lhs, rhs, &stack_ptr[-2].as_sint);
+    __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint);
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(ssub_sat)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[-2].as_sint))
+    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint))
     {
         if (rhs < 0)
-            stack_ptr[-2].as_sint = lauf_value_sint_max;
+            stack_ptr[1].as_sint = lauf_value_sint_max;
         else
-            stack_ptr[-2].as_sint = lauf_value_sint_min;
+            stack_ptr[1].as_sint = lauf_value_sint_min;
     }
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 
 LAUF_BUILTIN_FN(smul_report)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    stack_ptr[-1].as_uint = __builtin_mul_overflow(lhs, rhs, &stack_ptr[-2].as_sint) ? 1 : 0;
+    stack_ptr[0].as_uint = __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
 
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(smul_wrap)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    __builtin_mul_overflow(lhs, rhs, &stack_ptr[-2].as_sint);
+    __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint);
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(smul_sat)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
-    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[-2].as_sint))
+    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint))
     {
         if ((rhs < 0) != (lhs < 0))
-            stack_ptr[-2].as_sint = lauf_value_sint_min;
+            stack_ptr[1].as_sint = lauf_value_sint_min;
         else
-            stack_ptr[-2].as_sint = lauf_value_sint_max;
+            stack_ptr[1].as_sint = lauf_value_sint_max;
     }
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 
 LAUF_BUILTIN_FN(uadd_report)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    stack_ptr[-1].as_uint = __builtin_add_overflow(lhs, rhs, &stack_ptr[-2].as_uint) ? 1 : 0;
+    stack_ptr[0].as_uint = __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
 
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(uadd_wrap)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    __builtin_add_overflow(lhs, rhs, &stack_ptr[-2].as_uint);
+    __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint);
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(uadd_sat)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[-2].as_uint))
-        stack_ptr[-2].as_uint = lauf_value_uint_max;
+    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+        stack_ptr[1].as_uint = lauf_value_uint_max;
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 
 LAUF_BUILTIN_FN(usub_report)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    stack_ptr[-1].as_uint = __builtin_sub_overflow(lhs, rhs, &stack_ptr[-2].as_uint) ? 1 : 0;
+    stack_ptr[0].as_uint = __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
 
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(usub_wrap)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    __builtin_sub_overflow(lhs, rhs, &stack_ptr[-2].as_uint);
+    __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint);
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(usub_sat)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[-2].as_uint))
-        stack_ptr[-2].as_uint = 0;
+    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+        stack_ptr[1].as_uint = 0;
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 
 LAUF_BUILTIN_FN(umul_report)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    stack_ptr[-1].as_uint = __builtin_mul_overflow(lhs, rhs, &stack_ptr[-2].as_uint) ? 1 : 0;
+    stack_ptr[0].as_uint = __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
 
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(umul_wrap)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    __builtin_mul_overflow(lhs, rhs, &stack_ptr[-2].as_uint);
+    __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint);
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(umul_sat)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
-    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[-2].as_uint))
-        stack_ptr[-2].as_uint = lauf_value_uint_max;
+    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+        stack_ptr[1].as_uint = lauf_value_uint_max;
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 } // namespace
@@ -338,33 +338,33 @@ namespace
 {
 LAUF_BUILTIN_FN(scmp)
 {
-    auto lhs = stack_ptr[-2].as_sint;
-    auto rhs = stack_ptr[-1].as_sint;
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
 
     if (lhs < rhs)
-        stack_ptr[-2].as_sint = -1;
+        stack_ptr[1].as_sint = -1;
     else if (lhs == rhs)
-        stack_ptr[-2].as_sint = 0;
+        stack_ptr[1].as_sint = 0;
     else
-        stack_ptr[-2].as_sint = 1;
+        stack_ptr[1].as_sint = 1;
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 
 LAUF_BUILTIN_FN(ucmp)
 {
-    auto lhs = stack_ptr[-2].as_uint;
-    auto rhs = stack_ptr[-1].as_uint;
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
 
     if (lhs < rhs)
-        stack_ptr[-2].as_sint = -1;
+        stack_ptr[1].as_sint = -1;
     else if (lhs == rhs)
-        stack_ptr[-2].as_sint = 0;
+        stack_ptr[1].as_sint = 0;
     else
-        stack_ptr[-2].as_sint = 1;
+        stack_ptr[1].as_sint = 1;
 
-    --stack_ptr;
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 } // namespace

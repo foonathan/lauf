@@ -13,12 +13,12 @@ LAUF_BC_OP(jump, bc_inst_offset, {
 
 // Increments ip by offset if cc matches.
 LAUF_BC_OP(jump_if, bc_inst_cc_offset, {
-    auto top_value = vstack_ptr[-1];
+    auto top_value = vstack_ptr[0];
     if (check_condition(ip->jump_if.cc, top_value))
         ip += ip->jump_if.offset;
     else
         ++ip;
-    --vstack_ptr;
+    ++vstack_ptr;
 
     LAUF_DISPATCH;
 })
@@ -61,8 +61,9 @@ LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
 // Push literal from table.
 // _ => literal
 LAUF_BC_OP(push, bc_inst_literal_idx, {
-    *vstack_ptr = vm->mod->get_literal(ip->push.literal_idx);
-    ++vstack_ptr;
+    --vstack_ptr;
+    vstack_ptr[0] = vm->mod->get_literal(ip->push.literal_idx);
+
     ++ip;
     LAUF_DISPATCH;
 })
@@ -70,8 +71,9 @@ LAUF_BC_OP(push, bc_inst_literal_idx, {
 // Push zero.
 // _ => 0
 LAUF_BC_OP(push_zero, bc_inst_none, {
-    vstack_ptr->as_sint = 0;
-    ++vstack_ptr;
+    --vstack_ptr;
+    vstack_ptr[0].as_sint = 0;
+
     ++ip;
     LAUF_DISPATCH;
 })
@@ -79,8 +81,9 @@ LAUF_BC_OP(push_zero, bc_inst_none, {
 // Push small literal from payload, zero extending it.
 // _ => literal
 LAUF_BC_OP(push_small_zext, bc_inst_literal, {
-    vstack_ptr->as_sint = ip->push_small_zext.literal;
-    ++vstack_ptr;
+    --vstack_ptr;
+    vstack_ptr[0].as_sint = ip->push_small_zext.literal;
+
     ++ip;
     LAUF_DISPATCH;
 })
@@ -88,8 +91,9 @@ LAUF_BC_OP(push_small_zext, bc_inst_literal, {
 // Push small literal from payload, negating it.
 // _ => -literal
 LAUF_BC_OP(push_small_neg, bc_inst_literal, {
-    vstack_ptr->as_sint = -lauf_value_sint(ip->push_small_zext.literal);
-    ++vstack_ptr;
+    --vstack_ptr;
+    vstack_ptr[0].as_sint = -lauf_value_sint(ip->push_small_zext.literal);
+
     ++ip;
     LAUF_DISPATCH;
 })
@@ -98,8 +102,10 @@ LAUF_BC_OP(push_small_neg, bc_inst_literal, {
 // Push the address of a local variable, literal is address relative to function local begin.
 // _ => (local_base_addr + literal)
 LAUF_BC_OP(local_addr, bc_inst_literal, {
-    vstack_ptr->as_ptr = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->local_addr.literal);
     ++vstack_ptr;
+    vstack_ptr[0].as_ptr
+        = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->local_addr.literal);
+
     ++ip;
     LAUF_DISPATCH;
 })
@@ -107,12 +113,12 @@ LAUF_BC_OP(local_addr, bc_inst_literal, {
 // Computes the address of an array element, literal is elem_size.
 // idx addr => (addr + elem_size * idx)
 LAUF_BC_OP(array_element, bc_inst_literal, {
-    auto idx       = vstack_ptr[-2].as_uint;
+    auto idx       = vstack_ptr[1].as_uint;
     auto elem_size = ptrdiff_t(ip->array_element.literal);
-    auto addr      = vstack_ptr[-1].as_ptr;
+    auto addr      = vstack_ptr[0].as_ptr;
 
-    --vstack_ptr;
-    vstack_ptr[-1].as_ptr = (unsigned char*)(addr) + idx * elem_size;
+    ++vstack_ptr;
+    vstack_ptr[0].as_ptr = (unsigned char*)(addr) + idx * elem_size;
 
     ++ip;
     LAUF_DISPATCH;
@@ -122,7 +128,8 @@ LAUF_BC_OP(array_element, bc_inst_literal, {
 // Drops n values from stack.
 // b an ... a1 => b
 LAUF_BC_OP(drop, bc_inst_literal, {
-    vstack_ptr -= ptrdiff_t(ip->drop.literal);
+    vstack_ptr += ptrdiff_t(ip->drop.literal);
+
     ++ip;
     LAUF_DISPATCH;
 })
@@ -130,10 +137,12 @@ LAUF_BC_OP(drop, bc_inst_literal, {
 // Duplicates the nth item on top of the stack.
 // an ... a1 => an ... a1 an
 LAUF_BC_OP(pick, bc_inst_literal, {
-    auto index  = ptrdiff_t(ip->pick.literal);
-    auto value  = vstack_ptr[-index - 1];
-    *vstack_ptr = value;
-    ++vstack_ptr;
+    auto index = ptrdiff_t(ip->pick.literal);
+    auto value = vstack_ptr[index];
+
+    --vstack_ptr;
+    vstack_ptr[0] = value;
+
     ++ip;
     LAUF_DISPATCH;
 })
@@ -141,8 +150,9 @@ LAUF_BC_OP(pick, bc_inst_literal, {
 // Duplicates the item on top of the stack (pick 0)
 // a => a a
 LAUF_BC_OP(dup, bc_inst_none, {
-    *vstack_ptr = vstack_ptr[-1];
-    ++vstack_ptr;
+    --vstack_ptr;
+    vstack_ptr[0] = vstack_ptr[1];
+
     ++ip;
     LAUF_DISPATCH;
 })
@@ -151,9 +161,9 @@ LAUF_BC_OP(dup, bc_inst_none, {
 // an ... a1 => a(n-1) ... a1 an
 LAUF_BC_OP(roll, bc_inst_literal, {
     auto index = ptrdiff_t(ip->pick.literal);
-    auto value = vstack_ptr[-index - 1];
-    std::memmove(vstack_ptr - index - 1, vstack_ptr - index, index * sizeof(lauf_value));
-    vstack_ptr[-1] = value;
+    auto value = vstack_ptr[index];
+    std::memmove(vstack_ptr + index, vstack_ptr, index * sizeof(lauf_value));
+    vstack_ptr[0] = value;
 
     ++ip;
     LAUF_DISPATCH;
@@ -162,9 +172,9 @@ LAUF_BC_OP(roll, bc_inst_literal, {
 // Swaps the top two items of the stack (roll 1)
 // b a => a b
 LAUF_BC_OP(swap, bc_inst_none, {
-    auto tmp       = vstack_ptr[-1];
-    vstack_ptr[-1] = vstack_ptr[-2];
-    vstack_ptr[-2] = tmp;
+    auto tmp      = vstack_ptr[1];
+    vstack_ptr[1] = vstack_ptr[0];
+    vstack_ptr[0] = tmp;
 
     ++ip;
     LAUF_DISPATCH;
@@ -176,8 +186,8 @@ LAUF_BC_OP(swap, bc_inst_none, {
 LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
     auto type = static_cast<lauf_type>(vm->mod->get_literal(ip->load_field.literal_idx).as_ptr);
 
-    auto object    = vstack_ptr[-1].as_ptr;
-    vstack_ptr[-1] = type->load_field(object, ip->load_field.field);
+    auto object   = vstack_ptr[0].as_ptr;
+    vstack_ptr[0] = type->load_field(object, ip->load_field.field);
 
     ++ip;
     LAUF_DISPATCH;
@@ -188,9 +198,9 @@ LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
 LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
     auto type = static_cast<lauf_type>(vm->mod->get_literal(ip->store_field.literal_idx).as_ptr);
 
-    auto object = const_cast<void*>(vstack_ptr[-1].as_ptr);
-    type->store_field(object, ip->store_field.field, vstack_ptr[-2]);
-    vstack_ptr -= 2;
+    auto object = const_cast<void*>(vstack_ptr[0].as_ptr);
+    type->store_field(object, ip->store_field.field, vstack_ptr[1]);
+    vstack_ptr += 2;
 
     ++ip;
     LAUF_DISPATCH;
@@ -201,9 +211,9 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
 LAUF_BC_OP(save_field, bc_inst_field_literal_idx, {
     auto type = static_cast<lauf_type>(vm->mod->get_literal(ip->save_field.literal_idx).as_ptr);
 
-    auto object = const_cast<void*>(vstack_ptr[-1].as_ptr);
-    type->store_field(object, ip->save_field.field, vstack_ptr[-2]);
-    vstack_ptr -= 1;
+    auto object = const_cast<void*>(vstack_ptr[0].as_ptr);
+    type->store_field(object, ip->save_field.field, vstack_ptr[1]);
+    ++vstack_ptr;
 
     ++ip;
     LAUF_DISPATCH;
@@ -214,8 +224,8 @@ LAUF_BC_OP(save_field, bc_inst_field_literal_idx, {
 LAUF_BC_OP(load_value, bc_inst_literal, {
     auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->load_value.literal);
 
-    *vstack_ptr = *reinterpret_cast<lauf_value*>(object);
-    ++vstack_ptr;
+    --vstack_ptr;
+    vstack_ptr[0] = *reinterpret_cast<lauf_value*>(object);
 
     ++ip;
     LAUF_DISPATCH;
@@ -226,8 +236,8 @@ LAUF_BC_OP(load_value, bc_inst_literal, {
 LAUF_BC_OP(store_value, bc_inst_literal, {
     auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->store_value.literal);
 
-    ::new (object) lauf_value(vstack_ptr[-1]);
-    --vstack_ptr;
+    ::new (object) lauf_value(vstack_ptr[0]);
+    ++vstack_ptr;
 
     ++ip;
     LAUF_DISPATCH;
@@ -238,7 +248,7 @@ LAUF_BC_OP(store_value, bc_inst_literal, {
 LAUF_BC_OP(save_value, bc_inst_literal, {
     auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->save_value.literal);
 
-    ::new (object) lauf_value(vstack_ptr[-1]);
+    ::new (object) lauf_value(vstack_ptr[0]);
 
     ++ip;
     LAUF_DISPATCH;
@@ -248,7 +258,7 @@ LAUF_BC_OP(save_value, bc_inst_literal, {
 // Invokes the panic handler.
 // message => _
 LAUF_BC_OP(panic, bc_inst_none, {
-    auto message = static_cast<const char*>(vstack_ptr[-1].as_ptr);
+    auto message = static_cast<const char*>(vstack_ptr[0].as_ptr);
     vm->panic_handler(nullptr, message);
     return false;
 })
@@ -256,15 +266,15 @@ LAUF_BC_OP(panic, bc_inst_none, {
 // Invokes the panic handler if the condition is true.
 // value message => _
 LAUF_BC_OP(panic_if, bc_inst_cc, {
-    auto value   = vstack_ptr[-2];
-    auto message = static_cast<const char*>(vstack_ptr[-1].as_ptr);
+    auto value   = vstack_ptr[1];
+    auto message = static_cast<const char*>(vstack_ptr[0].as_ptr);
     if (check_condition(ip->panic_if.cc, value))
     {
         vm->panic_handler(nullptr, message);
         return false;
     }
+    vstack_ptr += 2;
 
-    vstack_ptr -= 2;
     ++ip;
     LAUF_DISPATCH;
 })

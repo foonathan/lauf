@@ -371,7 +371,7 @@ void lauf_build_call(lauf_block_builder b, lauf_function_builder fn)
 void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
 {
     auto idx          = b->fn->mod->literals.insert(reinterpret_cast<void*>(fn.impl));
-    auto stack_change = int32_t(fn.signature.output_count) - int32_t(fn.signature.input_count);
+    auto stack_change = int32_t(fn.signature.input_count) - int32_t(fn.signature.output_count);
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(call_builtin, stack_change, idx));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(fn.signature.input_count), "call_builtin",

@@ -33,15 +33,15 @@ struct alignas(lauf_value) lauf_vm_impl
 
     lauf_value* value_stack()
     {
-        return reinterpret_cast<lauf_value*>(this + 1);
+        return reinterpret_cast<lauf_value*>(this + 1) + value_stack_size;
     }
 };
 
 lauf_vm lauf_vm_create(lauf_vm_options options)
 {
     auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_value_stack_size);
-    return ::new (memory)
-        lauf_vm_impl{nullptr, options.panic_handler, options.max_value_stack_size};
+    return ::new (memory) lauf_vm_impl{nullptr, options.panic_handler,
+                                       options.max_value_stack_size / sizeof(lauf_value)};
 }
 
 void lauf_vm_destroy(lauf_vm vm)
@@ -212,8 +212,12 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     vm->mod        = mod;
 
     auto vstack_ptr = vm->value_stack();
-    std::memcpy(vstack_ptr, input, fn->input_count * sizeof(lauf_value));
-    vstack_ptr += fn->input_count;
+
+    for (auto i = 0; i != fn->input_count; ++i)
+    {
+        --vstack_ptr;
+        vstack_ptr[0] = input[i];
+    }
 
     vm->memory_stack.push(stack_frame{nullptr, vm->memory_stack.top(), nullptr});
     auto frame_ptr = vm->memory_stack.allocate(fn->local_stack_size, alignof(std::max_align_t));
@@ -221,8 +225,11 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
         return false;
 
-    vstack_ptr -= fn->output_count;
-    std::memcpy(output, vstack_ptr, fn->output_count * sizeof(lauf_value));
+    for (auto i = 0; i != fn->output_count; ++i)
+    {
+        output[i] = vstack_ptr[0];
+        ++vstack_ptr;
+    }
 
     vm->memory_stack.reset();
     return true;
