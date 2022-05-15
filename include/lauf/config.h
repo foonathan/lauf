@@ -34,5 +34,13 @@
 #    endif
 #endif
 
+#ifndef LAUF_HAS_COMPUTED_GOTO
+#    if defined(__GNUC__)
+#        define LAUF_HAS_COMPUTED_GOTO 1
+#    else
+#        define LAUF_HAS_COMPUTED_GOTO 0
+#    endif
+#endif
+
 #endif // LAUF_CONFIG_H_INCLUDED
 

@@ -119,6 +119,51 @@ bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void
     LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, vm);
 }
 
+#elif LAUF_HAS_COMPUTED_GOTO
+// Use computed goto for dispatch.
+
+namespace
+{
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
+{
+    void* labels[] = {
+#    define LAUF_BC_OP(Name, Data, ...) &&execute_##Name,
+#    include "lauf/detail/bc_ops.h"
+#    undef LAUF_BC_OP
+    };
+
+    goto* labels[size_t(ip->tag.op)];
+
+#    define LAUF_BC_OP(Name, Data, ...) execute_##Name : __VA_ARGS__
+#    define LAUF_DISPATCH                                                                          \
+        do                                                                                         \
+        {                                                                                          \
+            if (ip == nullptr)                                                                     \
+                return true;                                                                       \
+            goto* labels[size_t(ip->tag.op)];                                                      \
+        } while (0)
+#    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
+        do                                                                                         \
+        {                                                                                          \
+            Callee(ip, vstack_ptr, frame_ptr, vm);                                                 \
+            vstack_ptr += (StackChange);                                                           \
+            goto* labels[size_t(ip->tag.op)];                                                      \
+        } while (0);
+
+#    include "lauf/detail/bc_ops.h"
+
+#    undef LAUF_BC_OP
+#    undef LAUF_DISPATCH
+#    undef LAUF_DISPATCH_BUILTIN
+}
+} // namespace
+
+bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
+{
+    // We terminate the call here.
+    return true;
+}
+
 #else
 // Simple switch statement in a loop.
 
@@ -135,20 +180,22 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, 
         __VA_ARGS__
 #    define LAUF_DISPATCH break
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
-        Callee(ip, vstack_ptr, frame_ptr, vm);                                                     \
-        vstack_ptr += (StackChange);                                                               \
-        break
+        {                                                                                          \
+            Callee(ip, vstack_ptr, frame_ptr, vm);                                                 \
+            vstack_ptr += (StackChange);                                                           \
+            break
+        }
 
 #    include "lauf/detail/bc_ops.h"
 
 #    undef LAUF_BC_OP
 #    undef LAUF_DISPATCH
 #    undef LAUF_DISPATCH_FN
-        }
     }
-
-    return true;
 }
+
+return true;
+} // namespace
 } // namespace
 
 bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
