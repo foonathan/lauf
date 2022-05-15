@@ -50,8 +50,8 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
 })
 
 LAUF_BC_OP(call_builtin, bc_inst_literal_idx, {
-    // This isn't the exact type stored, see the definition of `lauf_builtin_dispatch()`.
-    auto callee = (inst_fn*)(vm->mod->get_literal(ip->call_builtin.literal_idx).as_ptr);
+    auto callee
+        = (lauf_builtin_function*)(vm->mod->get_literal(ip->call_builtin.literal_idx).as_ptr);
     ++ip;
     [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, vm);
 })

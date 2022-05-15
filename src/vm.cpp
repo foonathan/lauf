@@ -53,7 +53,7 @@ namespace
 {
 struct alignas(std::max_align_t) stack_frame
 {
-    bc_instruction*         return_ip;
+    lauf_vm_instruction*    return_ip;
     stack_allocator::marker unwind;
     stack_frame*            prev;
 };
@@ -80,43 +80,30 @@ bool check_condition(condition_code cc, lauf_value value)
 
 namespace
 {
-using inst_fn = bool(bc_instruction*, lauf_value*, void*, lauf_vm);
-
-bool dispatch(bc_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm);
-
 #define LAUF_BC_OP(Name, Data, ...)                                                                \
-    bool execute_##Name(bc_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)   \
-        __VA_ARGS__
-#define LAUF_DISPATCH [[clang::musttail]] return dispatch(ip, vstack_ptr, frame_ptr, vm)
+    bool execute_##Name(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,          \
+                        lauf_vm vm) __VA_ARGS__
+#define LAUF_DISPATCH [[clang::musttail]] return lauf_vm_dispatch(ip, vstack_ptr, frame_ptr, vm)
 
 #include "lauf/detail/bc_ops.h"
 
 #undef LAUF_BC_OP
 #undef LAUF_DISPATCH
 
-bool dispatch(bc_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
+} // namespace
+  //
+bool lauf_vm_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
 {
     if (ip == nullptr)
         return true;
 
-    inst_fn* fns[] = {
+    lauf_builtin_function* fns[] = {
 #define LAUF_BC_OP(Name, Data, ...) &execute_##Name,
 #include "lauf/detail/bc_ops.h"
 #undef LAUF_BC_OP
     };
 
     [[clang::musttail]] return fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, vm);
-}
-} // namespace
-
-bool lauf_builtin_dispatch(void* ip, union lauf_value* stack_ptr, void* frame_ptr, void* vm)
-{
-    // The only difference between the builtin signature and the actual
-    // signature are void* vs typed pointers. This does not matter for tail
-    // calls. However, clang will not generate tail calls unless the signature
-    // matches exactly, so we tweak it a bit.
-    auto fn = reinterpret_cast<lauf_builtin_function*>(&dispatch);
-    [[clang::musttail]] return fn(ip, stack_ptr, frame_ptr, vm);
 }
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
@@ -131,7 +118,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     vm->memory_stack.push(stack_frame{nullptr, vm->memory_stack.top(), nullptr});
     auto frame_ptr = vm->memory_stack.allocate(fn->local_stack_size, alignof(std::max_align_t));
     auto ip        = fn->bytecode();
-    if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
+    if (!lauf_vm_dispatch(ip, vstack_ptr, frame_ptr, vm))
         return false;
 
     vstack_ptr -= fn->output_count;

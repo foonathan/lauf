@@ -48,10 +48,11 @@ lauf_type lauf_native_uint_type(void)
 
 namespace
 {
-#define LAUF_BUILTIN_FN(Name) bool Name(void* ip, lauf_value* stack_ptr, void* frame_ptr, void* vm)
+#define LAUF_BUILTIN_FN(Name)                                                                      \
+    bool Name(lauf_vm_instruction* ip, lauf_value* stack_ptr, void* frame_ptr, lauf_vm vm)
 
 #define LAUF_BUILTIN_DISPATCH                                                                      \
-    [[clang::musttail]] return lauf_builtin_dispatch(ip, stack_ptr, frame_ptr, vm)
+    [[clang::musttail]] return lauf_vm_dispatch(ip, stack_ptr, frame_ptr, vm)
 
 LAUF_BUILTIN_FN(sadd_report)
 {
@@ -250,7 +251,6 @@ LAUF_BUILTIN_FN(umul_sat)
         stack_ptr[-2].as_uint = lauf_value_uint_max;
 
     --stack_ptr;
-    return lauf_builtin_dispatch(ip, stack_ptr, frame_ptr, vm);
     LAUF_BUILTIN_DISPATCH;
 }
 } // namespace

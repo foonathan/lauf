@@ -55,11 +55,11 @@ struct block_terminator
 
 struct lauf_block_builder_impl
 {
-    lauf_function_builder       fn;
-    block_terminator            terminator;
-    lauf_signature              sig;
-    stack_checker               vstack;
-    std::vector<bc_instruction> bytecode;
+    lauf_function_builder            fn;
+    block_terminator                 terminator;
+    lauf_signature                   sig;
+    stack_checker                    vstack;
+    std::vector<lauf_vm_instruction> bytecode;
     // Set while finishing the function, to resolve jumps to the beginning of the block.
     ptrdiff_t start_offset;
 
@@ -196,7 +196,7 @@ lauf_function lauf_finish_function(lauf_function_builder b)
         block.start_offset = bytecode - result->bytecode();
         if (!block.bytecode.empty())
             std::memcpy(bytecode, block.bytecode.data(),
-                        block.bytecode.size() * sizeof(bc_instruction));
+                        block.bytecode.size() * sizeof(lauf_vm_instruction));
         // We reserve space for all necessary jump instructions.
         bytecode += block.bytecode.size() + block.terminator.max_instruction_count();
     }
@@ -213,20 +213,20 @@ lauf_function lauf_finish_function(lauf_function_builder b)
             break;
 
         case block_terminator::return_:
-            result->bytecode()[position] = LAUF_BC_INSTRUCTION(return_);
+            result->bytecode()[position] = LAUF_VM_INSTRUCTION(return_);
             break;
 
         case block_terminator::jump:
             result->bytecode()[position]
-                = LAUF_BC_INSTRUCTION(jump, term.dest->start_offset - position);
+                = LAUF_VM_INSTRUCTION(jump, term.dest->start_offset - position);
             break;
 
         case block_terminator::branch: {
             auto cc = translate_condition(term.condition);
             result->bytecode()[position]
-                = LAUF_BC_INSTRUCTION(jump_if, cc, term.if_true->start_offset - position);
+                = LAUF_VM_INSTRUCTION(jump_if, cc, term.if_true->start_offset - position);
             result->bytecode()[position + 1]
-                = LAUF_BC_INSTRUCTION(jump, term.if_false->start_offset - (position + 1));
+                = LAUF_VM_INSTRUCTION(jump, term.if_false->start_offset - (position + 1));
             break;
         }
         }
@@ -295,20 +295,20 @@ void lauf_build_int(lauf_block_builder b, lauf_value_sint value)
 {
     if (value == 0)
     {
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(push_zero));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(push_zero));
     }
     else if (0 < value && value <= 0xFF'FFFF)
     {
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(push_small_zext, uint32_t(value)));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(push_small_zext, uint32_t(value)));
     }
     else if (-0xFF'FFFF <= value && value < 0)
     {
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(push_small_neg, uint32_t(-value)));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(push_small_neg, uint32_t(-value)));
     }
     else
     {
         auto idx = b->fn->mod->literals.insert(value);
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(push, idx));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(push, idx));
     }
 
     b->vstack.push();
@@ -317,29 +317,29 @@ void lauf_build_int(lauf_block_builder b, lauf_value_sint value)
 void lauf_build_ptr(lauf_block_builder b, lauf_value_ptr ptr)
 {
     auto idx = b->fn->mod->literals.insert(ptr);
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(push, idx));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(push, idx));
 
     b->vstack.push();
 }
 
 void lauf_build_local_addr(lauf_block_builder b, lauf_local_variable var)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(local_addr, var._addr));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(local_addr, var._addr));
     b->vstack.push();
 }
 
 void lauf_build_drop(lauf_block_builder b, size_t n)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(drop, n));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(drop, n));
     LAUF_VERIFY_RESULT(b->vstack.drop(n), "drop", "not enough values to pop");
 }
 
 void lauf_build_pick(lauf_block_builder b, size_t n)
 {
     if (n == 0)
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(dup));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(dup));
     else
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(pick, n));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(pick, n));
     LAUF_VERIFY(n < b->vstack.cur_stack_size(), "pick", "invalid stack index");
     b->vstack.push();
 }
@@ -349,9 +349,9 @@ void lauf_build_roll(lauf_block_builder b, size_t n)
     if (n == 0)
     {} // noop
     else if (n == 1)
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(swap));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(swap));
     else
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(roll, n));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(roll, n));
     LAUF_VERIFY(n < b->vstack.cur_stack_size(), "roll", "invalid stack index");
 }
 
@@ -362,7 +362,7 @@ void lauf_build_recurse(lauf_block_builder b)
 
 void lauf_build_call(lauf_block_builder b, lauf_function_builder fn)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(call, fn->index));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(call, fn->index));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(fn->sig.input_count), "call", "missing arguments for call");
     b->vstack.push(fn->sig.output_count);
@@ -371,7 +371,7 @@ void lauf_build_call(lauf_block_builder b, lauf_function_builder fn)
 void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
 {
     auto idx = b->fn->mod->literals.insert(reinterpret_cast<void*>(fn.impl));
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(call_builtin, idx));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(call_builtin, idx));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(fn.signature.input_count), "call_builtin",
                        "missing arguments for call");
@@ -380,7 +380,7 @@ void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
 
 void lauf_build_array_element(lauf_block_builder b, lauf_type type)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(array_element, type->layout.size));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(array_element, type->layout.size));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(2), "array_element", "missing object address or index");
     b->vstack.push();
@@ -392,10 +392,10 @@ void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field)
 
     auto idx = b->fn->mod->literals.insert(type);
     // If the last instruction is a store of the same field, turn it into a save instead.
-    if (!b->bytecode.empty() && b->bytecode.back() == LAUF_BC_INSTRUCTION(store_field, field, idx))
+    if (!b->bytecode.empty() && b->bytecode.back() == LAUF_VM_INSTRUCTION(store_field, field, idx))
         b->bytecode.back().store_field.op = bc_op::save_field;
     else
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(load_field, field, idx));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(load_field, field, idx));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(), "load_field", "missing object address");
     b->vstack.push();
@@ -406,7 +406,7 @@ void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field)
     LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
 
     auto idx = b->fn->mod->literals.insert(type);
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(store_field, field, idx));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(store_field, field, idx));
 
     LAUF_VERIFY_RESULT(b->vstack.drop(2), "store_field", "missing object address or value");
 }
@@ -414,28 +414,28 @@ void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field)
 void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var)
 {
     // If the last instruction is a store of the same address, turn it into a save instead.
-    if (!b->bytecode.empty() && b->bytecode.back() == LAUF_BC_INSTRUCTION(store_value, var._addr))
+    if (!b->bytecode.empty() && b->bytecode.back() == LAUF_VM_INSTRUCTION(store_value, var._addr))
         b->bytecode.back().store_value.op = bc_op::save_value;
     else
-        b->bytecode.push_back(LAUF_BC_INSTRUCTION(load_value, var._addr));
+        b->bytecode.push_back(LAUF_VM_INSTRUCTION(load_value, var._addr));
     b->vstack.push();
 }
 
 void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(store_value, var._addr));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(store_value, var._addr));
     LAUF_VERIFY_RESULT(b->vstack.drop(), "store_value", "missing value");
 }
 
 void lauf_build_panic(lauf_block_builder b)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(panic));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(panic));
     LAUF_VERIFY_RESULT(b->vstack.drop(), "panic", "missing message");
 }
 
 void lauf_build_panic_if(lauf_block_builder b, lauf_condition condition)
 {
-    b->bytecode.push_back(LAUF_BC_INSTRUCTION(panic_if, translate_condition(condition)));
+    b->bytecode.push_back(LAUF_VM_INSTRUCTION(panic_if, translate_condition(condition)));
     LAUF_VERIFY_RESULT(b->vstack.drop(2), "panic_if", "missing value or message");
 }
 

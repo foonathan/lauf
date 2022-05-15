@@ -5,14 +5,12 @@
 #define LAUF_BUILTIN_H_INCLUDED
 
 #include <lauf/config.h>
-#include <lauf/module.h>
+#include <lauf/vm.h>
 
 LAUF_HEADER_START
 
-bool lauf_builtin_dispatch(void* ip, union lauf_value* stack_ptr, void* frame_ptr, void* vm);
-
-typedef bool lauf_builtin_function(void* ip, union lauf_value* stack_ptr, void* frame_ptr,
-                                   void* vm);
+typedef bool lauf_builtin_function(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                                   lauf_vm vm);
 
 typedef struct lauf_builtin
 {

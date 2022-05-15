@@ -148,35 +148,35 @@ struct bc_inst_cc
 
     explicit bc_inst_cc(bc_op op, condition_code cc) : op(op), cc(cc) {}
 };
+} // namespace lauf::_detail
 
-union bc_instruction
+union lauf_vm_instruction
 {
-    bc_inst_none tag;
+    lauf::_detail::bc_inst_none tag;
 
-#define LAUF_BC_OP(Name, Type, ...) Type Name;
+#define LAUF_BC_OP(Name, Type, ...) lauf::_detail::Type Name;
 #include "bc_ops.h"
 #undef LAUF_BC_OP
 
-    bc_instruction() : tag() {}
+    lauf_vm_instruction() : tag() {}
 
-    friend bool operator==(bc_instruction lhs, bc_instruction rhs)
+    friend bool operator==(lauf_vm_instruction lhs, lauf_vm_instruction rhs)
     {
         return lhs.tag.op == rhs.tag.op && uint32_t(lhs.tag._padding) == uint32_t(rhs.tag._padding);
     }
-    friend bool operator!=(bc_instruction lhs, bc_instruction rhs)
+    friend bool operator!=(lauf_vm_instruction lhs, lauf_vm_instruction rhs)
     {
         return !(lhs == rhs);
     }
 };
-static_assert(sizeof(bc_instruction) == sizeof(uint32_t));
+static_assert(sizeof(lauf_vm_instruction) == sizeof(uint32_t));
 
-#define LAUF_BC_INSTRUCTION(Op, ...)                                                               \
+#define LAUF_VM_INSTRUCTION(Op, ...)                                                               \
     [&] {                                                                                          \
-        lauf::_detail::bc_instruction inst;                                                        \
+        lauf_vm_instruction inst;                                                                  \
         inst.Op = decltype(inst.Op){lauf::_detail::bc_op::Op, __VA_ARGS__};                        \
         return inst;                                                                               \
     }()
-} // namespace lauf::_detail
 
 #endif // SRC_DETAIL_BYTECODE_HPP_INCLUDED
 

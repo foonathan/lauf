@@ -18,10 +18,10 @@ struct lauf_function_impl
     uint8_t     input_count;
     uint8_t     output_count;
 
-    lauf::_detail::bc_instruction* bytecode()
+    lauf_vm_instruction* bytecode()
     {
         auto memory = static_cast<void*>(this + 1);
-        return static_cast<lauf::_detail::bc_instruction*>(memory);
+        return static_cast<lauf_vm_instruction*>(memory);
     }
 };
 static_assert(sizeof(lauf_function_impl) == sizeof(void*) + sizeof(uint64_t));

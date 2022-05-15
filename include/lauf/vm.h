@@ -10,7 +10,8 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_vm_impl* lauf_vm;
+typedef struct lauf_vm_impl*      lauf_vm;
+typedef union lauf_vm_instruction lauf_vm_instruction;
 
 //=== panic_handler ===//
 typedef struct lauf_panic_info_impl* lauf_panic_info;
@@ -30,6 +31,8 @@ extern const lauf_vm_options lauf_default_vm_options;
 lauf_vm lauf_vm_create(lauf_vm_options options);
 
 void lauf_vm_destroy(lauf_vm vm);
+
+bool lauf_vm_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm);
 
 /// Executes the given program, reading the input values from `input` and writing the output values
 /// to `output`. On success, returns true. On error, returns false after invoking the panic handler.

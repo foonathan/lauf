@@ -96,7 +96,7 @@ int main()
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_sint = 35};
+    lauf_value input = {.as_sint = 10};
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);
