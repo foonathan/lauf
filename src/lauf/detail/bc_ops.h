@@ -41,10 +41,13 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
 
     auto marker     = vm->memory_stack.top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
-    vm->memory_stack.push(stack_frame{ip + 1, marker, prev_frame});
+
+    auto memory = vm->memory_stack.allocate(sizeof(stack_frame) + callee->local_stack_size,
+                                            alignof(std::max_align_t));
+    auto frame  = ::new (memory) stack_frame{ip + 1, marker, prev_frame};
 
     ip        = callee->bytecode();
-    frame_ptr = vm->memory_stack.allocate(callee->local_stack_size, alignof(std::max_align_t));
+    frame_ptr = frame + 1;
 
     LAUF_DISPATCH;
 })
