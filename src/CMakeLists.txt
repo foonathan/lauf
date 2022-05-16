@@ -40,6 +40,7 @@ set(src_files
         lib/int.cpp)
 
 add_library(lauf_core)
+add_library(foonathan::lauf::core ALIAS lauf_core)
 target_compile_features(lauf_core PRIVATE cxx_std_17)
 target_include_directories(lauf_core PUBLIC ../include .)
 target_link_libraries(lauf_core PRIVATE foonathan::lexy::core foonathan::lexy::ext)

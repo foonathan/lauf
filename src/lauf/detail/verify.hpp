@@ -18,7 +18,7 @@ namespace lauf::_detail
 {
 inline void verification_failure(const char* inst, const char* msg)
 {
-    std::fprintf(stderr, "[lauf] %s: %s", inst, msg);
+    std::fprintf(stderr, "[lauf] %s: %s\n", inst, msg);
     std::abort();
 }
 } // namespace lauf::_detail

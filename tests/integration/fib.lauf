@@ -1,0 +1,71 @@
+module @fib;
+
+const @test_failure = "test failure", 0;
+
+function @fib_recursive(1 => 1) {
+    local %arg : @Value;
+    block %entry(1 => 0) {
+        store_value %arg;
+
+        load_value %arg; int 1; call_builtin @scmp;
+        branch cmp_le %base else %recurse;
+    }
+    block %base(0 => 1) {
+        load_value %arg;
+        return;
+    }
+    block %recurse(0 => 1) {
+        load_value %arg; int 1; call_builtin @ssub;
+        recurse;
+
+        load_value %arg; int 2; call_builtin @ssub;
+        recurse;
+
+        call_builtin @sadd;
+        return;
+    }
+}
+
+function @fib_iter(1 => 1) {
+    local %a : @Value;
+    local %b : @Value;
+    block %entry(1 => 1) {
+        int 0; store_value %a;
+        int 1; store_value %b;
+
+        pick 0; branch is_false %exit else %loop;
+    }
+    block %loop(1 => 1) { # n => (n-1)
+        load_value %b; # => b
+
+        pick 0;             # => b b
+        load_value %a;      # => b b a
+        call_builtin @sadd; # => b (b+a)
+
+        store_value %b;
+        store_value %a;
+
+        int 1; call_builtin @ssub;
+        pick 0; branch is_false %exit else %loop;
+    }
+    block %exit(1 => 1) {
+        drop 1;
+        load_value %a;
+        return;
+    }
+}
+
+function @test_fib(0 => 0) {
+    block %entry(0 => 0) {
+        int 10; call @fib_recursive;
+        int 55; call_builtin @scmp;
+        ptr @test_failure; panic_if cmp_ne;
+
+        int 10; call @fib_iter;
+        int 55; call_builtin @scmp;
+        ptr @test_failure; panic_if cmp_ne;
+
+        return;
+    }
+}
+

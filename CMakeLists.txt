@@ -10,3 +10,12 @@ add_executable(lauf_prototype main.cpp)
 target_link_libraries(lauf_prototype PRIVATE lauf_core)
 target_compile_features(lauf_prototype PRIVATE cxx_std_17)
 
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    cmake_minimum_required(VERSION 3.18)
+    option(LAUF_BUILD_TESTS "whether or not tests should be built" ON)
+
+    if(LAUF_BUILD_TESTS)
+        enable_testing()
+        add_subdirectory(tests)
+    endif()
+endif()

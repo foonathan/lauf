@@ -157,7 +157,7 @@ LAUF_BC_OP(dup, bc_inst_none, {
 LAUF_BC_OP(roll, bc_inst_literal, {
     auto index = ptrdiff_t(ip->pick.literal);
     auto value = vstack_ptr[index];
-    std::memmove(vstack_ptr + index, vstack_ptr, index * sizeof(lauf_value));
+    std::memmove(vstack_ptr + 1, vstack_ptr, index * sizeof(lauf_value));
     vstack_ptr[0] = value;
 
     ++ip;
