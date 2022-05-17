@@ -14,17 +14,15 @@
 #include <lauf/module.h>
 #include <lauf/vm.h>
 
-const auto print = lauf_builtin{{1, 1},
-                                [](lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                                   lauf_vm vm) {
-                                    std::printf("%ld\n", vstack_ptr[-1].as_sint);
-                                    return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, vm);
-                                }};
+LAUF_BUILTIN_UNARY_OPERATION(print, 1, {
+    std::printf("%ld\n", value.as_sint);
+    *result = value;
+})
 
 int main()
 {
     auto parser = lauf_frontend_text_create_parser();
-    lauf_frontend_text_register_builtin(parser, "print", print);
+    lauf_frontend_text_register_builtin(parser, "print", print());
     lauf_frontend_text_register_builtin(parser, "add",
                                         lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
     lauf_frontend_text_register_builtin(parser, "sub",

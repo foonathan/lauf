@@ -41,419 +41,159 @@ lauf_type lauf_native_uint_type(void)
     return &uint_type;
 }
 
-//=== signed builtins ===//
+//=== arithmetic builtins ===//
 #ifndef __GNUC__
 #    error "unsupported compiler"
 #endif
 
-namespace
-{
-#define LAUF_BUILTIN_FN(Name)                                                                      \
-    bool Name(lauf_vm_instruction* ip, lauf_value* stack_ptr, void* frame_ptr, lauf_vm vm)
+#define LAUF_MAKE_ARITHMETIC_BUILTIN(Name)                                                         \
+    lauf_builtin lauf_##Name##_builtin(lauf_integer_overflow overflow)                             \
+    {                                                                                              \
+        switch (overflow)                                                                          \
+        {                                                                                          \
+        case LAUF_INTEGER_OVERFLOW_RETURN:                                                         \
+            return Name##_return();                                                                \
+        case LAUF_INTEGER_OVERFLOW_PANIC:                                                          \
+            return Name##_panic();                                                                 \
+        case LAUF_INTEGER_OVERFLOW_WRAP:                                                           \
+            return Name##_wrap();                                                                  \
+        case LAUF_INTEGER_OVERFLOW_SAT:                                                            \
+            return Name##_sat();                                                                   \
+        }                                                                                          \
+    }
 
-#define LAUF_BUILTIN_DISPATCH                                                                      \
-    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, stack_ptr, frame_ptr, vm)
-
-LAUF_BUILTIN_FN(sadd_return)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    stack_ptr[0].as_uint = __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(sadd_panic)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+LAUF_BUILTIN_BINARY_OPERATION(sadd_return, 2, {
+    result[0].as_uint
+        = __builtin_add_overflow(lhs.as_sint, rhs.as_sint, &result[1].as_sint) ? 1 : 0;
+})
+LAUF_BUILTIN_BINARY_OPERATION(sadd_panic, 1, {
+    if (__builtin_add_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
         return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(sadd_wrap)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint);
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(sadd_sat)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+})
+LAUF_BUILTIN_BINARY_OPERATION(sadd_wrap, 1, {
+    __builtin_add_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint);
+})
+LAUF_BUILTIN_BINARY_OPERATION(sadd_sat, 1, {
+    if (__builtin_add_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
     {
-        if (rhs < 0)
-            stack_ptr[1].as_sint = lauf_value_sint_min;
+        if (rhs.as_sint < 0)
+            result->as_sint = lauf_value_sint_min;
         else
-            stack_ptr[1].as_sint = lauf_value_sint_max;
+            result->as_sint = lauf_value_sint_max;
     }
+})
+LAUF_MAKE_ARITHMETIC_BUILTIN(sadd)
 
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-
-LAUF_BUILTIN_FN(ssub_return)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    stack_ptr[0].as_uint = __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
-
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(ssub_panic)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+LAUF_BUILTIN_BINARY_OPERATION(ssub_return, 2, {
+    result[0].as_uint
+        = __builtin_sub_overflow(lhs.as_sint, rhs.as_sint, &result[1].as_sint) ? 1 : 0;
+})
+LAUF_BUILTIN_BINARY_OPERATION(ssub_panic, 1, {
+    if (__builtin_sub_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
         return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(ssub_wrap)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint);
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(ssub_sat)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+})
+LAUF_BUILTIN_BINARY_OPERATION(ssub_wrap, 1, {
+    __builtin_sub_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint);
+})
+LAUF_BUILTIN_BINARY_OPERATION(ssub_sat, 1, {
+    if (__builtin_sub_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
     {
-        if (rhs < 0)
-            stack_ptr[1].as_sint = lauf_value_sint_max;
+        if (rhs.as_sint < 0)
+            result->as_sint = lauf_value_sint_max;
         else
-            stack_ptr[1].as_sint = lauf_value_sint_min;
+            result->as_sint = lauf_value_sint_min;
     }
+})
+LAUF_MAKE_ARITHMETIC_BUILTIN(ssub)
 
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-
-LAUF_BUILTIN_FN(smul_return)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    stack_ptr[0].as_uint = __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
-
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(smul_panic)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+LAUF_BUILTIN_BINARY_OPERATION(smul_return, 2, {
+    result[0].as_uint
+        = __builtin_mul_overflow(lhs.as_sint, rhs.as_sint, &result[1].as_sint) ? 1 : 0;
+})
+LAUF_BUILTIN_BINARY_OPERATION(smul_panic, 1, {
+    if (__builtin_mul_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
         return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(smul_wrap)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint);
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(smul_sat)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+})
+LAUF_BUILTIN_BINARY_OPERATION(smul_wrap, 1, {
+    __builtin_mul_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint);
+})
+LAUF_BUILTIN_BINARY_OPERATION(smul_sat, 1, {
+    if (__builtin_mul_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
     {
-        if ((rhs < 0) != (lhs < 0))
-            stack_ptr[1].as_sint = lauf_value_sint_min;
+        if ((rhs.as_sint < 0) != (lhs.as_sint < 0))
+            result->as_sint = lauf_value_sint_min;
         else
-            stack_ptr[1].as_sint = lauf_value_sint_max;
+            result->as_sint = lauf_value_sint_max;
     }
+})
+LAUF_MAKE_ARITHMETIC_BUILTIN(smul)
 
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-
-LAUF_BUILTIN_FN(uadd_return)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    stack_ptr[0].as_uint = __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
-
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(uadd_panic)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+LAUF_BUILTIN_BINARY_OPERATION(uadd_return, 2, {
+    result[0].as_uint
+        = __builtin_add_overflow(lhs.as_uint, rhs.as_uint, &result[1].as_uint) ? 1 : 0;
+})
+LAUF_BUILTIN_BINARY_OPERATION(uadd_panic, 1, {
+    if (__builtin_add_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
         return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
+})
+LAUF_BUILTIN_BINARY_OPERATION(uadd_wrap, 1, {
+    __builtin_add_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint);
+})
+LAUF_BUILTIN_BINARY_OPERATION(uadd_sat, 1, {
+    if (__builtin_add_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
+        result->as_uint = lauf_value_uint_max;
+})
+LAUF_MAKE_ARITHMETIC_BUILTIN(uadd)
 
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(uadd_wrap)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint);
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(uadd_sat)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint))
-        stack_ptr[1].as_uint = lauf_value_uint_max;
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-
-LAUF_BUILTIN_FN(usub_return)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    stack_ptr[0].as_uint = __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
-
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(usub_panic)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+LAUF_BUILTIN_BINARY_OPERATION(usub_return, 2, {
+    result[0].as_uint
+        = __builtin_sub_overflow(lhs.as_uint, rhs.as_sint, &result[1].as_uint) ? 1 : 0;
+})
+LAUF_BUILTIN_BINARY_OPERATION(usub_panic, 1, {
+    if (__builtin_sub_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
         return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
+})
+LAUF_BUILTIN_BINARY_OPERATION(usub_wrap, 1, {
+    __builtin_sub_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint);
+})
+LAUF_BUILTIN_BINARY_OPERATION(usub_sat, 1, {
+    if (__builtin_sub_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
+        result->as_uint = 0;
+})
+LAUF_MAKE_ARITHMETIC_BUILTIN(usub)
 
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(usub_wrap)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint);
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(usub_sat)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint))
-        stack_ptr[1].as_uint = 0;
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-
-LAUF_BUILTIN_FN(umul_return)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    stack_ptr[0].as_uint = __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
-
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(umul_panic)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+LAUF_BUILTIN_BINARY_OPERATION(umul_return, 2, {
+    result[0].as_uint
+        = __builtin_mul_overflow(lhs.as_uint, rhs.as_uint, &result[1].as_uint) ? 1 : 0;
+})
+LAUF_BUILTIN_BINARY_OPERATION(umul_panic, 1, {
+    if (__builtin_mul_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
         return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(umul_wrap)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint);
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-LAUF_BUILTIN_FN(umul_sat)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint))
-        stack_ptr[1].as_uint = lauf_value_uint_max;
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-} // namespace
-
-lauf_builtin lauf_sadd_builtin(lauf_integer_overflow overflow)
-{
-    switch (overflow)
-    {
-    case LAUF_INTEGER_OVERFLOW_RETURN:
-        return {{2, 2}, &sadd_return};
-    case LAUF_INTEGER_OVERFLOW_PANIC:
-        return {{2, 1}, &sadd_panic};
-    case LAUF_INTEGER_OVERFLOW_WRAP:
-        return {{2, 1}, &sadd_wrap};
-    case LAUF_INTEGER_OVERFLOW_SAT:
-        return {{2, 1}, &sadd_sat};
-    }
-}
-
-lauf_builtin lauf_ssub_builtin(lauf_integer_overflow overflow)
-{
-    switch (overflow)
-    {
-    case LAUF_INTEGER_OVERFLOW_RETURN:
-        return {{2, 2}, &ssub_return};
-    case LAUF_INTEGER_OVERFLOW_PANIC:
-        return {{2, 1}, &ssub_panic};
-    case LAUF_INTEGER_OVERFLOW_WRAP:
-        return {{2, 1}, &ssub_wrap};
-    case LAUF_INTEGER_OVERFLOW_SAT:
-        return {{2, 1}, &ssub_sat};
-    }
-}
-
-lauf_builtin lauf_smul_builtin(lauf_integer_overflow overflow)
-{
-    switch (overflow)
-    {
-    case LAUF_INTEGER_OVERFLOW_RETURN:
-        return {{2, 2}, &smul_return};
-    case LAUF_INTEGER_OVERFLOW_PANIC:
-        return {{2, 1}, &smul_panic};
-    case LAUF_INTEGER_OVERFLOW_WRAP:
-        return {{2, 1}, &smul_wrap};
-    case LAUF_INTEGER_OVERFLOW_SAT:
-        return {{2, 1}, &smul_sat};
-    }
-}
-
-lauf_builtin lauf_uadd_builtin(lauf_integer_overflow overflow)
-{
-    switch (overflow)
-    {
-    case LAUF_INTEGER_OVERFLOW_RETURN:
-        return {{2, 2}, &uadd_return};
-    case LAUF_INTEGER_OVERFLOW_PANIC:
-        return {{2, 1}, &uadd_panic};
-    case LAUF_INTEGER_OVERFLOW_WRAP:
-        return {{2, 1}, &uadd_wrap};
-    case LAUF_INTEGER_OVERFLOW_SAT:
-        return {{2, 1}, &uadd_sat};
-    }
-}
-
-lauf_builtin lauf_usub_builtin(lauf_integer_overflow overflow)
-{
-    switch (overflow)
-    {
-    case LAUF_INTEGER_OVERFLOW_RETURN:
-        return {{2, 2}, &usub_return};
-    case LAUF_INTEGER_OVERFLOW_PANIC:
-        return {{2, 1}, &usub_panic};
-    case LAUF_INTEGER_OVERFLOW_WRAP:
-        return {{2, 1}, &usub_wrap};
-    case LAUF_INTEGER_OVERFLOW_SAT:
-        return {{2, 1}, &usub_sat};
-    }
-}
-
-lauf_builtin lauf_umul_builtin(lauf_integer_overflow overflow)
-{
-    switch (overflow)
-    {
-    case LAUF_INTEGER_OVERFLOW_RETURN:
-        return {{2, 2}, &umul_return};
-    case LAUF_INTEGER_OVERFLOW_PANIC:
-        return {{2, 1}, &umul_panic};
-    case LAUF_INTEGER_OVERFLOW_WRAP:
-        return {{2, 1}, &umul_wrap};
-    case LAUF_INTEGER_OVERFLOW_SAT:
-        return {{2, 1}, &umul_sat};
-    }
-}
+})
+LAUF_BUILTIN_BINARY_OPERATION(umul_wrap, 1, {
+    __builtin_mul_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint);
+})
+LAUF_BUILTIN_BINARY_OPERATION(umul_sat, 1, {
+    if (__builtin_mul_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
+        result->as_uint = lauf_value_uint_max;
+})
+LAUF_MAKE_ARITHMETIC_BUILTIN(umul)
 
 //=== comparison ===//
-namespace
-{
-LAUF_BUILTIN_FN(scmp)
-{
-    auto lhs = stack_ptr[1].as_sint;
-    auto rhs = stack_ptr[0].as_sint;
-
-    if (lhs < rhs)
-        stack_ptr[1].as_sint = -1;
-    else if (lhs == rhs)
-        stack_ptr[1].as_sint = 0;
+LAUF_BUILTIN_BINARY_OPERATION(lauf_scmp_builtin, 1, {
+    if (lhs.as_sint < rhs.as_sint)
+        result->as_sint = -1;
+    else if (lhs.as_sint == rhs.as_sint)
+        result->as_sint = 0;
     else
-        stack_ptr[1].as_sint = 1;
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-
-LAUF_BUILTIN_FN(ucmp)
-{
-    auto lhs = stack_ptr[1].as_uint;
-    auto rhs = stack_ptr[0].as_uint;
-
-    if (lhs < rhs)
-        stack_ptr[1].as_sint = -1;
-    else if (lhs == rhs)
-        stack_ptr[1].as_sint = 0;
+        result->as_sint = 1;
+})
+LAUF_BUILTIN_BINARY_OPERATION(lauf_ucmp_builtin, 1, {
+    if (lhs.as_uint < rhs.as_uint)
+        result->as_sint = -1;
+    else if (lhs.as_uint == rhs.as_uint)
+        result->as_sint = 0;
     else
-        stack_ptr[1].as_sint = 1;
-
-    ++stack_ptr;
-    LAUF_BUILTIN_DISPATCH;
-}
-} // namespace
-
-lauf_builtin lauf_scmp_builtin(void)
-{
-    return {{2, 1}, &scmp};
-}
-
-lauf_builtin lauf_ucmp_builtin(void)
-{
-    return {{2, 1}, &ucmp};
-}
+        result->as_sint = 1;
+})
 
