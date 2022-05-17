@@ -54,12 +54,23 @@ namespace
 #define LAUF_BUILTIN_DISPATCH                                                                      \
     LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, stack_ptr, frame_ptr, vm)
 
-LAUF_BUILTIN_FN(sadd_report)
+LAUF_BUILTIN_FN(sadd_return)
 {
     auto lhs = stack_ptr[1].as_sint;
     auto rhs = stack_ptr[0].as_sint;
 
     stack_ptr[0].as_uint = __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
+    LAUF_BUILTIN_DISPATCH;
+}
+LAUF_BUILTIN_FN(sadd_panic)
+{
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
+
+    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+        return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
+
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(sadd_wrap)
@@ -89,13 +100,24 @@ LAUF_BUILTIN_FN(sadd_sat)
     LAUF_BUILTIN_DISPATCH;
 }
 
-LAUF_BUILTIN_FN(ssub_report)
+LAUF_BUILTIN_FN(ssub_return)
 {
     auto lhs = stack_ptr[1].as_sint;
     auto rhs = stack_ptr[0].as_sint;
 
     stack_ptr[0].as_uint = __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
 
+    LAUF_BUILTIN_DISPATCH;
+}
+LAUF_BUILTIN_FN(ssub_panic)
+{
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
+
+    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+        return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
+
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(ssub_wrap)
@@ -125,13 +147,24 @@ LAUF_BUILTIN_FN(ssub_sat)
     LAUF_BUILTIN_DISPATCH;
 }
 
-LAUF_BUILTIN_FN(smul_report)
+LAUF_BUILTIN_FN(smul_return)
 {
     auto lhs = stack_ptr[1].as_sint;
     auto rhs = stack_ptr[0].as_sint;
 
     stack_ptr[0].as_uint = __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint) ? 1 : 0;
 
+    LAUF_BUILTIN_DISPATCH;
+}
+LAUF_BUILTIN_FN(smul_panic)
+{
+    auto lhs = stack_ptr[1].as_sint;
+    auto rhs = stack_ptr[0].as_sint;
+
+    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_sint))
+        return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
+
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(smul_wrap)
@@ -161,13 +194,24 @@ LAUF_BUILTIN_FN(smul_sat)
     LAUF_BUILTIN_DISPATCH;
 }
 
-LAUF_BUILTIN_FN(uadd_report)
+LAUF_BUILTIN_FN(uadd_return)
 {
     auto lhs = stack_ptr[1].as_uint;
     auto rhs = stack_ptr[0].as_uint;
 
     stack_ptr[0].as_uint = __builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
 
+    LAUF_BUILTIN_DISPATCH;
+}
+LAUF_BUILTIN_FN(uadd_panic)
+{
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
+
+    if (__builtin_add_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+        return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
+
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(uadd_wrap)
@@ -192,13 +236,24 @@ LAUF_BUILTIN_FN(uadd_sat)
     LAUF_BUILTIN_DISPATCH;
 }
 
-LAUF_BUILTIN_FN(usub_report)
+LAUF_BUILTIN_FN(usub_return)
 {
     auto lhs = stack_ptr[1].as_uint;
     auto rhs = stack_ptr[0].as_uint;
 
     stack_ptr[0].as_uint = __builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
 
+    LAUF_BUILTIN_DISPATCH;
+}
+LAUF_BUILTIN_FN(usub_panic)
+{
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
+
+    if (__builtin_sub_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+        return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
+
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(usub_wrap)
@@ -223,13 +278,24 @@ LAUF_BUILTIN_FN(usub_sat)
     LAUF_BUILTIN_DISPATCH;
 }
 
-LAUF_BUILTIN_FN(umul_report)
+LAUF_BUILTIN_FN(umul_return)
 {
     auto lhs = stack_ptr[1].as_uint;
     auto rhs = stack_ptr[0].as_uint;
 
     stack_ptr[0].as_uint = __builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint) ? 1 : 0;
 
+    LAUF_BUILTIN_DISPATCH;
+}
+LAUF_BUILTIN_FN(umul_panic)
+{
+    auto lhs = stack_ptr[1].as_uint;
+    auto rhs = stack_ptr[0].as_uint;
+
+    if (__builtin_mul_overflow(lhs, rhs, &stack_ptr[1].as_uint))
+        return lauf_builtin_panic(vm, ip, frame_ptr, "integer overflow");
+
+    ++stack_ptr;
     LAUF_BUILTIN_DISPATCH;
 }
 LAUF_BUILTIN_FN(umul_wrap)
@@ -259,8 +325,10 @@ lauf_builtin lauf_sadd_builtin(lauf_integer_overflow overflow)
 {
     switch (overflow)
     {
-    case LAUF_INTEGER_OVERFLOW_REPORT:
-        return {{2, 2}, &sadd_report};
+    case LAUF_INTEGER_OVERFLOW_RETURN:
+        return {{2, 2}, &sadd_return};
+    case LAUF_INTEGER_OVERFLOW_PANIC:
+        return {{2, 1}, &sadd_panic};
     case LAUF_INTEGER_OVERFLOW_WRAP:
         return {{2, 1}, &sadd_wrap};
     case LAUF_INTEGER_OVERFLOW_SAT:
@@ -272,8 +340,10 @@ lauf_builtin lauf_ssub_builtin(lauf_integer_overflow overflow)
 {
     switch (overflow)
     {
-    case LAUF_INTEGER_OVERFLOW_REPORT:
-        return {{2, 2}, &ssub_report};
+    case LAUF_INTEGER_OVERFLOW_RETURN:
+        return {{2, 2}, &ssub_return};
+    case LAUF_INTEGER_OVERFLOW_PANIC:
+        return {{2, 1}, &ssub_panic};
     case LAUF_INTEGER_OVERFLOW_WRAP:
         return {{2, 1}, &ssub_wrap};
     case LAUF_INTEGER_OVERFLOW_SAT:
@@ -285,8 +355,10 @@ lauf_builtin lauf_smul_builtin(lauf_integer_overflow overflow)
 {
     switch (overflow)
     {
-    case LAUF_INTEGER_OVERFLOW_REPORT:
-        return {{2, 2}, &smul_report};
+    case LAUF_INTEGER_OVERFLOW_RETURN:
+        return {{2, 2}, &smul_return};
+    case LAUF_INTEGER_OVERFLOW_PANIC:
+        return {{2, 1}, &smul_panic};
     case LAUF_INTEGER_OVERFLOW_WRAP:
         return {{2, 1}, &smul_wrap};
     case LAUF_INTEGER_OVERFLOW_SAT:
@@ -298,8 +370,10 @@ lauf_builtin lauf_uadd_builtin(lauf_integer_overflow overflow)
 {
     switch (overflow)
     {
-    case LAUF_INTEGER_OVERFLOW_REPORT:
-        return {{2, 2}, &uadd_report};
+    case LAUF_INTEGER_OVERFLOW_RETURN:
+        return {{2, 2}, &uadd_return};
+    case LAUF_INTEGER_OVERFLOW_PANIC:
+        return {{2, 1}, &uadd_panic};
     case LAUF_INTEGER_OVERFLOW_WRAP:
         return {{2, 1}, &uadd_wrap};
     case LAUF_INTEGER_OVERFLOW_SAT:
@@ -311,8 +385,10 @@ lauf_builtin lauf_usub_builtin(lauf_integer_overflow overflow)
 {
     switch (overflow)
     {
-    case LAUF_INTEGER_OVERFLOW_REPORT:
-        return {{2, 2}, &usub_report};
+    case LAUF_INTEGER_OVERFLOW_RETURN:
+        return {{2, 2}, &usub_return};
+    case LAUF_INTEGER_OVERFLOW_PANIC:
+        return {{2, 1}, &usub_panic};
     case LAUF_INTEGER_OVERFLOW_WRAP:
         return {{2, 1}, &usub_wrap};
     case LAUF_INTEGER_OVERFLOW_SAT:
@@ -324,8 +400,10 @@ lauf_builtin lauf_umul_builtin(lauf_integer_overflow overflow)
 {
     switch (overflow)
     {
-    case LAUF_INTEGER_OVERFLOW_REPORT:
-        return {{2, 2}, &umul_report};
+    case LAUF_INTEGER_OVERFLOW_RETURN:
+        return {{2, 2}, &umul_return};
+    case LAUF_INTEGER_OVERFLOW_PANIC:
+        return {{2, 1}, &umul_panic};
     case LAUF_INTEGER_OVERFLOW_WRAP:
         return {{2, 1}, &umul_wrap};
     case LAUF_INTEGER_OVERFLOW_SAT:

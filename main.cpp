@@ -26,9 +26,9 @@ int main()
     auto parser = lauf_frontend_text_create_parser();
     lauf_frontend_text_register_builtin(parser, "print", print);
     lauf_frontend_text_register_builtin(parser, "add",
-                                        lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
+                                        lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
     lauf_frontend_text_register_builtin(parser, "sub",
-                                        lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
+                                        lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
     lauf_frontend_text_register_builtin(parser, "cmp", lauf_scmp_builtin());
     lauf_frontend_text_register_type(parser, "Int", lauf_native_sint_type());
     lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);

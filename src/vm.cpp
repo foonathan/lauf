@@ -307,6 +307,14 @@ bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
 
 #endif
 
+bool lauf_builtin_panic(lauf_vm vm, lauf_vm_instruction* ip, void* frame_ptr, const char* message)
+{
+    // call_builtin has already incremented ip, so undo it to get the location.
+    auto info = make_panic_info(frame_ptr, ip - 1);
+    vm->panic_handler(&info, message);
+    return false;
+}
+
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
     auto [mod, fn] = program(prog);

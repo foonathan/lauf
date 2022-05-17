@@ -15,6 +15,8 @@ typedef bool lauf_builtin_function(lauf_vm_instruction* ip, lauf_value* vstack_p
 bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
                            lauf_vm vm);
 
+bool lauf_builtin_panic(lauf_vm vm, lauf_vm_instruction* ip, void* frame_ptr, const char* message);
+
 typedef struct lauf_builtin
 {
     lauf_signature         signature;

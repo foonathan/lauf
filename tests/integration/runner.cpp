@@ -29,9 +29,9 @@ int main(int argc, char* argv[])
         lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);
 
         lauf_frontend_text_register_builtin(parser, "sadd",
-                                            lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
+                                            lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
         lauf_frontend_text_register_builtin(parser, "ssub",
-                                            lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
+                                            lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
         lauf_frontend_text_register_builtin(parser, "scmp", lauf_scmp_builtin());
     }
 

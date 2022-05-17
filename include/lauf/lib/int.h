@@ -16,7 +16,9 @@ lauf_type lauf_native_uint_type(void);
 typedef enum lauf_integer_overflow
 {
     /// Gives a boolean result indicating whether overflow occurred.
-    LAUF_INTEGER_OVERFLOW_REPORT,
+    LAUF_INTEGER_OVERFLOW_RETURN,
+    /// Panic on integer overflow.
+    LAUF_INTEGER_OVERFLOW_PANIC,
     /// Wraps on integer overflow.
     LAUF_INTEGER_OVERFLOW_WRAP,
     /// Saturates on integer overflow.
