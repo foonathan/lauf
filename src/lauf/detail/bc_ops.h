@@ -39,7 +39,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
 LAUF_BC_OP(call, bc_inst_function_idx, {
     auto callee = vm->get_function(ip->call.function_idx);
 
-    frame_ptr = new_stack_frame(vm, frame_ptr, ip + 1, callee->local_stack_size);
+    frame_ptr = new_stack_frame(vm, frame_ptr, ip + 1, callee);
     ip        = callee->bytecode();
 
     LAUF_DISPATCH;
@@ -254,7 +254,11 @@ LAUF_BC_OP(save_value, bc_inst_literal, {
 // message => _
 LAUF_BC_OP(panic, bc_inst_none, {
     auto message = static_cast<const char*>(vstack_ptr[0].as_ptr);
-    vm->panic_handler(nullptr, message);
+
+    auto                 frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    lauf_panic_info_impl info{frame};
+    vm->panic_handler(&info, message);
+
     return false;
 })
 
@@ -265,7 +269,9 @@ LAUF_BC_OP(panic_if, bc_inst_cc, {
     auto message = static_cast<const char*>(vstack_ptr[0].as_ptr);
     if (check_condition(ip->panic_if.cc, value))
     {
-        vm->panic_handler(nullptr, message);
+        auto                 frame = static_cast<stack_frame*>(frame_ptr) - 1;
+        lauf_panic_info_impl info{frame};
+        vm->panic_handler(&info, message);
         return false;
     }
     vstack_ptr += 2;

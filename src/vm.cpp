@@ -19,11 +19,6 @@
 
 using namespace lauf::_detail;
 
-const lauf_vm_options lauf_default_vm_options
-    = {size_t(512) * 1024, [](lauf_panic_info, const char* message) {
-           std::fprintf(stderr, "[lauf] panic: %s\n", message);
-       }};
-
 struct alignas(lauf_value) lauf_vm_impl
 {
     struct
@@ -50,6 +45,70 @@ struct alignas(lauf_value) lauf_vm_impl
     }
 };
 
+namespace
+{
+struct alignas(std::max_align_t) stack_frame
+{
+    lauf_function           fn;
+    lauf_vm_instruction*    return_ip;
+    stack_allocator::marker unwind;
+    stack_frame*            prev;
+};
+
+void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_ip, lauf_function fn)
+{
+    auto marker     = vm->memory_stack.top();
+    auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
+
+    // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
+    // it; the builder takes care of it when computing the stack size.
+    auto memory = vm->memory_stack.allocate(sizeof(stack_frame) + fn->local_stack_size);
+    auto frame  = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
+    return frame + 1;
+}
+
+} // namespace
+
+//=== backtrace ===//
+lauf_function lauf_backtrace_get_function(lauf_backtrace bt)
+{
+    auto frame = static_cast<stack_frame*>(bt);
+    return frame->fn;
+}
+
+lauf_backtrace lauf_backtrace_parent(lauf_backtrace bt)
+{
+    auto frame = static_cast<stack_frame*>(bt);
+    return frame->prev;
+}
+
+//=== panic handler ===//
+struct lauf_panic_info_impl
+{
+    stack_frame* cur_frame;
+};
+
+lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
+{
+    return info->cur_frame;
+}
+
+//=== vm functions ===//
+const lauf_vm_options lauf_default_vm_options
+    = {size_t(512) * 1024, [](lauf_panic_info info, const char* message) {
+           std::fprintf(stderr, "[lauf] panic: %s\n", message);
+           std::fprintf(stderr, "       stack backtrace\n");
+
+           auto index = 0;
+           for (auto cur = lauf_panic_info_get_backtrace(info); cur != nullptr;
+                cur      = lauf_backtrace_parent(cur))
+           {
+               auto fn = lauf_backtrace_get_function(cur);
+               std::fprintf(stderr, "       %4d. %s\n", index, lauf_function_get_name(fn));
+               ++index;
+           }
+       }};
+
 lauf_vm lauf_vm_create(lauf_vm_options options)
 {
     auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_value_stack_size);
@@ -62,28 +121,9 @@ void lauf_vm_destroy(lauf_vm vm)
     ::operator delete(vm);
 }
 
+//=== execute ===//
 namespace
 {
-struct alignas(std::max_align_t) stack_frame
-{
-    lauf_vm_instruction*    return_ip;
-    stack_allocator::marker unwind;
-    stack_frame*            prev;
-};
-
-void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_ip,
-                      std::size_t local_stack_size)
-{
-    auto marker     = vm->memory_stack.top();
-    auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
-
-    // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
-    // it; the builder takes care of it when computing the stack size.
-    auto memory = vm->memory_stack.allocate(sizeof(stack_frame) + local_stack_size);
-    auto frame  = ::new (memory) stack_frame{return_ip, marker, prev_frame};
-    return frame + 1;
-}
-
 bool check_condition(condition_code cc, lauf_value value)
 {
     switch (cc)
@@ -245,8 +285,10 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         vstack_ptr[0] = input[i];
     }
 
-    auto frame_ptr = new_stack_frame(vm, nullptr, nullptr, fn->local_stack_size);
-    auto ip        = fn->bytecode();
+    auto frame_ptr                                = new_stack_frame(vm, nullptr, nullptr, fn);
+    static_cast<stack_frame*>(frame_ptr)[-1].prev = nullptr;
+
+    auto ip = fn->bytecode();
     if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
         return false;
 
