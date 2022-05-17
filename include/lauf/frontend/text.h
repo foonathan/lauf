@@ -21,7 +21,8 @@ void lauf_frontend_text_register_type(lauf_frontend_text_parser p, const char* n
                                       lauf_type type);
 
 /// Parses a module from text; `data` can be freed later.
-lauf_module lauf_frontend_text(lauf_frontend_text_parser p, const char* data, size_t size);
+lauf_module lauf_frontend_text(lauf_frontend_text_parser p, const char* path, const char* data,
+                               size_t size);
 lauf_module lauf_frontend_text_cstr(lauf_frontend_text_parser p, const char* str);
 
 /// Frees the parser and all modules parsed with it.

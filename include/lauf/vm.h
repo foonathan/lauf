@@ -16,8 +16,9 @@ typedef union lauf_vm_instruction lauf_vm_instruction;
 //=== backtrace ===//
 typedef void* lauf_backtrace;
 
-lauf_function  lauf_backtrace_get_function(lauf_backtrace bt);
-lauf_backtrace lauf_backtrace_parent(lauf_backtrace bt);
+lauf_function       lauf_backtrace_get_function(lauf_backtrace bt);
+lauf_debug_location lauf_backtrace_get_location(lauf_backtrace bt);
+lauf_backtrace      lauf_backtrace_parent(lauf_backtrace bt);
 
 //=== panic_handler ===//
 typedef struct lauf_panic_info_impl* lauf_panic_info;

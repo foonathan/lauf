@@ -255,8 +255,7 @@ LAUF_BC_OP(save_value, bc_inst_literal, {
 LAUF_BC_OP(panic, bc_inst_none, {
     auto message = static_cast<const char*>(vstack_ptr[0].as_ptr);
 
-    auto                 frame = static_cast<stack_frame*>(frame_ptr) - 1;
-    lauf_panic_info_impl info{frame};
+    auto info = make_panic_info(frame_ptr, ip);
     vm->panic_handler(&info, message);
 
     return false;
@@ -269,8 +268,7 @@ LAUF_BC_OP(panic_if, bc_inst_cc, {
     auto message = static_cast<const char*>(vstack_ptr[0].as_ptr);
     if (check_condition(ip->panic_if.cc, value))
     {
-        auto                 frame = static_cast<stack_frame*>(frame_ptr) - 1;
-        lauf_panic_info_impl info{frame};
+        auto info = make_panic_info(frame_ptr, ip);
         vm->panic_handler(&info, message);
         return false;
     }

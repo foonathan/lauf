@@ -10,6 +10,7 @@
 #include <lexy/callback.hpp>
 #include <lexy/dsl.hpp>
 #include <lexy/input/string_input.hpp>
+#include <lexy/input_location.hpp>
 #include <lexy_ext/report_error.hpp>
 #include <map>
 #include <optional>
@@ -24,6 +25,19 @@ struct lauf_frontend_text_parser_impl
     std::map<std::string_view, lauf_builtin> builtins;
     std::map<std::string_view, lauf_type>    types;
     std::set<std::string>                    data;
+
+    const char* intern(std::string&& str)
+    {
+        return data.emplace(std::move(str)).first->c_str();
+    }
+    const char* intern(std::string_view str)
+    {
+        return intern(std::string(str));
+    }
+    const char* intern(const char* str)
+    {
+        return intern(std::string(str));
+    }
 };
 
 namespace
@@ -88,6 +102,11 @@ static constexpr auto ccs = lexy::symbol_table<lauf_condition> //
                                 .map<LEXY_SYMBOL("cmp_le")>(LAUF_CMP_LE)
                                 .map<LEXY_SYMBOL("cmp_gt")>(LAUF_CMP_GT)
                                 .map<LEXY_SYMBOL("cmp_ge")>(LAUF_CMP_GE);
+
+struct debug_location
+{
+    static constexpr auto rule = dsl::position;
+};
 
 //=== instructions ===//
 struct inst_int
@@ -180,13 +199,14 @@ struct inst_panic_if
 struct inst
 {
     static constexpr auto rule
-        = (dsl::p<inst_int> | dsl::p<inst_ptr> | dsl::p<inst_local_addr>                     //
-           | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>                       //
-           | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin>            //
-           | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
-           | dsl::p<inst_load_value> | dsl::p<inst_store_value>                              //
-           | dsl::p<inst_panic> | dsl::p<inst_panic_if>)                                     //
-        +dsl::semicolon;
+        = dsl::p<debug_location>
+          + (dsl::p<inst_int> | dsl::p<inst_ptr> | dsl::p<inst_local_addr>                     //
+             | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>                       //
+             | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin>            //
+             | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
+             | dsl::p<inst_load_value> | dsl::p<inst_store_value>                              //
+             | dsl::p<inst_panic> | dsl::p<inst_panic_if>)                                     //
+          +dsl::semicolon;
     static constexpr auto value = lexy::forward<void>;
 };
 
@@ -257,8 +277,8 @@ struct function
 {
     struct header
     {
-        static constexpr auto rule
-            = LEXY_KEYWORD("function", identifier) >> dsl::p<global_label> + dsl::p<signature>;
+        static constexpr auto rule = LEXY_KEYWORD("function", identifier)
+                                     >> dsl::position + dsl::p<global_label> + dsl::p<signature>;
     };
 
     static constexpr auto rule
@@ -321,9 +341,12 @@ struct partial_block
 
 struct builder
 {
-    lauf_frontend_text_parser parser;
+    lauf_frontend_text_parser                parser;
+    lexy::string_input<lexy::ascii_encoding> input;
+    const char*                              path;
 
-    mutable lauf_module_builder mod = nullptr;
+    mutable lauf_module_builder                          mod = nullptr;
+    mutable lexy::input_location_anchor<decltype(input)> anchor;
 
     mutable lauf_function_builder                             cur_function = nullptr;
     mutable std::map<std::string_view, lauf_function_builder> function_labels;
@@ -334,11 +357,16 @@ struct builder
     mutable std::map<std::string_view, lauf_local_variable> var_labels;
     mutable std::map<std::string_view, lauf_value_ptr>      data_labels;
 
+    builder(lauf_frontend_text_parser parser, lexy::string_input<lexy::ascii_encoding> input,
+            const char* path)
+    : parser(parser), input(input), path(path), anchor(input)
+    {}
+
     auto value_of(lauf::text_grammar::module_::header) const
     {
         return lexy::callback([&](std::string_view name) {
-            auto result = parser->data.emplace(name);
-            mod         = lauf_build_module(result.first->c_str());
+            mod = lauf_build_module(parser->intern(name));
+            lauf_build_module_path(mod, parser->intern(path));
         });
     }
     auto value_of(lauf::text_grammar::module_) const
@@ -353,14 +381,13 @@ struct builder
     auto value_of(lauf::text_grammar::const_) const
     {
         return lexy::callback([&](std::string_view name, std::string&& data) {
-            auto result       = parser->data.emplace(std::move(data));
-            data_labels[name] = result.first->c_str();
+            data_labels[name] = parser->intern(std::move(data));
         });
     }
 
     auto value_of(lauf::text_grammar::function::header) const
     {
-        return lexy::callback([&](std::string_view name, lauf_signature sig) {
+        return lexy::callback([&](const char* position, std::string_view name, lauf_signature sig) {
             auto iter = function_labels.find(name);
             if (iter != function_labels.end())
             {
@@ -368,10 +395,16 @@ struct builder
             }
             else
             {
-                auto result           = parser->data.emplace(name);
-                cur_function          = lauf_build_function(mod, result.first->c_str(), sig);
+                cur_function          = lauf_build_function(mod, parser->intern(name), sig);
                 function_labels[name] = cur_function;
             }
+
+            // We keep the latest location in the file, which is presumably the definition.
+            auto location = lexy::get_input_location(input, position, anchor);
+            anchor        = location.anchor();
+            lauf_build_function_debug_location(cur_function,
+                                               lauf_debug_location{location.line_nr(),
+                                                                   location.column_nr(), 0});
         });
     }
     auto value_of(lauf::text_grammar::function) const
@@ -465,6 +498,17 @@ struct builder
             [&](std::string_view name) { return parser->types.at(name); });
     }
 
+    auto value_of(lauf::text_grammar::debug_location) const
+    {
+        return lexy::callback([&](const char* position) {
+            auto location = lexy::get_input_location(input, position, anchor);
+            anchor        = location.anchor();
+            lauf_build_debug_location(blocks[cur_block].builder,
+                                      lauf_debug_location{location.line_nr(), location.column_nr(),
+                                                          0});
+        });
+    }
+
     template <typename Inst, typename = decltype(Inst::build)>
     auto value_of(Inst) const
     {
@@ -490,17 +534,18 @@ void lauf_frontend_text_register_type(lauf_frontend_text_parser p, const char* n
     p->types[name] = type;
 }
 
-lauf_module lauf_frontend_text(lauf_frontend_text_parser p, const char* data, size_t size)
+lauf_module lauf_frontend_text(lauf_frontend_text_parser p, const char* path, const char* data,
+                               size_t size)
 {
-    auto input = lexy::string_input<lexy::ascii_encoding>(data, size);
-    auto result
-        = lexy::parse<lauf::text_grammar::module_>(input, builder{p}, lexy_ext::report_error);
+    auto input  = lexy::string_input<lexy::ascii_encoding>(data, size);
+    auto result = lexy::parse<lauf::text_grammar::module_>(input, builder(p, input, path),
+                                                           lexy_ext::report_error);
     return result ? result.value() : nullptr;
 }
 
 lauf_module lauf_frontend_text_cstr(lauf_frontend_text_parser p, const char* str)
 {
-    return lauf_frontend_text(p, str, std::strlen(str));
+    return lauf_frontend_text(p, "<literal>", str, std::strlen(str));
 }
 
 void lauf_frontend_text_destroy_parser(lauf_frontend_text_parser p)

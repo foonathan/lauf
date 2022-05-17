@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
         lauf_frontend_text_register_builtin(parser, "scmp", lauf_scmp_builtin());
     }
 
-    auto mod = lauf_frontend_text(parser, file.buffer().data(), file.buffer().size());
+    auto mod = lauf_frontend_text(parser, argv[1], file.buffer().data(), file.buffer().size());
     if (mod == nullptr)
     {
         std::fprintf(stderr, "error: compilation failure\n");

@@ -60,6 +60,7 @@ struct lauf_block_builder_impl
     lauf_signature                   sig;
     stack_checker                    vstack;
     std::vector<lauf_vm_instruction> bytecode;
+    std::vector<debug_location_map>  debug_locations;
     // Set while finishing the function, to resolve jumps to the beginning of the block.
     ptrdiff_t start_offset;
 
@@ -77,6 +78,7 @@ struct lauf_function_builder_impl
 {
     lauf_module_builder                 mod;
     const char*                         name;
+    lauf_debug_location                 debug_location;
     lauf_function                       fn;
     std::deque<lauf_block_builder_impl> blocks;
     stack_allocator_offset              locals;
@@ -85,7 +87,7 @@ struct lauf_function_builder_impl
 
     lauf_function_builder_impl(size_t index, lauf_module_builder mod, const char* name,
                                lauf_signature sig)
-    : mod(mod), name(name), fn(nullptr), sig(sig), index(bc_function_idx(index))
+    : mod(mod), name(name), debug_location{}, fn(nullptr), sig(sig), index(bc_function_idx(index))
     {}
 
     lauf_function_builder_impl(const lauf_function_builder_impl&) = delete;
@@ -101,6 +103,7 @@ struct lauf_function_builder_impl
 struct lauf_module_builder_impl
 {
     const char*                            name;
+    const char*                            path;
     literal_pool                           literals;
     std::deque<lauf_function_builder_impl> functions;
 };
@@ -115,9 +118,13 @@ lauf_module lauf_finish_module(lauf_module_builder b)
 {
     auto result            = lauf_impl_allocate_module(b->functions.size(), b->literals.size());
     result->function_count = b->functions.size();
+    result->path           = b->path;
 
     for (auto idx = std::size_t(0); idx != b->functions.size(); ++idx)
-        result->function_begin()[idx] = b->functions[idx].fn;
+    {
+        result->function_begin()[idx]      = b->functions[idx].fn;
+        result->function_begin()[idx]->mod = result;
+    }
 
     if (b->literals.size() != 0)
         std::memcpy(result->literal_data(), b->literals.data(),
@@ -125,6 +132,11 @@ lauf_module lauf_finish_module(lauf_module_builder b)
 
     delete b;
     return result;
+}
+
+void lauf_build_module_path(lauf_module_builder b, const char* path)
+{
+    b->path = path;
 }
 
 //=== function builder ===//
@@ -236,8 +248,34 @@ lauf_function lauf_finish_function(lauf_function_builder b)
         }
     }
 
+    // Finally set the debug locations.
+    {
+        auto debug_location_size = [&] {
+            auto result = std::size_t(2);
+            for (auto& block : b->blocks)
+                result += block.debug_locations.size();
+            return result;
+        }();
+        result->debug_locations = new debug_location_map[debug_location_size];
+
+        auto ptr = result->debug_locations;
+        *ptr++   = debug_location_map{-1, b->debug_location};
+        for (auto& block : b->blocks)
+            for (auto loc : block.debug_locations)
+            {
+                loc.first_address += block.start_offset;
+                *ptr++ = loc;
+            }
+        *ptr++ = debug_location_map{-1, {}};
+    }
+
     b->fn = result;
     return result;
+}
+
+void lauf_build_function_debug_location(lauf_function_builder b, lauf_debug_location location)
+{
+    b->debug_location = location;
 }
 
 lauf_local_variable lauf_build_local_variable(lauf_function_builder b, lauf_layout layout)
@@ -292,6 +330,14 @@ void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
     LAUF_VERIFY(b->sig.output_count == if_true->sig.input_count
                     && b->sig.output_count == if_false->sig.input_count,
                 "branch", "cannot jump to block expecting a different stack size");
+}
+
+void lauf_build_debug_location(lauf_block_builder b, lauf_debug_location location)
+{
+    if (b->debug_locations.empty()
+        || std::memcmp(&b->debug_locations.back().location, &location, sizeof(lauf_debug_location))
+               != 0)
+        b->debug_locations.push_back({ptrdiff_t(b->bytecode.size()), location});
 }
 
 //=== instructions ===//

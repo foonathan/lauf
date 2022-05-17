@@ -33,6 +33,8 @@ lauf_module_builder lauf_build_module(const char* name);
 
 lauf_module lauf_finish_module(lauf_module_builder b);
 
+void lauf_build_module_path(lauf_module_builder b, const char* path);
+
 //=== function builder ===//
 typedef struct lauf_function_builder_impl* lauf_function_builder;
 
@@ -46,6 +48,8 @@ lauf_function_builder lauf_build_function(lauf_module_builder b, const char* nam
 
 lauf_function lauf_finish_function(lauf_function_builder b);
 
+void lauf_build_function_debug_location(lauf_function_builder b, lauf_debug_location location);
+
 lauf_local_variable lauf_build_local_variable(lauf_function_builder b, lauf_layout layout);
 
 //=== block builder ===//
@@ -57,6 +61,8 @@ void lauf_finish_block_return(lauf_block_builder b);
 void lauf_finish_block_jump(lauf_block_builder b, lauf_block_builder dest);
 void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
                               lauf_block_builder if_true, lauf_block_builder if_false);
+
+void lauf_build_debug_location(lauf_block_builder b, lauf_debug_location location);
 
 //=== instructions ===//
 void lauf_build_int(lauf_block_builder b, lauf_value_sint value);

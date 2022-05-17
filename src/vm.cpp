@@ -15,7 +15,6 @@
 #include <lauf/type.h>
 #include <new>
 #include <type_traits>
-#include <utility>
 
 using namespace lauf::_detail;
 
@@ -70,41 +69,77 @@ void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_i
 } // namespace
 
 //=== backtrace ===//
+// lauf_backtrace is a pointer to a stack frame.
+// It is initially a pointer to a dummy stack frame whose return_ip stores the initial ip + 1,
+// and prev->fn is the current function.
+
 lauf_function lauf_backtrace_get_function(lauf_backtrace bt)
 {
     auto frame = static_cast<stack_frame*>(bt);
-    return frame->fn;
+    return frame->prev->fn;
+}
+
+lauf_debug_location lauf_backtrace_get_location(lauf_backtrace bt)
+{
+    auto frame = static_cast<stack_frame*>(bt);
+    return lauf_function_get_location_of(frame->prev->fn, frame->return_ip - 1);
 }
 
 lauf_backtrace lauf_backtrace_parent(lauf_backtrace bt)
 {
     auto frame = static_cast<stack_frame*>(bt);
-    return frame->prev;
+    // We need to go to the parent.
+    auto next_bt = frame->prev;
+
+    if (next_bt->prev == nullptr)
+    {
+        // The parent of the next frame has no parent.
+        // This means we've reached the top frame.
+        assert(next_bt->return_ip == nullptr);
+        return nullptr;
+    }
+
+    return next_bt;
 }
 
 //=== panic handler ===//
 struct lauf_panic_info_impl
 {
-    stack_frame* cur_frame;
+    stack_frame fake_frame;
 };
+
+namespace
+{
+lauf_panic_info_impl make_panic_info(void* frame_ptr, lauf_vm_instruction* ip)
+{
+    auto cur_frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    return {{nullptr, ip + 1, {}, cur_frame}};
+}
+} // namespace
 
 lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
 {
-    return info->cur_frame;
+    return &info->fake_frame;
 }
 
 //=== vm functions ===//
 const lauf_vm_options lauf_default_vm_options
     = {size_t(512) * 1024, [](lauf_panic_info info, const char* message) {
            std::fprintf(stderr, "[lauf] panic: %s\n", message);
-           std::fprintf(stderr, "       stack backtrace\n");
+           std::fprintf(stderr, "stack backtrace\n");
 
            auto index = 0;
            for (auto cur = lauf_panic_info_get_backtrace(info); cur != nullptr;
                 cur      = lauf_backtrace_parent(cur))
            {
                auto fn = lauf_backtrace_get_function(cur);
-               std::fprintf(stderr, "       %4d. %s\n", index, lauf_function_get_name(fn));
+               std::fprintf(stderr, " %4d. %s\n", index, lauf_function_get_name(fn));
+               if (auto loc = lauf_backtrace_get_location(cur); loc.line != 0u && loc.column != 0u)
+               {
+                   auto path = lauf_module_get_path(lauf_function_get_module(fn));
+                   std::fprintf(stderr, "        at %s:%u:%u\n", path, unsigned(loc.line),
+                                unsigned(loc.column));
+               }
                ++index;
            }
        }};
