@@ -229,7 +229,16 @@ lauf_function lauf_finish_function(lauf_function_builder b)
             break;
 
         case block_terminator::return_:
-            result->bytecode()[position] = LAUF_VM_INSTRUCTION(return_);
+            if (!block.bytecode.empty() && result->bytecode()[position - 1].tag.op == bc_op::call)
+            {
+                // Turn the last call into a tail call.
+                auto fn = result->bytecode()[position - 1].call.function_idx;
+                result->bytecode()[position - 1] = LAUF_VM_INSTRUCTION(tail_call, fn);
+            }
+            else
+            {
+                result->bytecode()[position] = LAUF_VM_INSTRUCTION(return_);
+            }
             break;
 
         case block_terminator::jump:
@@ -403,11 +412,6 @@ void lauf_build_roll(lauf_block_builder b, size_t n)
     else
         b->bytecode.push_back(LAUF_VM_INSTRUCTION(roll, n));
     LAUF_VERIFY(n < b->vstack.cur_stack_size(), "roll", "invalid stack index");
-}
-
-void lauf_build_recurse(lauf_block_builder b)
-{
-    lauf_build_call(b, b->fn);
 }
 
 void lauf_build_call(lauf_block_builder b, lauf_function_builder fn)

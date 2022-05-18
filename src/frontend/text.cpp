@@ -141,11 +141,6 @@ struct inst_roll
     static constexpr auto build = &lauf_build_roll;
 };
 
-struct inst_recurse
-{
-    static constexpr auto rule  = LEXY_KEYWORD("recurse", identifier);
-    static constexpr auto build = &lauf_build_recurse;
-};
 struct inst_call
 {
     static constexpr auto rule  = LEXY_KEYWORD("call", identifier) >> dsl::p<ref_function>;
@@ -202,7 +197,7 @@ struct inst
         = dsl::p<debug_location>
           + (dsl::p<inst_int> | dsl::p<inst_ptr> | dsl::p<inst_local_addr>                     //
              | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>                       //
-             | dsl::p<inst_recurse> | dsl::p<inst_call> | dsl::p<inst_call_builtin>            //
+             | dsl::p<inst_call> | dsl::p<inst_call_builtin>            //
              | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
              | dsl::p<inst_load_value> | dsl::p<inst_store_value>                              //
              | dsl::p<inst_panic> | dsl::p<inst_panic_if>)                                     //

@@ -16,12 +16,43 @@ function @fib_recursive(1 => 1) {
     }
     block %recurse(0 => 1) {
         load_value %arg; int 1; call_builtin @ssub;
-        recurse;
+        call @fib_recursive;
 
         load_value %arg; int 2; call_builtin @ssub;
-        recurse;
+        call @fib_recursive;
 
         call_builtin @sadd;
+        return;
+    }
+}
+
+function @fib_tail_call(3 => 1) { # n a b => F_n
+    local %a : @Value;
+    local %b : @Value;
+    block %entry(3 => 1) {
+        store_value %b;
+        store_value %a;
+
+        pick 0; int 0; call_builtin @scmp;
+        branch cmp_eq %is_zero else %next;
+    }
+    block %next(1 => 1) {
+        pick 0; int 1; call_builtin @scmp;
+        branch cmp_eq %is_one else %recurse;
+    }
+    block %is_zero(1 => 1) {
+        drop 1;
+        load_value %a; return;
+    }
+    block %is_one(1 => 1) {
+        drop 1;
+        load_value %b; return;
+    }
+    block %recurse(1 => 1) {
+        int 1; call_builtin @ssub;
+        load_value %b;
+        pick 0; load_value %a; call_builtin @sadd;
+        call @fib_tail_call;
         return;
     }
 }
@@ -58,6 +89,10 @@ function @fib_iter(1 => 1) {
 function @test_fib(0 => 0) {
     block %entry(0 => 0) {
         int 10; call @fib_recursive;
+        int 55; call_builtin @scmp;
+        ptr @test_failure; panic_if cmp_ne;
+
+        int 10; int 0; int 1; call @fib_tail_call;
         int 55; call_builtin @scmp;
         ptr @test_failure; panic_if cmp_ne;
 

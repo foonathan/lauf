@@ -73,7 +73,6 @@ void lauf_build_drop(lauf_block_builder b, size_t n);
 void lauf_build_pick(lauf_block_builder b, size_t n);
 void lauf_build_roll(lauf_block_builder b, size_t n);
 
-void lauf_build_recurse(lauf_block_builder b);
 void lauf_build_call(lauf_block_builder b, lauf_function_builder fn);
 void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn);
 

@@ -52,6 +52,15 @@ LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
     LAUF_DISPATCH_BUILTIN(callee, stack_change);
 })
 
+LAUF_BC_OP(tail_call, bc_inst_function_idx, {
+    auto callee = vm->get_function(ip->call.function_idx);
+    // We only need to allocate memory for the local variables, but not create a new stack frame.
+    // We don't need to worry about alignment here either.
+    vm->memory_stack.allocate(callee->local_stack_size);
+    ip = callee->bytecode();
+    LAUF_DISPATCH;
+})
+
 //=== literals ===//
 // Push literal from table.
 // _ => literal
