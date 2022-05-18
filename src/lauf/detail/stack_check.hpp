@@ -4,7 +4,7 @@
 #ifndef SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
 #define SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
 
-#include <cstddef>
+#include <cstdint>
 #include <lauf/detail/verify.hpp>
 
 namespace lauf::_detail
@@ -16,11 +16,11 @@ public:
     : _cur_size(sig.input_count), _max_size(_cur_size), _final_size(sig.output_count)
     {}
 
-    std::size_t cur_stack_size() const
+    std::uint16_t cur_stack_size() const
     {
         return _cur_size;
     }
-    std::size_t max_stack_size() const
+    std::uint16_t max_stack_size() const
     {
         return _max_size;
     }
@@ -38,8 +38,11 @@ public:
                     "exit block signature does not match function signature");
     }
 
-    void push(std::size_t n = 1)
+    void push(const char* instruction, std::size_t n = 1)
     {
+        auto new_size = _cur_size + n;
+        LAUF_VERIFY(new_size <= UINT16_MAX, instruction, "value stack size limit exceeded");
+
         _cur_size += n;
         if (_cur_size > _max_size)
             _max_size = _cur_size;
@@ -52,7 +55,7 @@ public:
     }
 
 private:
-    std::size_t _cur_size, _max_size, _final_size;
+    std::uint16_t _cur_size, _max_size, _final_size;
 };
 } // namespace lauf::_detail
 

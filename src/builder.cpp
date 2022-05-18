@@ -357,7 +357,7 @@ void lauf_build_int(lauf_block_builder b, lauf_value_sint value)
         b->bytecode.push_back(LAUF_VM_INSTRUCTION(push, idx));
     }
 
-    b->vstack.push();
+    b->vstack.push("int");
 }
 
 void lauf_build_ptr(lauf_block_builder b, lauf_value_ptr ptr)
@@ -365,13 +365,13 @@ void lauf_build_ptr(lauf_block_builder b, lauf_value_ptr ptr)
     auto idx = b->fn->mod->literals.insert(ptr);
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(push, idx));
 
-    b->vstack.push();
+    b->vstack.push("ptr");
 }
 
 void lauf_build_local_addr(lauf_block_builder b, lauf_local_variable var)
 {
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(local_addr, var._addr));
-    b->vstack.push();
+    b->vstack.push("local_addr");
 }
 
 void lauf_build_drop(lauf_block_builder b, size_t n)
@@ -387,7 +387,7 @@ void lauf_build_pick(lauf_block_builder b, size_t n)
     else
         b->bytecode.push_back(LAUF_VM_INSTRUCTION(pick, n));
     LAUF_VERIFY(n < b->vstack.cur_stack_size(), "pick", "invalid stack index");
-    b->vstack.push();
+    b->vstack.push("pick");
 }
 
 void lauf_build_roll(lauf_block_builder b, size_t n)
@@ -406,7 +406,7 @@ void lauf_build_call(lauf_block_builder b, lauf_function_builder fn)
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(call, fn->index));
 
     b->vstack.pop("call", fn->sig.input_count);
-    b->vstack.push(fn->sig.output_count);
+    b->vstack.push("call", fn->sig.output_count);
 }
 
 void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
@@ -416,7 +416,7 @@ void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(call_builtin, stack_change, idx));
 
     b->vstack.pop("call_builtin", fn.signature.input_count);
-    b->vstack.push(fn.signature.output_count);
+    b->vstack.push("call_builtin", fn.signature.output_count);
 }
 
 void lauf_build_array_element(lauf_block_builder b, lauf_type type)
@@ -424,7 +424,7 @@ void lauf_build_array_element(lauf_block_builder b, lauf_type type)
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(array_element, type->layout.size));
 
     b->vstack.pop("array_element", 2);
-    b->vstack.push();
+    b->vstack.push("array_element");
 }
 
 void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field)
@@ -439,7 +439,7 @@ void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field)
         b->bytecode.push_back(LAUF_VM_INSTRUCTION(load_field, field, idx));
 
     b->vstack.pop("load_field");
-    b->vstack.push();
+    b->vstack.push("load_field");
 }
 
 void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field)
@@ -459,7 +459,7 @@ void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var)
         b->bytecode.back().store_value.op = bc_op::save_value;
     else
         b->bytecode.push_back(LAUF_VM_INSTRUCTION(load_value, var._addr));
-    b->vstack.push();
+    b->vstack.push("load_value");
 }
 
 void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var)
