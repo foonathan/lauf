@@ -5,18 +5,16 @@
 #define SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
 
 #include <cstddef>
+#include <lauf/detail/verify.hpp>
 
 namespace lauf::_detail
 {
 class stack_checker
 {
 public:
-    stack_checker() : _cur_size(0), _max_size(0) {}
-
-    void reset() &&
-    {
-        *this = {};
-    }
+    explicit stack_checker(lauf_signature sig)
+    : _cur_size(sig.input_count), _max_size(_cur_size), _final_size(sig.output_count)
+    {}
 
     std::size_t cur_stack_size() const
     {
@@ -27,6 +25,19 @@ public:
         return _max_size;
     }
 
+    void finish_jump(const char* instruction, lauf_signature next)
+    {
+        LAUF_VERIFY(_cur_size == _final_size, instruction, "invalid signature for block");
+        LAUF_VERIFY(_final_size == next.input_count, instruction,
+                    "cannot chain blocks with incompatible signatures");
+    }
+    void finish_return(const char* instruction, lauf_signature fn)
+    {
+        LAUF_VERIFY(_cur_size == _final_size, instruction, "invalid signature for block");
+        LAUF_VERIFY(_final_size == fn.output_count, instruction,
+                    "exit block signature does not match function signature");
+    }
+
     void push(std::size_t n = 1)
     {
         _cur_size += n;
@@ -34,17 +45,14 @@ public:
             _max_size = _cur_size;
     }
 
-    bool drop(std::size_t n = 1)
+    void pop(const char* instruction, std::size_t n = 1)
     {
-        if (_cur_size < n)
-            return false;
-
+        LAUF_VERIFY(_cur_size >= n, instruction, "missing stack values");
         _cur_size -= n;
-        return true;
     }
 
 private:
-    std::size_t _cur_size, _max_size;
+    std::size_t _cur_size, _max_size, _final_size;
 };
 } // namespace lauf::_detail
 

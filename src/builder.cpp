@@ -56,8 +56,8 @@ struct block_terminator
 struct lauf_block_builder_impl
 {
     lauf_function_builder            fn;
-    block_terminator                 terminator;
     lauf_signature                   sig;
+    block_terminator                 terminator;
     stack_checker                    vstack;
     std::vector<lauf_vm_instruction> bytecode;
     std::vector<debug_location_map>  debug_locations;
@@ -65,10 +65,8 @@ struct lauf_block_builder_impl
     ptrdiff_t start_offset;
 
     lauf_block_builder_impl(lauf_function_builder parent, lauf_signature sig)
-    : fn(parent), sig(sig), start_offset(0)
-    {
-        vstack.push(sig.input_count);
-    }
+    : fn(parent), sig(sig), vstack(sig), start_offset(0)
+    {}
 
     lauf_block_builder_impl(const lauf_block_builder_impl&) = delete;
     lauf_block_builder_impl& operator=(const lauf_block_builder_impl&) = delete;
@@ -306,12 +304,7 @@ void lauf_finish_block_return(lauf_block_builder b)
 {
     b->terminator.kind = block_terminator::return_;
 
-    auto output_count = b->fn->sig.output_count;
-    LAUF_VERIFY(b->vstack.cur_stack_size() == output_count, "return",
-                "missing or too many values for return");
-    LAUF_VERIFY(b->sig.output_count == output_count, "return",
-                "invalid signature for terminator block");
-    b->vstack.drop(b->fn->sig.output_count);
+    b->vstack.finish_return("return", b->fn->sig);
 }
 
 void lauf_finish_block_jump(lauf_block_builder b, lauf_block_builder dest)
@@ -319,10 +312,7 @@ void lauf_finish_block_jump(lauf_block_builder b, lauf_block_builder dest)
     b->terminator.kind = block_terminator::jump;
     b->terminator.dest = dest;
 
-    LAUF_VERIFY(b->vstack.cur_stack_size() == b->sig.output_count, "jump",
-                "invalid stack size on block exit");
-    LAUF_VERIFY(b->sig.output_count == dest->sig.input_count, "jump",
-                "cannot jump to block expecting a different stack size");
+    b->vstack.finish_jump("jump", dest->sig);
 }
 
 void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
@@ -333,12 +323,9 @@ void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
     b->terminator.if_true   = if_true;
     b->terminator.if_false  = if_false;
 
-    LAUF_VERIFY_RESULT(b->vstack.drop(), "branch", "missing value for condition");
-    LAUF_VERIFY(b->vstack.cur_stack_size() == b->sig.output_count, "branch",
-                "invalid stack size on block exit");
-    LAUF_VERIFY(b->sig.output_count == if_true->sig.input_count
-                    && b->sig.output_count == if_false->sig.input_count,
-                "branch", "cannot jump to block expecting a different stack size");
+    b->vstack.pop("branch");
+    b->vstack.finish_jump("branch", if_true->sig);
+    b->vstack.finish_jump("branch", if_false->sig);
 }
 
 void lauf_build_debug_location(lauf_block_builder b, lauf_debug_location location)
@@ -390,7 +377,7 @@ void lauf_build_local_addr(lauf_block_builder b, lauf_local_variable var)
 void lauf_build_drop(lauf_block_builder b, size_t n)
 {
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(drop, n));
-    LAUF_VERIFY_RESULT(b->vstack.drop(n), "drop", "not enough values to pop");
+    b->vstack.pop("drop", n);
 }
 
 void lauf_build_pick(lauf_block_builder b, size_t n)
@@ -418,7 +405,7 @@ void lauf_build_call(lauf_block_builder b, lauf_function_builder fn)
 {
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(call, fn->index));
 
-    LAUF_VERIFY_RESULT(b->vstack.drop(fn->sig.input_count), "call", "missing arguments for call");
+    b->vstack.pop("call", fn->sig.input_count);
     b->vstack.push(fn->sig.output_count);
 }
 
@@ -428,8 +415,7 @@ void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn)
     auto stack_change = int32_t(fn.signature.input_count) - int32_t(fn.signature.output_count);
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(call_builtin, stack_change, idx));
 
-    LAUF_VERIFY_RESULT(b->vstack.drop(fn.signature.input_count), "call_builtin",
-                       "missing arguments for call");
+    b->vstack.pop("call_builtin", fn.signature.input_count);
     b->vstack.push(fn.signature.output_count);
 }
 
@@ -437,7 +423,7 @@ void lauf_build_array_element(lauf_block_builder b, lauf_type type)
 {
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(array_element, type->layout.size));
 
-    LAUF_VERIFY_RESULT(b->vstack.drop(2), "array_element", "missing object address or index");
+    b->vstack.pop("array_element", 2);
     b->vstack.push();
 }
 
@@ -452,7 +438,7 @@ void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field)
     else
         b->bytecode.push_back(LAUF_VM_INSTRUCTION(load_field, field, idx));
 
-    LAUF_VERIFY_RESULT(b->vstack.drop(), "load_field", "missing object address");
+    b->vstack.pop("load_field");
     b->vstack.push();
 }
 
@@ -463,7 +449,7 @@ void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field)
     auto idx = b->fn->mod->literals.insert(type);
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(store_field, field, idx));
 
-    LAUF_VERIFY_RESULT(b->vstack.drop(2), "store_field", "missing object address or value");
+    b->vstack.pop("store_field", 2);
 }
 
 void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var)
@@ -479,18 +465,18 @@ void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var)
 void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var)
 {
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(store_value, var._addr));
-    LAUF_VERIFY_RESULT(b->vstack.drop(), "store_value", "missing value");
+    b->vstack.pop("store_value");
 }
 
 void lauf_build_panic(lauf_block_builder b)
 {
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(panic));
-    LAUF_VERIFY_RESULT(b->vstack.drop(), "panic", "missing message");
+    b->vstack.pop("panic");
 }
 
 void lauf_build_panic_if(lauf_block_builder b, lauf_condition condition)
 {
     b->bytecode.push_back(LAUF_VM_INSTRUCTION(panic_if, translate_condition(condition)));
-    LAUF_VERIFY_RESULT(b->vstack.drop(2), "panic_if", "missing value or message");
+    b->vstack.pop("panic_if", 2);
 }
 
