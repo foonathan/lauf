@@ -5,6 +5,7 @@
 
 #include <lauf/builtin.h>
 #include <lauf/detail/bytecode.hpp>
+#include <lauf/detail/bytecode_builder.hpp>
 #include <lauf/detail/literal_pool.hpp>
 #include <lauf/detail/stack_allocator.hpp>
 #include <lauf/detail/stack_check.hpp>
@@ -29,14 +30,6 @@ struct function_decl
 
     // Set to actual function once finished.
     lauf_function fn;
-};
-
-struct label_decl
-{
-    size_t vstack_size;
-
-    // Set once the label is placed.
-    ptrdiff_t bytecode_offset;
 };
 
 condition_code translate_condition(lauf_condition cond)
@@ -80,30 +73,17 @@ struct lauf_builder_impl
     }
 
     //=== per function ===//
-    std::size_t                            cur_fn;
-    stack_allocator_offset                 stack_frame;
-    stack_checker                          value_stack;
-    std::vector<label_decl>                labels;
-    std::vector<bc_inst>                   bytecode;
-    std::vector<debug_location_map::entry> bc_locations;
+    std::size_t            cur_fn;
+    stack_allocator_offset stack_frame;
+    stack_checker          value_stack;
+    bytecode_builder       bytecode;
 
     void reset_function()
     {
         cur_fn      = 0;
         stack_frame = {};
         value_stack = {};
-        labels.clear();
-        bytecode.clear();
-        bc_locations.clear();
-    }
-
-    void update_location()
-    {
-        if (bc_locations.empty()
-            || std::memcmp(&bc_locations.back().location, &cur_location,
-                           sizeof(lauf_debug_location))
-                   != 0)
-            bc_locations.push_back({ptrdiff_t(bytecode.size()), cur_location});
+        bytecode.reset();
     }
 };
 
@@ -180,28 +160,10 @@ lauf_function lauf_finish_function(lauf_builder b)
     result->max_vstack_size  = b->value_stack.max_stack_size();
     result->input_count      = fn_decl.signature.input_count;
     result->output_count     = fn_decl.signature.output_count;
-    result->debug_locations  = debug_location_map(b->bc_locations.data(), b->bc_locations.size());
+    result->debug_locations  = b->bytecode.debug_locations();
 
     // Copy and patch bytecode.
-    {
-        auto cur_offset = ptrdiff_t(0);
-        for (auto inst : b->bytecode)
-        {
-            if (inst.tag.op == bc_op::jump)
-            {
-                auto dest = b->labels[inst.jump.offset].bytecode_offset;
-                inst      = LAUF_VM_INSTRUCTION(jump, dest - cur_offset);
-            }
-            else if (inst.tag.op == bc_op::jump_if)
-            {
-                auto dest = b->labels[inst.jump_if.offset].bytecode_offset;
-                inst      = LAUF_VM_INSTRUCTION(jump_if, inst.jump_if.cc, dest - cur_offset);
-            }
-
-            result->bytecode()[cur_offset] = inst;
-            ++cur_offset;
-        }
-    }
+    b->bytecode.finish(result->bytecode());
 
     fn_decl.fn = result;
     return result;
@@ -215,39 +177,33 @@ lauf_local_variable lauf_build_local_variable(lauf_builder b, lauf_layout layout
 
 lauf_label lauf_declare_label(lauf_builder b, size_t vstack_size)
 {
-    auto idx = b->labels.size();
-    b->labels.push_back({vstack_size, 0});
-    return {idx};
+    return b->bytecode.declare_label(vstack_size);
 }
 
 void lauf_place_label(lauf_builder b, lauf_label label)
 {
-    auto& decl           = b->labels[label._idx];
-    decl.bytecode_offset = ptrdiff_t(b->bytecode.size());
+    b->bytecode.place_label(label);
 
     // If the label can be reached by fallthrough, we need to check that the current stack size
     // matches.
     auto check_stack_size = [&] {
-        if (b->bytecode.empty())
-            // No instruction; can't be reached by fallthrough.
-            return true; // NOLINT
-        else if (auto last_op = b->bytecode.back().tag.op;
-                 last_op == bc_op::jump || last_op == bc_op::return_ || last_op == bc_op::panic)
+        if (auto last_op = b->bytecode.dominating_instruction().tag.op;
+            last_op == bc_op::jump || last_op == bc_op::return_ || last_op == bc_op::panic)
             // Last instruction is an unconditional jump; can't be reached by fallthrough.
             return true;
         else
             // Last instruction can fallthrough the label; stack size needs to match.
-            return b->value_stack.cur_stack_size() == decl.vstack_size;
+            return b->value_stack.cur_stack_size() == b->bytecode.get_label_stack_size(label);
     };
     LAUF_VERIFY(check_stack_size(), "label", "expected value stack size not matched");
-    b->value_stack.set_stack_size("label", decl.vstack_size);
+    b->value_stack.set_stack_size("label", b->bytecode.get_label_stack_size(label));
 }
 
 void lauf_build_return(lauf_builder b)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(return_));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(return_));
 
     auto output_count = b->functions[b->cur_fn].signature.output_count;
     LAUF_VERIFY(b->value_stack.cur_stack_size() == output_count, "return",
@@ -257,46 +213,46 @@ void lauf_build_return(lauf_builder b)
 
 void lauf_build_jump(lauf_builder b, lauf_label dest)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(jump, uint32_t(dest._idx)));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(jump, uint32_t(dest._idx)));
 
-    LAUF_VERIFY(b->value_stack.cur_stack_size() == b->labels[dest._idx].vstack_size, "jump",
+    LAUF_VERIFY(b->value_stack.cur_stack_size() == b->bytecode.get_label_stack_size(dest), "jump",
                 "value stack size does not match label");
 }
 
 void lauf_build_jump_if(lauf_builder b, lauf_condition condition, lauf_label dest)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
     auto cc = translate_condition(condition);
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(jump_if, cc, uint32_t(dest._idx)));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(jump_if, cc, uint32_t(dest._idx)));
 
     b->value_stack.pop("jump_if");
-    LAUF_VERIFY(b->value_stack.cur_stack_size() == b->labels[dest._idx].vstack_size, "jump_if",
-                "value stack size does not match label");
+    LAUF_VERIFY(b->value_stack.cur_stack_size() == b->bytecode.get_label_stack_size(dest),
+                "jump_if", "value stack size does not match label");
 }
 
 void lauf_build_int(lauf_builder b, lauf_value_sint value)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
     if (value == 0)
     {
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(push_zero));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_zero));
     }
     else if (0 < value && value <= 0xFF'FFFF)
     {
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(push_small_zext, uint32_t(value)));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_small_zext, uint32_t(value)));
     }
     else if (-0xFF'FFFF <= value && value < 0)
     {
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(push_small_neg, uint32_t(-value)));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_small_neg, uint32_t(-value)));
     }
     else
     {
         auto idx = b->literals.insert(value);
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(push, idx));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push, idx));
     }
 
     b->value_stack.push("int");
@@ -304,60 +260,60 @@ void lauf_build_int(lauf_builder b, lauf_value_sint value)
 
 void lauf_build_ptr(lauf_builder b, lauf_value_ptr ptr)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
     auto idx = b->literals.insert(ptr);
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(push, idx));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(push, idx));
 
     b->value_stack.push("ptr");
 }
 
 void lauf_build_local_addr(lauf_builder b, lauf_local_variable var)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(local_addr, var._addr));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(local_addr, var._addr));
     b->value_stack.push("local_addr");
 }
 
 void lauf_build_drop(lauf_builder b, size_t n)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(drop, n));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(drop, n));
     b->value_stack.pop("drop", n);
 }
 
 void lauf_build_pick(lauf_builder b, size_t n)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
     if (n == 0)
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(dup));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(dup));
     else
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(pick, n));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(pick, n));
     LAUF_VERIFY(n < b->value_stack.cur_stack_size(), "pick", "invalid stack index");
     b->value_stack.push("pick");
 }
 
 void lauf_build_roll(lauf_builder b, size_t n)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
     if (n == 0)
     {} // noop
     else if (n == 1)
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(swap));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(swap));
     else
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(roll, n));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(roll, n));
     LAUF_VERIFY(n < b->value_stack.cur_stack_size(), "roll", "invalid stack index");
 }
 
 void lauf_build_call(lauf_builder b, lauf_function_decl fn)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(call, bc_function_idx(fn._idx)));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(call, bc_function_idx(fn._idx)));
 
     auto signature = b->functions[fn._idx].signature;
     b->value_stack.pop("call", signature.input_count);
@@ -366,11 +322,11 @@ void lauf_build_call(lauf_builder b, lauf_function_decl fn)
 
 void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
     auto idx          = b->literals.insert(reinterpret_cast<void*>(fn.impl));
     auto stack_change = int32_t(fn.signature.input_count) - int32_t(fn.signature.output_count);
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(call_builtin, stack_change, idx));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(call_builtin, stack_change, idx));
 
     b->value_stack.pop("call_builtin", fn.signature.input_count);
     b->value_stack.push("call_builtin", fn.signature.output_count);
@@ -378,9 +334,9 @@ void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn)
 
 void lauf_build_array_element(lauf_builder b, lauf_type type)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(array_element, type->layout.size));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(array_element, type->layout.size));
 
     b->value_stack.pop("array_element", 2);
     b->value_stack.push("array_element");
@@ -388,16 +344,16 @@ void lauf_build_array_element(lauf_builder b, lauf_type type)
 
 void lauf_build_load_field(lauf_builder b, lauf_type type, size_t field)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
     LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
 
     auto idx = b->literals.insert(type);
     // If the last instruction is a store of the same field, turn it into a save instead.
     // TODO: invalid on jump
-    if (!b->bytecode.empty() && b->bytecode.back() == LAUF_VM_INSTRUCTION(store_field, field, idx))
-        b->bytecode.back().store_field.op = bc_op::save_field;
+    if (b->bytecode.dominating_instruction() == LAUF_VM_INSTRUCTION(store_field, field, idx))
+        b->bytecode.replace_last_instruction(bc_op::save_field);
     else
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(load_field, field, idx));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_field, field, idx));
 
     b->value_stack.pop("load_field");
     b->value_stack.push("load_field");
@@ -405,49 +361,49 @@ void lauf_build_load_field(lauf_builder b, lauf_type type, size_t field)
 
 void lauf_build_store_field(lauf_builder b, lauf_type type, size_t field)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
     LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
 
     auto idx = b->literals.insert(type);
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(store_field, field, idx));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(store_field, field, idx));
 
     b->value_stack.pop("store_field", 2);
 }
 
 void lauf_build_load_value(lauf_builder b, lauf_local_variable var)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
     // If the last instruction is a store of the same address, turn it into a save instead.
     // TODO: invalid on jump
-    if (!b->bytecode.empty() && b->bytecode.back() == LAUF_VM_INSTRUCTION(store_value, var._addr))
-        b->bytecode.back().store_value.op = bc_op::save_value;
+    if (b->bytecode.dominating_instruction() == LAUF_VM_INSTRUCTION(store_value, var._addr))
+        b->bytecode.replace_last_instruction(bc_op::save_value);
     else
-        b->bytecode.push_back(LAUF_VM_INSTRUCTION(load_value, var._addr));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_value, var._addr));
     b->value_stack.push("load_value");
 }
 
 void lauf_build_store_value(lauf_builder b, lauf_local_variable var)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(store_value, var._addr));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(store_value, var._addr));
     b->value_stack.pop("store_value");
 }
 
 void lauf_build_panic(lauf_builder b)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(panic));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(panic));
     b->value_stack.pop("panic");
 }
 
 void lauf_build_panic_if(lauf_builder b, lauf_condition condition)
 {
-    b->update_location();
+    b->bytecode.location(b->cur_location);
 
-    b->bytecode.push_back(LAUF_VM_INSTRUCTION(panic_if, translate_condition(condition)));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(panic_if, translate_condition(condition)));
     b->value_stack.pop("panic_if", 2);
 }
 

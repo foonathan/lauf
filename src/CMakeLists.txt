@@ -23,6 +23,7 @@ set(src_header_files
         lauf/impl/module.hpp
         lauf/impl/program.hpp
         lauf/detail/bytecode.hpp
+        lauf/detail/bytecode_builder.hpp
         lauf/detail/literal_pool.hpp
         lauf/detail/stack_allocator.hpp
         lauf/detail/stack_check.hpp
