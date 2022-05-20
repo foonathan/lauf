@@ -3,94 +3,80 @@ module @basic;
 const @test_failure = "test failure", 0;
 
 function @assert_eq(2 => 0) {
-    block %entry(2 => 0) {
-        call_builtin @scmp;
-        ptr @test_failure; panic_if cmp_ne;
-        return;
-    }
+    call_builtin @scmp;
+    ptr @test_failure; panic_if cmp_ne;
+    return;
 }
 
 function @test_empty(0 => 0) {
-    block %entry(0 => 0) {
-        return;
-    }
+    return;
 }
 
 function @test_drop(0 => 0) {
-    block %entry(0 => 0) {
-        int 42;
-        int 11;
-        drop 2;
-        return;
-    }
+    int 42;
+    int 11;
+    drop 2;
+    return;
 }
 
 function @test_pick(0 => 0) {
-    block %entry(0 => 0) {
-        int 42;
-        int 11;
+    int 42;
+    int 11;
 
-        pick 0;
-        int 11; call @assert_eq;
+    pick 0;
+    int 11; call @assert_eq;
 
-        pick 1;
-        int 42; call @assert_eq;
+    pick 1;
+    int 42; call @assert_eq;
 
-        drop 2; return;
-    }
+    drop 2; return;
 }
 
 function @test_roll0(0 => 0) {
-    block %entry(0 => 0) {
-        int 4;
-        int 3;
-        int 2;
-        int 1;
-        int 0;
+    int 4;
+    int 3;
+    int 2;
+    int 1;
+    int 0;
 
-        roll 0;
+    roll 0;
 
-        int 0; call @assert_eq;
-        int 1; call @assert_eq;
-        int 2; call @assert_eq;
-        int 3; call @assert_eq;
-        int 4; call @assert_eq;
-        return;
-    }
+    int 0; call @assert_eq;
+    int 1; call @assert_eq;
+    int 2; call @assert_eq;
+    int 3; call @assert_eq;
+    int 4; call @assert_eq;
+    return;
 }
 function @test_roll1(0 => 0) {
-    block %entry(0 => 0) {
-        int 4;
-        int 3;
-        int 2;
-        int 1;
-        int 0;
+    int 4;
+    int 3;
+    int 2;
+    int 1;
+    int 0;
 
-        roll 1;
+    roll 1;
 
-        int 1; call @assert_eq;
-        int 0; call @assert_eq;
-        int 2; call @assert_eq;
-        int 3; call @assert_eq;
-        int 4; call @assert_eq;
-        return;
-    }
+    int 1; call @assert_eq;
+    int 0; call @assert_eq;
+    int 2; call @assert_eq;
+    int 3; call @assert_eq;
+    int 4; call @assert_eq;
+    return;
 }
 function @test_roll3(0 => 0) {
-    block %entry(0 => 0) {
-        int 4;
-        int 3;
-        int 2;
-        int 1;
-        int 0;
+    int 4;
+    int 3;
+    int 2;
+    int 1;
+    int 0;
 
-        roll 3;
+    roll 3;
 
-        int 3; call @assert_eq;
-        int 0; call @assert_eq;
-        int 1; call @assert_eq;
-        int 2; call @assert_eq;
-        int 4; call @assert_eq;
-        return;
-    }
+    int 3; call @assert_eq;
+    int 0; call @assert_eq;
+    int 1; call @assert_eq;
+    int 2; call @assert_eq;
+    int 4; call @assert_eq;
+    return;
 }

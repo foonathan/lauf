@@ -26,64 +26,70 @@ typedef enum lauf_condition
     LAUF_CMP_GT,
 } lauf_condition;
 
-//=== module builder ===//
-typedef struct lauf_module_builder_impl* lauf_module_builder;
+//=== builder ===//
+typedef struct lauf_builder_impl* lauf_builder;
 
-lauf_module_builder lauf_build_module(const char* name);
+lauf_builder lauf_builder_create(void);
+void         lauf_builder_destroy(lauf_builder b);
 
-lauf_module lauf_finish_module(lauf_module_builder b);
+/// Sets the location for the following module/function/instructions.
+void lauf_build_debug_location(lauf_builder b, lauf_debug_location location);
 
-void lauf_build_module_path(lauf_module_builder b, const char* path);
+//=== module ===//
+typedef struct lauf_function_decl
+{
+    size_t _idx;
+} lauf_function_decl;
 
-//=== function builder ===//
-typedef struct lauf_function_builder_impl* lauf_function_builder;
+void        lauf_build_module(lauf_builder b, const char* name, const char* path);
+lauf_module lauf_finish_module(lauf_builder b);
 
+lauf_function_decl lauf_declare_function(lauf_builder b, const char* name,
+                                         lauf_signature signature);
+
+//=== function ===//
 typedef struct lauf_local_variable
 {
-    uintptr_t _addr;
+    size_t _addr;
 } lauf_local_variable;
 
-lauf_function_builder lauf_build_function(lauf_module_builder b, const char* name,
-                                          lauf_signature sig);
+typedef struct lauf_label
+{
+    size_t _idx;
+} lauf_label;
 
-lauf_function lauf_finish_function(lauf_function_builder b);
+void          lauf_build_function(lauf_builder b, lauf_function_decl fn);
+lauf_function lauf_finish_function(lauf_builder b);
 
-void lauf_build_function_debug_location(lauf_function_builder b, lauf_debug_location location);
+lauf_local_variable lauf_build_local_variable(lauf_builder b, lauf_layout layout);
 
-lauf_local_variable lauf_build_local_variable(lauf_function_builder b, lauf_layout layout);
-
-//=== block builder ===//
-typedef struct lauf_block_builder_impl* lauf_block_builder;
-
-lauf_block_builder lauf_build_block(lauf_function_builder b, lauf_signature sig);
-
-void lauf_finish_block_return(lauf_block_builder b);
-void lauf_finish_block_jump(lauf_block_builder b, lauf_block_builder dest);
-void lauf_finish_block_branch(lauf_block_builder b, lauf_condition condition,
-                              lauf_block_builder if_true, lauf_block_builder if_false);
-
-void lauf_build_debug_location(lauf_block_builder b, lauf_debug_location location);
+lauf_label lauf_declare_label(lauf_builder b, size_t vstack_size);
+void       lauf_place_label(lauf_builder b, lauf_label label);
 
 //=== instructions ===//
-void lauf_build_int(lauf_block_builder b, lauf_value_sint value);
-void lauf_build_ptr(lauf_block_builder b, lauf_value_ptr ptr);
-void lauf_build_local_addr(lauf_block_builder b, lauf_local_variable var);
+void lauf_build_return(lauf_builder b);
+void lauf_build_jump(lauf_builder b, lauf_label dest);
+void lauf_build_jump_if(lauf_builder b, lauf_condition condition, lauf_label dest);
 
-void lauf_build_drop(lauf_block_builder b, size_t n);
-void lauf_build_pick(lauf_block_builder b, size_t n);
-void lauf_build_roll(lauf_block_builder b, size_t n);
+void lauf_build_int(lauf_builder b, lauf_value_sint value);
+void lauf_build_ptr(lauf_builder b, lauf_value_ptr ptr);
+void lauf_build_local_addr(lauf_builder b, lauf_local_variable var);
 
-void lauf_build_call(lauf_block_builder b, lauf_function_builder fn);
-void lauf_build_call_builtin(lauf_block_builder b, struct lauf_builtin fn);
+void lauf_build_drop(lauf_builder b, size_t n);
+void lauf_build_pick(lauf_builder b, size_t n);
+void lauf_build_roll(lauf_builder b, size_t n);
 
-void lauf_build_array_element(lauf_block_builder b, lauf_type type);
-void lauf_build_load_field(lauf_block_builder b, lauf_type type, size_t field);
-void lauf_build_store_field(lauf_block_builder b, lauf_type type, size_t field);
-void lauf_build_load_value(lauf_block_builder b, lauf_local_variable var);
-void lauf_build_store_value(lauf_block_builder b, lauf_local_variable var);
+void lauf_build_call(lauf_builder b, lauf_function_decl fn);
+void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn);
 
-void lauf_build_panic(lauf_block_builder b);
-void lauf_build_panic_if(lauf_block_builder b, lauf_condition condition);
+void lauf_build_array_element(lauf_builder b, lauf_type type);
+void lauf_build_load_field(lauf_builder b, lauf_type type, size_t field);
+void lauf_build_store_field(lauf_builder b, lauf_type type, size_t field);
+void lauf_build_load_value(lauf_builder b, lauf_local_variable var);
+void lauf_build_store_value(lauf_builder b, lauf_local_variable var);
+
+void lauf_build_panic(lauf_builder b);
+void lauf_build_panic_if(lauf_builder b, lauf_condition condition);
 
 LAUF_HEADER_END
 

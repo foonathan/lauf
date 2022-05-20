@@ -4,103 +4,96 @@ const @test_failure = "test failure", 0;
 
 function @fib_recursive(1 => 1) {
     local %arg : @Value;
-    block %entry(1 => 0) {
-        store_value %arg;
 
-        load_value %arg; int 1; call_builtin @scmp;
-        branch cmp_le %base else %recurse;
-    }
-    block %base(0 => 1) {
-        load_value %arg;
-        return;
-    }
-    block %recurse(0 => 1) {
-        load_value %arg; int 1; call_builtin @ssub;
-        call @fib_recursive;
+    store_value %arg;
 
-        load_value %arg; int 2; call_builtin @ssub;
-        call @fib_recursive;
+    load_value %arg; int 1; call_builtin @scmp;
+    jump_if cmp_gt %recurse;
 
-        call_builtin @sadd;
-        return;
-    }
+    load_value %arg;
+    return;
+
+%recurse:
+    load_value %arg; int 1; call_builtin @ssub;
+    call @fib_recursive;
+
+    load_value %arg; int 2; call_builtin @ssub;
+    call @fib_recursive;
+
+    call_builtin @sadd;
+    return;
 }
 
 function @fib_tail_call(3 => 1) { # n a b => F_n
     local %a : @Value;
     local %b : @Value;
-    block %entry(3 => 1) {
-        store_value %b;
-        store_value %a;
 
-        pick 0; int 0; call_builtin @scmp;
-        branch cmp_eq %is_zero else %next;
-    }
-    block %next(1 => 1) {
-        pick 0; int 1; call_builtin @scmp;
-        branch cmp_eq %is_one else %recurse;
-    }
-    block %is_zero(1 => 1) {
-        drop 1;
-        load_value %a; return;
-    }
-    block %is_one(1 => 1) {
-        drop 1;
-        load_value %b; return;
-    }
-    block %recurse(1 => 1) {
-        int 1; call_builtin @ssub;
-        load_value %b;
-        pick 0; load_value %a; call_builtin @sadd;
-        call @fib_tail_call;
-        return;
-    }
+    store_value %b;
+    store_value %a;
+
+    pick 0; int 0; call_builtin @scmp;
+    jump_if cmp_eq %is_zero(1);
+
+    pick 0; int 1; call_builtin @scmp;
+    jump_if cmp_eq %is_one(1);
+
+    int 1; call_builtin @ssub;
+    load_value %b;
+    pick 0; load_value %a; call_builtin @sadd;
+    call @fib_tail_call;
+    return;
+
+%is_zero(1):
+    drop 1;
+    load_value %a; return;
+%is_one(1):
+    drop 1;
+    load_value %b; return;
 }
 
 function @fib_iter(1 => 1) {
     local %a : @Value;
     local %b : @Value;
-    block %entry(1 => 1) {
-        int 0; store_value %a;
-        int 1; store_value %b;
 
-        pick 0; branch is_false %exit else %loop;
-    }
-    block %loop(1 => 1) { # n => (n-1)
-        load_value %b; # => b
+    int 0; store_value %a;
+    int 1; store_value %b;
 
-        pick 0;             # => b b
-        load_value %a;      # => b b a
-        call_builtin @sadd; # => b (b+a)
+    pick 0; int 0; call_builtin @scmp;
+    jump_if cmp_eq %exit(1);
 
-        store_value %b;
-        store_value %a;
+%loop(1):
+    load_value %b; # => b
 
-        int 1; call_builtin @ssub;
-        pick 0; branch is_false %exit else %loop;
-    }
-    block %exit(1 => 1) {
-        drop 1;
-        load_value %a;
-        return;
-    }
+    pick 0;             # => b b
+    load_value %a;      # => b b a
+    call_builtin @sadd; # => b (b+a)
+
+    store_value %b;
+    store_value %a;
+
+    int 1; call_builtin @ssub;
+    pick 0; int 0; call_builtin @scmp;
+    jump_if cmp_ne %loop(1);
+
+%exit(1):
+    drop 1;
+    load_value %a;
+    return;
 }
 
 function @test_fib(0 => 0) {
-    block %entry(0 => 0) {
-        int 10; call @fib_recursive;
-        int 55; call_builtin @scmp;
-        ptr @test_failure; panic_if cmp_ne;
+    int 10; call @fib_recursive;
+    int 55; call_builtin @scmp;
+    ptr @test_failure; panic_if cmp_ne;
 
-        int 10; int 0; int 1; call @fib_tail_call;
-        int 55; call_builtin @scmp;
-        ptr @test_failure; panic_if cmp_ne;
+    int 10; int 0; int 1; call @fib_tail_call;
+    int 55; call_builtin @scmp;
+    ptr @test_failure; panic_if cmp_ne;
 
-        int 10; call @fib_iter;
-        int 55; call_builtin @scmp;
-        ptr @test_failure; panic_if cmp_ne;
+    int 10; call @fib_iter;
+    int 55; call_builtin @scmp;
+    ptr @test_failure; panic_if cmp_ne;
 
-        return;
-    }
+    return;
 }
 

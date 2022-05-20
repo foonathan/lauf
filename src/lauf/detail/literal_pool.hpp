@@ -14,7 +14,7 @@ namespace lauf::_detail
 class literal_pool
 {
 public:
-    void reset() &&
+    void reset()
     {
         _literals.clear();
     }

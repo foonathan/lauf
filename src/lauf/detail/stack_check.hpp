@@ -12,9 +12,7 @@ namespace lauf::_detail
 class stack_checker
 {
 public:
-    explicit stack_checker(lauf_signature sig)
-    : _cur_size(sig.input_count), _max_size(_cur_size), _final_size(sig.output_count)
-    {}
+    stack_checker() : _cur_size(0), _max_size(0) {}
 
     std::uint16_t cur_stack_size() const
     {
@@ -25,17 +23,10 @@ public:
         return _max_size;
     }
 
-    void finish_jump(const char* instruction, lauf_signature next)
+    void set_stack_size(const char* instruction, std::size_t size)
     {
-        LAUF_VERIFY(_cur_size == _final_size, instruction, "invalid signature for block");
-        LAUF_VERIFY(_final_size == next.input_count, instruction,
-                    "cannot chain blocks with incompatible signatures");
-    }
-    void finish_return(const char* instruction, lauf_signature fn)
-    {
-        LAUF_VERIFY(_cur_size == _final_size, instruction, "invalid signature for block");
-        LAUF_VERIFY(_final_size == fn.output_count, instruction,
-                    "exit block signature does not match function signature");
+        _cur_size = 0;
+        push(instruction, size);
     }
 
     void push(const char* instruction, std::size_t n = 1)
@@ -55,7 +46,7 @@ public:
     }
 
 private:
-    std::uint16_t _cur_size, _max_size, _final_size;
+    std::uint16_t _cur_size, _max_size;
 };
 } // namespace lauf::_detail
 

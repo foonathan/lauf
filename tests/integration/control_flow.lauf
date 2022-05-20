@@ -3,134 +3,45 @@ module @control_flow;
 const @test_failure = "test failure", 0;
 
 function @assert_eq(2 => 0) {
-    block %entry(2 => 0) {
-        call_builtin @scmp;
-        ptr @test_failure; panic_if cmp_ne;
-        return;
-    }
+    call_builtin @scmp;
+    ptr @test_failure; panic_if cmp_ne;
+    return;
 }
 
 function @test_jump(0 => 0) {
-    block %entry(0 => 1) {
-        int 0;
-        jump %next;
-    }
-    block %next(1 => 2) {
-        int 1;
-        jump %last;
-    }
-    block %last(2 => 0) {
-        int 2;
+    int 0;
+    jump %next(1);
+%next(1):
+    int 1;
+    jump %last(2);
+%last(2):
+    int 2;
 
-        int 2; call @assert_eq;
-        int 1; call @assert_eq;
-        int 0; call @assert_eq;
-        return;
-    }
+    int 2; call @assert_eq;
+    int 1; call @assert_eq;
+    int 0; call @assert_eq;
+    return;
 }
 
 function @test_branch_is_false(0 => 0) {
-    block %entry(0 => 0) {
-        int 0;
-        branch is_false %okay else %error;
-    }
-    block %okay(0 => 0) {
-        return;
-    }
-    block %error(0 => 0) {
-        ptr @test_failure; panic;
-        return;
-    }
+    int 0;
+    jump_if is_false %okay;
+    jump %error;
+
+%okay:
+    return;
+
+%error:
+    ptr @test_failure; panic;
+    return;
 }
 function @test_branch_is_true(0 => 0) {
-    block %entry(0 => 0) {
-        int 1;
-        branch is_true %okay else %error;
-    }
-    block %okay(0 => 0) {
-        return;
-    }
-    block %error(0 => 0) {
-        ptr @test_failure; panic;
-        return;
-    }
+    int 1;
+    jump_if is_true %okay;
+    jump %error;
+%okay:
+    return;
+%error:
+    ptr @test_failure; panic;
+    return;
 }
-function @test_branch_cmp_eq(0 => 0) {
-    block %entry(0 => 0) {
-        int 0; int 0; call_builtin @scmp;
-        branch cmp_eq %okay else %error;
-    }
-    block %okay(0 => 0) {
-        return;
-    }
-    block %error(0 => 0) {
-        ptr @test_failure; panic;
-        return;
-    }
-}
-function @test_branch_cmp_ne(0 => 0) {
-    block %entry(0 => 0) {
-        int 0; int 1; call_builtin @scmp;
-        branch cmp_ne %okay else %error;
-    }
-    block %okay(0 => 0) {
-        return;
-    }
-    block %error(0 => 0) {
-        ptr @test_failure; panic;
-        return;
-    }
-}
-function @test_branch_cmp_lt(0 => 0) {
-    block %entry(0 => 0) {
-        int 0; int 1; call_builtin @scmp;
-        branch cmp_lt %okay else %error;
-    }
-    block %okay(0 => 0) {
-        return;
-    }
-    block %error(0 => 0) {
-        ptr @test_failure; panic;
-        return;
-    }
-}
-function @test_branch_cmp_le(0 => 0) {
-    block %entry(0 => 0) {
-        int 0; int 1; call_builtin @scmp;
-        branch cmp_le %okay else %error;
-    }
-    block %okay(0 => 0) {
-        return;
-    }
-    block %error(0 => 0) {
-        ptr @test_failure; panic;
-        return;
-    }
-}
-function @test_branch_cmp_gt(0 => 0) {
-    block %entry(0 => 0) {
-        int 1; int 0; call_builtin @scmp;
-        branch cmp_gt %okay else %error;
-    }
-    block %okay(0 => 0) {
-        return;
-    }
-    block %error(0 => 0) {
-        ptr @test_failure; panic;
-        return;
-    }
-}
-function @test_branch_cmp_ge(0 => 0) {
-    block %entry(0 => 0) {
-        int 1; int 0; call_builtin @scmp;
-        branch cmp_ge %okay else %error;
-    }
-    block %okay(0 => 0) {
-        return;
-    }
-    block %error(0 => 0) {
-        ptr @test_failure; panic;
-        return;
-    }
-}
-

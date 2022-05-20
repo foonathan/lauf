@@ -7,6 +7,8 @@
 #include <lauf/config.h>
 #include <lauf/detail/verify.hpp>
 
+union lauf_vm_instruction;
+
 namespace lauf::_detail
 {
 enum class bc_op : uint8_t
@@ -162,6 +164,8 @@ struct bc_inst_cc
 
     explicit bc_inst_cc(bc_op op, condition_code cc) : op(op), cc(cc) {}
 };
+
+using bc_inst = lauf_vm_instruction;
 } // namespace lauf::_detail
 
 union lauf_vm_instruction
@@ -186,11 +190,11 @@ union lauf_vm_instruction
 static_assert(sizeof(lauf_vm_instruction) == sizeof(uint32_t));
 
 #define LAUF_VM_INSTRUCTION(Op, ...)                                                               \
-    [&] {                                                                                          \
+    [&](auto... args) {                                                                            \
         lauf_vm_instruction inst;                                                                  \
-        inst.Op = decltype(inst.Op){lauf::_detail::bc_op::Op, __VA_ARGS__};                        \
+        inst.Op = decltype(inst.Op){lauf::_detail::bc_op::Op, args...};                            \
         return inst;                                                                               \
-    }()
+    }(__VA_ARGS__)
 
 #endif // SRC_DETAIL_BYTECODE_HPP_INCLUDED
 
