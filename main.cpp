@@ -39,12 +39,12 @@ int main()
             store_value %arg;
 
             load_value %arg; int 1; call_builtin @scmp;
-            jump_if cmp_gt %recurse(0);
+            jump_if cmp_gt %recurse;
 
             load_value %arg;
             return;
 
-        %recurse(0):
+        label %recurse(0):
             load_value %arg; int 1; call_builtin @ssub;
             call @fib_recursive;
 

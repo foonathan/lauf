@@ -13,7 +13,7 @@ function @fib_recursive(1 => 1) {
     load_value %arg;
     return;
 
-%recurse:
+label %recurse:
     load_value %arg; int 1; call_builtin @ssub;
     call @fib_recursive;
 
@@ -32,10 +32,10 @@ function @fib_tail_call(3 => 1) { # n a b => F_n
     store_value %a;
 
     pick 0; int 0; call_builtin @scmp;
-    jump_if cmp_eq %is_zero(1);
+    jump_if cmp_eq %is_zero;
 
     pick 0; int 1; call_builtin @scmp;
-    jump_if cmp_eq %is_one(1);
+    jump_if cmp_eq %is_one;
 
     int 1; call_builtin @ssub;
     load_value %b;
@@ -43,10 +43,10 @@ function @fib_tail_call(3 => 1) { # n a b => F_n
     call @fib_tail_call;
     return;
 
-%is_zero(1):
+label %is_zero(1):
     drop 1;
     load_value %a; return;
-%is_one(1):
+label %is_one(1):
     drop 1;
     load_value %b; return;
 }
@@ -59,9 +59,9 @@ function @fib_iter(1 => 1) {
     int 1; store_value %b;
 
     pick 0; int 0; call_builtin @scmp;
-    jump_if cmp_eq %exit(1);
+    jump_if cmp_eq %exit;
 
-%loop(1):
+label %loop(1):
     load_value %b; # => b
 
     pick 0;             # => b b
@@ -73,9 +73,9 @@ function @fib_iter(1 => 1) {
 
     int 1; call_builtin @ssub;
     pick 0; int 0; call_builtin @scmp;
-    jump_if cmp_ne %loop(1);
+    jump_if cmp_ne %loop;
 
-%exit(1):
+label %exit(1):
     drop 1;
     load_value %a;
     return;
