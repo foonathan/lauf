@@ -4,33 +4,68 @@
 #ifndef SRC_IMPL_MODULE_HPP_INCLUDED
 #define SRC_IMPL_MODULE_HPP_INCLUDED
 
+#include <cstring>
 #include <lauf/detail/bytecode.hpp>
 #include <lauf/module.h>
 #include <lauf/value.h>
+#include <memory>
 
 //=== debug metadata ===//
 namespace lauf::_detail
 {
-struct debug_location_map
+class debug_location_map
 {
-    ptrdiff_t           first_address;
-    lauf_debug_location location;
+public:
+    struct entry
+    {
+        ptrdiff_t           first_address;
+        lauf_debug_location location;
+    };
+
+    debug_location_map() = default;
+    explicit debug_location_map(const entry* entries, std::size_t size)
+    : _entries(size == 0 ? nullptr : new entry[1 + size])
+    {
+        if (size > 0)
+        {
+            std::memcpy(_entries.get(), entries, size * sizeof(entry));
+            _entries.get()[size] = entry{PTRDIFF_MAX, {}};
+        }
+    }
+    lauf_debug_location location_of(ptrdiff_t offset)
+    {
+        if (_entries == nullptr)
+            return {};
+
+        // This can be optimized to a binary search at the cost of storing the extra size.
+        auto cur = _entries.get();
+        auto loc = cur->location;
+        while (cur->first_address <= offset)
+        {
+            loc = cur->location;
+            ++cur;
+        }
+
+        return loc;
+    }
+
+private:
+    // last entry is sentinel
+    std::unique_ptr<entry[]> _entries;
 };
 } // namespace lauf::_detail
 
 //=== function ===//
 struct lauf_function_impl
 {
-    lauf_module mod;
-    const char* name;
-    uint16_t    _padding;
-    uint16_t    local_stack_size;
-    uint16_t    max_vstack_size;
-    uint8_t     input_count;
-    uint8_t     output_count;
-    // debug_locations[0] has first_address < 0 and stores location of function
-    // debug_locations[N - 1] has first_address < 0 and is sentinel
-    lauf::_detail::debug_location_map* debug_locations;
+    lauf_module                       mod;
+    const char*                       name;
+    uint16_t                          _padding;
+    uint16_t                          local_stack_size;
+    uint16_t                          max_vstack_size;
+    uint8_t                           input_count;
+    uint8_t                           output_count;
+    lauf::_detail::debug_location_map debug_locations;
 
     lauf_vm_instruction* bytecode()
     {

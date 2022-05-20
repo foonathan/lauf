@@ -23,41 +23,15 @@ lauf_signature lauf_function_get_signature(lauf_function fn)
     return {fn->input_count, fn->output_count};
 }
 
-/// The location of an instruction of the function with the specific address for debugging purposes.
-lauf_debug_location lauf_function_get_location_of(lauf_function fn, void* inst);
-
 const char* lauf_function_get_name(lauf_function fn)
 {
     return fn->name;
 }
 
-lauf_debug_location lauf_function_get_location(lauf_function fn)
-{
-    if (fn->debug_locations == nullptr)
-        return {};
-
-    assert(fn->debug_locations[0].first_address < 0);
-    return fn->debug_locations[0].location;
-}
-
 lauf_debug_location lauf_function_get_location_of(lauf_function fn, void* inst)
 {
-    if (fn->debug_locations == nullptr)
-        return {};
-
-    // This can be optimized to a binary search at the cost of storing the extra size.
-    auto dest_offset = static_cast<lauf_vm_instruction*>(inst) - fn->bytecode();
-    auto cur         = fn->debug_locations + 1;
-    auto loc         = cur->location;
-    while (cur->first_address >= 0)
-    {
-        if (cur->first_address > dest_offset)
-            break;
-        loc = cur->location;
-        ++cur;
-    }
-
-    return loc;
+    auto offset = static_cast<lauf_vm_instruction*>(inst) - fn->bytecode();
+    return fn->debug_locations.location_of(offset);
 }
 
 //=== module ===//
@@ -72,7 +46,7 @@ void lauf_module_destroy(lauf_module mod)
 {
     for (auto fn = mod->function_begin(); fn != mod->function_end(); ++fn)
     {
-        delete[](*fn)->debug_locations;
+        (*fn)->~lauf_function_impl();
         ::operator delete(*fn);
     }
     ::operator delete(mod);

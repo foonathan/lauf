@@ -204,8 +204,7 @@ struct function_decl
     static constexpr auto rule = [] {
         auto header = dsl::p<global_identifier> + dsl::p<signature>;
 
-        return LEXY_KEYWORD("function", identifier)
-               >> dsl::p<debug_location> + header + dsl::p<body>;
+        return LEXY_KEYWORD("function", identifier) >> header + dsl::p<body>;
     }();
 };
 
@@ -230,9 +229,8 @@ namespace
 {
 struct function_decl
 {
-    lauf_function_decl  decl;
-    std::string_view    body;
-    lauf_debug_location location;
+    lauf_function_decl decl;
+    std::string_view   body;
 };
 
 struct module_decl
@@ -246,25 +244,15 @@ auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
 {
     struct parser
     {
-        lauf_frontend_text_parser                            p;
-        lexy::string_input<lexy::ascii_encoding>             input;
-        const char*                                          path;
-        mutable module_decl                                  result;
-        mutable lexy::input_location_anchor<decltype(input)> anchor;
+        lauf_frontend_text_parser                p;
+        lexy::string_input<lexy::ascii_encoding> input;
+        const char*                              path;
+        mutable module_decl                      result;
 
         parser(lauf_frontend_text_parser p, lexy::string_input<lexy::ascii_encoding> input,
                const char* path)
-        : p(p), input(input), path(path), anchor(input)
+        : p(p), input(input), path(path)
         {}
-
-        auto value_of(lauf::text_grammar::debug_location) const
-        {
-            return lexy::callback<lauf_debug_location>([&](const char* pos) {
-                auto location = lexy::get_input_location(input, pos, anchor);
-                anchor        = location.anchor();
-                return lauf_debug_location{location.line_nr(), location.column_nr(), 0};
-            });
-        }
 
         auto value_of(lauf::text_grammar::module_decl::header) const
         {
@@ -281,11 +269,11 @@ auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
 
         auto value_of(lauf::text_grammar::function_decl) const
         {
-            return lexy::callback([&](lauf_debug_location location, std::string_view name,
-                                      lauf_signature sig, std::string_view body) {
-                auto decl = lauf_declare_function(p->b, p->intern(name), sig);
-                result.functions.insert(name, {decl, body, location});
-            });
+            return lexy::callback(
+                [&](std::string_view name, lauf_signature sig, std::string_view body) {
+                    auto decl = lauf_declare_function(p->b, p->intern(name), sig);
+                    result.functions.insert(name, {decl, body});
+                });
         }
 
         auto value_of(lauf::text_grammar::module_decl) const
@@ -632,7 +620,6 @@ lauf_module lauf_frontend_text(lauf_frontend_text_parser p, const char* path, co
 
     for (auto& [name, function] : mod_decl.value().functions)
     {
-        lauf_build_debug_location(p->b, function.location);
         lauf_build_function(p->b, function.decl);
 
         auto body_decls = parse_function_body_decls(p, input, function.body);

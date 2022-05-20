@@ -38,8 +38,6 @@ lauf_signature lauf_function_get_signature(lauf_function fn);
 
 /// The name of the function for debugging purposes.
 const char* lauf_function_get_name(lauf_function fn);
-/// The location of the function for debugging purposes.
-lauf_debug_location lauf_function_get_location(lauf_function fn);
 /// The location of an instruction of the function with the specific address for debugging purposes.
 lauf_debug_location lauf_function_get_location_of(lauf_function fn, void* inst);
 

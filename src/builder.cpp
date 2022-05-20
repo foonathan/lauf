@@ -24,9 +24,8 @@ struct module_decl
 
 struct function_decl
 {
-    const char*         name;
-    lauf_signature      signature;
-    lauf_debug_location location;
+    const char*    name;
+    lauf_signature signature;
 
     // Set to actual function once finished.
     lauf_function fn;
@@ -81,12 +80,12 @@ struct lauf_builder_impl
     }
 
     //=== per function ===//
-    std::size_t                     cur_fn;
-    stack_allocator_offset          stack_frame;
-    stack_checker                   value_stack;
-    std::vector<label_decl>         labels;
-    std::vector<bc_inst>            bytecode;
-    std::vector<debug_location_map> bc_locations;
+    std::size_t                            cur_fn;
+    stack_allocator_offset                 stack_frame;
+    stack_checker                          value_stack;
+    std::vector<label_decl>                labels;
+    std::vector<bc_inst>                   bytecode;
+    std::vector<debug_location_map::entry> bc_locations;
 
     void reset_function()
     {
@@ -154,15 +153,14 @@ lauf_module lauf_finish_module(lauf_builder b)
 lauf_function_decl lauf_declare_function(lauf_builder b, const char* name, lauf_signature signature)
 {
     auto idx = b->functions.size();
-    b->functions.push_back({name, signature, {}, nullptr});
+    b->functions.push_back({name, signature, nullptr});
     return {idx};
 }
 
 void lauf_build_function(lauf_builder b, lauf_function_decl fn)
 {
     b->reset_function();
-    b->cur_fn                        = fn._idx;
-    b->functions[b->cur_fn].location = b->cur_location;
+    b->cur_fn = fn._idx;
 
     b->value_stack.push("function", b->functions[b->cur_fn].signature.input_count);
 }
@@ -182,6 +180,7 @@ lauf_function lauf_finish_function(lauf_builder b)
     result->max_vstack_size  = b->value_stack.max_stack_size();
     result->input_count      = fn_decl.signature.input_count;
     result->output_count     = fn_decl.signature.output_count;
+    result->debug_locations  = debug_location_map(b->bc_locations.data(), b->bc_locations.size());
 
     // Copy and patch bytecode.
     {
@@ -202,19 +201,6 @@ lauf_function lauf_finish_function(lauf_builder b)
             result->bytecode()[cur_offset] = inst;
             ++cur_offset;
         }
-    }
-
-    // Set debug locations.
-    {
-        auto debug_location_size = 2 + b->bc_locations.size();
-        result->debug_locations  = new debug_location_map[debug_location_size];
-
-        auto ptr = result->debug_locations;
-        *ptr++   = debug_location_map{-1, fn_decl.location};
-        std::memcpy(ptr, b->bc_locations.data(),
-                    b->bc_locations.size() * sizeof(debug_location_map));
-        ptr += b->bc_locations.size();
-        *ptr++ = debug_location_map{-1, {}};
     }
 
     fn_decl.fn = result;
