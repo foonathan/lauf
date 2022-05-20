@@ -187,13 +187,12 @@ void lauf_place_label(lauf_builder b, lauf_label label)
     // If the label can be reached by fallthrough, we need to check that the current stack size
     // matches.
     auto check_stack_size = [&] {
-        if (auto last_op = b->bytecode.dominating_instruction().tag.op;
-            last_op == bc_op::jump || last_op == bc_op::return_ || last_op == bc_op::panic)
-            // Last instruction is an unconditional jump; can't be reached by fallthrough.
-            return true;
-        else
+        if (b->bytecode.can_fallthrough())
             // Last instruction can fallthrough the label; stack size needs to match.
             return b->value_stack.cur_stack_size() == b->bytecode.get_label_stack_size(label);
+        else
+            // Last instruction is an unconditional jump; can't be reached by fallthrough.
+            return true;
     };
     LAUF_VERIFY(check_stack_size(), "label", "expected value stack size not matched");
     b->value_stack.set_stack_size("label", b->bytecode.get_label_stack_size(label));
@@ -350,7 +349,7 @@ void lauf_build_load_field(lauf_builder b, lauf_type type, size_t field)
     auto idx = b->literals.insert(type);
     // If the last instruction is a store of the same field, turn it into a save instead.
     // TODO: invalid on jump
-    if (b->bytecode.dominating_instruction() == LAUF_VM_INSTRUCTION(store_field, field, idx))
+    if (b->bytecode.get_cur_idom() == LAUF_VM_INSTRUCTION(store_field, field, idx))
         b->bytecode.replace_last_instruction(bc_op::save_field);
     else
         b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_field, field, idx));
@@ -376,7 +375,7 @@ void lauf_build_load_value(lauf_builder b, lauf_local_variable var)
 
     // If the last instruction is a store of the same address, turn it into a save instead.
     // TODO: invalid on jump
-    if (b->bytecode.dominating_instruction() == LAUF_VM_INSTRUCTION(store_value, var._addr))
+    if (b->bytecode.get_cur_idom() == LAUF_VM_INSTRUCTION(store_value, var._addr))
         b->bytecode.replace_last_instruction(bc_op::save_value);
     else
         b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_value, var._addr));

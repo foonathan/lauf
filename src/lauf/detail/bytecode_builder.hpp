@@ -31,6 +31,9 @@ public:
     {
         auto& decl           = _labels[l._idx];
         decl.bytecode_offset = ptrdiff_t(_bytecode.size());
+
+        // The next instruction is an entry point as we might jump to it.
+        _is_entry_point = true;
     }
 
     //=== instruction ===//
@@ -45,6 +48,7 @@ public:
     void instruction(bc_inst inst)
     {
         _bytecode.push_back(inst);
+        _is_entry_point = false;
     }
     void replace_last_instruction(bc_inst inst)
     {
@@ -56,11 +60,26 @@ public:
     }
 
     //=== peephole ===//
-    bc_inst dominating_instruction() const
+    // Returns the instruction that necessarily needs to execute directly before the next
+    // instruction.
+    bc_inst get_cur_idom() const
+    {
+        if (_is_entry_point)
+            // If it's an entry point, there is no dominating instruction.
+            return LAUF_VM_INSTRUCTION(nop);
+        else
+            return _bytecode.back();
+    }
+
+    // Returns whether the next instruction can be reached by fallthrough of the previous
+    // instruction.
+    bool can_fallthrough() const
     {
         if (_bytecode.empty())
-            return LAUF_VM_INSTRUCTION(nop);
-        return _bytecode.back();
+            return false;
+
+        auto op = _bytecode.back().tag.op;
+        return op != bc_op::jump && op != bc_op::return_ && op != bc_op::panic;
     }
 
     //=== finish ===//
@@ -99,6 +118,8 @@ public:
     {
         _labels.clear();
         _bytecode.clear();
+        _locations.clear();
+        _is_entry_point = true;
     }
 
 private:
@@ -112,6 +133,10 @@ private:
     std::vector<bc_inst>                   _bytecode;
     std::vector<label_decl>                _labels;
     std::vector<debug_location_map::entry> _locations;
+
+    // Set to indicate that the next instruction is going to be a potential entry point for a basic
+    // block.
+    bool _is_entry_point = true;
 };
 } // namespace lauf::_detail
 
