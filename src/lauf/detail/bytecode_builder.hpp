@@ -32,8 +32,8 @@ public:
         auto& decl           = _labels[l._idx];
         decl.bytecode_offset = ptrdiff_t(_bytecode.size());
 
-        // The next instruction is an entry point as we might jump to it.
-        _is_entry_point = true;
+        // We terminate the current basic block and add a new one.
+        new_basic_block();
     }
 
     //=== instruction ===//
@@ -48,8 +48,12 @@ public:
     void instruction(bc_inst inst)
     {
         _bytecode.push_back(inst);
-        _is_entry_point = false;
+        if (inst.tag.op == bc_op::return_ || inst.tag.op == bc_op::jump
+            || inst.tag.op == bc_op::jump_if || inst.tag.op == bc_op::panic)
+            new_basic_block();
     }
+
+    // We're assuming that this does not affect control flow.
     void replace_last_instruction(bc_inst inst)
     {
         _bytecode.back() = inst;
@@ -64,7 +68,7 @@ public:
     // instruction.
     bc_inst get_cur_idom() const
     {
-        if (_is_entry_point)
+        if (_cur_basic_block_begin >= _bytecode.size())
             // If it's an entry point, there is no dominating instruction.
             return LAUF_VM_INSTRUCTION(nop);
         else
@@ -119,7 +123,7 @@ public:
         _labels.clear();
         _bytecode.clear();
         _locations.clear();
-        _is_entry_point = true;
+        _cur_basic_block_begin = 0;
     }
 
 private:
@@ -130,13 +134,15 @@ private:
         ptrdiff_t bytecode_offset;
     };
 
+    void new_basic_block()
+    {
+        _cur_basic_block_begin = _bytecode.size();
+    }
+
     std::vector<bc_inst>                   _bytecode;
     std::vector<label_decl>                _labels;
     std::vector<debug_location_map::entry> _locations;
-
-    // Set to indicate that the next instruction is going to be a potential entry point for a basic
-    // block.
-    bool _is_entry_point = true;
+    std::size_t                            _cur_basic_block_begin = 0;
 };
 } // namespace lauf::_detail
 
