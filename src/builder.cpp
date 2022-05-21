@@ -150,7 +150,7 @@ lauf_function lauf_finish_function(lauf_builder b)
     auto& fn_decl = b->functions[b->cur_fn];
 
     // We need to align the end of the stack frame properly for the next one.
-    b->stack_frame.align_to(alignof(std::max_align_t));
+    b->stack_frame.align_to(alignof(void*));
     auto local_size = b->stack_frame.size();
 
     // Allocate and set function members.

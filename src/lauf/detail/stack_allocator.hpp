@@ -150,7 +150,7 @@ namespace lauf::_detail
 class stack_allocator_offset
 {
 public:
-    stack_allocator_offset() : stack_allocator_offset(alignof(std::max_align_t)) {}
+    stack_allocator_offset() : stack_allocator_offset(alignof(void*)) {}
     explicit stack_allocator_offset(std::size_t initial_alignment)
     : _begin(initial_alignment), _cur(_begin)
     {}

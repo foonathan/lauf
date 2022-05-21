@@ -46,7 +46,7 @@ struct alignas(lauf_value) lauf_vm_impl
 
 namespace
 {
-struct alignas(std::max_align_t) stack_frame
+struct alignas(void*) stack_frame
 {
     lauf_function           fn;
     lauf_vm_instruction*    return_ip;
@@ -328,13 +328,14 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         vstack_ptr[0] = input[i];
     }
 
-    auto frame_ptr                                = new_stack_frame(vm, nullptr, nullptr, fn);
-    static_cast<stack_frame*>(frame_ptr)[-1].prev = nullptr;
+    stack_frame prev;
+    auto        frame_ptr = new_stack_frame(vm, &prev + 1, nullptr, fn);
 
     auto ip = fn->bytecode();
     if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
         return false;
 
+    vstack_ptr = vm->value_stack() - fn->output_count;
     for (auto i = 0; i != fn->output_count; ++i)
     {
         output[i] = vstack_ptr[0];
