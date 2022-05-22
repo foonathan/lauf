@@ -6,6 +6,7 @@
 
 #include <lauf/builder.h>
 #include <lauf/detail/bytecode.hpp>
+#include <lauf/detail/temporary_array.hpp>
 #include <lauf/impl/module.hpp>
 #include <vector>
 
@@ -14,11 +15,13 @@ namespace lauf::_detail
 class bytecode_builder
 {
 public:
+    explicit bytecode_builder(stack_allocator& alloc) : _alloc(&alloc) {}
+
     //=== label ===//
     lauf_label declare_label(std::size_t vstack_size)
     {
         auto idx = _labels.size();
-        _labels.push_back({vstack_size, 0});
+        _labels.push_back(*_alloc, {vstack_size, 0});
         return {idx};
     }
 
@@ -39,15 +42,18 @@ public:
     //=== instruction ===//
     void location(lauf_debug_location location)
     {
+        if (location.line == 0u && location.column == 0u)
+            return;
+
         if (_locations.empty()
             || std::memcmp(&_locations.back().location, &location, sizeof(lauf_debug_location))
                    != 0)
-            _locations.push_back({ptrdiff_t(_bytecode.size()), location});
+            _locations.push_back(*_alloc, {ptrdiff_t(_bytecode.size()), location});
     }
 
     void instruction(bc_inst inst)
     {
-        _bytecode.push_back(inst);
+        _bytecode.push_back(*_alloc, inst);
         if (inst.tag.op == bc_op::return_ || inst.tag.op == bc_op::jump
             || inst.tag.op == bc_op::jump_if || inst.tag.op == bc_op::panic)
             new_basic_block();
@@ -120,9 +126,9 @@ public:
 
     void reset()
     {
-        _labels.clear();
-        _bytecode.clear();
-        _locations.clear();
+        _labels.clear_and_reserve(*_alloc, 32);
+        _bytecode.clear_and_reserve(*_alloc, 512);
+        _locations.clear_and_reserve(*_alloc, 512);
         _cur_basic_block_begin = 0;
     }
 
@@ -139,10 +145,11 @@ private:
         _cur_basic_block_begin = _bytecode.size();
     }
 
-    std::vector<bc_inst>                   _bytecode;
-    std::vector<label_decl>                _labels;
-    std::vector<debug_location_map::entry> _locations;
-    std::size_t                            _cur_basic_block_begin = 0;
+    stack_allocator*                           _alloc;
+    temporary_array<bc_inst>                   _bytecode;
+    temporary_array<label_decl>                _labels;
+    temporary_array<debug_location_map::entry> _locations;
+    std::size_t                                _cur_basic_block_begin = 0;
 };
 } // namespace lauf::_detail
 

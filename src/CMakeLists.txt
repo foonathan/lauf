@@ -27,6 +27,7 @@ set(src_header_files
         lauf/detail/literal_pool.hpp
         lauf/detail/stack_allocator.hpp
         lauf/detail/stack_check.hpp
+        lauf/detail/temporary_array.hpp
         lauf/detail/verify.hpp)
 set(src_files
         builder.cpp

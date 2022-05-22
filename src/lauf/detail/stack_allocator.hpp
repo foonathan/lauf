@@ -75,6 +75,11 @@ public:
     stack_allocator& operator=(const stack_allocator& other) noexcept = delete;
 
     //=== allocation ===//
+    static constexpr std::size_t max_allocation_size()
+    {
+        return block_size;
+    }
+
     void reserve_new_block()
     {
         if (_cur_block->next == nullptr)
@@ -90,6 +95,7 @@ public:
     template <std::size_t Alignment = 1>
     void* allocate(std::size_t size)
     {
+        assert(size < max_allocation_size());
         auto offset = Alignment == 1 ? 0 : align_offset(_cur_pos, Alignment);
         if (remaining_capacity() < offset + size)
         {

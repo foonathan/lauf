@@ -58,7 +58,10 @@ condition_code translate_condition(lauf_condition cond)
 
 struct lauf_builder_impl
 {
+    stack_allocator     alloc;
     lauf_debug_location cur_location;
+
+    lauf_builder_impl() : cur_location{}, bytecode(alloc), marker(alloc.top()), cur_fn(0) {}
 
     //=== per module ===//
     module_decl                mod;
@@ -73,13 +76,17 @@ struct lauf_builder_impl
     }
 
     //=== per function ===//
-    std::size_t            cur_fn;
-    stack_allocator_offset stack_frame;
-    stack_checker          value_stack;
-    bytecode_builder       bytecode;
+    stack_allocator::marker marker;
+    std::size_t             cur_fn;
+    stack_allocator_offset  stack_frame;
+    stack_checker           value_stack;
+    bytecode_builder        bytecode;
 
     void reset_function()
     {
+        alloc.unwind(marker);
+        marker = alloc.top();
+
         cur_fn      = 0;
         stack_frame = {};
         value_stack = {};
