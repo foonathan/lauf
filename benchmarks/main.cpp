@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdio>
 #include <lauf/builder.h>
+#include <lauf/program.h>
 #include <lauf/vm.h>
 #include <string_view>
 
@@ -33,10 +34,12 @@ int main(int argc, char* argv[])
 
             lauf_value result;
             auto       panic = lauf_vm_execute(vm, program, nullptr, &result);
-            lauf_program_destroy(program);
-
             ankerl::nanobench::doNotOptimizeAway(panic);
             ankerl::nanobench::doNotOptimizeAway(result);
+
+            auto mod = lauf_function_get_module(lauf_program_get_entry_function(program));
+            lauf_program_destroy(program);
+            lauf_module_destroy(mod);
         };
         b.run(name, runner);
     };
