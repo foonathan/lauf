@@ -133,6 +133,7 @@ public:
         auto cur = _head.next;
         while (cur != nullptr)
             cur = block::deallocate(cur);
+        _head.next = nullptr;
 
         _cur_block = &_head;
         _cur_pos   = &_cur_block->memory[0];

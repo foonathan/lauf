@@ -12,6 +12,7 @@
 #include <lauf/detail/stack_allocator.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/program.hpp>
+#include <lauf/impl/vm.hpp>
 #include <lauf/type.h>
 #include <new>
 #include <type_traits>
@@ -32,6 +33,10 @@ struct alignas(lauf_value) lauf_vm_impl
     lauf_value* value_stack()
     {
         return reinterpret_cast<lauf_value*>(this + 1) + value_stack_size;
+    }
+    lauf_value* value_stack_limit()
+    {
+        return reinterpret_cast<lauf_value*>(this + 1);
     }
 
     lauf_value get_literal(bc_literal_idx idx) const
@@ -61,12 +66,16 @@ void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_i
 
     // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
     // it; the builder takes care of it when computing the stack size.
-    auto memory = vm->memory_stack.allocate(sizeof(stack_frame) + fn->local_stack_size);
+    auto memory = vm->memory_stack.allocate(lauf::_detail::frame_size_for(fn));
     auto frame  = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
     return frame + 1;
 }
-
 } // namespace
+
+std::size_t lauf::_detail::frame_size_for(lauf_function fn)
+{
+    return sizeof(stack_frame) + fn->local_stack_size;
+}
 
 //=== backtrace ===//
 // lauf_backtrace is a pointer to a stack frame.
@@ -148,6 +157,7 @@ lauf_vm lauf_vm_create(lauf_vm_options options)
 
 void lauf_vm_destroy(lauf_vm vm)
 {
+    vm->~lauf_vm_impl();
     ::operator delete(vm);
 }
 

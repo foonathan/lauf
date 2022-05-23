@@ -11,6 +11,7 @@
 #include <lauf/detail/stack_check.hpp>
 #include <lauf/detail/verify.hpp>
 #include <lauf/impl/module.hpp>
+#include <lauf/impl/vm.hpp>
 #include <vector>
 
 using namespace lauf::_detail;
@@ -168,6 +169,9 @@ lauf_function lauf_finish_function(lauf_builder b)
     result->input_count      = fn_decl.signature.input_count;
     result->output_count     = fn_decl.signature.output_count;
     result->debug_locations  = b->bytecode.debug_locations();
+
+    LAUF_VERIFY(frame_size_for(result) < stack_allocator::max_allocation_size(), "function",
+                "local variables of functions exceed stack frame size limit");
 
     // Copy and patch bytecode.
     b->bytecode.finish(result->bytecode());

@@ -34,7 +34,14 @@ int main()
         module @mod;
 
         function @test(1 => 1) {
-            local %foo : (800000, 8);
+            pick 0; jump_if is_false %finish;
+            int 1; roll 1;
+            int 1; call_builtin @ssub;
+            call @test;
+            call_builtin @sadd;
+            return;
+
+        label %finish(1):
             return;
         }
     )");
@@ -43,7 +50,7 @@ int main()
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_sint = 35};
+    lauf_value input = {.as_sint = 1000000};
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);

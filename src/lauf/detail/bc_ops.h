@@ -42,6 +42,14 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
     frame_ptr = new_stack_frame(vm, frame_ptr, ip + 1, callee);
     ip        = callee->bytecode();
 
+    auto remaining_vstack_size = vstack_ptr - vm->value_stack_limit();
+    if (remaining_vstack_size < callee->max_vstack_size)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "value stack overflow");
+        return false;
+    }
+
     LAUF_DISPATCH;
 })
 
