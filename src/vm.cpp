@@ -91,15 +91,10 @@ lauf_backtrace lauf_backtrace_parent(lauf_backtrace bt)
     // We need to go to the parent.
     auto next_bt = frame->prev;
 
-    if (next_bt->prev == nullptr)
-    {
-        // The parent of the next frame has no parent.
-        // This means we've reached the top frame.
-        assert(next_bt->return_ip == nullptr);
+    if (next_bt->return_ip == nullptr)
         return nullptr;
-    }
-
-    return next_bt;
+    else
+        return next_bt;
 }
 
 //=== panic handler ===//
@@ -328,7 +323,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         vstack_ptr[0] = input[i];
     }
 
-    stack_frame prev;
+    stack_frame prev{};
     auto        frame_ptr = new_stack_frame(vm, &prev + 1, nullptr, fn);
 
     auto ip = fn->bytecode();
