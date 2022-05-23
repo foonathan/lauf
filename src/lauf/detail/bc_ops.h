@@ -121,7 +121,7 @@ LAUF_BC_OP(array_element, bc_inst_literal, {
     auto elem_size = ptrdiff_t(ip->array_element.literal);
     auto addr      = vstack_ptr[0].as_ptr;
 
-    --vstack_ptr;
+    ++vstack_ptr;
     vstack_ptr[0].as_ptr = (unsigned char*)(addr) + idx * elem_size;
 
     ++ip;
