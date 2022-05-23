@@ -314,11 +314,18 @@ struct label_decl
                  + dsl::colon;
 };
 
+struct layout
+{
+    static constexpr auto rule
+        = dsl::parenthesized(dsl::twice(dsl::integer<std::size_t>, dsl::sep(dsl::comma)));
+    static constexpr auto value = lexy::construct<lauf_layout>;
+};
+
 struct local_decl
 {
     static constexpr auto rule = [] {
         auto array_size = dsl::square_bracketed(dsl::integer<std::size_t>);
-        auto type       = dsl::p<ref_type> + dsl::opt(array_size);
+        auto type       = (dsl::p<ref_type> | dsl::p<layout>)+dsl::opt(array_size);
 
         return LEXY_KEYWORD("local", identifier)
                >> dsl::p<local_identifier> + dsl::colon + type + dsl::semicolon;
@@ -359,12 +366,17 @@ auto parse_function_body_decls(lauf_frontend_text_parser p,
 
         auto value_of(lauf::text_grammar::local_decl) const
         {
-            return lexy::callback(
-                [&](std::string_view name, lauf_type type, std::optional<std::size_t> array_size) {
-                    auto layout = type->layout;
-                    layout.size *= array_size.value_or(1);
-                    result.locals.insert(name, lauf_build_local_variable(p->b, layout));
-                });
+            auto make_local = [&](std::string_view name, lauf_layout layout,
+                                  std::optional<std::size_t> array_size) {
+                layout.size *= array_size.value_or(1);
+                result.locals.insert(name, lauf_build_local_variable(p->b, layout));
+            };
+
+            return lexy::callback(make_local, [make_local](std::string_view name, lauf_type type,
+                                                           std::optional<std::size_t> array_size) {
+                auto layout = type->layout;
+                make_local(name, layout, array_size);
+            });
         }
 
         auto value_of(lauf::text_grammar::function_body_decls) const

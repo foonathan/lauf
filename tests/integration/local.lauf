@@ -1,0 +1,62 @@
+module @local;
+
+const @test_failure = "test failure", 0;
+
+function @assert_eq(2 => 0) {
+    call_builtin @scmp;
+    ptr @test_failure; panic_if cmp_ne;
+    return;
+}
+
+function @test_value(0 => 0) {
+    local %x : @Value;
+
+    int 42; store_value %x;
+    int 11; store_value %x;
+
+    load_value %x;
+    int 11; call @assert_eq;
+
+    return;
+}
+
+function @test_value_field(0 => 0) {
+    local %x : @Value;
+
+    int 42; local_addr %x; store_field @Value.0;
+    int 11; local_addr %x; store_field @Value.0;
+
+    local_addr %x; load_field @Value.0;
+    int 11; call @assert_eq;
+
+    return;
+}
+
+function @test_layout(0 => 0) {
+    # layout of Value type hardcoded.
+    local %x : (8, 8);
+
+    int 42; store_value %x;
+    int 11; store_value %x;
+
+    load_value %x;
+    int 11; call @assert_eq;
+
+    return;
+}
+
+function @test_array(0 => 0) {
+    local %x : @Value[2];
+
+    int 42; int 0; local_addr %x; array_element @Value; store_field @Value.0;
+    int 11; int 1; local_addr %x; array_element @Value; store_field @Value.0;
+
+    int 0; local_addr %x; array_element @Value; load_field @Value.0;
+    int 42; call @assert_eq;
+
+    int 1; local_addr %x; array_element @Value; load_field @Value.0;
+    int 11; call @assert_eq;
+
+    return;
+}
+

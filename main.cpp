@@ -33,25 +33,8 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @fib_recursive(1 => 1) {
-            local %arg : @Value;
-
-            store_value %arg;
-
-            load_value %arg; int 1; call_builtin @scmp;
-            jump_if cmp_gt %recurse;
-
-            load_value %arg;
-            return;
-
-        label %recurse(0):
-            load_value %arg; int 1; call_builtin @ssub;
-            call @fib_recursive;
-
-            load_value %arg; int 2; call_builtin @ssub;
-            call @fib_recursive;
-
-            call_builtin @sadd;
+        function @test(1 => 1) {
+            local %foo : (800000, 8);
             return;
         }
     )");
