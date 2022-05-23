@@ -30,7 +30,7 @@ typedef void (*lauf_panic_handler)(lauf_panic_info info, const char* message);
 //=== options ===//
 typedef struct lauf_vm_options
 {
-    size_t             max_value_stack_size;
+    size_t             max_value_stack_size, max_stack_size;
     lauf_panic_handler panic_handler;
 } lauf_vm_options;
 

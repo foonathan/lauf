@@ -59,9 +59,15 @@ class stack_allocator
 
 public:
     //=== constructors/destructors/assignment ===//
-    stack_allocator() noexcept : _cur_block(nullptr), _cur_pos(nullptr)
+    explicit stack_allocator(std::size_t memory_limit) noexcept
+    : _cur_block(&_head), _cur_pos(&_head.memory[0]), _block_count(1),
+      _limit(memory_limit / block_size)
     {
-        reset();
+        assert(memory_limit >= block_size);
+    }
+    stack_allocator() : stack_allocator(block_size)
+    {
+        _limit = std::size_t(-1);
     }
 
     ~stack_allocator() noexcept
@@ -80,16 +86,21 @@ public:
         return block_size;
     }
 
-    void reserve_new_block()
+    bool reserve_new_block()
     {
         if (_cur_block->next == nullptr)
         {
             auto next        = block::allocate();
             _cur_block->next = next;
+
+            ++_block_count;
+            if (_block_count > _limit)
+                return false;
         }
 
         _cur_block = _cur_block->next;
         _cur_pos   = &_cur_block->memory[0];
+        return true;
     }
 
     template <std::size_t Alignment = 1>
@@ -99,7 +110,8 @@ public:
         auto offset = Alignment == 1 ? 0 : align_offset(_cur_pos, Alignment);
         if (remaining_capacity() < offset + size)
         {
-            reserve_new_block();
+            if (!reserve_new_block())
+                return nullptr;
             offset = 0;
         }
 
@@ -133,7 +145,8 @@ public:
         auto cur = _head.next;
         while (cur != nullptr)
             cur = block::deallocate(cur);
-        _head.next = nullptr;
+        _head.next   = nullptr;
+        _block_count = 1;
 
         _cur_block = &_head;
         _cur_pos   = &_cur_block->memory[0];
@@ -147,6 +160,7 @@ private:
 
     block*         _cur_block;
     unsigned char* _cur_pos;
+    std::size_t    _block_count, _limit;
     block          _head;
 };
 } // namespace lauf::_detail

@@ -34,6 +34,8 @@ int main()
         module @mod;
 
         function @test(1 => 1) {
+            local %x : @Value[24];
+
             pick 0; jump_if is_false %finish;
             int 1; roll 1;
             int 1; call_builtin @ssub;

@@ -39,8 +39,14 @@ LAUF_BC_OP(return_, bc_inst_none, {
 LAUF_BC_OP(call, bc_inst_function_idx, {
     auto callee = vm->get_function(ip->call.function_idx);
 
-    frame_ptr = new_stack_frame(vm, frame_ptr, ip + 1, callee);
-    ip        = callee->bytecode();
+    auto new_frame_ptr = new_stack_frame(vm, frame_ptr, ip + 1, callee);
+    if (new_frame_ptr == nullptr)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "stack overflow");
+        return false;
+    }
+    frame_ptr = new_frame_ptr;
 
     auto remaining_vstack_size = vstack_ptr - vm->value_stack_limit();
     if (remaining_vstack_size < callee->max_vstack_size)
@@ -50,6 +56,7 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
         return false;
     }
 
+    ip = callee->bytecode();
     LAUF_DISPATCH;
 })
 

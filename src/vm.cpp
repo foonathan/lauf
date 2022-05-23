@@ -30,6 +30,12 @@ struct alignas(lauf_value) lauf_vm_impl
     size_t             value_stack_size;
     stack_allocator    memory_stack;
 
+    lauf_vm_impl(lauf_vm_options options)
+    : state{}, panic_handler(options.panic_handler),
+      value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
+      memory_stack(options.max_stack_size)
+    {}
+
     lauf_value* value_stack()
     {
         return reinterpret_cast<lauf_value*>(this + 1) + value_stack_size;
@@ -67,7 +73,10 @@ void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_i
     // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
     // it; the builder takes care of it when computing the stack size.
     auto memory = vm->memory_stack.allocate(lauf::_detail::frame_size_for(fn));
-    auto frame  = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
+    if (memory == nullptr)
+        return nullptr;
+
+    auto frame = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
     return frame + 1;
 }
 } // namespace
@@ -128,7 +137,7 @@ lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
 
 //=== vm functions ===//
 const lauf_vm_options lauf_default_vm_options
-    = {size_t(512) * 1024, [](lauf_panic_info info, const char* message) {
+    = {size_t(128) * 1024, size_t(896) * 1024, [](lauf_panic_info info, const char* message) {
            std::fprintf(stderr, "[lauf] panic: %s\n", message);
            std::fprintf(stderr, "stack backtrace\n");
 
@@ -151,8 +160,7 @@ const lauf_vm_options lauf_default_vm_options
 lauf_vm lauf_vm_create(lauf_vm_options options)
 {
     auto memory = ::operator new(sizeof(lauf_vm_impl) + options.max_value_stack_size);
-    return ::new (memory)
-        lauf_vm_impl{{}, options.panic_handler, options.max_value_stack_size / sizeof(lauf_value)};
+    return ::new (memory) lauf_vm_impl(options);
 }
 
 void lauf_vm_destroy(lauf_vm vm)
@@ -335,6 +343,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
 
     stack_frame prev{};
     auto        frame_ptr = new_stack_frame(vm, &prev + 1, nullptr, fn);
+    assert(frame_ptr); // initial stack frame should fit in first block
 
     auto ip = fn->bytecode();
     if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
