@@ -31,24 +31,19 @@ function @fib_tail_call(3 => 1) { # n a b => F_n
     store_value %b;
     store_value %a;
 
-    pick 0; int 0; call_builtin @scmp;
-    jump_if cmp_eq %is_zero;
-
     pick 0; int 1; call_builtin @scmp;
-    jump_if cmp_eq %is_one;
+    jump_if cmp_gt %recurse;
 
-    int 1; call_builtin @ssub;
-    load_value %b;
-    pick 0; load_value %a; call_builtin @sadd;
-    call @fib_tail_call;
+    # (0 or 1) b a => (a or b)
+    load_value %b; load_value %a; select 2;
     return;
 
-label %is_zero(1):
-    drop 1;
-    load_value %a; return;
-label %is_one(1):
-    drop 1;
-    load_value %b; return;
+label %recurse(1):
+    int 1; call_builtin @ssub;                 # n => (n-1)
+    load_value %b;                             # => (n-1) b
+    pick 0; load_value %a; call_builtin @sadd; # => (n-1) b (b+a)
+    call @fib_tail_call;
+    return;
 }
 
 function @fib_iter(1 => 1) {
