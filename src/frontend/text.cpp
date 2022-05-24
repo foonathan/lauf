@@ -134,7 +134,7 @@ struct ref_label
 {
     static constexpr auto rule = dsl::p<local_identifier>;
 };
-struct ref_local_var
+struct ref_local
 {
     static constexpr auto rule = dsl::p<local_identifier>;
 };
@@ -142,7 +142,7 @@ struct ref_function
 {
     static constexpr auto rule = dsl::p<global_identifier>;
 };
-struct ref_data
+struct ref_global
 {
     static constexpr auto rule = dsl::p<global_identifier>;
 };
@@ -235,7 +235,7 @@ struct function_decl
 
 struct module_decl
 {
-    symbol_table<const char*>   data;
+    symbol_table<lauf_global>   global;
     symbol_table<function_decl> functions;
 };
 
@@ -263,7 +263,9 @@ auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
         auto value_of(lauf::text_grammar::const_decl) const
         {
             return lexy::callback([&](std::string_view name, std::string&& data) {
-                result.data.insert(name, p->intern(std::move(data)));
+                auto size   = data.size();
+                auto memory = p->intern(std::move(data));
+                result.global.insert(name, lauf_build_const_global(p->b, memory, size));
             });
         }
 
@@ -292,8 +294,8 @@ namespace
 {
 struct function_body_decls
 {
-    symbol_table<lauf_label>          labels;
-    symbol_table<lauf_local_variable> locals;
+    symbol_table<lauf_label> labels;
+    symbol_table<lauf_local> locals;
 };
 } // namespace
 
@@ -429,14 +431,14 @@ struct inst_int
     static constexpr auto rule  = LEXY_KEYWORD("int", identifier) >> dsl::integer<lauf_value_sint>;
     static constexpr auto build = &lauf_build_int;
 };
-struct inst_ptr
+struct inst_global_addr
 {
-    static constexpr auto rule  = LEXY_KEYWORD("ptr", identifier) >> dsl::p<ref_data>;
-    static constexpr auto build = &lauf_build_ptr;
+    static constexpr auto rule  = LEXY_KEYWORD("global_addr", identifier) >> dsl::p<ref_global>;
+    static constexpr auto build = &lauf_build_global_addr;
 };
 struct inst_local_addr
 {
-    static constexpr auto rule  = LEXY_KEYWORD("local_addr", identifier) >> dsl::p<ref_local_var>;
+    static constexpr auto rule  = LEXY_KEYWORD("local_addr", identifier) >> dsl::p<ref_local>;
     static constexpr auto build = &lauf_build_local_addr;
 };
 
@@ -496,12 +498,12 @@ struct inst_store_field
 };
 struct inst_load_value
 {
-    static constexpr auto rule  = LEXY_KEYWORD("load_value", identifier) >> dsl::p<ref_local_var>;
+    static constexpr auto rule  = LEXY_KEYWORD("load_value", identifier) >> dsl::p<ref_local>;
     static constexpr auto build = &lauf_build_load_value;
 };
 struct inst_store_value
 {
-    static constexpr auto rule  = LEXY_KEYWORD("store_value", identifier) >> dsl::p<ref_local_var>;
+    static constexpr auto rule  = LEXY_KEYWORD("store_value", identifier) >> dsl::p<ref_local>;
     static constexpr auto build = &lauf_build_store_value;
 };
 
@@ -521,7 +523,7 @@ struct inst
     static constexpr auto rule = [] {
         auto insts
             = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if>                    //
-              | dsl::p<inst_int> | dsl::p<inst_ptr> | dsl::p<inst_local_addr>                   //
+              | dsl::p<inst_int> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>           //
               | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>                       //
               | dsl::p<inst_select> | dsl::p<inst_select_if>                                    //
               | dsl::p<inst_call> | dsl::p<inst_call_builtin>                                   //
@@ -571,9 +573,9 @@ struct function_body_parser
         });
     }
 
-    auto value_of(lauf::text_grammar::ref_local_var) const
+    auto value_of(lauf::text_grammar::ref_local) const
     {
-        return lexy::callback<lauf_local_variable>(
+        return lexy::callback<lauf_local>(
             [&](std::string_view name) { return body->locals.lookup(name); });
     }
     auto value_of(lauf::text_grammar::ref_label) const
@@ -586,10 +588,10 @@ struct function_body_parser
         return lexy::callback<lauf_function_decl>(
             [&](std::string_view name) { return mod->functions.lookup(name).decl; });
     }
-    auto value_of(lauf::text_grammar::ref_data) const
+    auto value_of(lauf::text_grammar::ref_global) const
     {
-        return lexy::callback<const void*>(
-            [&](std::string_view name) { return mod->data.lookup(name); });
+        return lexy::callback<lauf_global>(
+            [&](std::string_view name) { return mod->global.lookup(name); });
     }
     auto value_of(lauf::text_grammar::ref_builtin) const
     {

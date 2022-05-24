@@ -35,10 +35,12 @@ lauf_debug_location lauf_function_get_location_of(lauf_function fn, void* inst)
 }
 
 //=== module ===//
-lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_count)
+lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_count,
+                                      size_t allocation_count)
 {
     auto memory = ::operator new(sizeof(lauf_module_impl) + function_count * sizeof(lauf_function)
-                                 + literal_count * sizeof(lauf_value));
+                                 + literal_count * sizeof(lauf_value)
+                                 + allocation_count * sizeof(lauf::_detail::allocation));
     return ::new (memory) lauf_module_impl{};
 }
 

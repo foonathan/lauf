@@ -79,15 +79,15 @@ label %exit(1):
 function @test_fib(0 => 0) {
     int 10; call @fib_recursive;
     int 55; call_builtin @scmp;
-    ptr @test_failure; panic_if cmp_ne;
+    global_addr @test_failure; panic_if cmp_ne;
 
     int 10; int 0; int 1; call @fib_tail_call;
     int 55; call_builtin @scmp;
-    ptr @test_failure; panic_if cmp_ne;
+    global_addr @test_failure; panic_if cmp_ne;
 
     int 10; call @fib_iter;
     int 55; call_builtin @scmp;
-    ptr @test_failure; panic_if cmp_ne;
+    global_addr @test_failure; panic_if cmp_ne;
 
     return;
 }

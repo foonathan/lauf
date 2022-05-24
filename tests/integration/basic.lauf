@@ -4,7 +4,7 @@ const @test_failure = "test failure", 0;
 
 function @assert_eq(2 => 0) {
     call_builtin @scmp;
-    ptr @test_failure; panic_if cmp_ne;
+    global_addr @test_failure; panic_if cmp_ne;
     return;
 }
 

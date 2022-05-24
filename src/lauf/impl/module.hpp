@@ -55,6 +55,18 @@ private:
 };
 } // namespace lauf::_detail
 
+//=== allocation ===//
+namespace lauf::_detail
+{
+struct allocation
+{
+    void*    address;
+    uint32_t size;
+    bool     is_const;
+};
+static_assert(sizeof(allocation) == 2 * sizeof(void*));
+} // namespace lauf::_detail
+
 //=== function ===//
 struct lauf_function_impl
 {
@@ -83,7 +95,7 @@ struct alignas(lauf_value) lauf_module_impl
 {
     const char* name;
     const char* path;
-    size_t      function_count;
+    size_t      function_count, literal_count, allocation_count;
 
     lauf_function* function_begin()
     {
@@ -100,11 +112,18 @@ struct alignas(lauf_value) lauf_module_impl
         auto memory = static_cast<void*>(function_end());
         return static_cast<lauf_value*>(memory);
     }
+
+    lauf::_detail::allocation* allocation_data()
+    {
+        auto memory = static_cast<void*>(literal_data() + literal_count);
+        return static_cast<lauf::_detail::allocation*>(memory);
+    }
 };
-static_assert(sizeof(lauf_module_impl) == 3 * sizeof(void*));
+static_assert(sizeof(lauf_module_impl) == 5 * sizeof(void*));
 static_assert(sizeof(lauf_module_impl) % alignof(lauf_value) == 0);
 
-lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_count);
+lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_count,
+                                      size_t allocation_count);
 
 #endif // SRC_IMPL_MODULE_HPP_INCLUDED
 

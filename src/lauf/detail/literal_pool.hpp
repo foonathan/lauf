@@ -43,6 +43,10 @@ public:
         return insert(v);
     }
 
+    bool empty() const
+    {
+        return _literals.empty();
+    }
     std::size_t size() const
     {
         return _literals.size();

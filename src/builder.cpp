@@ -68,12 +68,14 @@ struct lauf_builder_impl
     module_decl                mod;
     literal_pool               literals;
     std::vector<function_decl> functions;
+    std::vector<allocation>    allocations;
 
     void reset_module()
     {
         mod = {};
         literals.reset();
         functions.clear();
+        allocations.clear();
     }
 
     //=== per function ===//
@@ -118,10 +120,13 @@ void lauf_build_module(lauf_builder b, const char* name, const char* path)
 
 lauf_module lauf_finish_module(lauf_builder b)
 {
-    auto result            = lauf_impl_allocate_module(b->functions.size(), b->literals.size());
-    result->name           = b->mod.name;
-    result->path           = b->mod.path;
-    result->function_count = b->functions.size();
+    auto result
+        = lauf_impl_allocate_module(b->functions.size(), b->literals.size(), b->allocations.size());
+    result->name             = b->mod.name;
+    result->path             = b->mod.path;
+    result->function_count   = b->functions.size();
+    result->literal_count    = b->literals.size();
+    result->allocation_count = b->allocations.size();
 
     for (auto idx = std::size_t(0); idx != b->functions.size(); ++idx)
     {
@@ -129,11 +134,13 @@ lauf_module lauf_finish_module(lauf_builder b)
         result->function_begin()[idx]->mod = result;
     }
 
-    if (b->literals.size() != 0)
-    {
+    if (!b->literals.empty())
         std::memcpy(result->literal_data(), b->literals.data(),
                     b->literals.size() * sizeof(lauf_value));
-    }
+
+    if (!b->allocations.empty())
+        std::memcpy(result->allocation_data(), b->allocations.data(),
+                    b->allocations.size() * sizeof(allocation));
 
     return result;
 }
@@ -142,6 +149,15 @@ lauf_function_decl lauf_declare_function(lauf_builder b, const char* name, lauf_
 {
     auto idx = b->functions.size();
     b->functions.push_back({name, signature, nullptr});
+    return {idx};
+}
+
+lauf_global lauf_build_const_global(lauf_builder b, const void* memory, size_t size)
+{
+    LAUF_VERIFY(size < UINT32_MAX, "const", "allocation size limit exceeded");
+
+    auto idx = b->allocations.size();
+    b->allocations.push_back({const_cast<void*>(memory), uint32_t(size), true});
     return {idx};
 }
 
@@ -180,7 +196,7 @@ lauf_function lauf_finish_function(lauf_builder b)
     return result;
 }
 
-lauf_local_variable lauf_build_local_variable(lauf_builder b, lauf_layout layout)
+lauf_local lauf_build_local_variable(lauf_builder b, lauf_layout layout)
 {
     auto addr = b->stack_frame.allocate(layout.size, layout.alignment);
     return {addr};
@@ -271,17 +287,17 @@ void lauf_build_int(lauf_builder b, lauf_value_sint value)
     b->value_stack.push("int");
 }
 
-void lauf_build_ptr(lauf_builder b, lauf_value_ptr ptr)
+void lauf_build_global_addr(lauf_builder b, lauf_global global)
 {
     b->bytecode.location(b->cur_location);
 
-    auto idx = b->literals.insert(ptr);
+    auto idx = b->literals.insert(b->allocations[global._idx].address);
     b->bytecode.instruction(LAUF_VM_INSTRUCTION(push, idx));
 
-    b->value_stack.push("ptr");
+    b->value_stack.push("global_addr");
 }
 
-void lauf_build_local_addr(lauf_builder b, lauf_local_variable var)
+void lauf_build_local_addr(lauf_builder b, lauf_local var)
 {
     b->bytecode.location(b->cur_location);
 
@@ -405,7 +421,7 @@ void lauf_build_store_field(lauf_builder b, lauf_type type, size_t field)
     b->value_stack.pop("store_field", 2);
 }
 
-void lauf_build_load_value(lauf_builder b, lauf_local_variable var)
+void lauf_build_load_value(lauf_builder b, lauf_local var)
 {
     b->bytecode.location(b->cur_location);
 
@@ -418,7 +434,7 @@ void lauf_build_load_value(lauf_builder b, lauf_local_variable var)
     b->value_stack.push("load_value");
 }
 
-void lauf_build_store_value(lauf_builder b, lauf_local_variable var)
+void lauf_build_store_value(lauf_builder b, lauf_local var)
 {
     b->bytecode.location(b->cur_location);
 
