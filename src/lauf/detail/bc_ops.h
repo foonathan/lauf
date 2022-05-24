@@ -214,6 +214,52 @@ LAUF_BC_OP(swap, bc_inst_none, {
     LAUF_DISPATCH;
 })
 
+// Selects the nth item from the stack, where the index is passed dynamically.
+// Literal N is maximal value for n.
+// n aN ... an ... a1 => an
+LAUF_BC_OP(select, bc_inst_literal, {
+    auto max_index = ptrdiff_t(ip->select.literal);
+    auto index     = vstack_ptr[max_index].as_uint;
+    if (index >= max_index)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "select index out of range");
+        return false;
+    }
+
+    auto value = vstack_ptr[index];
+
+    vstack_ptr += max_index;
+    vstack_ptr[0] = value;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+// Same as above, but N is 2.
+LAUF_BC_OP(select2, bc_inst_none, {
+    auto index = vstack_ptr[2].as_uint & 0x1;
+    auto value = vstack_ptr[index];
+
+    vstack_ptr += 2;
+    vstack_ptr[0] = value;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
+// Selects between one of two values based on the condition code of the third.
+// condition if_true if_false => (if_true or if_false)
+LAUF_BC_OP(select_if, bc_inst_cc, {
+    auto condition = vstack_ptr[2];
+    auto value     = check_condition(ip->select_if.cc, condition) ? vstack_ptr[1] : vstack_ptr[0];
+
+    vstack_ptr += 2;
+    vstack_ptr[0] = value;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
 //=== load/store ===//
 // Load a field from a type, literal is lauf_type*.
 // addr => value

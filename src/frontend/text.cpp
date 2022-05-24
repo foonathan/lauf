@@ -455,6 +455,16 @@ struct inst_roll
     static constexpr auto rule  = LEXY_KEYWORD("roll", identifier) >> dsl::integer<size_t>;
     static constexpr auto build = &lauf_build_roll;
 };
+struct inst_select
+{
+    static constexpr auto rule  = LEXY_KEYWORD("select", identifier) >> dsl::integer<size_t>;
+    static constexpr auto build = &lauf_build_select;
+};
+struct inst_select_if
+{
+    static constexpr auto rule  = LEXY_KEYWORD("select_if", identifier) >> dsl::symbol<ccs>;
+    static constexpr auto build = &lauf_build_select_if;
+};
 
 struct inst_call
 {
@@ -513,6 +523,7 @@ struct inst
             = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if>                    //
               | dsl::p<inst_int> | dsl::p<inst_ptr> | dsl::p<inst_local_addr>                   //
               | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>                       //
+              | dsl::p<inst_select> | dsl::p<inst_select_if>                                    //
               | dsl::p<inst_call> | dsl::p<inst_call_builtin>                                   //
               | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
               | dsl::p<inst_load_value> | dsl::p<inst_store_value>                              //

@@ -78,6 +78,8 @@ void lauf_build_local_addr(lauf_builder b, lauf_local_variable var);
 void lauf_build_drop(lauf_builder b, size_t n);
 void lauf_build_pick(lauf_builder b, size_t n);
 void lauf_build_roll(lauf_builder b, size_t n);
+void lauf_build_select(lauf_builder b, size_t max_index);
+void lauf_build_select_if(lauf_builder b, lauf_condition condition);
 
 void lauf_build_call(lauf_builder b, lauf_function_decl fn);
 void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn);

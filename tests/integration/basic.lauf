@@ -80,3 +80,53 @@ function @test_roll3(0 => 0) {
     int 4; call @assert_eq;
     return;
 }
+
+function @test_select2(0 => 0) {
+    int 0;
+    int 42; int 11;
+    select 2; int 11; call @assert_eq;
+
+    int 1;
+    int 42; int 11;
+    select 2; int 42; call @assert_eq;
+
+    return;
+}
+function @test_select3(0 => 0) {
+    int 0;
+    int 42; int 11; int 13;
+    select 3; int 13; call @assert_eq;
+
+    int 1;
+    int 42; int 11; int 13;
+    select 3; int 11; call @assert_eq;
+
+    int 2;
+    int 42; int 11; int 13;
+    select 3; int 42; call @assert_eq;
+
+    return;
+}
+
+function @test_select_if_true(0 => 0) {
+    int 0;
+    int 42; int 11;
+    select_if is_true; int 11; call @assert_eq;
+
+    int 1;
+    int 42; int 11;
+    select_if is_true; int 42; call @assert_eq;
+
+    return;
+}
+function @test_select_if_false(0 => 0) {
+    int 0;
+    int 42; int 11;
+    select_if is_false; int 42; call @assert_eq;
+
+    int 1;
+    int 42; int 11;
+    select_if is_false; int 11; call @assert_eq;
+
+    return;
+}

@@ -319,6 +319,33 @@ void lauf_build_roll(lauf_builder b, size_t n)
     LAUF_VERIFY(n < b->value_stack.cur_stack_size(), "roll", "invalid stack index");
 }
 
+void lauf_build_select(lauf_builder b, size_t max_index)
+{
+    b->bytecode.location(b->cur_location);
+
+    LAUF_VERIFY(max_index >= 2, "select", "invalid max index for select");
+    if (max_index == 2)
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(select2));
+    else
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(select, max_index));
+
+    b->value_stack.pop("select", max_index + 1);
+    b->value_stack.push("select");
+}
+
+void lauf_build_select_if(lauf_builder b, lauf_condition condition)
+{
+    b->bytecode.location(b->cur_location);
+
+    if (condition == LAUF_IS_TRUE)
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(select2));
+    else
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(select_if, translate_condition(condition)));
+
+    b->value_stack.pop("select", 2 + 1);
+    b->value_stack.push("select");
+}
+
 void lauf_build_call(lauf_builder b, lauf_function_decl fn)
 {
     b->bytecode.location(b->cur_location);
