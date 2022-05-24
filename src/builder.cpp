@@ -291,7 +291,7 @@ void lauf_build_global_addr(lauf_builder b, lauf_global global)
 {
     b->bytecode.location(b->cur_location);
 
-    auto idx = b->literals.insert(b->allocations[global._idx].address);
+    auto idx = b->literals.insert(lauf_value_address{uint32_t(global._idx), 0});
     b->bytecode.instruction(LAUF_VM_INSTRUCTION(push, idx));
 
     b->value_stack.push("global_addr");

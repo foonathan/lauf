@@ -36,10 +36,16 @@ public:
         v.as_sint = value;
         return insert(v);
     }
-    auto insert(lauf_value_ptr value)
+    auto insert(lauf_value_address value)
     {
         lauf_value v;
-        v.as_ptr = value;
+        v.as_address = value;
+        return insert(v);
+    }
+    auto insert(lauf_value_native_ptr value)
+    {
+        lauf_value v;
+        v.as_native_ptr = value;
         return insert(v);
     }
 

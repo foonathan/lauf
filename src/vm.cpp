@@ -16,6 +16,7 @@
 #include <lauf/type.h>
 #include <new>
 #include <type_traits>
+#include <vector>
 
 using namespace lauf::_detail;
 
@@ -23,8 +24,9 @@ struct alignas(lauf_value) lauf_vm_impl
 {
     struct
     {
-        const lauf_value* literals;
-        lauf_function*    functions;
+        const lauf_value*       literals;
+        lauf_function*          functions;
+        std::vector<allocation> allocations;
     } state;
     lauf_panic_handler panic_handler;
     size_t             value_stack_size;
@@ -34,7 +36,9 @@ struct alignas(lauf_value) lauf_vm_impl
     : state{}, panic_handler(options.panic_handler),
       value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
       memory_stack(options.max_stack_size)
-    {}
+    {
+        state.allocations.reserve(1024);
+    }
 
     lauf_value* value_stack()
     {
@@ -76,8 +80,10 @@ void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_i
     if (memory == nullptr)
         return nullptr;
 
-    auto frame = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
-    return frame + 1;
+    auto frame         = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
+    auto new_frame_ptr = frame + 1;
+    vm->state.allocations.push_back({new_frame_ptr, fn->local_stack_size});
+    return new_frame_ptr;
 }
 } // namespace
 
@@ -330,8 +336,14 @@ bool lauf_builtin_panic(lauf_vm vm, lauf_vm_instruction* ip, void* frame_ptr, co
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
-    auto [mod, fn] = program(prog);
-    vm->state      = {mod->literal_data(), mod->function_begin()};
+    auto [mod, fn]      = program(prog);
+    vm->state.literals  = mod->literal_data();
+    vm->state.functions = mod->function_begin();
+
+    vm->state.allocations.clear();
+    for (auto ptr = mod->allocation_data(); ptr != mod->allocation_data() + mod->allocation_count;
+         ++ptr)
+        vm->state.allocations.push_back(*ptr);
 
     auto vstack_ptr = vm->value_stack();
 

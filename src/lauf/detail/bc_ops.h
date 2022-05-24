@@ -32,6 +32,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
     vm->memory_stack.unwind(marker);
+    vm->state.allocations.pop_back();
 
     LAUF_DISPATCH;
 })
@@ -71,6 +72,7 @@ LAUF_BC_OP(tail_call, bc_inst_function_idx, {
         vm->panic_handler(&info, "stack overflow");
         return false;
     }
+    vm->state.allocations.push_back({frame_ptr, callee->local_stack_size});
 
     auto remaining_vstack_size = vstack_ptr - vm->value_stack_limit();
     if (remaining_vstack_size < callee->max_vstack_size)
@@ -85,7 +87,8 @@ LAUF_BC_OP(tail_call, bc_inst_function_idx, {
 })
 
 LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
-    auto callee = (lauf_builtin_function*)(vm->get_literal(ip->call_builtin.literal_idx).as_ptr);
+    auto callee
+        = (lauf_builtin_function*)(vm->get_literal(ip->call_builtin.literal_idx).as_native_ptr);
     auto stack_change = ip->call_builtin.offset;
     ++ip;
     LAUF_DISPATCH_BUILTIN(callee, stack_change);
@@ -137,8 +140,10 @@ LAUF_BC_OP(push_small_neg, bc_inst_literal, {
 // _ => (local_base_addr + literal)
 LAUF_BC_OP(local_addr, bc_inst_literal, {
     --vstack_ptr;
-    vstack_ptr[0].as_ptr
-        = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->local_addr.literal);
+
+    auto allocation          = uint32_t(vm->state.allocations.size() - 1);
+    auto offset              = uint32_t(ip->local_addr.literal);
+    vstack_ptr[0].as_address = {allocation, offset};
 
     ++ip;
     LAUF_DISPATCH;
@@ -149,10 +154,12 @@ LAUF_BC_OP(local_addr, bc_inst_literal, {
 LAUF_BC_OP(array_element, bc_inst_literal, {
     auto idx       = vstack_ptr[1].as_uint;
     auto elem_size = ptrdiff_t(ip->array_element.literal);
-    auto addr      = vstack_ptr[0].as_ptr;
+
+    auto addr = vstack_ptr[0].as_address;
+    addr.offset += elem_size * idx;
 
     ++vstack_ptr;
-    vstack_ptr[0].as_ptr = (unsigned char*)(addr) + idx * elem_size;
+    vstack_ptr[0].as_address = addr;
 
     ++ip;
     LAUF_DISPATCH;
@@ -264,9 +271,10 @@ LAUF_BC_OP(select_if, bc_inst_cc, {
 // Load a field from a type, literal is lauf_type*.
 // addr => value
 LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
-    auto type = static_cast<lauf_type>(vm->get_literal(ip->load_field.literal_idx).as_ptr);
+    auto type = static_cast<lauf_type>(vm->get_literal(ip->load_field.literal_idx).as_native_ptr);
 
-    auto object   = vstack_ptr[0].as_ptr;
+    auto addr     = vstack_ptr[0].as_address;
+    auto object   = vm->state.allocations[addr.allocation].offset(addr.offset);
     vstack_ptr[0] = type->load_field(object, ip->load_field.field);
 
     ++ip;
@@ -276,9 +284,10 @@ LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
 // Store a field to a type, literal is lauf_type*.
 // value addr => _
 LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
-    auto type = static_cast<lauf_type>(vm->get_literal(ip->store_field.literal_idx).as_ptr);
+    auto type = static_cast<lauf_type>(vm->get_literal(ip->store_field.literal_idx).as_native_ptr);
 
-    auto object = const_cast<void*>(vstack_ptr[0].as_ptr);
+    auto addr   = vstack_ptr[0].as_address;
+    auto object = vm->state.allocations[addr.allocation].offset(addr.offset);
     type->store_field(object, ip->store_field.field, vstack_ptr[1]);
     vstack_ptr += 2;
 
@@ -325,7 +334,7 @@ LAUF_BC_OP(save_value, bc_inst_literal, {
 // Invokes the panic handler.
 // message => _
 LAUF_BC_OP(panic, bc_inst_none, {
-    auto message = static_cast<const char*>(vstack_ptr[0].as_ptr);
+    auto message = static_cast<const char*>(vstack_ptr[0].as_native_ptr);
 
     auto info = make_panic_info(frame_ptr, ip);
     vm->panic_handler(&info, message);
@@ -337,7 +346,7 @@ LAUF_BC_OP(panic, bc_inst_none, {
 // value message => _
 LAUF_BC_OP(panic_if, bc_inst_cc, {
     auto value   = vstack_ptr[1];
-    auto message = static_cast<const char*>(vstack_ptr[0].as_ptr);
+    auto message = static_cast<const char*>(vstack_ptr[0].as_native_ptr);
     if (check_condition(ip->panic_if.cc, value))
     {
         auto info = make_panic_info(frame_ptr, ip);

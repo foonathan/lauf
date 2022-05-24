@@ -33,17 +33,13 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(1 => 1) {
-            local %x : @Value[24];
+        function @test(0 => 1) {
+            local %x : @Value[2];
 
-            pick 0; jump_if is_false %finish;
-            int 1; roll 1;
-            int 1; call_builtin @ssub;
-            call @test;
-            call_builtin @sadd;
-            return;
+            int 42; int 0; local_addr %x; array_element @Value; store_field @Value.0;
+            int 11; int 1; local_addr %x; array_element @Value; store_field @Value.0;
 
-        label %finish(1):
+            int 0; local_addr %x; array_element @Value; load_field @Value.0;
             return;
         }
     )");
@@ -52,11 +48,12 @@ int main()
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_sint = 1000000};
+    lauf_value input = {.as_sint = 100};
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);
 
+    lauf_module_destroy(mod);
     lauf_vm_destroy(vm);
     lauf_frontend_text_destroy_parser(parser);
 }

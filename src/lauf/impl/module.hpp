@@ -63,6 +63,11 @@ struct allocation
     void*    address;
     uint32_t size;
     bool     is_const;
+
+    void* offset(std::size_t o) const
+    {
+        return static_cast<unsigned char*>(address) + o;
+    }
 };
 static_assert(sizeof(allocation) == 2 * sizeof(void*));
 } // namespace lauf::_detail
