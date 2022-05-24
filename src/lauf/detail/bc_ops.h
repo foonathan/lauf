@@ -286,19 +286,6 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
     LAUF_DISPATCH;
 })
 
-// Save a field from a type, literal is lauf_type*.
-// value addr => value
-LAUF_BC_OP(save_field, bc_inst_field_literal_idx, {
-    auto type = static_cast<lauf_type>(vm->get_literal(ip->save_field.literal_idx).as_ptr);
-
-    auto object = const_cast<void*>(vstack_ptr[0].as_ptr);
-    type->store_field(object, ip->save_field.field, vstack_ptr[1]);
-    ++vstack_ptr;
-
-    ++ip;
-    LAUF_DISPATCH;
-})
-
 // Load a stack value from a literal address.
 // _ => value
 LAUF_BC_OP(load_value, bc_inst_literal, {

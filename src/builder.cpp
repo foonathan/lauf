@@ -388,12 +388,7 @@ void lauf_build_load_field(lauf_builder b, lauf_type type, size_t field)
     LAUF_VERIFY(field < type->field_count, "store_field", "invalid field count for type");
 
     auto idx = b->literals.insert(type);
-    // If the last instruction is a store of the same field, turn it into a save instead.
-    // TODO: invalid on jump
-    if (b->bytecode.get_cur_idom() == LAUF_VM_INSTRUCTION(store_field, field, idx))
-        b->bytecode.replace_last_instruction(bc_op::save_field);
-    else
-        b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_field, field, idx));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_field, field, idx));
 
     b->value_stack.pop("load_field");
     b->value_stack.push("load_field");
