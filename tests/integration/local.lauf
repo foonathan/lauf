@@ -60,3 +60,37 @@ function @test_array(0 => 0) {
     return;
 }
 
+function @set_ptr(1 => 0) {
+    int 42; roll 1; store_field @Value.0;
+    return;
+}
+function @test_pass_local_to_function(0 => 0) {
+    local %x : @Value;
+    local_addr %x; call @set_ptr;
+
+    load_value %x; int 42; call @assert_eq;
+    return;
+}
+
+function @test_invalid_array_index_panic(0 => 0) {
+    local %x : @Value[2];
+
+    int 42; int 2; local_addr %x; array_element @Value; store_field @Value.0;
+    return;
+}
+function @test_local_arithmetic_panic(0 => 0) {
+    local %x : @Value;
+
+    int 42; local_addr %x; int 11; call_builtin @sadd; store_field @Value.0;
+    return;
+}
+
+function @dangling_addr(0 => 1) {
+    local %x : @Value;
+    local_addr %x; return;
+}
+function @test_dangling_addr_panic(0 => 0) {
+    int 42; call @dangling_addr; store_field @Value.0;
+    return;
+}
+
