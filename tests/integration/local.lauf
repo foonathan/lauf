@@ -48,13 +48,13 @@ function @test_layout(0 => 0) {
 function @test_array(0 => 0) {
     local %x : @Value[2];
 
-    int 42; int 0; local_addr %x; array_element @Value; store_field @Value.0;
-    int 11; int 1; local_addr %x; array_element @Value; store_field @Value.0;
+    int 42; int 0; local_addr %x; array_element_addr @Value; store_field @Value.0;
+    int 11; int 1; local_addr %x; array_element_addr @Value; store_field @Value.0;
 
-    int 0; local_addr %x; array_element @Value; load_field @Value.0;
+    int 0; local_addr %x; array_element_addr @Value; load_field @Value.0;
     int 42; call @assert_eq;
 
-    int 1; local_addr %x; array_element @Value; load_field @Value.0;
+    int 1; local_addr %x; array_element_addr @Value; load_field @Value.0;
     int 11; call @assert_eq;
 
     return;
@@ -75,7 +75,7 @@ function @test_pass_local_to_function(0 => 0) {
 function @test_invalid_array_index_panic(0 => 0) {
     local %x : @Value[2];
 
-    int 42; int 2; local_addr %x; array_element @Value; store_field @Value.0;
+    int 42; int 2; local_addr %x; array_element_addr @Value; store_field @Value.0;
     return;
 }
 function @test_local_arithmetic_panic(0 => 0) {

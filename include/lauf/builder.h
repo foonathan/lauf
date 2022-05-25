@@ -95,7 +95,7 @@ void lauf_build_select_if(lauf_builder b, lauf_condition condition);
 void lauf_build_call(lauf_builder b, lauf_function_decl fn);
 void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn);
 
-void lauf_build_array_element(lauf_builder b, lauf_type type);
+void lauf_build_array_element_addr(lauf_builder b, lauf_type type);
 void lauf_build_load_field(lauf_builder b, lauf_type type, size_t field);
 void lauf_build_store_field(lauf_builder b, lauf_type type, size_t field);
 void lauf_build_load_value(lauf_builder b, lauf_local var);

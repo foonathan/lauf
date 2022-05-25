@@ -519,10 +519,10 @@ struct inst_call_builtin
     static constexpr auto build = &lauf_build_call_builtin;
 };
 
-struct inst_array_element
+struct inst_array_element_addr
 {
-    static constexpr auto rule  = LEXY_KEYWORD("array_element", identifier) >> dsl::p<ref_type>;
-    static constexpr auto build = &lauf_build_array_element;
+    static constexpr auto rule = LEXY_KEYWORD("array_element_addr", identifier) >> dsl::p<ref_type>;
+    static constexpr auto build = &lauf_build_array_element_addr;
 };
 struct inst_load_field
 {
@@ -562,12 +562,13 @@ struct inst
 {
     static constexpr auto rule = [] {
         auto insts
-            = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if>                    //
-              | dsl::p<inst_int> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>           //
-              | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>                       //
-              | dsl::p<inst_select> | dsl::p<inst_select_if>                                    //
-              | dsl::p<inst_call> | dsl::p<inst_call_builtin>                                   //
-              | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
+            = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if>          //
+              | dsl::p<inst_int> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr> //
+              | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>             //
+              | dsl::p<inst_select> | dsl::p<inst_select_if>                          //
+              | dsl::p<inst_call> | dsl::p<inst_call_builtin>                         //
+              | dsl::p<
+                  inst_array_element_addr> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
               | dsl::p<inst_load_value> | dsl::p<inst_store_value>                              //
               | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
         return dsl::p<debug_location> + insts + dsl::semicolon;

@@ -132,9 +132,9 @@ LAUF_BC_OP(global_addr, bc_inst_literal, {
 
 // Computes the address of an array element, literal is elem_size.
 // idx addr => (addr + elem_size * idx)
-LAUF_BC_OP(array_element, bc_inst_literal, {
+LAUF_BC_OP(array_element_addr, bc_inst_literal, {
     auto idx       = vstack_ptr[1].as_uint;
-    auto elem_size = ptrdiff_t(ip->array_element.literal);
+    auto elem_size = ptrdiff_t(ip->array_element_addr.literal);
 
     auto addr = vstack_ptr[0].as_address;
     addr.offset += elem_size * idx;
