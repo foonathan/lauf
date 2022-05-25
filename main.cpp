@@ -44,12 +44,15 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        const @str = "hello", 0;
+        data @data = 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88;
 
-        function @test(0 => 0) {
-            local %x : @Int;
+        function @test(1 => 1) {
+            jump_if is_false %load;
+            int 16; global_addr @data; store_field @Value.0;
 
-            global_addr @str; panic;
+        label %load:
+            global_addr @data; load_field @Value.0;
+            return;
         }
     )");
     auto fn      = lauf_module_function_begin(mod)[0];
@@ -57,11 +60,16 @@ int main()
 
     auto vm = lauf_vm_create(lauf_default_vm_options);
 
-    lauf_value input = {.as_sint = 100};
+    lauf_value input = {.as_sint = 1};
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);
 
+    input = {.as_sint = 0};
+    if (lauf_vm_execute(vm, program, &input, &output))
+        std::printf("result: %ld\n", output.as_sint);
+
+    lauf_program_destroy(program);
     lauf_module_destroy(mod);
     lauf_vm_destroy(vm);
     lauf_frontend_text_destroy_parser(parser);

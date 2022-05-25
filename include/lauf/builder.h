@@ -52,8 +52,10 @@ lauf_module lauf_finish_module(lauf_builder b);
 lauf_function_decl lauf_declare_function(lauf_builder b, const char* name,
                                          lauf_signature signature);
 
-// Memory is not owned by resulting module.
-lauf_global lauf_build_const_global(lauf_builder b, const void* memory, size_t size);
+// Note: memory is not owned by resulting module.
+lauf_global lauf_build_const(lauf_builder b, const void* memory, size_t size);
+// Note: memory is not owned by resulting module, copied for each execution.
+lauf_global lauf_build_data(lauf_builder b, const void* memory, size_t size);
 
 //=== function ===//
 typedef struct lauf_local

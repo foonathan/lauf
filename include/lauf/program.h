@@ -9,10 +9,7 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_program_impl
-{
-    void* _data[2];
-} lauf_program;
+typedef struct lauf_program_impl* lauf_program;
 
 void lauf_program_destroy(lauf_program prog);
 

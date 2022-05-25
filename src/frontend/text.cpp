@@ -162,7 +162,7 @@ struct signature
     static constexpr auto value = lexy::construct<lauf_signature>;
 };
 
-struct const_decl
+struct data_expr
 {
     struct byte
     {
@@ -178,15 +178,21 @@ struct const_decl
         static constexpr auto value = lexy::as_string<std::string>;
     };
 
-    struct data
-    {
-        static constexpr auto rule = dsl::list(dsl::p<byte> | dsl::p<string>, dsl::sep(dsl::comma));
-        static constexpr auto value = lexy::as_string<std::string>;
-    };
+    static constexpr auto rule  = dsl::list(dsl::p<byte> | dsl::p<string>, dsl::sep(dsl::comma));
+    static constexpr auto value = lexy::as_string<std::string>;
+};
 
+struct const_decl
+{
     static constexpr auto rule
         = LEXY_KEYWORD("const", identifier)
-          >> dsl::p<global_identifier> + dsl::equal_sign + dsl::p<data> + dsl::semicolon;
+          >> dsl::p<global_identifier> + dsl::equal_sign + dsl::p<data_expr> + dsl::semicolon;
+};
+struct data_decl
+{
+    static constexpr auto rule
+        = LEXY_KEYWORD("data", identifier)
+          >> dsl::p<global_identifier> + dsl::equal_sign + dsl::p<data_expr> + dsl::semicolon;
 };
 
 struct function_decl
@@ -218,7 +224,8 @@ struct module_decl
     };
 
     static constexpr auto rule = [] {
-        auto decls = dsl::list(dsl::p<function_decl> | dsl::p<const_decl>) + dsl::eof;
+        auto decls
+            = dsl::list(dsl::p<function_decl> | dsl::p<const_decl> | dsl::p<data_decl>) + dsl::eof;
 
         return LEXY_KEYWORD("module", identifier) >> dsl::p<header> + decls;
     }();
@@ -265,7 +272,15 @@ auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
             return lexy::callback([&](std::string_view name, std::string&& data) {
                 auto size   = data.size();
                 auto memory = p->intern(std::move(data));
-                result.global.insert(name, lauf_build_const_global(p->b, memory, size));
+                result.global.insert(name, lauf_build_const(p->b, memory, size));
+            });
+        }
+        auto value_of(lauf::text_grammar::data_decl) const
+        {
+            return lexy::callback([&](std::string_view name, std::string&& data) {
+                auto size   = data.size();
+                auto memory = p->intern(std::move(data));
+                result.global.insert(name, lauf_build_data(p->b, memory, size));
             });
         }
 

@@ -152,12 +152,22 @@ lauf_function_decl lauf_declare_function(lauf_builder b, const char* name, lauf_
     return {idx};
 }
 
-lauf_global lauf_build_const_global(lauf_builder b, const void* memory, size_t size)
+lauf_global lauf_build_const(lauf_builder b, const void* memory, size_t size)
 {
     LAUF_VERIFY(size < UINT32_MAX, "const", "allocation size limit exceeded");
 
     auto idx = b->allocations.size();
     b->allocations.emplace_back(memory, uint32_t(size));
+    return {idx};
+}
+
+lauf_global lauf_build_data(lauf_builder b, const void* memory, size_t size)
+{
+    LAUF_VERIFY(size < UINT32_MAX, "data", "allocation size limit exceeded");
+
+    auto idx = b->allocations.size();
+    b->allocations.emplace_back(memory, uint32_t(size),
+                                allocation::static_memory | allocation::copy_memory);
     return {idx};
 }
 

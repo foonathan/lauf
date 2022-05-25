@@ -6,24 +6,19 @@
 
 #include <lauf/program.h>
 
-namespace lauf::_detail
-{
-struct program
+struct lauf_program_impl
 {
     lauf_module   mod;
     lauf_function entry;
+    size_t        static_memory_size;
 
-    explicit program(lauf_module mod, lauf_function entry) : mod(mod), entry(entry) {}
-    explicit program(lauf_program prog)
-    : mod(static_cast<lauf_module>(prog._data[0])), entry(static_cast<lauf_function>(prog._data[1]))
-    {}
-
-    explicit operator lauf_program() const
+    unsigned char* static_memory()
     {
-        return {mod, entry};
+        return reinterpret_cast<unsigned char*>(this + 1);
     }
 };
-} // namespace lauf::_detail
+
+lauf_program lauf_impl_allocate_program(size_t static_memory_size);
 
 #endif // SRC_LAUF_IMPL_PROGRAM_HPP_INCLUDED
 

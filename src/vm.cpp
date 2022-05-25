@@ -30,12 +30,26 @@ public:
         _allocs.reserve(1024);
     }
 
-    void reset(lauf_module mod)
+    void reset(lauf_program prog)
     {
         _allocs.clear();
-        for (auto ptr = mod->allocation_data();
-             ptr != mod->allocation_data() + mod->allocation_count; ++ptr)
-            _allocs.push_back(*ptr);
+
+        auto                   static_memory = prog->static_memory();
+        stack_allocator_offset allocator;
+        for (auto ptr = prog->mod->allocation_data();
+             ptr != prog->mod->allocation_data() + prog->mod->allocation_count; ++ptr)
+        {
+            auto alloc = *ptr;
+            if ((alloc.flags & allocation::static_memory) != 0)
+            {
+                auto offset = allocator.allocate(alloc.size);
+                if ((alloc.flags & allocation::copy_memory) != 0)
+                    std::memcpy(static_memory + offset, alloc.ptr, alloc.size);
+                alloc.ptr = static_memory + offset;
+            }
+
+            _allocs.push_back(alloc);
+        }
     }
 
     void local_allocation(void* memory, uint32_t size)
@@ -437,29 +451,28 @@ bool lauf_builtin_panic(lauf_vm vm, lauf_vm_instruction* ip, void* frame_ptr, co
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
-    auto [mod, fn]      = program(prog);
-    vm->state.literals  = mod->literal_data();
-    vm->state.functions = mod->function_begin();
+    vm->state.literals  = prog->mod->literal_data();
+    vm->state.functions = prog->mod->function_begin();
 
-    vm->state.memory.reset(mod);
+    vm->state.memory.reset(prog);
     auto vstack_ptr = vm->value_stack();
 
-    for (auto i = 0; i != fn->input_count; ++i)
+    for (auto i = 0; i != prog->entry->input_count; ++i)
     {
         --vstack_ptr;
         vstack_ptr[0] = input[i];
     }
 
     stack_frame prev{};
-    auto        frame_ptr = new_stack_frame(vm, &prev + 1, nullptr, fn);
+    auto        frame_ptr = new_stack_frame(vm, &prev + 1, nullptr, prog->entry);
     assert(frame_ptr); // initial stack frame should fit in first block
 
-    auto ip = fn->bytecode();
+    auto ip = prog->entry->bytecode();
     if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
         return false;
 
-    vstack_ptr = vm->value_stack() - fn->output_count;
-    for (auto i = 0; i != fn->output_count; ++i)
+    vstack_ptr = vm->value_stack() - prog->entry->output_count;
+    for (auto i = 0; i != prog->entry->output_count; ++i)
     {
         output[i] = vstack_ptr[0];
         ++vstack_ptr;

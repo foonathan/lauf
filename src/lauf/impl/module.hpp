@@ -63,22 +63,26 @@ struct allocation
     enum flag : uint32_t
     {
         is_const = 1 << 0,
+        // Memory that needs to be allocated when the program is created.
+        static_memory = 1 << 1,
+        // Memory needs to be copied over before execution.
+        copy_memory = 1 << 2,
     };
 
-    void*    address;
+    void*    ptr;
     uint32_t size;
     uint32_t flags;
 
-    allocation(const void* address, uint32_t size, uint32_t flags = is_const)
-    : address(const_cast<void*>(address)), size(size), flags(flags)
+    allocation(const void* ptr, uint32_t size, uint32_t flags = is_const)
+    : ptr(const_cast<void*>(ptr)), size(size), flags(flags)
     {}
-    allocation(void* address, uint32_t size, uint32_t flags = 0)
-    : address(const_cast<void*>(address)), size(size), flags(flags)
+    allocation(void* ptr, uint32_t size, uint32_t flags = 0)
+    : ptr(const_cast<void*>(ptr)), size(size), flags(flags)
     {}
 
     void* offset(std::size_t o) const
     {
-        return static_cast<unsigned char*>(address) + o;
+        return static_cast<unsigned char*>(ptr) + o;
     }
 };
 static_assert(sizeof(allocation) == 2 * sizeof(void*));
