@@ -48,7 +48,7 @@ int main()
 
         function @test(1 => 1) {
             jump_if is_false %load;
-            int 16; global_addr @data; store_field @Value.0;
+            int 0x10; global_addr @data; store_field @Value.0;
 
         label %load:
             global_addr @data; load_field @Value.0;

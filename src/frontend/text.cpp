@@ -457,7 +457,10 @@ struct inst_jump_if
 
 struct inst_int
 {
-    static constexpr auto rule  = LEXY_KEYWORD("int", identifier) >> dsl::integer<lauf_value_sint>;
+    static constexpr auto rule
+        = LEXY_KEYWORD("int", identifier)
+          >> (LEXY_LIT("0x") >> dsl::integer<lauf_value_uint>(dsl::digits<dsl::hex>)
+              | dsl::integer<lauf_value_uint>);
     static constexpr auto build = &lauf_build_int;
 };
 struct inst_global_addr
