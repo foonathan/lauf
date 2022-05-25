@@ -121,6 +121,15 @@ LAUF_BC_OP(local_addr, bc_inst_literal, {
     LAUF_DISPATCH;
 })
 
+// Push the address of a global variable, literal is allocation index.
+LAUF_BC_OP(global_addr, bc_inst_literal, {
+    --vstack_ptr;
+    vstack_ptr[0].as_address = lauf_value_address{ip->global_addr.literal, 0};
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
 // Computes the address of an array element, literal is elem_size.
 // idx addr => (addr + elem_size * idx)
 LAUF_BC_OP(array_element, bc_inst_literal, {

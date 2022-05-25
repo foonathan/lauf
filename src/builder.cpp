@@ -307,8 +307,15 @@ void lauf_build_global_addr(lauf_builder b, lauf_global global)
 {
     b->bytecode.location(b->cur_location);
 
-    auto idx = b->literals.insert(lauf_value_address{uint32_t(global._idx), 0});
-    b->bytecode.instruction(LAUF_VM_INSTRUCTION(push, idx));
+    if (global._idx > 0xFF'FFFF)
+    {
+        auto lit_idx = b->literals.insert(lauf_value_address{uint32_t(global._idx), 0});
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push, lit_idx));
+    }
+    else
+    {
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(global_addr, global._idx));
+    }
 
     b->value_stack.push("global_addr");
 }
