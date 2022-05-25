@@ -41,6 +41,8 @@ lauf_vm lauf_vm_create(lauf_vm_options options);
 
 void lauf_vm_destroy(lauf_vm vm);
 
+void lauf_vm_set_panic_handler(lauf_vm vm, lauf_panic_handler handler);
+
 /// Executes the given program, reading the input values from `input` and writing the output values
 /// to `output`. On success, returns true. On error, returns false after invoking the panic handler.
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output);

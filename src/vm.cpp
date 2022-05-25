@@ -292,6 +292,11 @@ void lauf_vm_destroy(lauf_vm vm)
     ::operator delete(vm);
 }
 
+void lauf_vm_set_panic_handler(lauf_vm vm, lauf_panic_handler handler)
+{
+    vm->panic_handler = handler;
+}
+
 //=== execute ===//
 namespace
 {

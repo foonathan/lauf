@@ -6,6 +6,7 @@
 #include <lauf/frontend/text.h>
 #include <lauf/lib/int.h>
 #include <lauf/linker.h>
+#include <lauf/vm.h>
 #include <lexy/input/file.hpp>
 #include <string_view>
 
@@ -49,12 +50,18 @@ int main(int argc, char* argv[])
         auto name = lauf_function_get_name(*fn);
         if (std::string_view(name).find("test_") != 0)
             continue;
+        auto should_panic = std::string_view(name).find("panic") != std::string_view::npos;
+        if (should_panic)
+            lauf_vm_set_panic_handler(vm, [](lauf_panic_info, const char*) {});
+        else
+            lauf_vm_set_panic_handler(vm, lauf_default_vm_options.panic_handler);
 
         auto signature = lauf_function_get_signature(*fn);
         assert(signature.input_count == 0 && signature.output_count == 0);
 
-        auto program = lauf_link_single_module(mod, *fn);
-        if (!lauf_vm_execute(vm, program, nullptr, nullptr))
+        auto program     = lauf_link_single_module(mod, *fn);
+        auto has_paniced = !lauf_vm_execute(vm, program, nullptr, nullptr);
+        if (has_paniced != should_panic)
             ++exit_code;
         lauf_program_destroy(program);
     }

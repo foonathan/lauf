@@ -130,3 +130,11 @@ function @test_select_if_false(0 => 0) {
 
     return;
 }
+
+function @test_panic(0 => 0) {
+    global_addr @test_failure; panic;
+}
+function @test_panic_if(0 => 0) {
+    int 0; global_addr @test_failure; panic_if is_false;
+}
+
