@@ -178,7 +178,21 @@ struct data_expr
         static constexpr auto value = lexy::as_string<std::string>;
     };
 
-    static constexpr auto rule  = dsl::list(dsl::p<byte> | dsl::p<string>, dsl::sep(dsl::comma));
+    struct repeat
+    {
+        static constexpr auto rule = dsl::square_bracketed(dsl::recurse<data_expr>)
+                                     >> dsl::lit_c<'*'> + dsl::integer<std::size_t>;
+        static constexpr auto value
+            = lexy::callback<std::string>([](const std::string& inner, std::size_t repetition) {
+                  auto result = inner;
+                  for (auto i = 1u; i < repetition; ++i)
+                      result += inner;
+                  return result;
+              });
+    };
+
+    static constexpr auto rule
+        = dsl::list(dsl::p<byte> | dsl::p<string> | dsl::p<repeat>, dsl::sep(dsl::comma));
     static constexpr auto value = lexy::as_string<std::string>;
 };
 

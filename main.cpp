@@ -44,7 +44,7 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        data @data = 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88;
+        data @data = 42, [0, 0] * 3, 0;
 
         function @test(1 => 1) {
             jump_if is_false %load;
