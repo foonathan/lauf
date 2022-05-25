@@ -541,10 +541,20 @@ struct inst_load_value
     static constexpr auto rule  = LEXY_KEYWORD("load_value", identifier) >> dsl::p<ref_local>;
     static constexpr auto build = &lauf_build_load_value;
 };
+struct inst_load_array_value
+{
+    static constexpr auto rule  = LEXY_KEYWORD("load_array_value", identifier) >> dsl::p<ref_local>;
+    static constexpr auto build = &lauf_build_load_array_value;
+};
 struct inst_store_value
 {
     static constexpr auto rule  = LEXY_KEYWORD("store_value", identifier) >> dsl::p<ref_local>;
     static constexpr auto build = &lauf_build_store_value;
+};
+struct inst_store_array_value
+{
+    static constexpr auto rule = LEXY_KEYWORD("store_array_value", identifier) >> dsl::p<ref_local>;
+    static constexpr auto build = &lauf_build_store_array_value;
 };
 
 struct inst_panic
@@ -561,16 +571,16 @@ struct inst_panic_if
 struct inst
 {
     static constexpr auto rule = [] {
-        auto insts
-            = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if>          //
-              | dsl::p<inst_int> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr> //
-              | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>             //
-              | dsl::p<inst_select> | dsl::p<inst_select_if>                          //
-              | dsl::p<inst_call> | dsl::p<inst_call_builtin>                         //
-              | dsl::p<
-                  inst_array_element_addr> | dsl::p<inst_load_field> | dsl::p<inst_store_field> //
-              | dsl::p<inst_load_value> | dsl::p<inst_store_value>                              //
-              | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
+        auto insts = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if>          //
+                     | dsl::p<inst_int> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr> //
+                     | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>             //
+                     | dsl::p<inst_select> | dsl::p<inst_select_if>                          //
+                     | dsl::p<inst_call> | dsl::p<inst_call_builtin>                         //
+                     | dsl::p<inst_array_element_addr>                                       //
+                     | dsl::p<inst_load_field> | dsl::p<inst_store_field>                    //
+                     | dsl::p<inst_load_value> | dsl::p<inst_load_array_value>               //
+                     | dsl::p<inst_store_value> | dsl::p<inst_store_array_value>             //
+                     | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
         return dsl::p<debug_location> + insts + dsl::semicolon;
     }();
     static constexpr auto value = lexy::forward<void>;

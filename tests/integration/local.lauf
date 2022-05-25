@@ -45,6 +45,20 @@ function @test_layout(0 => 0) {
     return;
 }
 
+function @test_array_value(0 => 0) {
+    local %x : @Value[2];
+
+    int 42; int 0; store_array_value %x;
+    int 11; int 1; store_array_value %x;
+
+    int 0; load_array_value %x;
+    int 42; call @assert_eq;
+
+    int 1; load_array_value %x;
+    int 11; call @assert_eq;
+
+    return;
+}
 function @test_array(0 => 0) {
     local %x : @Value[2];
 
@@ -76,6 +90,12 @@ function @test_invalid_array_index_panic(0 => 0) {
     local %x : @Value[2];
 
     int 42; int 2; local_addr %x; array_element_addr @Value; store_field @Value.0;
+    return;
+}
+function @test_invalid_array_value_index_panic(0 => 0) {
+    local %x : @Value[2];
+
+    int 42; int 2; store_array_value %x;
     return;
 }
 function @test_local_arithmetic_panic(0 => 0) {

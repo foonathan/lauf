@@ -218,7 +218,7 @@ lauf_function lauf_finish_function(lauf_builder b)
 lauf_local lauf_build_local_variable(lauf_builder b, lauf_layout layout)
 {
     auto addr = b->stack_frame.allocate(layout.size, layout.alignment);
-    return {addr};
+    return {addr, layout.size};
 }
 
 lauf_label lauf_declare_label(lauf_builder b, size_t vstack_size)
@@ -446,10 +446,10 @@ void lauf_build_store_field(lauf_builder b, lauf_type type, size_t field)
 
 void lauf_build_load_value(lauf_builder b, lauf_local var)
 {
+    LAUF_VERIFY(var._size >= sizeof(lauf_value), "load_value", "wrong layout");
     b->bytecode.location(b->cur_location);
 
     // If the last instruction is a store of the same address, turn it into a save instead.
-    // TODO: invalid on jump
     if (b->bytecode.get_cur_idom() == LAUF_VM_INSTRUCTION(store_value, var._addr))
         b->bytecode.replace_last_instruction(bc_op::save_value);
     else
@@ -457,12 +457,33 @@ void lauf_build_load_value(lauf_builder b, lauf_local var)
     b->value_stack.push("load_value");
 }
 
+void lauf_build_load_array_value(lauf_builder b, lauf_local var)
+{
+    LAUF_VERIFY(var._size >= sizeof(lauf_value), "load_array_value", "wrong layout");
+    b->bytecode.location(b->cur_location);
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_array_value, var._addr));
+
+    b->value_stack.pop("load_array_value");
+    b->value_stack.push("load_array_value");
+}
+
 void lauf_build_store_value(lauf_builder b, lauf_local var)
 {
+    LAUF_VERIFY(var._size >= sizeof(lauf_value), "store_value", "wrong layout");
     b->bytecode.location(b->cur_location);
 
     b->bytecode.instruction(LAUF_VM_INSTRUCTION(store_value, var._addr));
     b->value_stack.pop("store_value");
+}
+
+void lauf_build_store_array_value(lauf_builder b, lauf_local var)
+{
+    LAUF_VERIFY(var._size >= sizeof(lauf_value), "store_array_value", "wrong layout");
+    b->bytecode.location(b->cur_location);
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(store_array_value, var._addr));
+    b->value_stack.pop("store_array_value", 2);
 }
 
 void lauf_build_panic(lauf_builder b)

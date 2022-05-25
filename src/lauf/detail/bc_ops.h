@@ -288,7 +288,7 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
     LAUF_DISPATCH;
 })
 
-// Load a stack value from a literal address.
+// Load a stack value from a local address.
 // _ => value
 LAUF_BC_OP(load_value, bc_inst_literal, {
     auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->load_value.literal);
@@ -299,8 +299,28 @@ LAUF_BC_OP(load_value, bc_inst_literal, {
     ++ip;
     LAUF_DISPATCH;
 })
+// Load a stack value from a local array.
+// idx => value
+LAUF_BC_OP(load_array_value, bc_inst_literal, {
+    auto offset = ptrdiff_t(ip->load_value.literal);
+    auto array  = static_cast<unsigned char*>(frame_ptr) + offset;
+    auto idx    = vstack_ptr[0].as_uint;
 
-// Store a stack value to a literal address.
+    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "array index out of bounds");
+        return false;
+    }
+
+    vstack_ptr[0] = reinterpret_cast<lauf_value*>(array)[idx];
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
+// Store a stack value to a local address.
 // value => _
 LAUF_BC_OP(store_value, bc_inst_literal, {
     auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->store_value.literal);
@@ -311,8 +331,29 @@ LAUF_BC_OP(store_value, bc_inst_literal, {
     ++ip;
     LAUF_DISPATCH;
 })
+// Store a stack value from a local array.
+// value idx => _
+LAUF_BC_OP(store_array_value, bc_inst_literal, {
+    auto offset = ptrdiff_t(ip->load_value.literal);
+    auto array  = static_cast<unsigned char*>(frame_ptr) + offset;
+    auto idx    = vstack_ptr[0].as_uint;
 
-// Save a stack value to a literal address.
+    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "array index out of bounds");
+        return false;
+    }
+
+    ::new (array + sizeof(lauf_value) * idx) lauf_value(vstack_ptr[1]);
+    vstack_ptr += 2;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
+// Save a stack value to a local address.
 // value => value
 LAUF_BC_OP(save_value, bc_inst_literal, {
     auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->save_value.literal);
