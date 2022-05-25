@@ -61,31 +61,6 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
     LAUF_DISPATCH;
 })
 
-LAUF_BC_OP(tail_call, bc_inst_function_idx, {
-    auto callee = vm->get_function(ip->call.function_idx);
-
-    // We only need to allocate memory for the local variables, but not create a new stack frame.
-    // We don't need to worry about alignment here either.
-    if (!vm->memory_stack.allocate(callee->local_stack_size))
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "stack overflow");
-        return false;
-    }
-    vm->state.allocations.push_back({frame_ptr, callee->local_stack_size});
-
-    auto remaining_vstack_size = vstack_ptr - vm->value_stack_limit();
-    if (remaining_vstack_size < callee->max_vstack_size)
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "value stack overflow");
-        return false;
-    }
-
-    ip = callee->bytecode();
-    LAUF_DISPATCH;
-})
-
 LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
     auto callee
         = (lauf_builtin_function*)(vm->get_literal(ip->call_builtin.literal_idx).as_native_ptr);

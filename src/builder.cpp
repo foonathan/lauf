@@ -229,10 +229,7 @@ void lauf_build_return(lauf_builder b)
 {
     b->bytecode.location(b->cur_location);
 
-    if (b->bytecode.get_cur_idom().tag.op == bc_op::call)
-        b->bytecode.replace_last_instruction(bc_op::tail_call);
-    else
-        b->bytecode.instruction(LAUF_VM_INSTRUCTION(return_));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(return_));
 
     auto output_count = b->functions[b->cur_fn].signature.output_count;
     LAUF_VERIFY(b->value_stack.cur_stack_size() == output_count, "return",
