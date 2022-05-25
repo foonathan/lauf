@@ -486,6 +486,20 @@ void lauf_build_store_array_value(lauf_builder b, lauf_local var)
     b->value_stack.pop("store_array_value", 2);
 }
 
+void lauf_build_poison_alloc(lauf_builder b)
+{
+    b->bytecode.location(b->cur_location);
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(poison_alloc));
+    b->value_stack.pop("poison_alloc");
+}
+
+void lauf_build_unpoison_alloc(lauf_builder b)
+{
+    b->bytecode.location(b->cur_location);
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(unpoison_alloc));
+    b->value_stack.pop("unpoison_alloc");
+}
+
 void lauf_build_panic(lauf_builder b)
 {
     b->bytecode.location(b->cur_location);

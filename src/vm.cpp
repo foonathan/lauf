@@ -69,11 +69,33 @@ public:
         return {uint32_t(allocation), uint32_t(offset)};
     }
 
+    bool poison(lauf_value_address addr)
+    {
+        if (auto alloc = get_allocation(addr))
+        {
+            alloc->flags |= allocation::is_poisoned;
+            return true;
+        }
+
+        return false;
+    }
+    bool unpoison(lauf_value_address addr)
+    {
+        if (auto alloc = get_allocation(addr))
+        {
+            alloc->flags &= ~allocation::is_poisoned;
+            return true;
+        }
+
+        return false;
+    }
+
     const void* get_const_ptr(lauf_value_address addr, size_t size) const
     {
         if (auto alloc = get_allocation(addr))
         {
-            if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size)
+            if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
+                || (alloc->flags & allocation::is_poisoned) != 0)
                 return nullptr;
 
             return alloc->offset(addr.offset);
@@ -86,6 +108,7 @@ public:
         if (auto alloc = get_allocation(addr))
         {
             if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
+                || (alloc->flags & allocation::is_poisoned) != 0
                 || (alloc->flags & allocation::is_const) != 0)
                 return nullptr;
 
@@ -128,6 +151,13 @@ public:
 
 private:
     const allocation* get_allocation(lauf_value_address addr) const
+    {
+        if (addr.allocation >= _allocs.size())
+            return nullptr;
+        else
+            return &_allocs[addr.allocation];
+    }
+    allocation* get_allocation(lauf_value_address addr)
     {
         if (addr.allocation >= _allocs.size())
             return nullptr;

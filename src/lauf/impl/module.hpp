@@ -62,13 +62,15 @@ struct allocation
 {
     enum flag : uint32_t
     {
-        is_const = 1 << 0,
+        is_const    = 1 << 0,
+        is_poisoned = 1 << 1,
+
         // Memory that needs to be allocated when the program is created.
-        static_memory = 1 << 1,
+        static_memory = 1 << 2,
         // Memory needs to be copied over before execution.
-        copy_memory = 1 << 2,
+        copy_memory = 1 << 3,
         // Memory needs to be cleared before execution.
-        clear_memory = 1 << 3,
+        clear_memory = 1 << 4,
     };
 
     void*    ptr;

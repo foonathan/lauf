@@ -146,6 +146,37 @@ LAUF_BC_OP(array_element_addr, bc_inst_literal, {
     LAUF_DISPATCH;
 })
 
+// Poisons the memory allocation the address is in.
+// addr => _
+LAUF_BC_OP(poison_alloc, bc_inst_none, {
+    auto addr = vstack_ptr[0].as_address;
+    if (!vm->state.memory.poison(addr))
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "invalid address");
+        return false;
+    }
+    --vstack_ptr;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+// Unpoisons the memory allocation the address is in.
+// addr => _
+LAUF_BC_OP(unpoison_alloc, bc_inst_none, {
+    auto addr = vstack_ptr[0].as_address;
+    if (!vm->state.memory.unpoison(addr))
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "invalid address");
+        return false;
+    }
+    --vstack_ptr;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
 //=== value stack manipulation ===//
 // Drops n values from stack.
 // b an ... a1 => b

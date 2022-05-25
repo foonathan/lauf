@@ -557,6 +557,17 @@ struct inst_store_array_value
     static constexpr auto build = &lauf_build_store_array_value;
 };
 
+struct inst_poison_alloc
+{
+    static constexpr auto rule  = LEXY_KEYWORD("poison_alloc", identifier);
+    static constexpr auto build = &lauf_build_poison_alloc;
+};
+struct inst_unpoison_alloc
+{
+    static constexpr auto rule  = LEXY_KEYWORD("unpoison_alloc", identifier);
+    static constexpr auto build = &lauf_build_unpoison_alloc;
+};
+
 struct inst_panic
 {
     static constexpr auto rule  = LEXY_KEYWORD("panic", identifier);
@@ -580,6 +591,7 @@ struct inst
                      | dsl::p<inst_load_field> | dsl::p<inst_store_field>                    //
                      | dsl::p<inst_load_value> | dsl::p<inst_load_array_value>               //
                      | dsl::p<inst_store_value> | dsl::p<inst_store_array_value>             //
+                     | dsl::p<inst_poison_alloc> | dsl::p<inst_unpoison_alloc>               //
                      | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
         return dsl::p<debug_location> + insts + dsl::semicolon;
     }();

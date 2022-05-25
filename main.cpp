@@ -47,11 +47,9 @@ int main()
         data @data = zero * 8;
 
         function @test(1 => 1) {
-            jump_if is_false %load;
+            global_addr @data; poison_alloc;
+            global_addr @data; unpoison_alloc;
             int 0x10; global_addr @data; store_field @Value.0;
-
-        label %load:
-            global_addr @data; load_field @Value.0;
             return;
         }
     )");
@@ -62,10 +60,6 @@ int main()
 
     lauf_value input = {.as_sint = 1};
     lauf_value output;
-    if (lauf_vm_execute(vm, program, &input, &output))
-        std::printf("result: %ld\n", output.as_sint);
-
-    input = {.as_sint = 0};
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);
 
