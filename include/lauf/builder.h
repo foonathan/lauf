@@ -56,6 +56,7 @@ lauf_function_decl lauf_declare_function(lauf_builder b, const char* name,
 lauf_global lauf_build_const(lauf_builder b, const void* memory, size_t size);
 // Note: memory is not owned by resulting module, copied for each execution.
 lauf_global lauf_build_data(lauf_builder b, const void* memory, size_t size);
+lauf_global lauf_build_zero_data(lauf_builder b, size_t size);
 
 //=== function ===//
 typedef struct lauf_local

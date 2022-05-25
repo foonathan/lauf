@@ -204,9 +204,13 @@ struct const_decl
 };
 struct data_decl
 {
-    static constexpr auto rule
-        = LEXY_KEYWORD("data", identifier)
-          >> dsl::p<global_identifier> + dsl::equal_sign + dsl::p<data_expr> + dsl::semicolon;
+    static constexpr auto rule = [] {
+        auto zero = LEXY_LIT("zero") >> dsl::lit_c<'*'> + dsl::integer<std::size_t>;
+        auto expr = dsl::else_ >> dsl::p<data_expr>;
+
+        return LEXY_KEYWORD("data", identifier)
+               >> dsl::p<global_identifier> + dsl::equal_sign + (zero | expr) + dsl::semicolon;
+    }();
 };
 
 struct function_decl
@@ -291,11 +295,15 @@ auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
         }
         auto value_of(lauf::text_grammar::data_decl) const
         {
-            return lexy::callback([&](std::string_view name, std::string&& data) {
-                auto size   = data.size();
-                auto memory = p->intern(std::move(data));
-                result.global.insert(name, lauf_build_data(p->b, memory, size));
-            });
+            return lexy::callback(
+                [&](std::string_view name, std::string&& data) {
+                    auto size   = data.size();
+                    auto memory = p->intern(std::move(data));
+                    result.global.insert(name, lauf_build_data(p->b, memory, size));
+                },
+                [&](std::string_view name, std::size_t size) {
+                    result.global.insert(name, lauf_build_zero_data(p->b, size));
+                });
         }
 
         auto value_of(lauf::text_grammar::function_decl) const

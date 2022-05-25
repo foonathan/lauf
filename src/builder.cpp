@@ -171,6 +171,15 @@ lauf_global lauf_build_data(lauf_builder b, const void* memory, size_t size)
     return {idx};
 }
 
+lauf_global lauf_build_zero_data(lauf_builder b, size_t size)
+{
+    LAUF_VERIFY(size < UINT32_MAX, "data", "allocation size limit exceeded");
+
+    auto idx = b->allocations.size();
+    b->allocations.emplace_back(uint32_t(size));
+    return {idx};
+}
+
 void lauf_build_function(lauf_builder b, lauf_function_decl fn)
 {
     b->reset_function();

@@ -67,12 +67,17 @@ struct allocation
         static_memory = 1 << 1,
         // Memory needs to be copied over before execution.
         copy_memory = 1 << 2,
+        // Memory needs to be cleared before execution.
+        clear_memory = 1 << 3,
     };
 
     void*    ptr;
     uint32_t size;
     uint32_t flags;
 
+    allocation(uint32_t size, uint32_t flags = static_memory | clear_memory)
+    : ptr(nullptr), size(size), flags(flags)
+    {}
     allocation(const void* ptr, uint32_t size, uint32_t flags = is_const)
     : ptr(const_cast<void*>(ptr)), size(size), flags(flags)
     {}

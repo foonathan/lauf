@@ -43,7 +43,9 @@ public:
             if ((alloc.flags & allocation::static_memory) != 0)
             {
                 auto offset = allocator.allocate(alloc.size);
-                if ((alloc.flags & allocation::copy_memory) != 0)
+                if ((alloc.flags & allocation::clear_memory) != 0)
+                    std::memset(static_memory + offset, 0, alloc.size);
+                else if ((alloc.flags & allocation::copy_memory) != 0)
                     std::memcpy(static_memory + offset, alloc.ptr, alloc.size);
                 alloc.ptr = static_memory + offset;
             }
