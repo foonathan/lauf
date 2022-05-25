@@ -20,13 +20,116 @@
 
 using namespace lauf::_detail;
 
+namespace
+{
+class vm_memory
+{
+public:
+    vm_memory()
+    {
+        _allocs.reserve(1024);
+    }
+
+    void reset(lauf_module mod)
+    {
+        _allocs.clear();
+        for (auto ptr = mod->allocation_data();
+             ptr != mod->allocation_data() + mod->allocation_count; ++ptr)
+            _allocs.push_back(*ptr);
+    }
+
+    void local_allocation(void* memory, uint32_t size)
+    {
+        _allocs.emplace_back(memory, size);
+    }
+    void return_()
+    {
+        _allocs.pop_back();
+    }
+
+    lauf_value_address local_address(size_t offset) const
+    {
+        auto allocation = _allocs.size() - 1;
+        return {uint32_t(allocation), uint32_t(offset)};
+    }
+
+    const void* get_const_ptr(lauf_value_address addr, size_t size) const
+    {
+        if (auto alloc = get_allocation(addr))
+        {
+            if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size)
+                return nullptr;
+
+            return alloc->offset(addr.offset);
+        }
+
+        return nullptr;
+    }
+    void* get_mutable_ptr(lauf_value_address addr, size_t size) const
+    {
+        if (auto alloc = get_allocation(addr))
+        {
+            if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
+                || (alloc->flags & allocation::is_const) != 0)
+                return nullptr;
+
+            return alloc->offset(addr.offset);
+        }
+
+        return nullptr;
+    }
+
+    const char* get_const_cstr(lauf_value_address addr) const
+    {
+        if (auto alloc = get_allocation(addr))
+        {
+            if (addr.offset >= alloc->size)
+                return nullptr;
+
+            auto cstr = static_cast<const char*>(alloc->offset(addr.offset));
+            if (std::memchr(cstr, 0, alloc->size - addr.offset) == nullptr)
+                return nullptr;
+            return cstr;
+        }
+
+        return nullptr;
+    }
+    const char* get_mutable_cstr(lauf_value_address addr) const
+    {
+        if (auto alloc = get_allocation(addr))
+        {
+            if (addr.offset >= alloc->size)
+                return nullptr;
+
+            auto cstr = static_cast<const char*>(alloc->offset(addr.offset));
+            if (std::memchr(cstr, 0, alloc->size - addr.offset) == nullptr)
+                return nullptr;
+            return cstr;
+        }
+
+        return nullptr;
+    }
+
+private:
+    const allocation* get_allocation(lauf_value_address addr) const
+    {
+        if (addr.allocation >= _allocs.size())
+            return nullptr;
+        else
+            return &_allocs[addr.allocation];
+    }
+
+    std::vector<allocation> _allocs;
+};
+} // namespace
+
 struct alignas(lauf_value) lauf_vm_impl
 {
     struct
     {
-        const lauf_value*       literals;
-        lauf_function*          functions;
-        std::vector<allocation> allocations;
+        const lauf_value* literals;
+        lauf_function*    functions;
+        vm_memory         memory;
     } state;
     lauf_panic_handler panic_handler;
     size_t             value_stack_size;
@@ -36,9 +139,7 @@ struct alignas(lauf_value) lauf_vm_impl
     : state{}, panic_handler(options.panic_handler),
       value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
       memory_stack(options.max_stack_size)
-    {
-        state.allocations.reserve(1024);
-    }
+    {}
 
     lauf_value* value_stack()
     {
@@ -80,10 +181,9 @@ void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_i
     if (memory == nullptr)
         return nullptr;
 
-    auto frame         = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
-    auto new_frame_ptr = frame + 1;
-    vm->state.allocations.push_back({new_frame_ptr, fn->local_stack_size});
-    return new_frame_ptr;
+    auto frame = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
+    vm->state.memory.local_allocation(frame + 1, fn->local_stack_size);
+    return frame + 1;
 }
 } // namespace
 
@@ -144,7 +244,8 @@ lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
 //=== vm functions ===//
 const lauf_vm_options lauf_default_vm_options
     = {size_t(128) * 1024, size_t(896) * 1024, [](lauf_panic_info info, const char* message) {
-           std::fprintf(stderr, "[lauf] panic: %s\n", message);
+           std::fprintf(stderr, "[lauf] panic: %s\n",
+                        message == nullptr ? "(invalid message address)" : message);
            std::fprintf(stderr, "stack backtrace\n");
 
            auto index = 0;
@@ -340,11 +441,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     vm->state.literals  = mod->literal_data();
     vm->state.functions = mod->function_begin();
 
-    vm->state.allocations.clear();
-    for (auto ptr = mod->allocation_data(); ptr != mod->allocation_data() + mod->allocation_count;
-         ++ptr)
-        vm->state.allocations.push_back(*ptr);
-
+    vm->state.memory.reset(mod);
     auto vstack_ptr = vm->value_stack();
 
     for (auto i = 0; i != fn->input_count; ++i)

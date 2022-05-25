@@ -32,7 +32,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
     vm->memory_stack.unwind(marker);
-    vm->state.allocations.pop_back();
+    vm->state.memory.return_();
 
     LAUF_DISPATCH;
 })
@@ -115,10 +115,7 @@ LAUF_BC_OP(push_small_neg, bc_inst_literal, {
 // _ => (local_base_addr + literal)
 LAUF_BC_OP(local_addr, bc_inst_literal, {
     --vstack_ptr;
-
-    auto allocation          = uint32_t(vm->state.allocations.size() - 1);
-    auto offset              = uint32_t(ip->local_addr.literal);
-    vstack_ptr[0].as_address = {allocation, offset};
+    vstack_ptr[0].as_address = vm->state.memory.local_address(ip->local_addr.literal);
 
     ++ip;
     LAUF_DISPATCH;
@@ -248,8 +245,14 @@ LAUF_BC_OP(select_if, bc_inst_cc, {
 LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
     auto type = static_cast<lauf_type>(vm->get_literal(ip->load_field.literal_idx).as_native_ptr);
 
-    auto addr     = vstack_ptr[0].as_address;
-    auto object   = vm->state.allocations[addr.allocation].offset(addr.offset);
+    auto addr   = vstack_ptr[0].as_address;
+    auto object = vm->state.memory.get_const_ptr(addr, type->layout.size);
+    if (object == nullptr)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "invalid address");
+        return false;
+    }
     vstack_ptr[0] = type->load_field(object, ip->load_field.field);
 
     ++ip;
@@ -262,7 +265,13 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
     auto type = static_cast<lauf_type>(vm->get_literal(ip->store_field.literal_idx).as_native_ptr);
 
     auto addr   = vstack_ptr[0].as_address;
-    auto object = vm->state.allocations[addr.allocation].offset(addr.offset);
+    auto object = vm->state.memory.get_mutable_ptr(addr, type->layout.size);
+    if (object == nullptr)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "invalid address");
+        return false;
+    }
     type->store_field(object, ip->store_field.field, vstack_ptr[1]);
     vstack_ptr += 2;
 
@@ -309,10 +318,10 @@ LAUF_BC_OP(save_value, bc_inst_literal, {
 // Invokes the panic handler.
 // message => _
 LAUF_BC_OP(panic, bc_inst_none, {
-    auto message = static_cast<const char*>(vstack_ptr[0].as_native_ptr);
+    auto message = vstack_ptr[0].as_address;
 
     auto info = make_panic_info(frame_ptr, ip);
-    vm->panic_handler(&info, message);
+    vm->panic_handler(&info, vm->state.memory.get_const_cstr(message));
 
     return false;
 })
@@ -321,11 +330,11 @@ LAUF_BC_OP(panic, bc_inst_none, {
 // value message => _
 LAUF_BC_OP(panic_if, bc_inst_cc, {
     auto value   = vstack_ptr[1];
-    auto message = static_cast<const char*>(vstack_ptr[0].as_native_ptr);
+    auto message = vstack_ptr[0].as_address;
     if (check_condition(ip->panic_if.cc, value))
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, message);
+        vm->panic_handler(&info, vm->state.memory.get_const_cstr(message));
         return false;
     }
     vstack_ptr += 2;

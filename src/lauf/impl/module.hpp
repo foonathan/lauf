@@ -60,9 +60,21 @@ namespace lauf::_detail
 {
 struct allocation
 {
+    enum flag : uint32_t
+    {
+        is_const = 1 << 0,
+    };
+
     void*    address;
     uint32_t size;
-    bool     is_const;
+    uint32_t flags;
+
+    allocation(const void* address, uint32_t size, uint32_t flags = is_const)
+    : address(const_cast<void*>(address)), size(size), flags(flags)
+    {}
+    allocation(void* address, uint32_t size, uint32_t flags = 0)
+    : address(const_cast<void*>(address)), size(size), flags(flags)
+    {}
 
     void* offset(std::size_t o) const
     {
