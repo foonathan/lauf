@@ -9,7 +9,9 @@
 namespace lauf::_detail
 {
 size_t frame_size_for(lauf_function fn);
-}
+
+void update_process(lauf_vm vm, lauf_vm_process process);
+} // namespace lauf::_detail
 
 #endif // SRC_LAUF_IMPL_VM_HPP_INCLUDED
 

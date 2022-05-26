@@ -44,12 +44,13 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        data @data = zero * 8;
+        function @test_value_field(0 => 1) {
+            local %x : @Value;
 
-        function @test(1 => 1) {
-            global_addr @data; poison_alloc;
-            global_addr @data; unpoison_alloc;
-            int 0x10; global_addr @data; store_field @Value.0;
+            int 42; local_addr %x; store_field @Value.0;
+            int 11; local_addr %x; store_field @Value.0;
+
+            local_addr %x; load_field @Value.0;
             return;
         }
     )");

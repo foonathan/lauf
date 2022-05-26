@@ -31,29 +31,32 @@ LAUF_BC_OP(return_, bc_inst_none, {
 
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
-    vm->memory_stack.unwind(marker);
-    vm->state.memory.return_();
+    process->vm->memory_stack.unwind(marker);
+
+    // TODO: refactor
+    --process->first_unused_allocation;
+    process->get_allocation(process->first_unused_allocation)->flags |= allocation::is_poisoned;
 
     LAUF_DISPATCH;
 })
 
 LAUF_BC_OP(call, bc_inst_function_idx, {
-    auto callee = vm->get_function(ip->call.function_idx);
+    auto callee = process->get_function(ip->call.function_idx);
 
-    auto new_frame_ptr = new_stack_frame(vm, frame_ptr, ip + 1, callee);
+    auto new_frame_ptr = new_stack_frame(process, frame_ptr, ip + 1, callee);
     if (new_frame_ptr == nullptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "stack overflow");
+        process->vm->panic_handler(&info, "stack overflow");
         return false;
     }
     frame_ptr = new_frame_ptr;
 
-    auto remaining_vstack_size = vstack_ptr - vm->value_stack_limit();
+    auto remaining_vstack_size = vstack_ptr - process->vm->value_stack_limit();
     if (remaining_vstack_size < callee->max_vstack_size)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "value stack overflow");
+        process->vm->panic_handler(&info, "value stack overflow");
         return false;
     }
 
@@ -62,8 +65,8 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
 })
 
 LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
-    auto callee
-        = (lauf_builtin_function*)(vm->get_literal(ip->call_builtin.literal_idx).as_native_ptr);
+    auto callee       = (lauf_builtin_function*)(process->get_literal(ip->call_builtin.literal_idx)
+                                               .as_native_ptr);
     auto stack_change = ip->call_builtin.offset;
     ++ip;
     LAUF_DISPATCH_BUILTIN(callee, stack_change);
@@ -74,7 +77,7 @@ LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
 // _ => literal
 LAUF_BC_OP(push, bc_inst_literal_idx, {
     --vstack_ptr;
-    vstack_ptr[0] = vm->get_literal(ip->push.literal_idx);
+    vstack_ptr[0] = process->get_literal(ip->push.literal_idx);
 
     ++ip;
     LAUF_DISPATCH;
@@ -115,7 +118,7 @@ LAUF_BC_OP(push_small_neg, bc_inst_literal, {
 // _ => (local_base_addr + literal)
 LAUF_BC_OP(local_addr, bc_inst_literal, {
     --vstack_ptr;
-    vstack_ptr[0].as_address = vm->state.memory.local_address(ip->local_addr.literal);
+    vstack_ptr[0].as_address = process->get_local_address(ip->local_addr.literal);
 
     ++ip;
     LAUF_DISPATCH;
@@ -150,10 +153,14 @@ LAUF_BC_OP(array_element_addr, bc_inst_literal, {
 // addr => _
 LAUF_BC_OP(poison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
-    if (!vm->state.memory.poison(addr))
+    if (auto alloc = process->get_allocation(addr.allocation))
+    {
+        alloc->flags |= allocation::is_poisoned;
+    }
+    else
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "invalid address");
+        process->vm->panic_handler(&info, "invalid address");
         return false;
     }
     --vstack_ptr;
@@ -165,10 +172,14 @@ LAUF_BC_OP(poison_alloc, bc_inst_none, {
 // addr => _
 LAUF_BC_OP(unpoison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
-    if (!vm->state.memory.unpoison(addr))
+    if (auto alloc = process->get_allocation(addr.allocation))
+    {
+        alloc->flags &= ~allocation::is_poisoned;
+    }
+    else
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "invalid address");
+        process->vm->panic_handler(&info, "invalid address");
         return false;
     }
     --vstack_ptr;
@@ -242,7 +253,7 @@ LAUF_BC_OP(select, bc_inst_literal, {
     if (index >= max_index)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "select index out of range");
+        process->vm->panic_handler(&info, "select index out of range");
         return false;
     }
 
@@ -283,14 +294,15 @@ LAUF_BC_OP(select_if, bc_inst_cc, {
 // Load a field from a type, literal is lauf_type*.
 // addr => value
 LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
-    auto type = static_cast<lauf_type>(vm->get_literal(ip->load_field.literal_idx).as_native_ptr);
+    auto type
+        = static_cast<lauf_type>(process->get_literal(ip->load_field.literal_idx).as_native_ptr);
 
     auto addr   = vstack_ptr[0].as_address;
-    auto object = vm->state.memory.get_const_ptr(addr, type->layout.size);
+    auto object = process->get_const_ptr(addr, type->layout.size);
     if (object == nullptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "invalid address");
+        process->vm->panic_handler(&info, "invalid address");
         return false;
     }
     vstack_ptr[0] = type->load_field(object, ip->load_field.field);
@@ -302,14 +314,15 @@ LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
 // Store a field to a type, literal is lauf_type*.
 // value addr => _
 LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
-    auto type = static_cast<lauf_type>(vm->get_literal(ip->store_field.literal_idx).as_native_ptr);
+    auto type
+        = static_cast<lauf_type>(process->get_literal(ip->store_field.literal_idx).as_native_ptr);
 
     auto addr   = vstack_ptr[0].as_address;
-    auto object = vm->state.memory.get_mutable_ptr(addr, type->layout.size);
+    auto object = process->get_mutable_ptr(addr, type->layout.size);
     if (object == nullptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "invalid address");
+        process->vm->panic_handler(&info, "invalid address");
         return false;
     }
     type->store_field(object, ip->store_field.field, vstack_ptr[1]);
@@ -341,7 +354,7 @@ LAUF_BC_OP(load_array_value, bc_inst_literal, {
     if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "array index out of bounds");
+        process->vm->panic_handler(&info, "array index out of bounds");
         return false;
     }
 
@@ -373,7 +386,7 @@ LAUF_BC_OP(store_array_value, bc_inst_literal, {
     if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, "array index out of bounds");
+        process->vm->panic_handler(&info, "array index out of bounds");
         return false;
     }
 
@@ -402,7 +415,7 @@ LAUF_BC_OP(panic, bc_inst_none, {
     auto message = vstack_ptr[0].as_address;
 
     auto info = make_panic_info(frame_ptr, ip);
-    vm->panic_handler(&info, vm->state.memory.get_const_cstr(message));
+    process->vm->panic_handler(&info, process->get_const_cstr(message));
 
     return false;
 })
@@ -415,7 +428,7 @@ LAUF_BC_OP(panic_if, bc_inst_cc, {
     if (check_condition(ip->panic_if.cc, value))
     {
         auto info = make_panic_info(frame_ptr, ip);
-        vm->panic_handler(&info, vm->state.memory.get_const_cstr(message));
+        process->vm->panic_handler(&info, process->get_const_cstr(message));
         return false;
     }
     vstack_ptr += 2;

@@ -21,6 +21,7 @@ set(header_files
         ${include_dir}/lib/int.h)
 set(src_header_files
         lauf/impl/module.hpp
+        lauf/impl/process.hpp
         lauf/impl/program.hpp
         lauf/impl/vm.hpp
         lauf/detail/bytecode.hpp

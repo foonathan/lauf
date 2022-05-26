@@ -11,10 +11,10 @@
 #include <lauf/detail/bytecode.hpp>
 #include <lauf/detail/stack_allocator.hpp>
 #include <lauf/impl/module.hpp>
+#include <lauf/impl/process.hpp>
 #include <lauf/impl/program.hpp>
 #include <lauf/impl/vm.hpp>
 #include <lauf/type.h>
-#include <new>
 #include <type_traits>
 #include <vector>
 
@@ -171,21 +171,26 @@ private:
 
 struct alignas(lauf_value) lauf_vm_impl
 {
-    struct
-    {
-        const lauf_value* literals;
-        lauf_function*    functions;
-        vm_memory         memory;
-    } state;
+    lauf_vm_process    process;
     lauf_panic_handler panic_handler;
     size_t             value_stack_size;
     stack_allocator    memory_stack;
 
     lauf_vm_impl(lauf_vm_options options)
-    : state{}, panic_handler(options.panic_handler),
+    : panic_handler(options.panic_handler),
       value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
       memory_stack(options.max_stack_size)
-    {}
+    {
+        process = create_null_process(this);
+    }
+
+    lauf_vm_impl(const lauf_vm_impl&) = delete;
+    lauf_vm_impl& operator=(const lauf_vm_impl&) = delete;
+
+    ~lauf_vm_impl()
+    {
+        destroy_process(process);
+    }
 
     lauf_value* value_stack()
     {
@@ -194,15 +199,6 @@ struct alignas(lauf_value) lauf_vm_impl
     lauf_value* value_stack_limit()
     {
         return reinterpret_cast<lauf_value*>(this + 1);
-    }
-
-    lauf_value get_literal(bc_literal_idx idx) const
-    {
-        return state.literals[size_t(idx)];
-    }
-    lauf_function get_function(bc_function_idx idx) const
-    {
-        return state.functions[size_t(idx)];
     }
 };
 
@@ -216,8 +212,10 @@ struct alignas(void*) stack_frame
     stack_frame*            prev;
 };
 
-void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_ip, lauf_function fn)
+void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruction* return_ip,
+                      lauf_function fn)
 {
+    auto vm         = process->vm;
     auto marker     = vm->memory_stack.top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
 
@@ -228,7 +226,7 @@ void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_i
         return nullptr;
 
     auto frame = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
-    vm->state.memory.local_allocation(frame + 1, fn->local_stack_size);
+    add_allocation(process, {frame + 1, fn->local_stack_size});
     return frame + 1;
 }
 } // namespace
@@ -236,6 +234,11 @@ void* new_stack_frame(lauf_vm vm, void* frame_ptr, lauf_vm_instruction* return_i
 std::size_t lauf::_detail::frame_size_for(lauf_function fn)
 {
     return sizeof(stack_frame) + fn->local_stack_size;
+}
+
+void lauf::_detail::update_process(lauf_vm vm, lauf_vm_process process)
+{
+    vm->process = process;
 }
 
 //=== backtrace ===//
@@ -355,14 +358,15 @@ bool check_condition(condition_code cc, lauf_value value)
 
 namespace
 {
-bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm);
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+              lauf_vm_process process);
 
 #    define LAUF_BC_OP(Name, Data, ...)                                                            \
         bool execute_##Name(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,      \
-                            lauf_vm vm) __VA_ARGS__
-#    define LAUF_DISPATCH LAUF_TAIL_CALL return dispatch(ip, vstack_ptr, frame_ptr, vm)
+                            lauf_vm_process process) __VA_ARGS__
+#    define LAUF_DISPATCH LAUF_TAIL_CALL return dispatch(ip, vstack_ptr, frame_ptr, process)
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
-        LAUF_TAIL_CALL return Callee(ip, vstack_ptr, frame_ptr, vm)
+        LAUF_TAIL_CALL return Callee(ip, vstack_ptr, frame_ptr, process)
 
 #    include "lauf/detail/bc_ops.h"
 
@@ -376,19 +380,20 @@ constexpr lauf_builtin_function* inst_fns[] = {
 #    undef LAUF_BC_OP
 };
 
-bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+              lauf_vm_process process)
 {
     if (ip == nullptr)
         return true;
-    LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, vm);
+    LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
 }
 } // namespace
 
 bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                           lauf_vm vm)
+                           lauf_vm_process process)
 {
     // ip can't be null after a builtin as it can't return.
-    LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, vm);
+    LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
 }
 
 #elif LAUF_HAS_COMPUTED_GOTO
@@ -396,7 +401,8 @@ bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void
 
 namespace
 {
-bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+              lauf_vm_process process)
 {
     void* labels[] = {
 #    define LAUF_BC_OP(Name, Data, ...) &&execute_##Name,
@@ -417,7 +423,7 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, 
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
         do                                                                                         \
         {                                                                                          \
-            Callee(ip, vstack_ptr, frame_ptr, vm);                                                 \
+            Callee(ip, vstack_ptr, frame_ptr, process);                                            \
             vstack_ptr += (StackChange);                                                           \
             goto* labels[size_t(ip->tag.op)];                                                      \
         } while (0);
@@ -430,7 +436,7 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, 
 }
 } // namespace
 
-bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
+bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm_process)
 {
     // We terminate the call here.
     return true;
@@ -441,7 +447,8 @@ bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
 
 namespace
 {
-bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, lauf_vm vm)
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+              lauf_vm_process process)
 {
     while (ip != nullptr)
     {
@@ -453,7 +460,7 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr, 
 #    define LAUF_DISPATCH break
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
         {                                                                                          \
-            Callee(ip, vstack_ptr, frame_ptr, vm);                                                 \
+            Callee(ip, vstack_ptr, frame_ptr, process);                                            \
             vstack_ptr += (StackChange);                                                           \
             break
         }
@@ -470,7 +477,7 @@ return true;
 } // namespace
 } // namespace
 
-bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
+bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm_process)
 {
     // We terminate the call here.
     return true;
@@ -478,20 +485,18 @@ bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm)
 
 #endif
 
-bool lauf_builtin_panic(lauf_vm vm, lauf_vm_instruction* ip, void* frame_ptr, const char* message)
+bool lauf_builtin_panic(lauf_vm_process process, lauf_vm_instruction* ip, void* frame_ptr,
+                        const char* message)
 {
     // call_builtin has already incremented ip, so undo it to get the location.
     auto info = make_panic_info(frame_ptr, ip - 1);
-    vm->panic_handler(&info, message);
+    process->vm->panic_handler(&info, message);
     return false;
 }
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
-    vm->state.literals  = prog->mod->literal_data();
-    vm->state.functions = prog->mod->function_begin();
-
-    vm->state.memory.reset(prog);
+    init_process(vm->process, prog);
     auto vstack_ptr = vm->value_stack();
 
     for (auto i = 0; i != prog->entry->input_count; ++i)
@@ -501,11 +506,11 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     }
 
     stack_frame prev{};
-    auto        frame_ptr = new_stack_frame(vm, &prev + 1, nullptr, prog->entry);
+    auto        frame_ptr = new_stack_frame(vm->process, &prev + 1, nullptr, prog->entry);
     assert(frame_ptr); // initial stack frame should fit in first block
 
     auto ip = prog->entry->bytecode();
-    if (!dispatch(ip, vstack_ptr, frame_ptr, vm))
+    if (!dispatch(ip, vstack_ptr, frame_ptr, vm->process))
         return false;
 
     vstack_ptr = vm->value_stack() - prog->entry->output_count;

@@ -10,8 +10,9 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_vm_impl*      lauf_vm;
-typedef union lauf_vm_instruction lauf_vm_instruction;
+typedef struct lauf_vm_impl*         lauf_vm;
+typedef struct lauf_vm_process_impl* lauf_vm_process;
+typedef union lauf_vm_instruction    lauf_vm_instruction;
 
 //=== backtrace ===//
 typedef void* lauf_backtrace;
