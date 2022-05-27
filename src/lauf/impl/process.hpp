@@ -9,17 +9,17 @@
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/program.hpp>
 #include <lauf/impl/vm.hpp>
-#include <lauf/vm.h>
 #include <new>
 
 // Stores additionally data that don't get their own arguments in dispatch.
 struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
 {
-    const lauf_value* literals;
-    lauf_function*    functions;
-    lauf_vm           vm;
-    uint32_t          allocation_list_capacity;
-    uint32_t          first_unused_allocation;
+    const lauf_value*              literals;
+    lauf_function*                 functions;
+    lauf_vm                        vm;
+    uint32_t                       allocation_list_capacity;
+    uint32_t                       first_unused_allocation;
+    lauf::_detail::stack_allocator allocator;
 
     lauf_value get_literal(lauf::_detail::bc_literal_idx idx) const
     {
@@ -118,10 +118,9 @@ inline lauf_vm_process create_null_process(lauf_vm vm)
     auto memory = ::operator new(sizeof(lauf_vm_process_impl)
                                  + initial_allocation_list_size * sizeof(allocation));
 
-    auto result                      = ::new (memory) lauf_vm_process_impl{};
-    result->vm                       = vm;
-    result->allocation_list_capacity = initial_allocation_list_size;
-    result->first_unused_allocation  = 0;
+    auto result = ::new (memory) lauf_vm_process_impl{nullptr, nullptr,
+                                                      vm,      initial_allocation_list_size,
+                                                      0,       stack_allocator(vm->memory_stack)};
     return result;
 }
 
@@ -145,8 +144,8 @@ inline void add_allocation(lauf_vm_process& process, allocation alloc)
                     process->allocation_list_capacity * sizeof(allocation));
         new_process->allocation_list_capacity = new_capacity;
 
-        process = new_process;
-        update_process(process->vm, process);
+        process              = new_process;
+        process->vm->process = process;
     }
 
     process->allocation_data()[process->first_unused_allocation] = alloc;

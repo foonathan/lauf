@@ -59,10 +59,13 @@ condition_code translate_condition(lauf_condition cond)
 
 struct lauf_builder_impl
 {
-    stack_allocator     alloc;
+    memory_stack        stack;
     lauf_debug_location cur_location;
+    stack_allocator     alloc;
 
-    lauf_builder_impl() : cur_location{}, bytecode(alloc), marker(alloc.top()), cur_fn(0) {}
+    lauf_builder_impl()
+    : cur_location{}, alloc(stack), bytecode(alloc), marker(alloc.top()), cur_fn(0)
+    {}
 
     //=== per module ===//
     module_decl                mod;

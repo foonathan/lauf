@@ -31,7 +31,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
 
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
-    process->vm->memory_stack.unwind(marker);
+    process->allocator.unwind(marker);
 
     // TODO: refactor
     --process->first_unused_allocation;

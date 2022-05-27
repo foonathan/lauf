@@ -27,7 +27,7 @@ inline std::size_t align_offset(const void* address, std::size_t alignment)
 
 namespace lauf::_detail
 {
-class stack_allocator
+class memory_stack
 {
     static constexpr std::size_t block_size = std::size_t(16) * 1024 - sizeof(void*);
 
@@ -36,12 +36,11 @@ class stack_allocator
         block*        next;
         unsigned char memory[block_size];
 
-        block() : next(nullptr) // Don't initialize array
-        {}
-
         static block* allocate()
         {
-            return new block;
+            auto ptr  = new block;
+            ptr->next = nullptr;
+            return ptr;
         }
 
         static block* deallocate(block* ptr)
@@ -58,43 +57,63 @@ class stack_allocator
     };
 
 public:
-    //=== constructors/destructors/assignment ===//
-    explicit stack_allocator(std::size_t memory_limit) noexcept
-    : _cur_block(&_head), _cur_pos(&_head.memory[0]), _block_count(1),
-      _limit(memory_limit / block_size)
+    explicit memory_stack(std::size_t memory_limit) noexcept
+    : _block_count(1), _limit(memory_limit / block_size)
     {
         assert(memory_limit >= block_size);
+        _head.next = nullptr;
     }
-    stack_allocator() : stack_allocator(block_size)
+    memory_stack() : memory_stack(block_size)
     {
         _limit = std::size_t(-1);
     }
 
-    ~stack_allocator() noexcept
+    ~memory_stack() noexcept
+    {
+        reset();
+    }
+
+    memory_stack(const memory_stack& other) noexcept = delete;
+    memory_stack& operator=(const memory_stack& other) noexcept = delete;
+
+    void reset()
     {
         auto cur = _head.next;
         while (cur != nullptr)
             cur = block::deallocate(cur);
+        _head.next   = nullptr;
+        _block_count = 1;
     }
 
-    stack_allocator(const stack_allocator& other) noexcept = delete;
-    stack_allocator& operator=(const stack_allocator& other) noexcept = delete;
+private:
+    std::size_t _block_count, _limit;
+    block       _head;
+
+    friend class stack_allocator;
+};
+
+class stack_allocator
+{
+public:
+    explicit stack_allocator(memory_stack& stack)
+    : _cur_block(&stack._head), _cur_pos(&stack._head.memory[0]), _stack(&stack)
+    {}
 
     //=== allocation ===//
     static constexpr std::size_t max_allocation_size()
     {
-        return block_size;
+        return memory_stack::block_size;
     }
 
     bool reserve_new_block()
     {
         if (_cur_block->next == nullptr)
         {
-            auto next        = block::allocate();
+            auto next        = memory_stack::block::allocate();
             _cur_block->next = next;
 
-            ++_block_count;
-            if (_block_count > _limit)
+            ++_stack->_block_count;
+            if (_stack->_block_count > _stack->_limit)
                 return false;
         }
 
@@ -124,8 +143,8 @@ public:
     //=== unwinding ===//
     struct marker
     {
-        block*         _block;
-        unsigned char* _block_pos;
+        memory_stack::block* _block;
+        unsigned char*       _block_pos;
     };
 
     marker top() const
@@ -139,29 +158,15 @@ public:
         _cur_pos   = m._block_pos;
     }
 
-    // Unwinds and frees unused blocks.
-    void reset()
-    {
-        auto cur = _head.next;
-        while (cur != nullptr)
-            cur = block::deallocate(cur);
-        _head.next   = nullptr;
-        _block_count = 1;
-
-        _cur_block = &_head;
-        _cur_pos   = &_cur_block->memory[0];
-    }
-
 private:
     std::size_t remaining_capacity() const noexcept
     {
         return std::size_t(_cur_block->end() - _cur_pos);
     }
 
-    block*         _cur_block;
-    unsigned char* _cur_pos;
-    std::size_t    _block_count, _limit;
-    block          _head;
+    memory_stack::block* _cur_block;
+    unsigned char*       _cur_pos;
+    memory_stack*        _stack;
 };
 } // namespace lauf::_detail
 

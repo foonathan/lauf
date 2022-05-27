@@ -20,187 +20,18 @@
 
 using namespace lauf::_detail;
 
-namespace
+lauf_vm_impl::lauf_vm_impl(lauf_vm_options options)
+: panic_handler(options.panic_handler),
+  value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
+  memory_stack(options.max_stack_size)
 {
-class vm_memory
+    process = create_null_process(this);
+}
+
+lauf_vm_impl::~lauf_vm_impl()
 {
-public:
-    vm_memory()
-    {
-        _allocs.reserve(1024);
-    }
-
-    void reset(lauf_program prog)
-    {
-        _allocs.clear();
-
-        auto                   static_memory = prog->static_memory();
-        stack_allocator_offset allocator;
-        for (auto ptr = prog->mod->allocation_data();
-             ptr != prog->mod->allocation_data() + prog->mod->allocation_count; ++ptr)
-        {
-            auto alloc = *ptr;
-            if ((alloc.flags & allocation::static_memory) != 0)
-            {
-                auto offset = allocator.allocate(alloc.size);
-                if ((alloc.flags & allocation::clear_memory) != 0)
-                    std::memset(static_memory + offset, 0, alloc.size);
-                else if ((alloc.flags & allocation::copy_memory) != 0)
-                    std::memcpy(static_memory + offset, alloc.ptr, alloc.size);
-                alloc.ptr = static_memory + offset;
-            }
-
-            _allocs.push_back(alloc);
-        }
-    }
-
-    void local_allocation(void* memory, uint32_t size)
-    {
-        _allocs.emplace_back(memory, size);
-    }
-    void return_()
-    {
-        _allocs.pop_back();
-    }
-
-    lauf_value_address local_address(size_t offset) const
-    {
-        auto allocation = _allocs.size() - 1;
-        return {uint32_t(allocation), uint32_t(offset)};
-    }
-
-    bool poison(lauf_value_address addr)
-    {
-        if (auto alloc = get_allocation(addr))
-        {
-            alloc->flags |= allocation::is_poisoned;
-            return true;
-        }
-
-        return false;
-    }
-    bool unpoison(lauf_value_address addr)
-    {
-        if (auto alloc = get_allocation(addr))
-        {
-            alloc->flags &= ~allocation::is_poisoned;
-            return true;
-        }
-
-        return false;
-    }
-
-    const void* get_const_ptr(lauf_value_address addr, size_t size) const
-    {
-        if (auto alloc = get_allocation(addr))
-        {
-            if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
-                || (alloc->flags & allocation::is_poisoned) != 0)
-                return nullptr;
-
-            return alloc->offset(addr.offset);
-        }
-
-        return nullptr;
-    }
-    void* get_mutable_ptr(lauf_value_address addr, size_t size) const
-    {
-        if (auto alloc = get_allocation(addr))
-        {
-            if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
-                || (alloc->flags & allocation::is_poisoned) != 0
-                || (alloc->flags & allocation::is_const) != 0)
-                return nullptr;
-
-            return alloc->offset(addr.offset);
-        }
-
-        return nullptr;
-    }
-
-    const char* get_const_cstr(lauf_value_address addr) const
-    {
-        if (auto alloc = get_allocation(addr))
-        {
-            if (addr.offset >= alloc->size)
-                return nullptr;
-
-            auto cstr = static_cast<const char*>(alloc->offset(addr.offset));
-            if (std::memchr(cstr, 0, alloc->size - addr.offset) == nullptr)
-                return nullptr;
-            return cstr;
-        }
-
-        return nullptr;
-    }
-    const char* get_mutable_cstr(lauf_value_address addr) const
-    {
-        if (auto alloc = get_allocation(addr))
-        {
-            if (addr.offset >= alloc->size)
-                return nullptr;
-
-            auto cstr = static_cast<const char*>(alloc->offset(addr.offset));
-            if (std::memchr(cstr, 0, alloc->size - addr.offset) == nullptr)
-                return nullptr;
-            return cstr;
-        }
-
-        return nullptr;
-    }
-
-private:
-    const allocation* get_allocation(lauf_value_address addr) const
-    {
-        if (addr.allocation >= _allocs.size())
-            return nullptr;
-        else
-            return &_allocs[addr.allocation];
-    }
-    allocation* get_allocation(lauf_value_address addr)
-    {
-        if (addr.allocation >= _allocs.size())
-            return nullptr;
-        else
-            return &_allocs[addr.allocation];
-    }
-
-    std::vector<allocation> _allocs;
-};
-} // namespace
-
-struct alignas(lauf_value) lauf_vm_impl
-{
-    lauf_vm_process    process;
-    lauf_panic_handler panic_handler;
-    size_t             value_stack_size;
-    stack_allocator    memory_stack;
-
-    lauf_vm_impl(lauf_vm_options options)
-    : panic_handler(options.panic_handler),
-      value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
-      memory_stack(options.max_stack_size)
-    {
-        process = create_null_process(this);
-    }
-
-    lauf_vm_impl(const lauf_vm_impl&) = delete;
-    lauf_vm_impl& operator=(const lauf_vm_impl&) = delete;
-
-    ~lauf_vm_impl()
-    {
-        destroy_process(process);
-    }
-
-    lauf_value* value_stack()
-    {
-        return reinterpret_cast<lauf_value*>(this + 1) + value_stack_size;
-    }
-    lauf_value* value_stack_limit()
-    {
-        return reinterpret_cast<lauf_value*>(this + 1);
-    }
-};
+    destroy_process(process);
+}
 
 namespace
 {
@@ -215,13 +46,12 @@ struct alignas(void*) stack_frame
 void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruction* return_ip,
                       lauf_function fn)
 {
-    auto vm         = process->vm;
-    auto marker     = vm->memory_stack.top();
+    auto marker     = process->allocator.top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
 
     // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
     // it; the builder takes care of it when computing the stack size.
-    auto memory = vm->memory_stack.allocate(lauf::_detail::frame_size_for(fn));
+    auto memory = process->allocator.allocate(lauf::_detail::frame_size_for(fn));
     if (memory == nullptr)
         return nullptr;
 
@@ -234,11 +64,6 @@ void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruc
 std::size_t lauf::_detail::frame_size_for(lauf_function fn)
 {
     return sizeof(stack_frame) + fn->local_stack_size;
-}
-
-void lauf::_detail::update_process(lauf_vm vm, lauf_vm_process process)
-{
-    vm->process = process;
 }
 
 //=== backtrace ===//
