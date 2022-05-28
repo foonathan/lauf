@@ -31,7 +31,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
 
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
-    process->get_allocation(frame->local_allocation)->flags |= allocation::is_poisoned;
+    remove_allocation(process, frame->local_allocation);
     process->allocator.unwind(marker);
 
     LAUF_DISPATCH;

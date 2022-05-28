@@ -71,6 +71,9 @@ struct allocation
         copy_memory = 1 << 3,
         // Memory needs to be cleared before execution.
         clear_memory = 1 << 4,
+
+        // Memory that is already freed.
+        freed_memory = 1 << 5,
     };
 
     void*    ptr;

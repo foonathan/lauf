@@ -11,6 +11,12 @@
 #include <lauf/impl/vm.hpp>
 #include <new>
 
+namespace lauf::_detail
+{
+constexpr std::size_t initial_allocation_list_size = 1024;
+
+}
+
 // Stores additionally data that don't get their own arguments in dispatch.
 struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
 {
@@ -20,6 +26,12 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     uint32_t                       allocation_list_capacity;
     uint32_t                       first_unused_allocation;
     lauf::_detail::stack_allocator allocator;
+
+    explicit lauf_vm_process_impl(lauf_vm vm)
+    : literals(nullptr), functions(nullptr), vm(vm),
+      allocation_list_capacity(lauf::_detail::initial_allocation_list_size),
+      first_unused_allocation(0), allocator(vm->memory_stack)
+    {}
 
     lauf_value get_literal(lauf::_detail::bc_literal_idx idx) const
     {
@@ -35,9 +47,15 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
         auto memory = static_cast<void*>(this + 1);
         return static_cast<lauf::_detail::allocation*>(memory);
     }
-    auto get_allocation(uint32_t allocation)
+    auto get_allocation(uint32_t allocation) -> lauf::_detail::allocation*
     {
-        return allocation < allocation_list_capacity ? allocation_data() + allocation : nullptr;
+        if (allocation >= allocation_list_capacity)
+            return nullptr;
+
+        auto alloc = allocation_data() + allocation;
+        if ((alloc->flags & lauf::_detail::allocation::freed_memory) != 0)
+            return nullptr;
+        return alloc;
     }
 
     const void* get_const_ptr(lauf_value_address addr, size_t size)
@@ -106,17 +124,12 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
 
 namespace lauf::_detail
 {
-constexpr std::size_t initial_allocation_list_size = 8192;
-
 inline lauf_vm_process create_null_process(lauf_vm vm)
 {
     auto memory = ::operator new(sizeof(lauf_vm_process_impl)
                                  + initial_allocation_list_size * sizeof(allocation));
 
-    auto result = ::new (memory) lauf_vm_process_impl{nullptr, nullptr,
-                                                      vm,      initial_allocation_list_size,
-                                                      0,       stack_allocator(vm->memory_stack)};
-    return result;
+    return ::new (memory) lauf_vm_process_impl(vm);
 }
 
 inline void destroy_process(lauf_vm_process process)
@@ -145,6 +158,29 @@ inline uint32_t add_allocation(lauf_vm_process& process, allocation alloc)
 
     process->allocation_data()[process->first_unused_allocation] = alloc;
     return process->first_unused_allocation++;
+}
+
+inline bool remove_allocation(lauf_vm_process& process, uint32_t allocation)
+{
+    auto alloc = process->get_allocation(allocation);
+    if (alloc == nullptr)
+        return false;
+    alloc->flags |= allocation::freed_memory;
+
+    if (allocation == process->first_unused_allocation - 1)
+    {
+        // We can remove the allocation as its at the end.
+        // Potentially, we can also remove more subsequent allocations.
+        do
+        {
+            --process->first_unused_allocation;
+        } while (process->first_unused_allocation > 0
+                 && (process->allocation_data()[process->first_unused_allocation - 1].flags
+                     & allocation::freed_memory)
+                        != 0);
+    }
+
+    return true;
 }
 
 inline void init_process(lauf_vm_process process, lauf_program program)
