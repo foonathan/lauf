@@ -186,7 +186,7 @@ public:
         return std::size_t(_cur - _begin);
     }
 
-    std::uintptr_t allocate(std::size_t size, std::size_t alignment = alignof(void*))
+    std::uintptr_t allocate(std::size_t size, std::size_t alignment)
     {
         _cur += align_offset(_cur, alignment);
         auto result = _cur - _begin;

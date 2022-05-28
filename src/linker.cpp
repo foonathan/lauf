@@ -11,19 +11,9 @@ using namespace lauf::_detail;
 
 lauf_program lauf_link_single_module(lauf_module mod, lauf_function entry)
 {
-    auto static_memory_size = [&] {
-        stack_allocator_offset allocator;
-        for (auto ptr = mod->allocation_data();
-             ptr != mod->allocation_data() + mod->allocation_count; ++ptr)
-            if ((ptr->flags & allocation::static_memory) != 0)
-                allocator.allocate(ptr->size);
-        return allocator.size();
-    }();
-
-    auto result                = lauf_impl_allocate_program(static_memory_size);
-    result->mod                = mod;
-    result->entry              = entry;
-    result->static_memory_size = static_memory_size;
+    auto result   = lauf_impl_allocate_program();
+    result->mod   = mod;
+    result->entry = entry;
     return result;
 }
 

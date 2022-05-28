@@ -6,9 +6,9 @@
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/program.hpp>
 
-lauf_program lauf_impl_allocate_program(size_t static_memory_size)
+lauf_program lauf_impl_allocate_program()
 {
-    auto memory = ::operator new(sizeof(lauf_program_impl) + static_memory_size);
+    auto memory = ::operator new(sizeof(lauf_program_impl));
     return static_cast<lauf_program>(memory);
 }
 

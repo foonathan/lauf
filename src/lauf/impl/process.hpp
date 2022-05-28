@@ -158,20 +158,18 @@ inline void init_process(lauf_vm_process process, lauf_program program)
     process->functions               = program->mod->function_begin();
     process->first_unused_allocation = 0;
 
-    auto                   static_memory = program->static_memory();
-    stack_allocator_offset allocator;
     for (auto ptr = program->mod->allocation_data();
          ptr != program->mod->allocation_data() + program->mod->allocation_count; ++ptr)
     {
         auto alloc = *ptr;
         if ((alloc.flags & allocation::static_memory) != 0)
         {
-            auto offset = allocator.allocate(alloc.size);
+            auto ptr = process->allocator.allocate<alignof(void*)>(alloc.size);
             if ((alloc.flags & allocation::clear_memory) != 0)
-                std::memset(static_memory + offset, 0, alloc.size);
+                std::memset(ptr, 0, alloc.size);
             else if ((alloc.flags & allocation::copy_memory) != 0)
-                std::memcpy(static_memory + offset, alloc.ptr, alloc.size);
-            alloc.ptr = static_memory + offset;
+                std::memcpy(ptr, alloc.ptr, alloc.size);
+            alloc.ptr = ptr;
         }
 
         add_allocation(process, alloc);
