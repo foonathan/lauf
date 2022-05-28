@@ -40,11 +40,6 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
         return allocation < allocation_list_capacity ? allocation_data() + allocation : nullptr;
     }
 
-    auto get_local_address(uint32_t offset)
-    {
-        return lauf_value_address{first_unused_allocation - 1, offset};
-    }
-
     const void* get_const_ptr(lauf_value_address addr, size_t size)
     {
         using lauf::_detail::allocation;
@@ -130,7 +125,7 @@ inline void destroy_process(lauf_vm_process process)
 }
 
 // Pass pointer by references as we might need to do a realloc.
-inline void add_allocation(lauf_vm_process& process, allocation alloc)
+inline uint32_t add_allocation(lauf_vm_process& process, allocation alloc)
 {
     if (process->first_unused_allocation == process->allocation_list_capacity)
     {
@@ -149,7 +144,7 @@ inline void add_allocation(lauf_vm_process& process, allocation alloc)
     }
 
     process->allocation_data()[process->first_unused_allocation] = alloc;
-    ++process->first_unused_allocation;
+    return process->first_unused_allocation++;
 }
 
 inline void init_process(lauf_vm_process process, lauf_program program)

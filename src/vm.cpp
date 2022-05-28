@@ -40,6 +40,7 @@ struct alignas(void*) stack_frame
     lauf_function           fn;
     lauf_vm_instruction*    return_ip;
     stack_allocator::marker unwind;
+    uint32_t                local_allocation;
     stack_frame*            prev;
 };
 
@@ -55,9 +56,10 @@ void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruc
     if (memory == nullptr)
         return nullptr;
 
-    auto frame = ::new (memory) stack_frame{fn, return_ip, marker, prev_frame};
-    add_allocation(process, {frame + 1, fn->local_stack_size});
-    return frame + 1;
+    auto local_memory     = static_cast<stack_frame*>(memory) + 1;
+    auto local_allocation = add_allocation(process, {local_memory, fn->local_stack_size});
+
+    return ::new (memory) stack_frame{fn, return_ip, marker, local_allocation, prev_frame} + 1;
 }
 } // namespace
 
@@ -106,7 +108,7 @@ namespace
 lauf_panic_info_impl make_panic_info(void* frame_ptr, lauf_vm_instruction* ip)
 {
     auto cur_frame = static_cast<stack_frame*>(frame_ptr) - 1;
-    return {{nullptr, ip + 1, {}, cur_frame}};
+    return {{nullptr, ip + 1, {}, 0, cur_frame}};
 }
 } // namespace
 

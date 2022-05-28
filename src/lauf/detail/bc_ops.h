@@ -31,11 +31,8 @@ LAUF_BC_OP(return_, bc_inst_none, {
 
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
+    process->get_allocation(frame->local_allocation)->flags |= allocation::is_poisoned;
     process->allocator.unwind(marker);
-
-    // TODO: refactor
-    --process->first_unused_allocation;
-    process->get_allocation(process->first_unused_allocation)->flags |= allocation::is_poisoned;
 
     LAUF_DISPATCH;
 })
@@ -118,7 +115,8 @@ LAUF_BC_OP(push_small_neg, bc_inst_literal, {
 // _ => (local_base_addr + literal)
 LAUF_BC_OP(local_addr, bc_inst_literal, {
     --vstack_ptr;
-    vstack_ptr[0].as_address = process->get_local_address(ip->local_addr.literal);
+    vstack_ptr[0].as_address
+        = {static_cast<stack_frame*>(frame_ptr)[-1].local_allocation, ip->local_addr.literal};
 
     ++ip;
     LAUF_DISPATCH;
