@@ -11,9 +11,6 @@ using namespace lauf::_detail;
 
 lauf_program lauf_link_single_module(lauf_module mod, lauf_function entry)
 {
-    auto result   = lauf_impl_allocate_program();
-    result->mod   = mod;
-    result->entry = entry;
-    return result;
+    return {mod, entry};
 }
 

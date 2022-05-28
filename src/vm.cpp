@@ -324,22 +324,22 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     init_process(vm->process, prog);
     auto vstack_ptr = vm->value_stack();
 
-    for (auto i = 0; i != prog->entry->input_count; ++i)
+    for (auto i = 0; i != prog.entry->input_count; ++i)
     {
         --vstack_ptr;
         vstack_ptr[0] = input[i];
     }
 
     stack_frame prev{};
-    auto        frame_ptr = new_stack_frame(vm->process, &prev + 1, nullptr, prog->entry);
+    auto        frame_ptr = new_stack_frame(vm->process, &prev + 1, nullptr, prog.entry);
     assert(frame_ptr); // initial stack frame should fit in first block
 
-    auto ip = prog->entry->bytecode();
+    auto ip = prog.entry->bytecode();
     if (!dispatch(ip, vstack_ptr, frame_ptr, vm->process))
         return false;
 
-    vstack_ptr = vm->value_stack() - prog->entry->output_count;
-    for (auto i = 0; i != prog->entry->output_count; ++i)
+    vstack_ptr = vm->value_stack() - prog.entry->output_count;
+    for (auto i = 0; i != prog.entry->output_count; ++i)
     {
         output[i] = vstack_ptr[0];
         ++vstack_ptr;

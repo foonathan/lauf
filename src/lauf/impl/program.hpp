@@ -6,13 +6,5 @@
 
 #include <lauf/program.h>
 
-struct lauf_program_impl
-{
-    lauf_module   mod;
-    lauf_function entry;
-};
-
-lauf_program lauf_impl_allocate_program();
-
 #endif // SRC_LAUF_IMPL_PROGRAM_HPP_INCLUDED
 

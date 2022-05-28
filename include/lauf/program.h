@@ -9,7 +9,11 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_program_impl* lauf_program;
+typedef struct lauf_program_impl
+{
+    lauf_module   mod;
+    lauf_function entry;
+} lauf_program;
 
 void lauf_program_destroy(lauf_program prog);
 

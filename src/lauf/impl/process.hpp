@@ -154,12 +154,12 @@ inline void add_allocation(lauf_vm_process& process, allocation alloc)
 
 inline void init_process(lauf_vm_process process, lauf_program program)
 {
-    process->literals                = program->mod->literal_data();
-    process->functions               = program->mod->function_begin();
+    process->literals                = program.mod->literal_data();
+    process->functions               = program.mod->function_begin();
     process->first_unused_allocation = 0;
 
-    for (auto ptr = program->mod->allocation_data();
-         ptr != program->mod->allocation_data() + program->mod->allocation_count; ++ptr)
+    for (auto ptr = program.mod->allocation_data();
+         ptr != program.mod->allocation_data() + program.mod->allocation_count; ++ptr)
     {
         auto alloc = *ptr;
         if ((alloc.flags & allocation::static_memory) != 0)
