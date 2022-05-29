@@ -114,3 +114,9 @@ function @test_dangling_addr_panic(0 => 0) {
     return;
 }
 
+function @test_dangling_addr_reuse_panic(0 => 0) {
+    call @dangling_addr; call @set_ptr;
+    return;
+}
+
+

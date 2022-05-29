@@ -31,6 +31,8 @@ LAUF_BC_OP(return_, bc_inst_none, {
 
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
+    // We're not checking whether it succeeds, as the allocation is either valid and non-destroyed
+    // yet, or it was zero sized so is invalid from the start.
     remove_allocation(process, frame->local_allocation);
     process->allocator.unwind(marker);
 
@@ -115,8 +117,8 @@ LAUF_BC_OP(push_small_neg, bc_inst_literal, {
 // _ => (local_base_addr + literal)
 LAUF_BC_OP(local_addr, bc_inst_literal, {
     --vstack_ptr;
-    vstack_ptr[0].as_address
-        = {static_cast<stack_frame*>(frame_ptr)[-1].local_allocation, ip->local_addr.literal};
+    vstack_ptr[0].as_address        = static_cast<stack_frame*>(frame_ptr)[-1].local_allocation;
+    vstack_ptr[0].as_address.offset = ip->local_addr.literal;
 
     ++ip;
     LAUF_DISPATCH;
@@ -151,7 +153,7 @@ LAUF_BC_OP(array_element_addr, bc_inst_literal, {
 // addr => _
 LAUF_BC_OP(poison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
-    if (auto alloc = process->get_allocation(addr.allocation))
+    if (auto alloc = process->get_allocation(addr))
     {
         alloc->flags |= allocation::is_poisoned;
     }
@@ -170,7 +172,7 @@ LAUF_BC_OP(poison_alloc, bc_inst_none, {
 // addr => _
 LAUF_BC_OP(unpoison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
-    if (auto alloc = process->get_allocation(addr.allocation))
+    if (auto alloc = process->get_allocation(addr))
     {
         alloc->flags &= ~allocation::is_poisoned;
     }

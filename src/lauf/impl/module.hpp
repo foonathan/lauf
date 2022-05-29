@@ -78,16 +78,19 @@ struct allocation
 
     void*    ptr;
     uint32_t size;
-    uint32_t flags;
+    uint16_t flags;
+    // We're storing a 16 bit generation here, even though the actual address remembers only two
+    // bits. But we have the space, so why bother.
+    uint16_t generation;
 
-    allocation(uint32_t size, uint32_t flags = static_memory | clear_memory)
-    : ptr(nullptr), size(size), flags(flags)
+    allocation(uint32_t size, uint16_t flags = static_memory | clear_memory)
+    : ptr(nullptr), size(size), flags(flags), generation(0)
     {}
-    allocation(const void* ptr, uint32_t size, uint32_t flags = is_const)
-    : ptr(const_cast<void*>(ptr)), size(size), flags(flags)
+    allocation(const void* ptr, uint32_t size, uint16_t flags = is_const)
+    : ptr(const_cast<void*>(ptr)), size(size), flags(flags), generation(0)
     {}
-    allocation(void* ptr, uint32_t size, uint32_t flags = 0)
-    : ptr(const_cast<void*>(ptr)), size(size), flags(flags)
+    allocation(void* ptr, uint32_t size, uint16_t flags = 0)
+    : ptr(const_cast<void*>(ptr)), size(size), flags(flags), generation(0)
     {}
 
     void* offset(std::size_t o) const

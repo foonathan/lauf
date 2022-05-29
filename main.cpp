@@ -45,13 +45,22 @@ int main()
         module @mod;
 
         function @test_dangling_addr_panic(0 => 0) {
-            call @dangling_addr; call @use_addr;
+            call @dangling_addr; 
+            call @foo;
+            call @foo;
+            call @foo;
+            call @use_addr;
             return;
         }
 
         function @dangling_addr(0 => 1) {
             local %x : @Value;
             local_addr %x; return;
+        }
+
+        function @foo(0 => 0) {
+            local %x : @Value;
+            return;
         }
 
         function @use_addr(1 => 0) {

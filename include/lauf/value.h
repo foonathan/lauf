@@ -21,9 +21,16 @@ typedef const void* lauf_value_native_ptr;
 
 typedef struct lauf_value_address
 {
-    uint32_t allocation;
-    uint32_t offset;
+    // Order of the fields chosen carefully:
+    // acess to allocation is an AND, acess to offset a shift, access to generation shift + and
+    // (which is the one only necessary for checks). In addition, treating it as an integer and e.g.
+    // incrementing it changes allocation first, not offset. That way, bugs are caught earlier.
+    uint64_t allocation : 30;
+    uint64_t generation : 2;
+    uint64_t offset : 32;
 } lauf_value_address;
+
+const lauf_value_address lauf_value_address_invalid = {(uint32_t)(-1) >> 2, 0, 0};
 
 //=== value ===//
 typedef union lauf_value

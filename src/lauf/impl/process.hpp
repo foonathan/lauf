@@ -24,13 +24,14 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     lauf_function*                 functions;
     lauf_vm                        vm;
     uint32_t                       allocation_list_capacity;
-    uint32_t                       first_unused_allocation;
+    uint32_t                       first_unused_allocation : 30;
+    uint32_t                       generation : 2;
     lauf::_detail::stack_allocator allocator;
 
     explicit lauf_vm_process_impl(lauf_vm vm)
     : literals(nullptr), functions(nullptr), vm(vm),
       allocation_list_capacity(lauf::_detail::initial_allocation_list_size),
-      first_unused_allocation(0), allocator(vm->memory_stack)
+      first_unused_allocation(0), generation(0), allocator(vm->memory_stack)
     {}
 
     lauf_value get_literal(lauf::_detail::bc_literal_idx idx) const
@@ -47,13 +48,14 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
         auto memory = static_cast<void*>(this + 1);
         return static_cast<lauf::_detail::allocation*>(memory);
     }
-    auto get_allocation(uint32_t allocation) -> lauf::_detail::allocation*
+    auto get_allocation(lauf_value_address addr) -> lauf::_detail::allocation*
     {
-        if (allocation >= allocation_list_capacity)
+        if (addr.allocation >= allocation_list_capacity)
             return nullptr;
 
-        auto alloc = allocation_data() + allocation;
-        if ((alloc->flags & lauf::_detail::allocation::freed_memory) != 0)
+        auto alloc = allocation_data() + ptrdiff_t(addr.allocation);
+        if ((alloc->flags & lauf::_detail::allocation::freed_memory) != 0
+            || (alloc->generation & 0b11) != uint16_t(addr.generation))
             return nullptr;
         return alloc;
     }
@@ -61,7 +63,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     const void* get_const_ptr(lauf_value_address addr, size_t size)
     {
         using lauf::_detail::allocation;
-        if (auto alloc = get_allocation(addr.allocation))
+        if (auto alloc = get_allocation(addr))
         {
             if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
                 || (alloc->flags & allocation::is_poisoned) != 0)
@@ -75,7 +77,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     void* get_mutable_ptr(lauf_value_address addr, size_t size)
     {
         using lauf::_detail::allocation;
-        if (auto alloc = get_allocation(addr.allocation))
+        if (auto alloc = get_allocation(addr))
         {
             if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
                 || (alloc->flags & allocation::is_poisoned) != 0
@@ -91,7 +93,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     const char* get_const_cstr(lauf_value_address addr)
     {
         using lauf::_detail::allocation;
-        if (auto alloc = get_allocation(addr.allocation))
+        if (auto alloc = get_allocation(addr))
         {
             if (addr.offset >= alloc->size)
                 return nullptr;
@@ -107,7 +109,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     const char* get_mutable_cstr(lauf_value_address addr)
     {
         using lauf::_detail::allocation;
-        if (auto alloc = get_allocation(addr.allocation))
+        if (auto alloc = get_allocation(addr))
         {
             if (addr.offset >= alloc->size)
                 return nullptr;
@@ -138,8 +140,11 @@ inline void destroy_process(lauf_vm_process process)
 }
 
 // Pass pointer by references as we might need to do a realloc.
-inline uint32_t add_allocation(lauf_vm_process& process, allocation alloc)
+inline lauf_value_address add_allocation(lauf_vm_process& process, allocation alloc)
 {
+    if (alloc.size == 0)
+        return lauf_value_address_invalid;
+
     if (process->first_unused_allocation == process->allocation_list_capacity)
     {
         auto new_capacity = 2ull * process->allocation_list_capacity;
@@ -156,28 +161,32 @@ inline uint32_t add_allocation(lauf_vm_process& process, allocation alloc)
         process->vm->process = process;
     }
 
+    alloc.generation                                             = process->generation;
     process->allocation_data()[process->first_unused_allocation] = alloc;
-    return process->first_unused_allocation++;
+    return {process->first_unused_allocation++, process->generation, 0};
 }
 
-inline bool remove_allocation(lauf_vm_process& process, uint32_t allocation)
+inline bool remove_allocation(lauf_vm_process& process, lauf_value_address addr)
 {
-    auto alloc = process->get_allocation(allocation);
+    auto alloc = process->get_allocation(addr);
     if (alloc == nullptr)
         return false;
     alloc->flags |= allocation::freed_memory;
 
-    if (allocation == process->first_unused_allocation - 1)
+    if (addr.allocation == process->first_unused_allocation - 1u)
     {
         // We can remove the allocation as its at the end.
         // Potentially, we can also remove more subsequent allocations.
         do
         {
             --process->first_unused_allocation;
-        } while (process->first_unused_allocation > 0
-                 && (process->allocation_data()[process->first_unused_allocation - 1].flags
+        } while (process->first_unused_allocation > 0u
+                 && (process->allocation_data()[process->first_unused_allocation - 1u].flags
                      & allocation::freed_memory)
                         != 0);
+
+        // We increment the generation to detect use-after free.
+        ++process->generation;
     }
 
     return true;
