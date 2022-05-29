@@ -1,0 +1,37 @@
+module @heap;
+
+const @test_failure = "test failure", 0;
+
+function @assert_eq(2 => 0) {
+    call_builtin @scmp;
+    global_addr @test_failure; panic_if cmp_ne;
+    return;
+}
+
+function @test_heap_alloc(0 => 0) {
+    local %ptr : @Value;
+
+    layout_of @Value; heap_alloc; store_value %ptr;
+
+    int 42; load_value %ptr; store_field @Value.0;
+
+    load_value %ptr; load_field @Value.0;
+    int 42; call @assert_eq;
+
+    load_value %ptr; free_alloc;
+    return;
+}
+
+function @test_missing_free(0 => 0) {
+    local %ptr : @Value;
+
+    layout_of @Value; heap_alloc; store_value %ptr;
+
+    int 42; load_value %ptr; store_field @Value.0;
+
+    load_value %ptr; load_field @Value.0;
+    int 42; call @assert_eq;
+
+    return;
+}
+

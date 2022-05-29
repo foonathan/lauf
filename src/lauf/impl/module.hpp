@@ -72,8 +72,10 @@ struct allocation
         // Memory needs to be cleared before execution.
         clear_memory = 1 << 4,
 
+        // Memory that is heap allocated.
+        heap_memory = 1 << 5,
         // Memory that is already freed.
-        freed_memory = 1 << 5,
+        freed_memory = 1 << 6,
     };
 
     void*    ptr;

@@ -28,11 +28,29 @@ lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info);
 
 typedef void (*lauf_panic_handler)(lauf_panic_info info, const char* message);
 
+//=== allocation ===//
+typedef struct lauf_vm_allocator_result
+{
+    void*  ptr;
+    size_t size;
+} lauf_vm_allocator_result;
+
+typedef struct lauf_vm_allocator
+{
+    void* user_data;
+    lauf_vm_allocator_result (*heap_alloc)(void* user_data, size_t size, size_t alignment);
+    void (*free_alloc)(void* user_data, lauf_vm_allocator_result result);
+} lauf_vm_allocator;
+
+extern const lauf_vm_allocator lauf_vm_null_allocator;
+extern const lauf_vm_allocator lauf_vm_malloc_allocator;
+
 //=== options ===//
 typedef struct lauf_vm_options
 {
     size_t             max_value_stack_size, max_stack_size;
     lauf_panic_handler panic_handler;
+    lauf_vm_allocator  allocator;
 } lauf_vm_options;
 
 extern const lauf_vm_options lauf_default_vm_options;

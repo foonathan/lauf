@@ -4,6 +4,7 @@
 #ifndef SRC_LAUF_IMPL_PROCESS_HPP_INCLUDED
 #define SRC_LAUF_IMPL_PROCESS_HPP_INCLUDED
 
+#include <cassert>
 #include <cstring>
 #include <lauf/detail/stack_allocator.hpp>
 #include <lauf/impl/module.hpp>
@@ -166,11 +167,11 @@ inline lauf_value_address add_allocation(lauf_vm_process& process, allocation al
     return {process->first_unused_allocation++, process->generation, 0};
 }
 
-inline bool remove_allocation(lauf_vm_process& process, lauf_value_address addr)
+inline allocation* remove_allocation(lauf_vm_process& process, lauf_value_address addr)
 {
     auto alloc = process->get_allocation(addr);
     if (alloc == nullptr)
-        return false;
+        return nullptr;
     alloc->flags |= allocation::freed_memory;
 
     if (addr.allocation == process->first_unused_allocation - 1u)
@@ -189,7 +190,7 @@ inline bool remove_allocation(lauf_vm_process& process, lauf_value_address addr)
         ++process->generation;
     }
 
-    return true;
+    return alloc;
 }
 
 inline void init_process(lauf_vm_process process, lauf_program program)
@@ -213,6 +214,19 @@ inline void init_process(lauf_vm_process process, lauf_program program)
         }
 
         add_allocation(process, alloc);
+    }
+}
+
+inline void reset_process(lauf_vm_process process)
+{
+    // Free all heap memory that is still allocated.
+    for (auto idx = uint32_t(0); idx != process->first_unused_allocation; ++idx)
+    {
+        auto alloc = process->allocation_data()[idx];
+        if ((alloc.flags & allocation::heap_memory) != 0
+            && (alloc.flags & allocation::freed_memory) == 0)
+            process->vm->allocator.free_alloc(process->vm->allocator.user_data,
+                                              {alloc.ptr, alloc.size});
     }
 }
 } // namespace lauf::_detail

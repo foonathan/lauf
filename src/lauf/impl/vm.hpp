@@ -11,6 +11,7 @@ struct alignas(lauf_value) lauf_vm_impl
 {
     lauf_vm_process             process;
     lauf_panic_handler          panic_handler;
+    lauf_vm_allocator           allocator;
     size_t                      value_stack_size;
     lauf::_detail::memory_stack memory_stack;
 

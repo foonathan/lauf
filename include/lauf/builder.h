@@ -86,6 +86,7 @@ void lauf_build_jump_if(lauf_builder b, lauf_condition condition, lauf_label des
 void lauf_build_int(lauf_builder b, lauf_value_sint value);
 void lauf_build_global_addr(lauf_builder b, lauf_global global);
 void lauf_build_local_addr(lauf_builder b, lauf_local var);
+void lauf_build_layout_of(lauf_builder b, lauf_type type);
 
 void lauf_build_drop(lauf_builder b, size_t n);
 void lauf_build_pick(lauf_builder b, size_t n);
@@ -105,6 +106,8 @@ void lauf_build_load_array_value(lauf_builder b, lauf_local var);
 void lauf_build_store_value(lauf_builder b, lauf_local var);
 void lauf_build_store_array_value(lauf_builder b, lauf_local var);
 
+void lauf_build_heap_alloc(lauf_builder b);
+void lauf_build_free_alloc(lauf_builder b);
 void lauf_build_poison_alloc(lauf_builder b);
 void lauf_build_unpoison_alloc(lauf_builder b);
 

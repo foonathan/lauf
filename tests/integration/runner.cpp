@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 #include <lauf/frontend/text.h>
 #include <lauf/lib/int.h>
 #include <lauf/linker.h>
@@ -44,7 +45,22 @@ int main(int argc, char* argv[])
     }
 
     auto exit_code = 0;
-    auto vm        = lauf_vm_create(lauf_default_vm_options);
+
+    std::size_t allocated_heap_memory = 0;
+    auto        options               = [&] {
+        auto options      = lauf_default_vm_options;
+        options.allocator = {&allocated_heap_memory,
+                             [](void* data, std::size_t size, std::size_t) {
+                                 *static_cast<std::size_t*>(data) += size;
+                                 return lauf_vm_allocator_result{std::malloc(size), size};
+                             },
+                             [](void* data, lauf_vm_allocator_result result) {
+                                 *static_cast<std::size_t*>(data) -= result.size;
+                                 std::free(result.ptr);
+                             }};
+        return options;
+    }();
+    auto vm = lauf_vm_create(options);
     for (auto fn = lauf_module_function_begin(mod); fn != lauf_module_function_end(mod); ++fn)
     {
         auto name = lauf_function_get_name(*fn);
@@ -64,6 +80,12 @@ int main(int argc, char* argv[])
         if (has_paniced != should_panic)
             ++exit_code;
         lauf_program_destroy(program);
+    }
+
+    if (allocated_heap_memory > 0)
+    {
+        std::fputs("memory leak", stderr);
+        ++exit_code;
     }
 
     lauf_vm_destroy(vm);

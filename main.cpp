@@ -3,6 +3,7 @@
 
 #include <climits>
 #include <cstdio>
+#include <cstdlib>
 #include <new>
 #include <utility>
 
@@ -44,35 +45,27 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test_dangling_addr_panic(0 => 0) {
-            call @dangling_addr; 
-            call @foo;
-            call @foo;
-            call @foo;
-            call @use_addr;
-            return;
-        }
+        function @test(0 => 1) {
+            local %ptr : @Value;
+            local %result : @Value;
 
-        function @dangling_addr(0 => 1) {
-            local %x : @Value;
-            local_addr %x; return;
-        }
+            layout_of @Value; heap_alloc; store_value %ptr;
 
-        function @foo(0 => 0) {
-            local %x : @Value;
-            return;
-        }
+            int 42; load_value %ptr; store_field @Value.0;
+            load_value %ptr; load_field @Value.0; store_value %result;
 
-        function @use_addr(1 => 0) {
-            local %x : @Value;
-            int 42; roll 1; store_field @Value.0;
+            load_value %ptr; free_alloc;
+
+            load_value %result;
             return;
         }
     )");
     auto fn      = lauf_module_function_begin(mod)[0];
     auto program = lauf_link_single_module(mod, fn);
 
-    auto vm = lauf_vm_create(lauf_default_vm_options);
+    auto options      = lauf_default_vm_options;
+    options.allocator = lauf_vm_malloc_allocator;
+    auto vm           = lauf_vm_create(options);
 
     lauf_value input = {.as_sint = 1};
     lauf_value output;

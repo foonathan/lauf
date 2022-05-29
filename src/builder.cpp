@@ -331,6 +331,16 @@ void lauf_build_local_addr(lauf_builder b, lauf_local var)
     b->value_stack.push("local_addr");
 }
 
+void lauf_build_layout_of(lauf_builder b, lauf_type type)
+{
+    b->bytecode.location(b->cur_location);
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_small_zext, type->layout.size));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_small_zext, type->layout.alignment));
+
+    b->value_stack.push("layout_of", 2);
+}
+
 void lauf_build_drop(lauf_builder b, size_t n)
 {
     b->bytecode.location(b->cur_location);
@@ -489,9 +499,27 @@ void lauf_build_store_array_value(lauf_builder b, lauf_local var)
     b->value_stack.pop("store_array_value", 2);
 }
 
+void lauf_build_heap_alloc(lauf_builder b)
+{
+    b->bytecode.location(b->cur_location);
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(heap_alloc));
+    b->value_stack.pop("heap_alloc", 2);
+    b->value_stack.push("heap_alloc");
+}
+
+void lauf_build_free_alloc(lauf_builder b)
+{
+    b->bytecode.location(b->cur_location);
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(free_alloc));
+    b->value_stack.pop("free_alloc");
+}
+
 void lauf_build_poison_alloc(lauf_builder b)
 {
     b->bytecode.location(b->cur_location);
+
     b->bytecode.instruction(LAUF_VM_INSTRUCTION(poison_alloc));
     b->value_stack.pop("poison_alloc");
 }
@@ -499,6 +527,7 @@ void lauf_build_poison_alloc(lauf_builder b)
 void lauf_build_unpoison_alloc(lauf_builder b)
 {
     b->bytecode.location(b->cur_location);
+
     b->bytecode.instruction(LAUF_VM_INSTRUCTION(unpoison_alloc));
     b->value_stack.pop("unpoison_alloc");
 }

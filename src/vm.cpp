@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <lauf/builtin.h>
 #include <lauf/detail/bytecode.hpp>
@@ -21,7 +22,7 @@
 using namespace lauf::_detail;
 
 lauf_vm_impl::lauf_vm_impl(lauf_vm_options options)
-: panic_handler(options.panic_handler),
+: panic_handler(options.panic_handler), allocator(options.allocator),
   value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
   memory_stack(options.max_stack_size)
 {
@@ -117,9 +118,29 @@ lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
     return &info->fake_frame;
 }
 
+//=== allocator ===//
+const lauf_vm_allocator lauf_vm_null_allocator = {nullptr,
+                                                  [](void*, size_t, size_t) {
+                                                      return lauf_vm_allocator_result{nullptr, 0};
+                                                  },
+                                                  [](void*, lauf_vm_allocator_result) {}};
+
+const lauf_vm_allocator lauf_vm_malloc_allocator
+    = {nullptr,
+       [](void*, size_t size, size_t alignment) {
+           if (alignment > alignof(std::max_align_t))
+               return lauf_vm_allocator_result{nullptr, 0};
+
+           auto ptr = std::calloc(size, 1);
+           return lauf_vm_allocator_result{ptr, size};
+       },
+       [](void*, lauf_vm_allocator_result memory) { std::free(memory.ptr); }};
+
 //=== vm functions ===//
 const lauf_vm_options lauf_default_vm_options
-    = {size_t(128) * 1024, size_t(896) * 1024, [](lauf_panic_info info, const char* message) {
+    = {size_t(128) * 1024, size_t(896) * 1024,
+       // Panic handler prints message and backtrace.
+       [](lauf_panic_info info, const char* message) {
            std::fprintf(stderr, "[lauf] panic: %s\n",
                         message == nullptr ? "(invalid message address)" : message);
            std::fprintf(stderr, "stack backtrace\n");
@@ -138,7 +159,8 @@ const lauf_vm_options lauf_default_vm_options
                }
                ++index;
            }
-       }};
+       },
+       lauf_vm_null_allocator};
 
 lauf_vm lauf_vm_create(lauf_vm_options options)
 {
@@ -336,18 +358,20 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     auto        frame_ptr = new_stack_frame(vm->process, &prev + 1, nullptr, prog.entry);
     assert(frame_ptr); // initial stack frame should fit in first block
 
-    auto ip = prog.entry->bytecode();
-    if (!dispatch(ip, vstack_ptr, frame_ptr, vm->process))
-        return false;
-
-    vstack_ptr = vm->value_stack() - prog.entry->output_count;
-    for (auto i = 0; i != prog.entry->output_count; ++i)
+    auto ip     = prog.entry->bytecode();
+    auto result = dispatch(ip, vstack_ptr, frame_ptr, vm->process);
+    if (result)
     {
-        output[i] = vstack_ptr[0];
-        ++vstack_ptr;
+        vstack_ptr = vm->value_stack() - prog.entry->output_count;
+        for (auto i = 0; i != prog.entry->output_count; ++i)
+        {
+            output[i] = vstack_ptr[0];
+            ++vstack_ptr;
+        }
     }
 
+    reset_process(vm->process);
     vm->memory_stack.reset();
-    return true;
+    return result;
 }
 

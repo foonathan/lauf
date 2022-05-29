@@ -149,6 +149,49 @@ LAUF_BC_OP(array_element_addr, bc_inst_literal, {
     LAUF_DISPATCH;
 })
 
+// Allocates new heap memory.
+// size alignment => addr
+LAUF_BC_OP(heap_alloc, bc_inst_none, {
+    auto vm                 = process->vm;
+    auto size               = vstack_ptr[1].as_uint;
+    auto alignment          = vstack_ptr[0].as_uint;
+    auto [ptr, actual_size] = vm->allocator.heap_alloc(vm->allocator.user_data, size, alignment);
+    if (ptr == nullptr)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "out of heap memory");
+        return false;
+    }
+
+    auto alloc = allocation(ptr, uint32_t(actual_size), allocation::heap_memory);
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = add_allocation(process, alloc);
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
+// Frees the heap allocation the address is in.
+// addr => _
+LAUF_BC_OP(free_alloc, bc_inst_none, {
+    auto vm   = process->vm;
+    auto addr = vstack_ptr[0].as_address;
+    ++vstack_ptr;
+
+    auto alloc = remove_allocation(process, addr);
+    if (alloc == nullptr)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        vm->panic_handler(&info, "invalid address");
+        return false;
+    }
+    vm->allocator.free_alloc(vm->allocator.user_data, {alloc->ptr, alloc->size});
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
 // Poisons the memory allocation the address is in.
 // addr => _
 LAUF_BC_OP(poison_alloc, bc_inst_none, {
