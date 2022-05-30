@@ -119,22 +119,15 @@ lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
 }
 
 //=== allocator ===//
-const lauf_vm_allocator lauf_vm_null_allocator = {nullptr,
-                                                  [](void*, size_t, size_t) {
-                                                      return lauf_vm_allocator_result{nullptr, 0};
-                                                  },
-                                                  [](void*, lauf_vm_allocator_result) {}};
+const lauf_vm_allocator lauf_vm_null_allocator
+    = {nullptr, [](void*, size_t, size_t) -> void* { return nullptr; }, [](void*, void*) {}};
 
 const lauf_vm_allocator lauf_vm_malloc_allocator
     = {nullptr,
        [](void*, size_t size, size_t alignment) {
-           if (alignment > alignof(std::max_align_t))
-               return lauf_vm_allocator_result{nullptr, 0};
-
-           auto ptr = std::calloc(size, 1);
-           return lauf_vm_allocator_result{ptr, size};
+           return alignment > alignof(std::max_align_t) ? nullptr : std::calloc(size, 1);
        },
-       [](void*, lauf_vm_allocator_result memory) { std::free(memory.ptr); }};
+       [](void*, void* memory) { std::free(memory); }};
 
 //=== vm functions ===//
 const lauf_vm_options lauf_default_vm_options

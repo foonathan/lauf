@@ -516,6 +516,24 @@ void lauf_build_free_alloc(lauf_builder b)
     b->value_stack.pop("free_alloc");
 }
 
+void lauf_build_split_alloc(lauf_builder b)
+{
+    b->bytecode.location(b->cur_location);
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(split_alloc));
+    b->value_stack.pop("split_alloc", 2);
+    b->value_stack.push("split_alloc", 2);
+}
+
+void lauf_build_merge_alloc(lauf_builder b)
+{
+    b->bytecode.location(b->cur_location);
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(merge_alloc));
+    b->value_stack.pop("merge_alloc", 2);
+    b->value_stack.push("merge_alloc");
+}
+
 void lauf_build_poison_alloc(lauf_builder b)
 {
     b->bytecode.location(b->cur_location);

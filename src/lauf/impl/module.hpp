@@ -62,20 +62,23 @@ struct allocation
 {
     enum flag : uint32_t
     {
-        is_const    = 1 << 0,
-        is_poisoned = 1 << 1,
+        is_const       = 1 << 0,
+        is_poisoned    = 1 << 1,
+        is_split       = 1 << 2,
+        is_first_split = 1 << 3,
+        is_last_split  = 1 << 4,
 
         // Memory that needs to be allocated when the program is created.
-        static_memory = 1 << 2,
+        static_memory = 1 << 5,
         // Memory needs to be copied over before execution.
-        copy_memory = 1 << 3,
+        copy_memory = 1 << 6,
         // Memory needs to be cleared before execution.
-        clear_memory = 1 << 4,
+        clear_memory = 1 << 7,
 
         // Memory that is heap allocated.
-        heap_memory = 1 << 5,
+        heap_memory = 1 << 8,
         // Memory that is already freed.
-        freed_memory = 1 << 6,
+        freed_memory = 1 << 9,
     };
 
     void*    ptr;

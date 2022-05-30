@@ -51,12 +51,12 @@ int main(int argc, char* argv[])
         auto options      = lauf_default_vm_options;
         options.allocator = {&allocated_heap_memory,
                              [](void* data, std::size_t size, std::size_t) {
-                                 *static_cast<std::size_t*>(data) += size;
-                                 return lauf_vm_allocator_result{std::malloc(size), size};
+                                 *static_cast<std::size_t*>(data) += 1;
+                                 return std::malloc(size);
                              },
-                             [](void* data, lauf_vm_allocator_result result) {
-                                 *static_cast<std::size_t*>(data) -= result.size;
-                                 std::free(result.ptr);
+                             [](void* data, void* ptr) {
+                                 *static_cast<std::size_t*>(data) -= 1;
+                                 std::free(ptr);
                              }};
         return options;
     }();

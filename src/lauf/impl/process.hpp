@@ -224,9 +224,11 @@ inline void reset_process(lauf_vm_process process)
     {
         auto alloc = process->allocation_data()[idx];
         if ((alloc.flags & allocation::heap_memory) != 0
+            // Either the allocation isn't split, or it's the first split.
+            && ((alloc.flags & allocation::is_split) == 0
+                || (alloc.flags & allocation::is_first_split) != 0)
             && (alloc.flags & allocation::freed_memory) == 0)
-            process->vm->allocator.free_alloc(process->vm->allocator.user_data,
-                                              {alloc.ptr, alloc.size});
+            process->vm->allocator.free_alloc(process->vm->allocator.user_data, alloc.ptr);
     }
 }
 } // namespace lauf::_detail

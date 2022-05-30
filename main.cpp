@@ -16,7 +16,7 @@
 #include <lauf/vm.h>
 
 LAUF_BUILTIN_UNARY_OPERATION(print, 1, {
-    std::printf("%ld\n", value.as_sint);
+    std::printf("%d\n", value.as_address.allocation);
     *result = value;
 })
 
@@ -47,12 +47,17 @@ int main()
 
         function @test(0 => 1) {
             local %ptr : @Value;
+            local %ptr2 : @Value;
             local %result : @Value;
 
-            layout_of @Value; heap_alloc; store_value %ptr;
+            int 16; int 8; heap_alloc; store_value %ptr;
+
+            int 8; load_value %ptr; split_alloc; store_value %ptr2; store_value %ptr;
 
             int 42; load_value %ptr; store_field @Value.0;
             load_value %ptr; load_field @Value.0; store_value %result;
+
+            load_value %ptr; load_value %ptr2; merge_alloc; store_value %ptr;
 
             load_value %ptr; free_alloc;
 

@@ -152,10 +152,10 @@ LAUF_BC_OP(array_element_addr, bc_inst_literal, {
 // Allocates new heap memory.
 // size alignment => addr
 LAUF_BC_OP(heap_alloc, bc_inst_none, {
-    auto vm                 = process->vm;
-    auto size               = vstack_ptr[1].as_uint;
-    auto alignment          = vstack_ptr[0].as_uint;
-    auto [ptr, actual_size] = vm->allocator.heap_alloc(vm->allocator.user_data, size, alignment);
+    auto vm        = process->vm;
+    auto size      = vstack_ptr[1].as_uint;
+    auto alignment = vstack_ptr[0].as_uint;
+    auto ptr       = vm->allocator.heap_alloc(vm->allocator.user_data, size, alignment);
     if (ptr == nullptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
@@ -163,7 +163,7 @@ LAUF_BC_OP(heap_alloc, bc_inst_none, {
         return false;
     }
 
-    auto alloc = allocation(ptr, uint32_t(actual_size), allocation::heap_memory);
+    auto alloc = allocation(ptr, uint32_t(size), allocation::heap_memory);
 
     ++vstack_ptr;
     vstack_ptr[0].as_address = add_allocation(process, alloc);
@@ -179,14 +179,109 @@ LAUF_BC_OP(free_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = remove_allocation(process, addr);
-    if (alloc == nullptr)
+    auto alloc = process->get_allocation(addr);
+    if (alloc == nullptr || (alloc->flags & allocation::heap_memory) == 0
+        || (alloc->flags & allocation::is_split) != 0)
     {
         auto info = make_panic_info(frame_ptr, ip);
         vm->panic_handler(&info, "invalid address");
         return false;
     }
-    vm->allocator.free_alloc(vm->allocator.user_data, {alloc->ptr, alloc->size});
+    vm->allocator.free_alloc(vm->allocator.user_data, alloc->ptr);
+    remove_allocation(process, addr);
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
+// Splits a memory allocation after length bytes.
+// length base_addr => addr1 addr2
+LAUF_BC_OP(split_alloc, bc_inst_none, {
+    auto length    = vstack_ptr[1].as_uint;
+    auto base_addr = vstack_ptr[0].as_address;
+
+    auto base_alloc = process->get_allocation(base_addr);
+    if (!base_alloc || length > base_alloc->size)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        process->vm->panic_handler(&info, "invalid address");
+        return false;
+    }
+
+    // If we're splitting an allocation that hasn't been split before, we need to set first and list
+    // split accordingly.
+    auto is_new_split = (base_alloc->flags & allocation::is_split) == 0;
+
+    auto alloc1 = *base_alloc;
+    alloc1.size = length;
+    alloc1.flags |= allocation::is_split;
+    alloc1.flags &= ~allocation::is_last_split;
+    if (is_new_split)
+        alloc1.flags |= allocation::is_first_split;
+
+    auto alloc2 = *base_alloc;
+    alloc2.ptr  = base_alloc->offset(length);
+    alloc2.size -= length;
+    alloc2.flags |= allocation::is_split;
+    alloc2.flags &= ~allocation::is_first_split;
+    if (is_new_split)
+        alloc2.flags |= allocation::is_last_split;
+
+    *base_alloc  = alloc1;
+    auto addr1   = base_addr;
+    addr1.offset = 0;
+    auto addr2   = add_allocation(process, alloc2);
+
+    vstack_ptr[1].as_address = addr1;
+    vstack_ptr[0].as_address = addr2;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
+// Merges two split memory allocations.
+// addr1 addr2 => base_addr
+LAUF_BC_OP(merge_alloc, bc_inst_none, {
+    auto addr1 = vstack_ptr[1].as_address;
+    auto addr2 = vstack_ptr[0].as_address;
+
+    auto alloc1 = process->get_allocation(addr1);
+    auto alloc2 = process->get_allocation(addr2);
+    if (!alloc1
+        || !alloc2
+        // Both allocations need to be splits.
+        || (alloc1->flags & allocation::is_split) == 0
+        || (alloc2->flags & allocation::is_split) == 0
+        // And they need to be next to each other.
+        || alloc1->offset(alloc1->size) != alloc2->ptr)
+    {
+        auto info = make_panic_info(frame_ptr, ip);
+        process->vm->panic_handler(&info, "invalid address");
+        return false;
+    }
+    auto alloc1_first = (alloc1->flags & allocation::is_first_split) != 0;
+    auto alloc2_last  = (alloc2->flags & allocation::is_last_split) != 0;
+
+    auto& base_alloc = *alloc1;
+    base_alloc.size += alloc2->size;
+    if (alloc1_first && alloc2_last)
+    {
+        // If we're merging the first and last split, it's no longer split.
+        base_alloc.flags &= ~allocation::is_first_split;
+        base_alloc.flags &= ~allocation::is_last_split;
+        base_alloc.flags &= ~allocation::is_split;
+    }
+    else if (!alloc1_first && alloc2_last)
+    {
+        // base_alloc is now the last split.
+        base_alloc.flags |= allocation::is_last_split;
+    }
+    auto base_addr = addr1;
+
+    remove_allocation(process, addr2);
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = base_addr;
 
     ++ip;
     LAUF_DISPATCH;

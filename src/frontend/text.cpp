@@ -572,6 +572,16 @@ struct inst_free_alloc
     static constexpr auto rule  = LEXY_KEYWORD("free_alloc", identifier);
     static constexpr auto build = &lauf_build_free_alloc;
 };
+struct inst_split_alloc
+{
+    static constexpr auto rule  = LEXY_KEYWORD("split_alloc", identifier);
+    static constexpr auto build = &lauf_build_split_alloc;
+};
+struct inst_merge_alloc
+{
+    static constexpr auto rule  = LEXY_KEYWORD("merge_alloc", identifier);
+    static constexpr auto build = &lauf_build_merge_alloc;
+};
 struct inst_poison_alloc
 {
     static constexpr auto rule  = LEXY_KEYWORD("poison_alloc", identifier);
@@ -608,6 +618,7 @@ struct inst
                      | dsl::p<inst_load_value> | dsl::p<inst_load_array_value>      //
                      | dsl::p<inst_store_value> | dsl::p<inst_store_array_value>    //
                      | dsl::p<inst_heap_alloc> | dsl::p<inst_free_alloc>            //
+                     | dsl::p<inst_split_alloc> | dsl::p<inst_merge_alloc>          //
                      | dsl::p<inst_poison_alloc> | dsl::p<inst_unpoison_alloc>      //
                      | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
         return dsl::p<debug_location> + insts + dsl::semicolon;
