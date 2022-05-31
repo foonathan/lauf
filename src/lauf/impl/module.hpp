@@ -60,47 +60,60 @@ namespace lauf::_detail
 {
 struct allocation
 {
-    enum flag : uint32_t
+    enum source_t : uint8_t
     {
-        is_const       = 1 << 0,
-        is_poisoned    = 1 << 1,
-        is_split       = 1 << 2,
-        is_first_split = 1 << 3,
-        is_last_split  = 1 << 4,
+        // Global const memory: no need to do anything on process start.
+        static_const_memory,
+        // Global mutable memory: allocate and copy on process start.
+        static_mutable_memory,
+        // Global zero memory: allocate and clear on process start.
+        static_zero_memory,
 
-        // Memory that needs to be allocated when the program is created.
-        static_memory = 1 << 5,
-        // Memory needs to be copied over before execution.
-        copy_memory = 1 << 6,
-        // Memory needs to be cleared before execution.
-        clear_memory = 1 << 7,
-
-        // Memory that is heap allocated.
-        heap_memory = 1 << 8,
-        // Memory that is already freed.
-        freed_memory = 1 << 9,
+        stack_memory,
+        heap_memory,
+    };
+    enum lifetime_t : uint8_t
+    {
+        allocated,
+        poisoned,
+        freed,
+    };
+    enum split_t : uint8_t
+    {
+        unsplit,
+        first_split,
+        middle_split,
+        last_split,
     };
 
-    void*    ptr;
-    uint32_t size;
-    uint16_t flags;
-    // We're storing a 16 bit generation here, even though the actual address remembers only two
+    void*      ptr;
+    uint32_t   size;
+    source_t   source;
+    lifetime_t lifetime = allocated;
+    split_t    split    = unsplit;
+    // We're storing an 8 bit generation here, even though the actual address remembers only two
     // bits. But we have the space, so why bother.
-    uint16_t generation;
+    uint8_t generation = 0;
 
-    allocation(uint32_t size, uint16_t flags = static_memory | clear_memory)
-    : ptr(nullptr), size(size), flags(flags), generation(0)
+    allocation(uint32_t size, source_t source = static_zero_memory)
+    : ptr(nullptr), size(size), source(source)
     {}
-    allocation(const void* ptr, uint32_t size, uint16_t flags = is_const)
-    : ptr(const_cast<void*>(ptr)), size(size), flags(flags), generation(0)
+    allocation(const void* ptr, uint32_t size, source_t source = static_const_memory)
+    : ptr(const_cast<void*>(ptr)), size(size), source(source)
     {}
-    allocation(void* ptr, uint32_t size, uint16_t flags = 0)
-    : ptr(const_cast<void*>(ptr)), size(size), flags(flags), generation(0)
+    allocation(void* ptr, uint32_t size) = delete;
+    allocation(void* ptr, uint32_t size, source_t source)
+    : ptr(const_cast<void*>(ptr)), size(size), source(source)
     {}
 
     void* offset(std::size_t o) const
     {
         return static_cast<unsigned char*>(ptr) + o;
+    }
+
+    bool is_split() const
+    {
+        return split != allocation::unsplit;
     }
 };
 static_assert(sizeof(allocation) == 2 * sizeof(void*));

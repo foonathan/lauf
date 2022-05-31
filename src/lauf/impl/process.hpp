@@ -54,9 +54,9 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
         if (addr.allocation >= allocation_list_capacity)
             return nullptr;
 
-        auto alloc = allocation_data() + ptrdiff_t(addr.allocation);
-        if ((alloc->flags & lauf::_detail::allocation::freed_memory) != 0
-            || (alloc->generation & 0b11) != uint16_t(addr.generation))
+        auto alloc = allocation_data() + addr.allocation;
+        if (alloc->lifetime == lauf::_detail::allocation::freed
+            || (alloc->generation & 0b11) != uint8_t(addr.generation))
             return nullptr;
         return alloc;
     }
@@ -67,7 +67,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
         if (auto alloc = get_allocation(addr))
         {
             if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
-                || (alloc->flags & allocation::is_poisoned) != 0)
+                || alloc->lifetime != allocation::allocated)
                 return nullptr;
 
             return alloc->offset(addr.offset);
@@ -81,8 +81,8 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
         if (auto alloc = get_allocation(addr))
         {
             if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
-                || (alloc->flags & allocation::is_poisoned) != 0
-                || (alloc->flags & allocation::is_const) != 0)
+                || alloc->lifetime != allocation::allocated
+                || alloc->source == allocation::static_const_memory)
                 return nullptr;
 
             return alloc->offset(addr.offset);
@@ -96,7 +96,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
         using lauf::_detail::allocation;
         if (auto alloc = get_allocation(addr))
         {
-            if (addr.offset >= alloc->size)
+            if (addr.offset >= alloc->size || alloc->lifetime != allocation::allocated)
                 return nullptr;
 
             auto cstr = static_cast<const char*>(alloc->offset(addr.offset));
@@ -112,7 +112,8 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
         using lauf::_detail::allocation;
         if (auto alloc = get_allocation(addr))
         {
-            if (addr.offset >= alloc->size)
+            if (addr.offset >= alloc->size || alloc->lifetime != allocation::allocated
+                || alloc->source == allocation::static_const_memory)
                 return nullptr;
 
             auto cstr = static_cast<const char*>(alloc->offset(addr.offset));
@@ -172,7 +173,7 @@ inline allocation* remove_allocation(lauf_vm_process& process, lauf_value_addres
     auto alloc = process->get_allocation(addr);
     if (alloc == nullptr)
         return nullptr;
-    alloc->flags |= allocation::freed_memory;
+    alloc->lifetime = allocation::freed;
 
     if (addr.allocation == process->first_unused_allocation - 1u)
     {
@@ -181,13 +182,11 @@ inline allocation* remove_allocation(lauf_vm_process& process, lauf_value_addres
         do
         {
             --process->first_unused_allocation;
+            // We increment the generation to detect use-after free.
+            ++process->generation;
         } while (process->first_unused_allocation > 0u
-                 && (process->allocation_data()[process->first_unused_allocation - 1u].flags
-                     & allocation::freed_memory)
-                        != 0);
-
-        // We increment the generation to detect use-after free.
-        ++process->generation;
+                 && process->allocation_data()[process->first_unused_allocation - 1u].lifetime
+                        == allocation::freed);
     }
 
     return alloc;
@@ -203,13 +202,16 @@ inline void init_process(lauf_vm_process process, lauf_program program)
          ptr != program.mod->allocation_data() + program.mod->allocation_count; ++ptr)
     {
         auto alloc = *ptr;
-        if ((alloc.flags & allocation::static_memory) != 0)
+        if (alloc.source == allocation::static_zero_memory)
         {
             auto ptr = process->allocator.allocate<alignof(void*)>(alloc.size);
-            if ((alloc.flags & allocation::clear_memory) != 0)
-                std::memset(ptr, 0, alloc.size);
-            else if ((alloc.flags & allocation::copy_memory) != 0)
-                std::memcpy(ptr, alloc.ptr, alloc.size);
+            std::memset(ptr, 0, alloc.size);
+            alloc.ptr = ptr;
+        }
+        else if (alloc.source == allocation::static_mutable_memory)
+        {
+            auto ptr = process->allocator.allocate<alignof(void*)>(alloc.size);
+            std::memcpy(ptr, alloc.ptr, alloc.size);
             alloc.ptr = ptr;
         }
 
@@ -223,11 +225,10 @@ inline void reset_process(lauf_vm_process process)
     for (auto idx = uint32_t(0); idx != process->first_unused_allocation; ++idx)
     {
         auto alloc = process->allocation_data()[idx];
-        if ((alloc.flags & allocation::heap_memory) != 0
+        if (alloc.source == allocation::heap_memory
+            && alloc.lifetime != allocation::freed
             // Either the allocation isn't split, or it's the first split.
-            && ((alloc.flags & allocation::is_split) == 0
-                || (alloc.flags & allocation::is_first_split) != 0)
-            && (alloc.flags & allocation::freed_memory) == 0)
+            && (alloc.split == allocation::unsplit || alloc.split == allocation::first_split))
             process->vm->allocator.free_alloc(process->vm->allocator.user_data, alloc.ptr);
     }
 }

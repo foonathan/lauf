@@ -180,8 +180,10 @@ LAUF_BC_OP(free_alloc, bc_inst_none, {
     ++vstack_ptr;
 
     auto alloc = process->get_allocation(addr);
-    if (alloc == nullptr || (alloc->flags & allocation::heap_memory) == 0
-        || (alloc->flags & allocation::is_split) != 0)
+    if (alloc == nullptr
+        || alloc->source != allocation::heap_memory
+        // We do not allow freeing split memory as others might be using other parts.
+        || alloc->split != allocation::unsplit)
     {
         auto info = make_panic_info(frame_ptr, ip);
         vm->panic_handler(&info, "invalid address");
@@ -208,24 +210,32 @@ LAUF_BC_OP(split_alloc, bc_inst_none, {
         return false;
     }
 
-    // If we're splitting an allocation that hasn't been split before, we need to set first and list
-    // split accordingly.
-    auto is_new_split = (base_alloc->flags & allocation::is_split) == 0;
-
     auto alloc1 = *base_alloc;
     alloc1.size = length;
-    alloc1.flags |= allocation::is_split;
-    alloc1.flags &= ~allocation::is_last_split;
-    if (is_new_split)
-        alloc1.flags |= allocation::is_first_split;
 
     auto alloc2 = *base_alloc;
     alloc2.ptr  = base_alloc->offset(length);
     alloc2.size -= length;
-    alloc2.flags |= allocation::is_split;
-    alloc2.flags &= ~allocation::is_first_split;
-    if (is_new_split)
-        alloc2.flags |= allocation::is_last_split;
+
+    switch (base_alloc->split)
+    {
+    case allocation::unsplit:
+        alloc1.split = allocation::first_split;
+        alloc2.split = allocation::last_split;
+        break;
+    case allocation::first_split:
+        alloc1.split = allocation::first_split;
+        alloc2.split = allocation::middle_split;
+        break;
+    case allocation::middle_split:
+        alloc1.split = allocation::middle_split;
+        alloc2.split = allocation::middle_split;
+        break;
+    case allocation::last_split:
+        alloc1.split = allocation::middle_split;
+        alloc2.split = allocation::last_split;
+        break;
+    }
 
     *base_alloc  = alloc1;
     auto addr1   = base_addr;
@@ -250,8 +260,8 @@ LAUF_BC_OP(merge_alloc, bc_inst_none, {
     if (!alloc1
         || !alloc2
         // Both allocations need to be splits.
-        || (alloc1->flags & allocation::is_split) == 0
-        || (alloc2->flags & allocation::is_split) == 0
+        || !alloc1->is_split()
+        || !alloc2->is_split()
         // And they need to be next to each other.
         || alloc1->offset(alloc1->size) != alloc2->ptr)
     {
@@ -259,22 +269,20 @@ LAUF_BC_OP(merge_alloc, bc_inst_none, {
         process->vm->panic_handler(&info, "invalid address");
         return false;
     }
-    auto alloc1_first = (alloc1->flags & allocation::is_first_split) != 0;
-    auto alloc2_last  = (alloc2->flags & allocation::is_last_split) != 0;
+    auto alloc1_first = alloc1->split == allocation::first_split;
+    auto alloc2_last  = alloc2->split == allocation::last_split;
 
     auto& base_alloc = *alloc1;
     base_alloc.size += alloc2->size;
     if (alloc1_first && alloc2_last)
     {
         // If we're merging the first and last split, it's no longer split.
-        base_alloc.flags &= ~allocation::is_first_split;
-        base_alloc.flags &= ~allocation::is_last_split;
-        base_alloc.flags &= ~allocation::is_split;
+        base_alloc.split = allocation::unsplit;
     }
     else if (!alloc1_first && alloc2_last)
     {
         // base_alloc is now the last split.
-        base_alloc.flags |= allocation::is_last_split;
+        base_alloc.split = allocation::last_split;
     }
     auto base_addr = addr1;
 
@@ -293,7 +301,7 @@ LAUF_BC_OP(poison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
     if (auto alloc = process->get_allocation(addr))
     {
-        alloc->flags |= allocation::is_poisoned;
+        alloc->lifetime = allocation::poisoned;
     }
     else
     {
@@ -312,7 +320,7 @@ LAUF_BC_OP(unpoison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
     if (auto alloc = process->get_allocation(addr))
     {
-        alloc->flags &= ~allocation::is_poisoned;
+        alloc->lifetime = allocation::allocated;
     }
     else
     {

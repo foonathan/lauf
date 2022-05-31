@@ -57,8 +57,9 @@ void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruc
     if (memory == nullptr)
         return nullptr;
 
-    auto local_memory     = static_cast<stack_frame*>(memory) + 1;
-    auto local_allocation = add_allocation(process, {local_memory, fn->local_stack_size});
+    auto local_memory = static_cast<stack_frame*>(memory) + 1;
+    auto local_allocation
+        = add_allocation(process, {local_memory, fn->local_stack_size, allocation::stack_memory});
 
     return ::new (memory) stack_frame{fn, return_ip, marker, local_allocation, prev_frame} + 1;
 }

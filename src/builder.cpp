@@ -169,8 +169,7 @@ lauf_global lauf_build_data(lauf_builder b, const void* memory, size_t size)
     LAUF_VERIFY(size < UINT32_MAX, "data", "allocation size limit exceeded");
 
     auto idx = b->allocations.size();
-    b->allocations.emplace_back(memory, uint32_t(size),
-                                allocation::static_memory | allocation::copy_memory);
+    b->allocations.emplace_back(memory, uint32_t(size), allocation::static_mutable_memory);
     return {idx};
 }
 
