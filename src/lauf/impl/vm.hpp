@@ -4,16 +4,16 @@
 #ifndef SRC_LAUF_IMPL_VM_HPP_INCLUDED
 #define SRC_LAUF_IMPL_VM_HPP_INCLUDED
 
-#include <lauf/detail/stack_allocator.hpp>
+#include <lauf/support/stack_allocator.hpp>
 #include <lauf/vm.h>
 
 struct alignas(lauf_value) lauf_vm_impl
 {
-    lauf_vm_process             process;
-    lauf_panic_handler          panic_handler;
-    lauf_vm_allocator           allocator;
-    size_t                      value_stack_size;
-    lauf::_detail::memory_stack memory_stack;
+    lauf_vm_process    process;
+    lauf_panic_handler panic_handler;
+    lauf_vm_allocator  allocator;
+    size_t             value_stack_size;
+    lauf::memory_stack memory_stack;
 
     lauf_vm_impl(lauf_vm_options options);
 
@@ -32,10 +32,10 @@ struct alignas(lauf_value) lauf_vm_impl
     }
 };
 
-namespace lauf::_detail
+namespace lauf
 {
 size_t frame_size_for(lauf_function fn);
-} // namespace lauf::_detail
+} // namespace lauf
 
 #endif // SRC_LAUF_IMPL_VM_HPP_INCLUDED
 

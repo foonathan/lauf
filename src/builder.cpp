@@ -4,17 +4,15 @@
 #include <lauf/builder.h>
 
 #include <lauf/builtin.h>
-#include <lauf/detail/bytecode.hpp>
-#include <lauf/detail/bytecode_builder.hpp>
-#include <lauf/detail/literal_pool.hpp>
-#include <lauf/detail/stack_allocator.hpp>
-#include <lauf/detail/stack_check.hpp>
-#include <lauf/detail/verify.hpp>
+#include <lauf/bytecode.hpp>
+#include <lauf/bytecode_builder.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/vm.hpp>
+#include <lauf/literal_pool.hpp>
+#include <lauf/stack_check.hpp>
+#include <lauf/support/stack_allocator.hpp>
+#include <lauf/verify.hpp>
 #include <vector>
-
-using namespace lauf::_detail;
 
 namespace
 {
@@ -33,45 +31,45 @@ struct function_decl
     lauf_function fn;
 };
 
-condition_code translate_condition(lauf_condition cond)
+lauf::condition_code translate_condition(lauf_condition cond)
 {
     switch (cond)
     {
     case LAUF_IS_FALSE:
-        return condition_code::is_zero;
+        return lauf::condition_code::is_zero;
     case LAUF_IS_TRUE:
-        return condition_code::is_nonzero;
+        return lauf::condition_code::is_nonzero;
     case LAUF_CMP_EQ:
-        return condition_code::cmp_eq;
+        return lauf::condition_code::cmp_eq;
     case LAUF_CMP_NE:
-        return condition_code::cmp_ne;
+        return lauf::condition_code::cmp_ne;
     case LAUF_CMP_LT:
-        return condition_code::cmp_lt;
+        return lauf::condition_code::cmp_lt;
     case LAUF_CMP_LE:
-        return condition_code::cmp_le;
+        return lauf::condition_code::cmp_le;
     case LAUF_CMP_GT:
-        return condition_code::cmp_gt;
+        return lauf::condition_code::cmp_gt;
     case LAUF_CMP_GE:
-        return condition_code::cmp_ge;
+        return lauf::condition_code::cmp_ge;
     }
 }
 } // namespace
 
 struct lauf_builder_impl
 {
-    memory_stack        stack;
-    lauf_debug_location cur_location;
-    stack_allocator     alloc;
+    lauf::memory_stack    stack;
+    lauf_debug_location   cur_location;
+    lauf::stack_allocator alloc;
 
     lauf_builder_impl()
     : cur_location{}, alloc(stack), bytecode(alloc), marker(alloc.top()), cur_fn(0)
     {}
 
     //=== per module ===//
-    module_decl                mod;
-    literal_pool               literals;
-    std::vector<function_decl> functions;
-    std::vector<allocation>    allocations;
+    module_decl                   mod;
+    lauf::literal_pool            literals;
+    std::vector<function_decl>    functions;
+    std::vector<lauf::allocation> allocations;
 
     void reset_module()
     {
@@ -82,11 +80,11 @@ struct lauf_builder_impl
     }
 
     //=== per function ===//
-    stack_allocator::marker marker;
-    std::size_t             cur_fn;
-    stack_allocator_offset  stack_frame;
-    stack_checker           value_stack;
-    bytecode_builder        bytecode;
+    lauf::stack_allocator::marker marker;
+    std::size_t                   cur_fn;
+    lauf::stack_allocator_offset  stack_frame;
+    lauf::stack_checker           value_stack;
+    lauf::bytecode_builder        bytecode;
 
     void reset_function()
     {
@@ -143,7 +141,7 @@ lauf_module lauf_finish_module(lauf_builder b)
 
     if (!b->allocations.empty())
         std::memcpy(result->allocation_data(), b->allocations.data(),
-                    b->allocations.size() * sizeof(allocation));
+                    b->allocations.size() * sizeof(lauf::allocation));
 
     return result;
 }
@@ -169,7 +167,7 @@ lauf_global lauf_build_data(lauf_builder b, const void* memory, size_t size)
     LAUF_VERIFY(size < UINT32_MAX, "data", "allocation size limit exceeded");
 
     auto idx = b->allocations.size();
-    b->allocations.emplace_back(memory, uint32_t(size), allocation::static_mutable_memory);
+    b->allocations.emplace_back(memory, uint32_t(size), lauf::allocation::static_mutable_memory);
     return {idx};
 }
 
@@ -207,8 +205,8 @@ lauf_function lauf_finish_function(lauf_builder b)
     result->output_count     = fn_decl.signature.output_count;
     result->debug_locations  = b->bytecode.debug_locations();
 
-    LAUF_VERIFY(frame_size_for(result) < stack_allocator::max_allocation_size(), "function",
-                "local variables of functions exceed stack frame size limit");
+    LAUF_VERIFY(lauf::frame_size_for(result) < lauf::stack_allocator::max_allocation_size(),
+                "function", "local variables of functions exceed stack frame size limit");
 
     // Copy and patch bytecode.
     b->bytecode.finish(result->bytecode());
@@ -404,7 +402,7 @@ void lauf_build_call(lauf_builder b, lauf_function_decl fn)
 {
     b->bytecode.location(b->cur_location);
 
-    b->bytecode.instruction(LAUF_VM_INSTRUCTION(call, bc_function_idx(fn._idx)));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(call, lauf::bc_function_idx(fn._idx)));
 
     auto signature = b->functions[fn._idx].signature;
     b->value_stack.pop("call", signature.input_count);
@@ -463,7 +461,7 @@ void lauf_build_load_value(lauf_builder b, lauf_local var)
 
     // If the last instruction is a store of the same address, turn it into a save instead.
     if (b->bytecode.get_cur_idom() == LAUF_VM_INSTRUCTION(store_value, var._addr))
-        b->bytecode.replace_last_instruction(bc_op::save_value);
+        b->bytecode.replace_last_instruction(lauf::bc_op::save_value);
     else
         b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_value, var._addr));
     b->value_stack.push("load_value");

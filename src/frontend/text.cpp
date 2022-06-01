@@ -5,8 +5,8 @@
 
 #include <cstring>
 #include <lauf/builder.h>
-#include <lauf/detail/verify.hpp>
 #include <lauf/value.h>
+#include <lauf/verify.hpp>
 #include <lexy/action/parse.hpp>
 #include <lexy/callback.hpp>
 #include <lexy/dsl.hpp>
@@ -32,8 +32,7 @@ public:
         if (iter != map.end())
             return iter->second;
 
-        lauf::_detail::verification_failure("text",
-                                            ("unknown name '" + std::string(name) + "'").c_str());
+        lauf::verification_failure("text", ("unknown name '" + std::string(name) + "'").c_str());
         return iter->second;
     }
 

@@ -5,9 +5,9 @@
 #define SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
 
 #include <cstdint>
-#include <lauf/detail/verify.hpp>
+#include <lauf/verify.hpp>
 
-namespace lauf::_detail
+namespace lauf
 {
 class stack_checker
 {
@@ -48,7 +48,7 @@ public:
 private:
     std::uint16_t _cur_size, _max_size;
 };
-} // namespace lauf::_detail
+} // namespace lauf
 
-#endif // SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
+#endif // SRC_STACK_CHECK_HPP_INCLUDED
 

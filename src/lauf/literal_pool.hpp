@@ -1,15 +1,15 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_DETAIL_LITERAL_POOL_HPP_INCLUDED
-#define SRC_DETAIL_LITERAL_POOL_HPP_INCLUDED
+#ifndef SRC_LITERAL_POOL_HPP_INCLUDED
+#define SRC_LITERAL_POOL_HPP_INCLUDED
 
 #include <cstring>
-#include <lauf/detail/bytecode.hpp>
+#include <lauf/bytecode.hpp>
 #include <lauf/value.h>
 #include <vector>
 
-namespace lauf::_detail
+namespace lauf
 {
 class literal_pool
 {
@@ -65,7 +65,7 @@ public:
 private:
     std::vector<lauf_value> _literals;
 };
-} // namespace lauf::_detail
+} // namespace lauf
 
-#endif // SRC_DETAIL_LITERAL_POOL_HPP_INCLUDED
+#endif // SRC_LITERAL_POOL_HPP_INCLUDED
 

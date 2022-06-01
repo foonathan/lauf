@@ -33,7 +33,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
     frame_ptr = frame->prev + 1;
     // We're not checking whether it succeeds, as the allocation is either valid and non-destroyed
     // yet, or it was zero sized so is invalid from the start.
-    remove_allocation(process, frame->local_allocation);
+    lauf::remove_allocation(process, frame->local_allocation);
     process->allocator.unwind(marker);
 
     LAUF_DISPATCH;
@@ -163,10 +163,10 @@ LAUF_BC_OP(heap_alloc, bc_inst_none, {
         return false;
     }
 
-    auto alloc = allocation(ptr, uint32_t(size), allocation::heap_memory);
+    auto alloc = lauf::allocation(ptr, uint32_t(size), lauf::allocation::heap_memory);
 
     ++vstack_ptr;
-    vstack_ptr[0].as_address = add_allocation(process, alloc);
+    vstack_ptr[0].as_address = lauf::add_allocation(process, alloc);
 
     ++ip;
     LAUF_DISPATCH;
@@ -181,16 +181,16 @@ LAUF_BC_OP(free_alloc, bc_inst_none, {
 
     auto alloc = process->get_allocation(addr);
     if (alloc == nullptr
-        || alloc->source != allocation::heap_memory
+        || alloc->source != lauf::allocation::heap_memory
         // We do not allow freeing split memory as others might be using other parts.
-        || alloc->split != allocation::unsplit)
+        || alloc->split != lauf::allocation::unsplit)
     {
         auto info = make_panic_info(frame_ptr, ip);
         vm->panic_handler(&info, "invalid address");
         return false;
     }
     vm->allocator.free_alloc(vm->allocator.user_data, alloc->ptr);
-    remove_allocation(process, addr);
+    lauf::remove_allocation(process, addr);
 
     ++ip;
     LAUF_DISPATCH;
@@ -219,21 +219,21 @@ LAUF_BC_OP(split_alloc, bc_inst_none, {
 
     switch (base_alloc->split)
     {
-    case allocation::unsplit:
-        alloc1.split = allocation::first_split;
-        alloc2.split = allocation::last_split;
+    case lauf::allocation::unsplit:
+        alloc1.split = lauf::allocation::first_split;
+        alloc2.split = lauf::allocation::last_split;
         break;
-    case allocation::first_split:
-        alloc1.split = allocation::first_split;
-        alloc2.split = allocation::middle_split;
+    case lauf::allocation::first_split:
+        alloc1.split = lauf::allocation::first_split;
+        alloc2.split = lauf::allocation::middle_split;
         break;
-    case allocation::middle_split:
-        alloc1.split = allocation::middle_split;
-        alloc2.split = allocation::middle_split;
+    case lauf::allocation::middle_split:
+        alloc1.split = lauf::allocation::middle_split;
+        alloc2.split = lauf::allocation::middle_split;
         break;
-    case allocation::last_split:
-        alloc1.split = allocation::middle_split;
-        alloc2.split = allocation::last_split;
+    case lauf::allocation::last_split:
+        alloc1.split = lauf::allocation::middle_split;
+        alloc2.split = lauf::allocation::last_split;
         break;
     }
 
@@ -269,24 +269,24 @@ LAUF_BC_OP(merge_alloc, bc_inst_none, {
         process->vm->panic_handler(&info, "invalid address");
         return false;
     }
-    auto alloc1_first = alloc1->split == allocation::first_split;
-    auto alloc2_last  = alloc2->split == allocation::last_split;
+    auto alloc1_first = alloc1->split == lauf::allocation::first_split;
+    auto alloc2_last  = alloc2->split == lauf::allocation::last_split;
 
     auto& base_alloc = *alloc1;
     base_alloc.size += alloc2->size;
     if (alloc1_first && alloc2_last)
     {
         // If we're merging the first and last split, it's no longer split.
-        base_alloc.split = allocation::unsplit;
+        base_alloc.split = lauf::allocation::unsplit;
     }
     else if (!alloc1_first && alloc2_last)
     {
         // base_alloc is now the last split.
-        base_alloc.split = allocation::last_split;
+        base_alloc.split = lauf::allocation::last_split;
     }
     auto base_addr = addr1;
 
-    remove_allocation(process, addr2);
+    lauf::remove_allocation(process, addr2);
 
     ++vstack_ptr;
     vstack_ptr[0].as_address = base_addr;
@@ -301,7 +301,7 @@ LAUF_BC_OP(poison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
     if (auto alloc = process->get_allocation(addr))
     {
-        alloc->lifetime = allocation::poisoned;
+        alloc->lifetime = lauf::allocation::poisoned;
     }
     else
     {
@@ -320,7 +320,7 @@ LAUF_BC_OP(unpoison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
     if (auto alloc = process->get_allocation(addr))
     {
-        alloc->lifetime = allocation::allocated;
+        alloc->lifetime = lauf::allocation::allocated;
     }
     else
     {

@@ -1,8 +1,8 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_LAUF_DETAIL_STACK_ALLOCATOR_HPP_INCLUDED
-#define SRC_LAUF_DETAIL_STACK_ALLOCATOR_HPP_INCLUDED
+#ifndef SRC_LAUF_SUPPORT_STACK_ALLOCATOR_HPP_INCLUDED
+#define SRC_LAUF_SUPPORT_STACK_ALLOCATOR_HPP_INCLUDED
 
 #include <cassert>
 #include <cstddef>
@@ -12,7 +12,7 @@
 #include <lauf/value.h>
 #include <type_traits>
 
-namespace lauf::_detail
+namespace lauf
 {
 inline std::size_t align_offset(std::uintptr_t address, std::size_t alignment)
 {
@@ -23,9 +23,9 @@ inline std::size_t align_offset(const void* address, std::size_t alignment)
 {
     return align_offset(reinterpret_cast<std::uintptr_t>(address), alignment);
 }
-} // namespace lauf::_detail
+} // namespace lauf
 
-namespace lauf::_detail
+namespace lauf
 {
 class memory_stack
 {
@@ -168,9 +168,9 @@ private:
     unsigned char*       _cur_pos;
     memory_stack*        _stack;
 };
-} // namespace lauf::_detail
+} // namespace lauf
 
-namespace lauf::_detail
+namespace lauf
 {
 // Computes offsets for allocations.
 class stack_allocator_offset
@@ -209,7 +209,7 @@ private:
     std::uintptr_t _begin;
     std::uintptr_t _cur;
 };
-} // namespace lauf::_detail
+} // namespace lauf
 
-#endif // SRC_LAUF_DETAIL_STACK_ALLOCATOR_HPP_INCLUDED
+#endif // SRC_LAUF_SUPPORT_STACK_ALLOCATOR_HPP_INCLUDED
 

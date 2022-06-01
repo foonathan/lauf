@@ -1,8 +1,8 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_DETAIL_VERIFY_HPP_INCLUDED
-#define SRC_DETAIL_VERIFY_HPP_INCLUDED
+#ifndef SRC_VERIFY_HPP_INCLUDED
+#define SRC_VERIFY_HPP_INCLUDED
 
 #include <cstdio>
 #include <cstdlib>
@@ -14,23 +14,22 @@
 #    define LAUF_DO_VERIFY 1
 #endif
 
-namespace lauf::_detail
+namespace lauf
 {
 inline void verification_failure(const char* inst, const char* msg)
 {
     std::fprintf(stderr, "[lauf] %s: %s\n", inst, msg);
     std::abort();
 }
-} // namespace lauf::_detail
+} // namespace lauf
 
 #if LAUF_DO_VERIFY
-#    define LAUF_VERIFY(Cond, Inst, Msg)                                                           \
-        ((Cond) ? void(0) : lauf::_detail::verification_failure(Inst, Msg))
+#    define LAUF_VERIFY(Cond, Inst, Msg) ((Cond) ? void(0) : lauf::verification_failure(Inst, Msg))
 #    define LAUF_VERIFY_RESULT(Cond, Inst, Msg) LAUF_VERIFY(Cond, Inst, Msg)
 #else
 #    define LAUF_VERIFY(Cond, Inst, Msg)
 #    define LAUF_VERIFY_RESULT(Cond, Inst, Msg) Cond
 #endif
 
-#endif // SRC_DETAIL_VERIFY_HPP_INCLUDED
+#endif // SRC_VERIFY_HPP_INCLUDED
 

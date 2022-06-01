@@ -6,9 +6,9 @@
 
 #include <cassert>
 #include <cstddef>
-#include <lauf/detail/stack_allocator.hpp>
+#include <lauf/support/stack_allocator.hpp>
 
-namespace lauf::_detail
+namespace lauf
 {
 template <typename T>
 class temporary_array
@@ -127,7 +127,7 @@ private:
     uint32_t _size;
     uint32_t _capacity;
 };
-} // namespace lauf::_detail
+} // namespace lauf
 
 #endif // SRC_LAUF_DETAIL_TEMPORARY_ARRAY_HPP_INCLUDED
 

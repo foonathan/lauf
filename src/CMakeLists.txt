@@ -20,17 +20,17 @@ set(header_files
 
         ${include_dir}/lib/int.h)
 set(src_header_files
+        lauf/support/stack_allocator.hpp
+        lauf/support/temporary_array.hpp
         lauf/impl/module.hpp
         lauf/impl/process.hpp
         lauf/impl/program.hpp
         lauf/impl/vm.hpp
-        lauf/detail/bytecode.hpp
-        lauf/detail/bytecode_builder.hpp
-        lauf/detail/literal_pool.hpp
-        lauf/detail/stack_allocator.hpp
-        lauf/detail/stack_check.hpp
-        lauf/detail/temporary_array.hpp
-        lauf/detail/verify.hpp)
+        lauf/bytecode.hpp
+        lauf/bytecode_builder.hpp
+        lauf/literal_pool.hpp
+        lauf/stack_check.hpp
+        lauf/verify.hpp)
 set(src_files
         builder.cpp
         linker.cpp

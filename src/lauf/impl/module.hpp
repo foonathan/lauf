@@ -5,13 +5,13 @@
 #define SRC_IMPL_MODULE_HPP_INCLUDED
 
 #include <cstring>
-#include <lauf/detail/bytecode.hpp>
+#include <lauf/bytecode.hpp>
 #include <lauf/module.h>
 #include <lauf/value.h>
 #include <memory>
 
 //=== debug metadata ===//
-namespace lauf::_detail
+namespace lauf
 {
 class debug_location_map
 {
@@ -53,10 +53,10 @@ private:
     // last entry is sentinel
     std::unique_ptr<entry[]> _entries;
 };
-} // namespace lauf::_detail
+} // namespace lauf
 
 //=== allocation ===//
-namespace lauf::_detail
+namespace lauf
 {
 struct allocation
 {
@@ -117,19 +117,19 @@ struct allocation
     }
 };
 static_assert(sizeof(allocation) == 2 * sizeof(void*));
-} // namespace lauf::_detail
+} // namespace lauf
 
 //=== function ===//
 struct lauf_function_impl
 {
-    lauf_module                       mod;
-    const char*                       name;
-    uint16_t                          _padding;
-    uint16_t                          local_stack_size;
-    uint16_t                          max_vstack_size;
-    uint8_t                           input_count;
-    uint8_t                           output_count;
-    lauf::_detail::debug_location_map debug_locations;
+    lauf_module              mod;
+    const char*              name;
+    uint16_t                 _padding;
+    uint16_t                 local_stack_size;
+    uint16_t                 max_vstack_size;
+    uint8_t                  input_count;
+    uint8_t                  output_count;
+    lauf::debug_location_map debug_locations;
 
     lauf_vm_instruction* bytecode()
     {
@@ -165,10 +165,10 @@ struct alignas(lauf_value) lauf_module_impl
         return static_cast<lauf_value*>(memory);
     }
 
-    lauf::_detail::allocation* allocation_data()
+    lauf::allocation* allocation_data()
     {
         auto memory = static_cast<void*>(literal_data() + literal_count);
-        return static_cast<lauf::_detail::allocation*>(memory);
+        return static_cast<lauf::allocation*>(memory);
     }
 };
 static_assert(sizeof(lauf_module_impl) == 5 * sizeof(void*));

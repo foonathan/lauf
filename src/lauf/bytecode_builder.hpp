@@ -1,16 +1,16 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_LAUF_DETAIL_BYTECODE_BUILDER_HPP_INCLUDED
-#define SRC_LAUF_DETAIL_BYTECODE_BUILDER_HPP_INCLUDED
+#ifndef SRC_LAUF_BYTECODE_BUILDER_HPP_INCLUDED
+#define SRC_LAUF_BYTECODE_BUILDER_HPP_INCLUDED
 
 #include <lauf/builder.h>
-#include <lauf/detail/bytecode.hpp>
-#include <lauf/detail/temporary_array.hpp>
+#include <lauf/bytecode.hpp>
 #include <lauf/impl/module.hpp>
+#include <lauf/support/temporary_array.hpp>
 #include <vector>
 
-namespace lauf::_detail
+namespace lauf
 {
 class bytecode_builder
 {
@@ -151,7 +151,7 @@ private:
     temporary_array<debug_location_map::entry> _locations;
     std::size_t                                _cur_basic_block_begin = 0;
 };
-} // namespace lauf::_detail
+} // namespace lauf
 
-#endif // SRC_LAUF_DETAIL_BYTECODE_BUILDER_HPP_INCLUDED
+#endif // SRC_LAUF_BYTECODE_BUILDER_HPP_INCLUDED
 

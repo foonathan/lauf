@@ -3,11 +3,8 @@
 
 #include <lauf/linker.h>
 
-#include <lauf/detail/stack_allocator.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/program.hpp>
-
-using namespace lauf::_detail;
 
 lauf_program lauf_link_single_module(lauf_module mod, lauf_function entry)
 {

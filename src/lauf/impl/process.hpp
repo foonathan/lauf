@@ -6,40 +6,40 @@
 
 #include <cassert>
 #include <cstring>
-#include <lauf/detail/stack_allocator.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/program.hpp>
 #include <lauf/impl/vm.hpp>
+#include <lauf/support/stack_allocator.hpp>
 #include <new>
 
-namespace lauf::_detail
+namespace lauf
 {
 constexpr std::size_t initial_allocation_list_size = 1024;
 
 }
 
 // Stores additionally data that don't get their own arguments in dispatch.
-struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
+struct alignas(lauf::allocation) lauf_vm_process_impl
 {
-    const lauf_value*              literals;
-    lauf_function*                 functions;
-    lauf_vm                        vm;
-    uint32_t                       allocation_list_capacity;
-    uint32_t                       first_unused_allocation : 30;
-    uint32_t                       generation : 2;
-    lauf::_detail::stack_allocator allocator;
+    const lauf_value*     literals;
+    lauf_function*        functions;
+    lauf_vm               vm;
+    uint32_t              allocation_list_capacity;
+    uint32_t              first_unused_allocation : 30;
+    uint32_t              generation : 2;
+    lauf::stack_allocator allocator;
 
     explicit lauf_vm_process_impl(lauf_vm vm)
     : literals(nullptr), functions(nullptr), vm(vm),
-      allocation_list_capacity(lauf::_detail::initial_allocation_list_size),
-      first_unused_allocation(0), generation(0), allocator(vm->memory_stack)
+      allocation_list_capacity(lauf::initial_allocation_list_size), first_unused_allocation(0),
+      generation(0), allocator(vm->memory_stack)
     {}
 
-    lauf_value get_literal(lauf::_detail::bc_literal_idx idx) const
+    lauf_value get_literal(lauf::bc_literal_idx idx) const
     {
         return literals[size_t(idx)];
     }
-    lauf_function get_function(lauf::_detail::bc_function_idx idx) const
+    lauf_function get_function(lauf::bc_function_idx idx) const
     {
         return functions[size_t(idx)];
     }
@@ -47,15 +47,15 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     auto allocation_data()
     {
         auto memory = static_cast<void*>(this + 1);
-        return static_cast<lauf::_detail::allocation*>(memory);
+        return static_cast<lauf::allocation*>(memory);
     }
-    auto get_allocation(lauf_value_address addr) -> lauf::_detail::allocation*
+    auto get_allocation(lauf_value_address addr) -> lauf::allocation*
     {
         if (addr.allocation >= allocation_list_capacity)
             return nullptr;
 
         auto alloc = allocation_data() + addr.allocation;
-        if (alloc->lifetime == lauf::_detail::allocation::freed
+        if (alloc->lifetime == lauf::allocation::freed
             || (alloc->generation & 0b11) != uint8_t(addr.generation))
             return nullptr;
         return alloc;
@@ -63,7 +63,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
 
     const void* get_const_ptr(lauf_value_address addr, size_t size)
     {
-        using lauf::_detail::allocation;
+        using lauf::allocation;
         if (auto alloc = get_allocation(addr))
         {
             if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
@@ -77,7 +77,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     }
     void* get_mutable_ptr(lauf_value_address addr, size_t size)
     {
-        using lauf::_detail::allocation;
+        using lauf::allocation;
         if (auto alloc = get_allocation(addr))
         {
             if (ptrdiff_t(alloc->size) - ptrdiff_t(addr.offset) < size
@@ -93,7 +93,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
 
     const char* get_const_cstr(lauf_value_address addr)
     {
-        using lauf::_detail::allocation;
+        using lauf::allocation;
         if (auto alloc = get_allocation(addr))
         {
             if (addr.offset >= alloc->size || alloc->lifetime != allocation::allocated)
@@ -109,7 +109,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     }
     const char* get_mutable_cstr(lauf_value_address addr)
     {
-        using lauf::_detail::allocation;
+        using lauf::allocation;
         if (auto alloc = get_allocation(addr))
         {
             if (addr.offset >= alloc->size || alloc->lifetime != allocation::allocated
@@ -126,7 +126,7 @@ struct alignas(lauf::_detail::allocation) lauf_vm_process_impl
     }
 };
 
-namespace lauf::_detail
+namespace lauf
 {
 inline lauf_vm_process create_null_process(lauf_vm vm)
 {
@@ -232,7 +232,7 @@ inline void reset_process(lauf_vm_process process)
             process->vm->allocator.free_alloc(process->vm->allocator.user_data, alloc.ptr);
     }
 }
-} // namespace lauf::_detail
+} // namespace lauf
 
 #endif // SRC_LAUF_IMPL_PROCESS_HPP_INCLUDED
 

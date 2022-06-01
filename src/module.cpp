@@ -40,7 +40,7 @@ lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_coun
 {
     auto memory = ::operator new(sizeof(lauf_module_impl) + function_count * sizeof(lauf_function)
                                  + literal_count * sizeof(lauf_value)
-                                 + allocation_count * sizeof(lauf::_detail::allocation));
+                                 + allocation_count * sizeof(lauf::allocation));
     return ::new (memory) lauf_module_impl{};
 }
 

@@ -1,15 +1,15 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_DETAIL_BYTECODE_HPP_INCLUDED
-#define SRC_DETAIL_BYTECODE_HPP_INCLUDED
+#ifndef SRC_BYTECODE_HPP_INCLUDED
+#define SRC_BYTECODE_HPP_INCLUDED
 
 #include <lauf/config.h>
-#include <lauf/detail/verify.hpp>
+#include <lauf/verify.hpp>
 
 union lauf_vm_instruction;
 
-namespace lauf::_detail
+namespace lauf
 {
 enum class bc_op : uint8_t
 {
@@ -166,13 +166,13 @@ struct bc_inst_cc
 };
 
 using bc_inst = lauf_vm_instruction;
-} // namespace lauf::_detail
+} // namespace lauf
 
 union lauf_vm_instruction
 {
-    lauf::_detail::bc_inst_none tag;
+    lauf::bc_inst_none tag;
 
-#define LAUF_BC_OP(Name, Type, ...) lauf::_detail::Type Name;
+#define LAUF_BC_OP(Name, Type, ...) lauf::Type Name;
 #include "bc_ops.h"
 #undef LAUF_BC_OP
 
@@ -192,9 +192,9 @@ static_assert(sizeof(lauf_vm_instruction) == sizeof(uint32_t));
 #define LAUF_VM_INSTRUCTION(Op, ...)                                                               \
     [&](auto... args) {                                                                            \
         lauf_vm_instruction inst;                                                                  \
-        inst.Op = decltype(inst.Op){lauf::_detail::bc_op::Op, args...};                            \
+        inst.Op = decltype(inst.Op){lauf::bc_op::Op, args...};                                     \
         return inst;                                                                               \
     }(__VA_ARGS__)
 
-#endif // SRC_DETAIL_BYTECODE_HPP_INCLUDED
+#endif // SRC_BYTECODE_HPP_INCLUDED
 
