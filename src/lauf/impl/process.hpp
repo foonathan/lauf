@@ -9,6 +9,7 @@
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/program.hpp>
 #include <lauf/impl/vm.hpp>
+#include <lauf/support/joined_allocation.hpp>
 #include <lauf/support/stack_allocator.hpp>
 #include <new>
 
@@ -19,7 +20,7 @@ constexpr std::size_t initial_allocation_list_size = 1024;
 }
 
 // Stores additionally data that don't get their own arguments in dispatch.
-struct alignas(lauf::allocation) lauf_vm_process_impl
+struct lauf_vm_process_impl : lauf::joined_allocation<lauf_vm_process_impl, lauf::allocation>
 {
     const lauf_value*     literals;
     lauf_function*        functions;
@@ -44,17 +45,12 @@ struct alignas(lauf::allocation) lauf_vm_process_impl
         return functions[size_t(idx)];
     }
 
-    auto allocation_data()
-    {
-        auto memory = static_cast<void*>(this + 1);
-        return static_cast<lauf::allocation*>(memory);
-    }
     auto get_allocation(lauf_value_address addr) -> lauf::allocation*
     {
         if (addr.allocation >= allocation_list_capacity)
             return nullptr;
 
-        auto alloc = allocation_data() + addr.allocation;
+        auto alloc = array<lauf::allocation>({}) + ptrdiff_t(addr.allocation);
         if (alloc->lifetime == lauf::allocation::freed
             || (alloc->generation & 0b11) != uint8_t(addr.generation))
             return nullptr;
@@ -130,15 +126,12 @@ namespace lauf
 {
 inline lauf_vm_process create_null_process(lauf_vm vm)
 {
-    auto memory = ::operator new(sizeof(lauf_vm_process_impl)
-                                 + initial_allocation_list_size * sizeof(allocation));
-
-    return ::new (memory) lauf_vm_process_impl(vm);
+    return lauf_vm_process_impl::create(initial_allocation_list_size, vm);
 }
 
 inline void destroy_process(lauf_vm_process process)
 {
-    ::operator delete(process);
+    lauf_vm_process_impl::destroy(process);
 }
 
 // Pass pointer by references as we might need to do a realloc.
@@ -151,20 +144,12 @@ inline lauf_value_address add_allocation(lauf_vm_process& process, allocation al
     {
         auto new_capacity = 2ull * process->allocation_list_capacity;
 
-        auto new_size   = sizeof(lauf_vm_process_impl) + new_capacity * sizeof(allocation);
-        auto new_memory = ::operator new(new_size);
-
-        auto new_process = ::new (new_memory) lauf_vm_process_impl(*process);
-        std::memcpy(new_process->allocation_data(), process->allocation_data(),
-                    process->allocation_list_capacity * sizeof(allocation));
-        new_process->allocation_list_capacity = new_capacity;
-
-        process              = new_process;
+        lauf_vm_process_impl::resize(process, {process->allocation_list_capacity}, {new_capacity});
         process->vm->process = process;
     }
 
-    alloc.generation                                             = process->generation;
-    process->allocation_data()[process->first_unused_allocation] = alloc;
+    alloc.generation                                                 = process->generation;
+    process->array<allocation>({})[process->first_unused_allocation] = alloc;
     return {process->first_unused_allocation++, process->generation, 0};
 }
 
@@ -185,7 +170,7 @@ inline allocation* remove_allocation(lauf_vm_process& process, lauf_value_addres
             // We increment the generation to detect use-after free.
             ++process->generation;
         } while (process->first_unused_allocation > 0u
-                 && process->allocation_data()[process->first_unused_allocation - 1u].lifetime
+                 && process->array<allocation>({})[process->first_unused_allocation - 1u].lifetime
                         == allocation::freed);
     }
 
@@ -224,7 +209,7 @@ inline void reset_process(lauf_vm_process process)
     // Free all heap memory that is still allocated.
     for (auto idx = uint32_t(0); idx != process->first_unused_allocation; ++idx)
     {
-        auto alloc = process->allocation_data()[idx];
+        auto alloc = process->array<allocation>({})[idx];
         if (alloc.source == allocation::heap_memory
             && alloc.lifetime != allocation::freed
             // Either the allocation isn't split, or it's the first split.

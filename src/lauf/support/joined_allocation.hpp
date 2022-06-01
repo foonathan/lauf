@@ -4,6 +4,8 @@
 #ifndef SRC_LAUF_SUPPORT_JOINED_ALLOCATION_HPP_INCLUDED
 #define SRC_LAUF_SUPPORT_JOINED_ALLOCATION_HPP_INCLUDED
 
+#include <cassert>
+#include <initializer_list>
 #include <lauf/config.h>
 #include <lauf/support/stack_allocator.hpp>
 #include <utility>
@@ -25,12 +27,6 @@ struct _joined_offsets<T, Head, Tail...>
         allocator.allocate<Head>(0);
         return tail::get_align(allocator);
     }
-
-    template <typename... SizeT>
-    static constexpr std::size_t get_size(std::size_t h, SizeT... t)
-    {
-        return h * sizeof(Head) + tail::get_size(t...);
-    }
 };
 template <typename T, typename... Tail>
 struct _joined_offsets<T, T, Tail...>
@@ -41,31 +37,61 @@ struct _joined_offsets<T, T, Tail...>
     {
         return allocator.size();
     }
-
-    static constexpr std::size_t get_size()
-    {
-        return 0;
-    }
 };
 
 template <typename HeaderType, typename... ArrayTypes>
 class joined_allocation
 {
-    static_assert((std::is_trivially_copyable_v<ArrayTypes> && ...));
-
 public:
     //=== construction ===//
-    template <typename... SizeT>
-    static HeaderType* create(SizeT... sizes)
+    static void* allocate(std::initializer_list<std::size_t> sizes)
     {
-        static_assert(sizeof...(sizes) == sizeof...(ArrayTypes));
+        assert(sizes.size() == sizeof...(ArrayTypes));
 
         stack_allocator_offset allocator;
         allocator.allocate<HeaderType>();
-        (allocator.allocate<ArrayTypes>(sizes), ...);
 
-        auto memory = ::operator new(allocator.size());
-        return ::new (memory) HeaderType{};
+        auto ptr = sizes.begin();
+        (allocator.allocate<ArrayTypes>(*ptr++), ...);
+
+        return ::operator new(allocator.size());
+    }
+    static void* allocate(std::size_t size)
+    {
+        return allocate({size});
+    }
+
+    template <typename... Args>
+    static HeaderType* create(std::initializer_list<std::size_t> sizes, Args&&... args)
+    {
+        auto memory = allocate(sizes);
+        return ::new (memory) HeaderType(std::forward<Args>(args)...);
+    }
+    template <typename... Args>
+    static HeaderType* create(std::size_t size, Args&&... args)
+    {
+        auto memory = allocate({size});
+        return ::new (memory) HeaderType(std::forward<Args>(args)...);
+    }
+
+    static void resize(HeaderType*& ptr, std::initializer_list<std::size_t> cur_sizes,
+                       std::initializer_list<std::size_t> new_sizes)
+    {
+        static_assert((std::is_trivially_copyable_v<ArrayTypes> && ...
+                       && std::is_trivially_copyable_v<HeaderType>));
+
+        auto new_memory = allocate(new_sizes);
+        std::memcpy(new_memory, ptr, sizeof(HeaderType));
+        auto new_ptr = static_cast<HeaderType*>(new_memory);
+
+        auto cur_size_ptr = cur_sizes.begin();
+        (std::memcpy(new_ptr->template array<ArrayTypes>(new_sizes),
+                     ptr->template array<ArrayTypes>(cur_sizes),
+                     *cur_size_ptr++ * sizeof(ArrayTypes)),
+         ...);
+
+        destroy(ptr);
+        ptr = new_ptr;
     }
 
     static void destroy(HeaderType* ptr)
@@ -74,33 +100,42 @@ public:
         ::operator delete(ptr);
     }
 
+protected:
+    joined_allocation() = default;
+
+public:
     joined_allocation(const joined_allocation&) = delete;
     joined_allocation& operator=(const joined_allocation&) = delete;
 
     ~joined_allocation() = default;
 
     //=== array access ===//
-    template <typename T, typename... SizeT>
-    T* array(SizeT... previous_sizes) noexcept
+    template <typename T>
+    T* array(std::initializer_list<std::size_t> previous_sizes) noexcept
     {
         const auto& cthis = *this;
-        return const_cast<T*>(cthis.template array<T>(previous_sizes...));
+        return const_cast<T*>(cthis.template array<T>(previous_sizes));
     }
-    template <typename T, typename... SizeT>
-    const T* array(SizeT... previous_sizes) const noexcept
+    template <typename T>
+    const T* array(std::initializer_list<std::size_t> previous_sizes) const noexcept
     {
         using offsets = _joined_offsets<T, HeaderType, ArrayTypes...>;
-        static_assert(sizeof...(previous_sizes) == offsets::index - 1);
+        assert(previous_sizes.size() >= offsets::index - 1);
 
-        constexpr auto align_offsets = offsets::get_align(stack_allocator_offset());
+        constexpr auto align_offset = offsets::get_align(stack_allocator_offset());
 
-        auto size_offsets = offsets::get_size(1, previous_sizes...);
+        auto size_offset = sizeof(HeaderType);
+        if constexpr (offsets::index > 1)
+        {
+            constexpr std::size_t sizeofs[] = {sizeof(ArrayTypes)...};
+
+            for (auto i = 0u; i != offsets::index - 1; ++i)
+                size_offset += sizeofs[i] * previous_sizes.begin()[i];
+        }
+
         return reinterpret_cast<const T*>(reinterpret_cast<const unsigned char*>(this)
-                                          + align_offsets + size_offsets);
+                                          + align_offset + size_offset);
     }
-
-protected:
-    joined_allocation() = default;
 };
 } // namespace lauf
 

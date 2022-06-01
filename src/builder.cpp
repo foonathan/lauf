@@ -121,8 +121,8 @@ void lauf_build_module(lauf_builder b, const char* name, const char* path)
 
 lauf_module lauf_finish_module(lauf_builder b)
 {
-    auto result
-        = lauf_module_impl::create(b->functions.size(), b->literals.size(), b->allocations.size());
+    auto result = lauf_module_impl::create(
+        {b->functions.size(), b->literals.size(), b->allocations.size()});
     result->name             = b->mod.name;
     result->path             = b->mod.path;
     result->function_count   = b->functions.size();

@@ -132,9 +132,11 @@ struct lauf_function_impl : lauf::joined_allocation<lauf_function_impl, lauf_vm_
     uint8_t                  output_count;
     lauf::debug_location_map debug_locations;
 
+    lauf_function_impl() = default;
+
     lauf_vm_instruction* bytecode()
     {
-        return array<lauf_vm_instruction>();
+        return array<lauf_vm_instruction>({});
     }
 };
 static_assert(sizeof(lauf_function_impl) == 3 * sizeof(void*) + sizeof(uint64_t));
@@ -147,6 +149,7 @@ struct alignas(lauf_value) lauf_module_impl
     const char* path;
     size_t      function_count, literal_count, allocation_count;
 
+    lauf_module_impl() = default;
     ~lauf_module_impl()
     {
         for (auto fn = function_begin(); fn != function_end(); ++fn)
@@ -155,7 +158,7 @@ struct alignas(lauf_value) lauf_module_impl
 
     lauf_function* function_begin()
     {
-        return array<lauf_function>();
+        return array<lauf_function>({function_count, literal_count, allocation_count});
     }
     lauf_function* function_end()
     {
@@ -164,12 +167,12 @@ struct alignas(lauf_value) lauf_module_impl
 
     lauf_value* literal_data()
     {
-        return array<lauf_value>(function_count);
+        return array<lauf_value>({function_count, literal_count, allocation_count});
     }
 
     lauf::allocation* allocation_data()
     {
-        return array<lauf::allocation>(function_count, literal_count);
+        return array<lauf::allocation>({function_count, literal_count, allocation_count});
     }
 };
 static_assert(sizeof(lauf_module_impl) == 5 * sizeof(void*));
