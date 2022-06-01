@@ -7,6 +7,7 @@
 #include <cstring>
 #include <lauf/bytecode.hpp>
 #include <lauf/module.h>
+#include <lauf/support/joined_allocation.hpp>
 #include <lauf/value.h>
 #include <memory>
 
@@ -120,7 +121,7 @@ static_assert(sizeof(allocation) == 2 * sizeof(void*));
 } // namespace lauf
 
 //=== function ===//
-struct lauf_function_impl
+struct lauf_function_impl : lauf::joined_allocation<lauf_function_impl, lauf_vm_instruction>
 {
     lauf_module              mod;
     const char*              name;
@@ -133,26 +134,28 @@ struct lauf_function_impl
 
     lauf_vm_instruction* bytecode()
     {
-        auto memory = static_cast<void*>(this + 1);
-        return static_cast<lauf_vm_instruction*>(memory);
+        return array<lauf_vm_instruction>();
     }
 };
 static_assert(sizeof(lauf_function_impl) == 3 * sizeof(void*) + sizeof(uint64_t));
-static_assert(sizeof(lauf_function_impl) % alignof(uint32_t) == 0);
-
-lauf_function lauf_impl_allocate_function(size_t bytecode_size);
 
 //=== module ===//
 struct alignas(lauf_value) lauf_module_impl
+: lauf::joined_allocation<lauf_module_impl, lauf_function, lauf_value, lauf::allocation>
 {
     const char* name;
     const char* path;
     size_t      function_count, literal_count, allocation_count;
 
+    ~lauf_module_impl()
+    {
+        for (auto fn = function_begin(); fn != function_end(); ++fn)
+            lauf_function_impl::destroy(*fn);
+    }
+
     lauf_function* function_begin()
     {
-        auto memory = static_cast<void*>(this + 1);
-        return static_cast<lauf_function*>(memory);
+        return array<lauf_function>();
     }
     lauf_function* function_end()
     {
@@ -161,21 +164,15 @@ struct alignas(lauf_value) lauf_module_impl
 
     lauf_value* literal_data()
     {
-        auto memory = static_cast<void*>(function_end());
-        return static_cast<lauf_value*>(memory);
+        return array<lauf_value>(function_count);
     }
 
     lauf::allocation* allocation_data()
     {
-        auto memory = static_cast<void*>(literal_data() + literal_count);
-        return static_cast<lauf::allocation*>(memory);
+        return array<lauf::allocation>(function_count, literal_count);
     }
 };
 static_assert(sizeof(lauf_module_impl) == 5 * sizeof(void*));
-static_assert(sizeof(lauf_module_impl) % alignof(lauf_value) == 0);
-
-lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_count,
-                                      size_t allocation_count);
 
 #endif // SRC_IMPL_MODULE_HPP_INCLUDED
 

@@ -14,7 +14,7 @@
 
 namespace lauf
 {
-inline std::size_t align_offset(std::uintptr_t address, std::size_t alignment)
+constexpr std::size_t align_offset(std::uintptr_t address, std::size_t alignment)
 {
     auto misaligned = address & (alignment - 1);
     return misaligned != 0 ? (alignment - misaligned) : 0;
@@ -176,17 +176,17 @@ namespace lauf
 class stack_allocator_offset
 {
 public:
-    stack_allocator_offset() : stack_allocator_offset(alignof(void*)) {}
-    explicit stack_allocator_offset(std::size_t initial_alignment)
+    constexpr stack_allocator_offset() : stack_allocator_offset(alignof(void*)) {}
+    constexpr explicit stack_allocator_offset(std::size_t initial_alignment)
     : _begin(initial_alignment), _cur(_begin)
     {}
 
-    std::size_t size() const
+    constexpr std::size_t size() const
     {
         return std::size_t(_cur - _begin);
     }
 
-    std::uintptr_t allocate(std::size_t size, std::size_t alignment)
+    constexpr std::uintptr_t allocate(std::size_t size, std::size_t alignment)
     {
         _cur += align_offset(_cur, alignment);
         auto result = _cur - _begin;
@@ -195,12 +195,12 @@ public:
     }
 
     template <typename T>
-    std::uintptr_t allocate(std::size_t count = 1)
+    constexpr std::uintptr_t allocate(std::size_t count = 1)
     {
         return allocate(count * sizeof(T), alignof(T));
     }
 
-    void align_to(std::size_t alignment)
+    constexpr void align_to(std::size_t alignment)
     {
         _cur += align_offset(_cur, alignment);
     }

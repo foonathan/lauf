@@ -7,12 +7,6 @@
 #include <new>
 
 //=== function ===//
-lauf_function lauf_impl_allocate_function(size_t bytecode_size)
-{
-    auto memory = ::operator new(sizeof(lauf_function_impl) + bytecode_size * sizeof(uint32_t));
-    return ::new (memory) lauf_function_impl{};
-}
-
 lauf_module lauf_function_get_module(lauf_function fn)
 {
     return fn->mod;
@@ -35,23 +29,9 @@ lauf_debug_location lauf_function_get_location_of(lauf_function fn, void* inst)
 }
 
 //=== module ===//
-lauf_module lauf_impl_allocate_module(size_t function_count, size_t literal_count,
-                                      size_t allocation_count)
-{
-    auto memory = ::operator new(sizeof(lauf_module_impl) + function_count * sizeof(lauf_function)
-                                 + literal_count * sizeof(lauf_value)
-                                 + allocation_count * sizeof(lauf::allocation));
-    return ::new (memory) lauf_module_impl{};
-}
-
 void lauf_module_destroy(lauf_module mod)
 {
-    for (auto fn = mod->function_begin(); fn != mod->function_end(); ++fn)
-    {
-        (*fn)->~lauf_function_impl();
-        ::operator delete(*fn);
-    }
-    ::operator delete(mod);
+    lauf_module_impl::destroy(mod);
 }
 
 const char* lauf_module_get_name(lauf_module mod)

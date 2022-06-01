@@ -122,7 +122,7 @@ void lauf_build_module(lauf_builder b, const char* name, const char* path)
 lauf_module lauf_finish_module(lauf_builder b)
 {
     auto result
-        = lauf_impl_allocate_module(b->functions.size(), b->literals.size(), b->allocations.size());
+        = lauf_module_impl::create(b->functions.size(), b->literals.size(), b->allocations.size());
     result->name             = b->mod.name;
     result->path             = b->mod.path;
     result->function_count   = b->functions.size();
@@ -197,7 +197,7 @@ lauf_function lauf_finish_function(lauf_builder b)
     auto local_size = b->stack_frame.size();
 
     // Allocate and set function members.
-    auto result              = lauf_impl_allocate_function(b->bytecode.size());
+    auto result              = lauf_function_impl::create(b->bytecode.size());
     result->name             = fn_decl.name;
     result->local_stack_size = static_cast<uint16_t>(local_size);
     result->max_vstack_size  = b->value_stack.max_stack_size();
