@@ -145,7 +145,8 @@ inline lauf_value_address add_allocation(lauf_vm_process& process, allocation al
         auto new_capacity = 2ull * process->allocation_list_capacity;
 
         lauf_vm_process_impl::resize(process, {process->allocation_list_capacity}, {new_capacity});
-        process->vm->process = process;
+        process->allocation_list_capacity = new_capacity;
+        process->vm->process              = process;
     }
 
     alloc.generation                                                 = process->generation;
