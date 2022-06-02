@@ -31,7 +31,7 @@ function @test_many_heap_alloc(0 => 0) {
 
     int 0; store_value %n;
 label %loop:
-    layout_of @Value; heap_alloc; drop 1;
+    layout_of @Value; heap_alloc; pop 1;
 
     load_value %n; int 1; call_builtin @sadd;
     pick 0; store_value %n;

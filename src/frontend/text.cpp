@@ -486,10 +486,10 @@ struct inst_local_addr
     static constexpr auto build = &lauf_build_local_addr;
 };
 
-struct inst_drop
+struct inst_pop
 {
-    static constexpr auto rule  = LEXY_KEYWORD("drop", identifier) >> dsl::integer<size_t>;
-    static constexpr auto build = &lauf_build_drop;
+    static constexpr auto rule  = LEXY_KEYWORD("pop", identifier) >> dsl::integer<size_t>;
+    static constexpr auto build = &lauf_build_pop;
 };
 struct inst_pick
 {
@@ -500,6 +500,11 @@ struct inst_roll
 {
     static constexpr auto rule  = LEXY_KEYWORD("roll", identifier) >> dsl::integer<size_t>;
     static constexpr auto build = &lauf_build_roll;
+};
+struct inst_drop
+{
+    static constexpr auto rule  = LEXY_KEYWORD("drop", identifier) >> dsl::integer<size_t>;
+    static constexpr auto build = &lauf_build_drop;
 };
 struct inst_select
 {
@@ -606,20 +611,21 @@ struct inst_panic_if
 struct inst
 {
     static constexpr auto rule = [] {
-        auto insts = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if> //
-                     | dsl::p<inst_int> | dsl::p<inst_layout_of>                    //
-                     | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>           //
-                     | dsl::p<inst_drop> | dsl::p<inst_pick> | dsl::p<inst_roll>    //
-                     | dsl::p<inst_select> | dsl::p<inst_select_if>                 //
-                     | dsl::p<inst_call> | dsl::p<inst_call_builtin>                //
-                     | dsl::p<inst_array_element_addr>                              //
-                     | dsl::p<inst_load_field> | dsl::p<inst_store_field>           //
-                     | dsl::p<inst_load_value> | dsl::p<inst_load_array_value>      //
-                     | dsl::p<inst_store_value> | dsl::p<inst_store_array_value>    //
-                     | dsl::p<inst_heap_alloc> | dsl::p<inst_free_alloc>            //
-                     | dsl::p<inst_split_alloc> | dsl::p<inst_merge_alloc>          //
-                     | dsl::p<inst_poison_alloc> | dsl::p<inst_unpoison_alloc>      //
-                     | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
+        auto insts
+            = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if>                 //
+              | dsl::p<inst_int> | dsl::p<inst_layout_of>                                    //
+              | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>                           //
+              | dsl::p<inst_pop> | dsl::p<inst_pick> | dsl::p<inst_roll> | dsl::p<inst_drop> //
+              | dsl::p<inst_select> | dsl::p<inst_select_if>                                 //
+              | dsl::p<inst_call> | dsl::p<inst_call_builtin>                                //
+              | dsl::p<inst_array_element_addr>                                              //
+              | dsl::p<inst_load_field> | dsl::p<inst_store_field>                           //
+              | dsl::p<inst_load_value> | dsl::p<inst_load_array_value>                      //
+              | dsl::p<inst_store_value> | dsl::p<inst_store_array_value>                    //
+              | dsl::p<inst_heap_alloc> | dsl::p<inst_free_alloc>                            //
+              | dsl::p<inst_split_alloc> | dsl::p<inst_merge_alloc>                          //
+              | dsl::p<inst_poison_alloc> | dsl::p<inst_unpoison_alloc>                      //
+              | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
         return dsl::p<debug_location> + insts + dsl::semicolon;
     }();
     static constexpr auto value = lexy::forward<void>;

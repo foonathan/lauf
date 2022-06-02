@@ -338,12 +338,12 @@ void lauf_build_layout_of(lauf_builder b, lauf_type type)
     b->value_stack.push("layout_of", 2);
 }
 
-void lauf_build_drop(lauf_builder b, size_t n)
+void lauf_build_pop(lauf_builder b, size_t n)
 {
     b->bytecode.location(b->cur_location);
 
-    b->bytecode.instruction(LAUF_VM_INSTRUCTION(drop, n));
-    b->value_stack.pop("drop", n);
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(pop, n));
+    b->value_stack.pop("pop", n);
 }
 
 void lauf_build_pick(lauf_builder b, size_t n)
@@ -369,6 +369,12 @@ void lauf_build_roll(lauf_builder b, size_t n)
     else
         b->bytecode.instruction(LAUF_VM_INSTRUCTION(roll, n));
     LAUF_VERIFY(n < b->value_stack.cur_stack_size(), "roll", "invalid stack index");
+}
+
+void lauf_build_drop(lauf_builder b, size_t n)
+{
+    lauf_build_roll(b, n);
+    lauf_build_pop(b, 1);
 }
 
 void lauf_build_select(lauf_builder b, size_t max_index)

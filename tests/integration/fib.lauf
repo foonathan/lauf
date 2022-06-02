@@ -71,7 +71,7 @@ label %loop(1):
     jump_if cmp_ne %loop;
 
 label %exit(1):
-    drop 1;
+    pop 1;
     load_value %a;
     return;
 }

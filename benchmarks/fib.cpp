@@ -117,7 +117,7 @@ lauf_program iterative_fib(lauf_builder b)
 
         lauf_place_label(b, exit);
         {
-            lauf_build_drop(b, 1);
+            lauf_build_pop(b, 1);
             lauf_build_load_value(b, var_a);
             lauf_build_return(b);
         }

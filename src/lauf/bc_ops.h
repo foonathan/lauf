@@ -335,10 +335,10 @@ LAUF_BC_OP(unpoison_alloc, bc_inst_none, {
 })
 
 //=== value stack manipulation ===//
-// Drops n values from stack.
+// Pops n values from stack.
 // b an ... a1 => b
-LAUF_BC_OP(drop, bc_inst_literal, {
-    vstack_ptr += ptrdiff_t(ip->drop.literal);
+LAUF_BC_OP(pop, bc_inst_literal, {
+    vstack_ptr += ptrdiff_t(ip->pop.literal);
 
     ++ip;
     LAUF_DISPATCH;

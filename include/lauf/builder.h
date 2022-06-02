@@ -88,9 +88,10 @@ void lauf_build_global_addr(lauf_builder b, lauf_global global);
 void lauf_build_local_addr(lauf_builder b, lauf_local var);
 void lauf_build_layout_of(lauf_builder b, lauf_type type);
 
-void lauf_build_drop(lauf_builder b, size_t n);
+void lauf_build_pop(lauf_builder b, size_t n);
 void lauf_build_pick(lauf_builder b, size_t n);
 void lauf_build_roll(lauf_builder b, size_t n);
+void lauf_build_drop(lauf_builder b, size_t n);
 void lauf_build_select(lauf_builder b, size_t max_index);
 void lauf_build_select_if(lauf_builder b, lauf_condition condition);
 
