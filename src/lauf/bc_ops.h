@@ -29,11 +29,16 @@ LAUF_BC_OP(return_, bc_inst_none, {
     auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
     auto marker = frame->unwind;
 
+    for (auto i = 0u; i != frame->fn->local_allocation_count; ++i)
+    {
+        auto addr = frame->first_local_allocation;
+        addr.allocation += i;
+        // Guaranteed to be valid.
+        lauf_vm_process_impl::remove_allocation(process, addr);
+    }
+
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
-    // We're not checking whether it succeeds, as the allocation is either valid and non-destroyed
-    // yet, or it was zero sized so is invalid from the start.
-    lauf_vm_process_impl::remove_allocation(process, frame->local_allocation);
     process->stack().unwind(marker);
 
     LAUF_DISPATCH;
@@ -112,27 +117,31 @@ LAUF_BC_OP(push_small_neg, bc_inst_literal, {
     LAUF_DISPATCH;
 })
 
+// Push address, literal is allocation index.
+// _ => allocation:0:0
+LAUF_BC_OP(push_addr, bc_inst_literal, {
+    --vstack_ptr;
+    vstack_ptr[0].as_address = lauf_value_address{ip->push_addr.literal, 0};
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
+// Push local address, literal is offset from allocation index.
+// _ => (first_local_allocation + offset)
+LAUF_BC_OP(push_local_addr, bc_inst_literal, {
+    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto addr  = frame->first_local_allocation;
+    addr.allocation += ip->push_addr.literal;
+
+    --vstack_ptr;
+    vstack_ptr[0].as_address = addr;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
 //=== address ===//
-// Push the address of a local variable, literal is address relative to function local begin.
-// _ => (local_base_addr + literal)
-LAUF_BC_OP(local_addr, bc_inst_literal, {
-    --vstack_ptr;
-    vstack_ptr[0].as_address        = static_cast<stack_frame*>(frame_ptr)[-1].local_allocation;
-    vstack_ptr[0].as_address.offset = ip->local_addr.literal;
-
-    ++ip;
-    LAUF_DISPATCH;
-})
-
-// Push the address of a global variable, literal is allocation index.
-LAUF_BC_OP(global_addr, bc_inst_literal, {
-    --vstack_ptr;
-    vstack_ptr[0].as_address = lauf_value_address{ip->global_addr.literal, 0};
-
-    ++ip;
-    LAUF_DISPATCH;
-})
-
 // Computes the address of an array element, literal is elem_size.
 // idx addr => (addr + elem_size * idx)
 LAUF_BC_OP(array_element_addr, bc_inst_literal, {

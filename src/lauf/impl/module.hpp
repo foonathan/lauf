@@ -58,22 +58,29 @@ private:
 } // namespace lauf
 
 //=== function ===//
-struct lauf_function_impl : lauf::joined_allocation<lauf_function_impl, lauf_vm_instruction>
+struct lauf_function_impl
+: lauf::joined_allocation<lauf_function_impl, lauf::vm_allocation, lauf_vm_instruction>
 {
     lauf_module              mod;
     const char*              name;
-    uint16_t                 _padding;
-    uint16_t                 local_stack_size;
     uint16_t                 max_vstack_size;
+    uint16_t                 local_stack_size;
+    uint16_t                 local_allocation_count;
     uint8_t                  input_count;
     uint8_t                  output_count;
     lauf::debug_location_map debug_locations;
 
     lauf_function_impl() = default;
 
+    // The ptr is actually the offset from the start of the local memory.
+    lauf::vm_allocation* local_allocations()
+    {
+        return array<lauf::vm_allocation>({});
+    }
+
     lauf_vm_instruction* bytecode()
     {
-        return array<lauf_vm_instruction>({});
+        return array<lauf_vm_instruction>({local_allocation_count});
     }
 };
 static_assert(sizeof(lauf_function_impl) == 3 * sizeof(void*) + sizeof(uint64_t));

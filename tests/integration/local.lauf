@@ -104,6 +104,15 @@ function @test_local_arithmetic_panic(0 => 0) {
     int 42; local_addr %x; int 11; call_builtin @sadd; store_field @Value.0;
     return;
 }
+function @test_local_arithmetic_next_panic(0 => 0) {
+    local %x : @Value;
+    local %y : @Value;
+    local %z : @Value;
+
+    # The offset advances y to the next local.
+    int 42; local_addr %y; int 34359738368; call_builtin @sadd; store_field @Value.0;
+    return;
+}
 
 function @dangling_addr(0 => 1) {
     local %x : @Value;

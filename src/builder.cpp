@@ -62,7 +62,8 @@ struct lauf_builder_impl
     lauf::stack_allocator alloc;
 
     lauf_builder_impl()
-    : cur_location{}, alloc(stack), bytecode(alloc), marker(alloc.top()), cur_fn(0)
+    : cur_location{}, alloc(stack), local_allocations(alloc, 32), bytecode(alloc),
+      marker(alloc.top()), cur_fn(0)
     {}
 
     //=== per module ===//
@@ -80,11 +81,12 @@ struct lauf_builder_impl
     }
 
     //=== per function ===//
-    lauf::stack_allocator::marker marker;
-    std::size_t                   cur_fn;
-    lauf::stack_allocator_offset  stack_frame;
-    lauf::stack_checker           value_stack;
-    lauf::bytecode_builder        bytecode;
+    lauf::stack_allocator::marker              marker;
+    std::size_t                                cur_fn;
+    lauf::stack_allocator_offset               stack_frame;
+    lauf::temporary_array<lauf::vm_allocation> local_allocations;
+    lauf::stack_checker                        value_stack;
+    lauf::bytecode_builder                     bytecode;
 
     void reset_function()
     {
@@ -93,6 +95,7 @@ struct lauf_builder_impl
 
         cur_fn      = 0;
         stack_frame = {};
+        local_allocations.clear_and_reserve(alloc, 32);
         value_stack = {};
         bytecode.reset();
     }
@@ -197,7 +200,7 @@ lauf_function lauf_finish_function(lauf_builder b)
     auto local_size = b->stack_frame.size();
 
     // Allocate and set function members.
-    auto result              = lauf_function_impl::create(b->bytecode.size());
+    auto result              = lauf_function_impl::create({b->bytecode.size(), 0});
     result->name             = fn_decl.name;
     result->local_stack_size = static_cast<uint16_t>(local_size);
     result->max_vstack_size  = b->value_stack.max_stack_size();
@@ -207,6 +210,9 @@ lauf_function lauf_finish_function(lauf_builder b)
 
     LAUF_VERIFY(lauf::frame_size_for(result) < lauf::stack_allocator::max_allocation_size(),
                 "function", "local variables of functions exceed stack frame size limit");
+    std::memcpy(result->local_allocations(), b->local_allocations.data(),
+                b->local_allocations.size() * sizeof(lauf::vm_allocation));
+    result->local_allocation_count = b->local_allocations.size();
 
     // Copy and patch bytecode.
     b->bytecode.finish(result->bytecode());
@@ -314,7 +320,7 @@ void lauf_build_global_addr(lauf_builder b, lauf_global global)
     }
     else
     {
-        b->bytecode.instruction(LAUF_VM_INSTRUCTION(global_addr, global._idx));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_addr, global._idx));
     }
 
     b->value_stack.push("global_addr");
@@ -324,7 +330,22 @@ void lauf_build_local_addr(lauf_builder b, lauf_local var)
 {
     b->bytecode.location(b->cur_location);
 
-    b->bytecode.instruction(LAUF_VM_INSTRUCTION(local_addr, var._addr));
+    auto idx = [&] {
+        auto addr   = reinterpret_cast<void*>(var._addr); // NOLINT
+        auto result = 0;
+        for (auto& alloc : b->local_allocations)
+        {
+            if (alloc.ptr == addr)
+                return result;
+            ++result;
+        }
+
+        lauf::vm_allocation local(addr, var._size, lauf::vm_allocation::stack_memory);
+        b->local_allocations.push_back(b->alloc, local);
+        return result;
+    }();
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_local_addr, idx));
     b->value_stack.push("local_addr");
 }
 

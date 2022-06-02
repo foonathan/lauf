@@ -20,7 +20,7 @@ public:
     temporary_array() : _data(nullptr), _size(0), _capacity(0) {}
 
     explicit temporary_array(stack_allocator& alloc, size_t expected_size)
-    : _data(alloc.allocate<alignof(T)>(expected_size * sizeof(T))), _size(0),
+    : _data(static_cast<T*>(alloc.allocate<alignof(T)>(expected_size * sizeof(T)))), _size(0),
       _capacity(uint32_t(expected_size))
     {}
 

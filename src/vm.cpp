@@ -35,7 +35,7 @@ struct alignas(void*) stack_frame
     lauf_function                 fn;
     lauf_vm_instruction*          return_ip;
     lauf::stack_allocator::marker unwind;
-    lauf_value_address            local_allocation;
+    lauf_value_address            first_local_allocation;
     stack_frame*                  prev;
 };
 
@@ -51,12 +51,21 @@ void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruc
     if (memory == nullptr)
         return nullptr;
 
-    auto local_memory = static_cast<stack_frame*>(memory) + 1;
-    auto local_allocation
-        = lauf_vm_process_impl::add_allocation(process, {local_memory, fn->local_stack_size,
-                                                         lauf::vm_allocation::stack_memory});
+    auto local_memory = reinterpret_cast<unsigned char*>(static_cast<stack_frame*>(memory) + 1);
+    auto first_local_allocation = lauf_value_address_invalid;
+    for (auto i = 0u; i != fn->local_allocation_count; ++i)
+    {
+        auto alloc = fn->local_allocations()[i];
+        alloc.ptr  = local_memory + reinterpret_cast<std::uintptr_t>(alloc.ptr);
 
-    return ::new (memory) stack_frame{fn, return_ip, marker, local_allocation, prev_frame} + 1;
+        auto addr = lauf_vm_process_impl::add_allocation(process, alloc);
+        if (i == 0)
+            first_local_allocation = addr;
+    }
+
+    auto frame
+        = ::new (memory) stack_frame{fn, return_ip, marker, first_local_allocation, prev_frame};
+    return frame + 1;
 }
 } // namespace
 
