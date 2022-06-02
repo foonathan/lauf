@@ -33,8 +33,8 @@ LAUF_BC_OP(return_, bc_inst_none, {
     frame_ptr = frame->prev + 1;
     // We're not checking whether it succeeds, as the allocation is either valid and non-destroyed
     // yet, or it was zero sized so is invalid from the start.
-    lauf::remove_allocation(process, frame->local_allocation);
-    process->allocator.unwind(marker);
+    lauf_vm_process_impl::remove_allocation(process, frame->local_allocation);
+    process->stack().unwind(marker);
 
     LAUF_DISPATCH;
 })
@@ -46,16 +46,16 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
     if (new_frame_ptr == nullptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "stack overflow");
+        process->vm()->panic_handler(&info, "stack overflow");
         return false;
     }
     frame_ptr = new_frame_ptr;
 
-    auto remaining_vstack_size = vstack_ptr - process->vm->value_stack_limit();
+    auto remaining_vstack_size = vstack_ptr - process->vm()->value_stack_limit();
     if (remaining_vstack_size < callee->max_vstack_size)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "value stack overflow");
+        process->vm()->panic_handler(&info, "value stack overflow");
         return false;
     }
 
@@ -152,7 +152,7 @@ LAUF_BC_OP(array_element_addr, bc_inst_literal, {
 // Allocates new heap memory.
 // size alignment => addr
 LAUF_BC_OP(heap_alloc, bc_inst_none, {
-    auto vm        = process->vm;
+    auto vm        = process->vm();
     auto size      = vstack_ptr[1].as_uint;
     auto alignment = vstack_ptr[0].as_uint;
     auto ptr       = vm->allocator.heap_alloc(vm->allocator.user_data, size, alignment);
@@ -163,10 +163,10 @@ LAUF_BC_OP(heap_alloc, bc_inst_none, {
         return false;
     }
 
-    auto alloc = lauf::allocation(ptr, uint32_t(size), lauf::allocation::heap_memory);
+    auto alloc = lauf::vm_allocation(ptr, uint32_t(size), lauf::vm_allocation::heap_memory);
 
     ++vstack_ptr;
-    vstack_ptr[0].as_address = lauf::add_allocation(process, alloc);
+    vstack_ptr[0].as_address = lauf_vm_process_impl::add_allocation(process, alloc);
 
     ++ip;
     LAUF_DISPATCH;
@@ -175,22 +175,22 @@ LAUF_BC_OP(heap_alloc, bc_inst_none, {
 // Frees the heap allocation the address is in.
 // addr => _
 LAUF_BC_OP(free_alloc, bc_inst_none, {
-    auto vm   = process->vm;
+    auto vm   = process->vm();
     auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
     auto alloc = process->get_allocation(addr);
     if (alloc == nullptr
-        || alloc->source != lauf::allocation::heap_memory
+        || alloc->source != lauf::vm_allocation::heap_memory
         // We do not allow freeing split memory as others might be using other parts.
-        || alloc->split != lauf::allocation::unsplit)
+        || alloc->split != lauf::vm_allocation::unsplit)
     {
         auto info = make_panic_info(frame_ptr, ip);
         vm->panic_handler(&info, "invalid address");
         return false;
     }
     vm->allocator.free_alloc(vm->allocator.user_data, alloc->ptr);
-    lauf::remove_allocation(process, addr);
+    lauf_vm_process_impl::remove_allocation(process, addr);
 
     ++ip;
     LAUF_DISPATCH;
@@ -206,7 +206,7 @@ LAUF_BC_OP(split_alloc, bc_inst_none, {
     if (!base_alloc || length > base_alloc->size)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "invalid address");
+        process->vm()->panic_handler(&info, "invalid address");
         return false;
     }
 
@@ -219,28 +219,28 @@ LAUF_BC_OP(split_alloc, bc_inst_none, {
 
     switch (base_alloc->split)
     {
-    case lauf::allocation::unsplit:
-        alloc1.split = lauf::allocation::first_split;
-        alloc2.split = lauf::allocation::last_split;
+    case lauf::vm_allocation::unsplit:
+        alloc1.split = lauf::vm_allocation::first_split;
+        alloc2.split = lauf::vm_allocation::last_split;
         break;
-    case lauf::allocation::first_split:
-        alloc1.split = lauf::allocation::first_split;
-        alloc2.split = lauf::allocation::middle_split;
+    case lauf::vm_allocation::first_split:
+        alloc1.split = lauf::vm_allocation::first_split;
+        alloc2.split = lauf::vm_allocation::middle_split;
         break;
-    case lauf::allocation::middle_split:
-        alloc1.split = lauf::allocation::middle_split;
-        alloc2.split = lauf::allocation::middle_split;
+    case lauf::vm_allocation::middle_split:
+        alloc1.split = lauf::vm_allocation::middle_split;
+        alloc2.split = lauf::vm_allocation::middle_split;
         break;
-    case lauf::allocation::last_split:
-        alloc1.split = lauf::allocation::middle_split;
-        alloc2.split = lauf::allocation::last_split;
+    case lauf::vm_allocation::last_split:
+        alloc1.split = lauf::vm_allocation::middle_split;
+        alloc2.split = lauf::vm_allocation::last_split;
         break;
     }
 
     *base_alloc  = alloc1;
     auto addr1   = base_addr;
     addr1.offset = 0;
-    auto addr2   = add_allocation(process, alloc2);
+    auto addr2   = lauf_vm_process_impl::add_allocation(process, alloc2);
 
     vstack_ptr[1].as_address = addr1;
     vstack_ptr[0].as_address = addr2;
@@ -266,27 +266,27 @@ LAUF_BC_OP(merge_alloc, bc_inst_none, {
         || alloc1->offset(alloc1->size) != alloc2->ptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "invalid address");
+        process->vm()->panic_handler(&info, "invalid address");
         return false;
     }
-    auto alloc1_first = alloc1->split == lauf::allocation::first_split;
-    auto alloc2_last  = alloc2->split == lauf::allocation::last_split;
+    auto alloc1_first = alloc1->split == lauf::vm_allocation::first_split;
+    auto alloc2_last  = alloc2->split == lauf::vm_allocation::last_split;
 
     auto& base_alloc = *alloc1;
     base_alloc.size += alloc2->size;
     if (alloc1_first && alloc2_last)
     {
         // If we're merging the first and last split, it's no longer split.
-        base_alloc.split = lauf::allocation::unsplit;
+        base_alloc.split = lauf::vm_allocation::unsplit;
     }
     else if (!alloc1_first && alloc2_last)
     {
         // base_alloc is now the last split.
-        base_alloc.split = lauf::allocation::last_split;
+        base_alloc.split = lauf::vm_allocation::last_split;
     }
     auto base_addr = addr1;
 
-    lauf::remove_allocation(process, addr2);
+    lauf_vm_process_impl::remove_allocation(process, addr2);
 
     ++vstack_ptr;
     vstack_ptr[0].as_address = base_addr;
@@ -301,12 +301,12 @@ LAUF_BC_OP(poison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
     if (auto alloc = process->get_allocation(addr))
     {
-        alloc->lifetime = lauf::allocation::poisoned;
+        alloc->lifetime = lauf::vm_allocation::poisoned;
     }
     else
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "invalid address");
+        process->vm()->panic_handler(&info, "invalid address");
         return false;
     }
     --vstack_ptr;
@@ -320,12 +320,12 @@ LAUF_BC_OP(unpoison_alloc, bc_inst_none, {
     auto addr = vstack_ptr[0].as_address;
     if (auto alloc = process->get_allocation(addr))
     {
-        alloc->lifetime = lauf::allocation::allocated;
+        alloc->lifetime = lauf::vm_allocation::allocated;
     }
     else
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "invalid address");
+        process->vm()->panic_handler(&info, "invalid address");
         return false;
     }
     --vstack_ptr;
@@ -399,7 +399,7 @@ LAUF_BC_OP(select, bc_inst_literal, {
     if (index >= max_index)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "select index out of range");
+        process->vm()->panic_handler(&info, "select index out of range");
         return false;
     }
 
@@ -448,7 +448,7 @@ LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
     if (object == nullptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "invalid address");
+        process->vm()->panic_handler(&info, "invalid address");
         return false;
     }
     vstack_ptr[0] = type->load_field(object, ip->load_field.field);
@@ -468,7 +468,7 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
     if (object == nullptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "invalid address");
+        process->vm()->panic_handler(&info, "invalid address");
         return false;
     }
     type->store_field(object, ip->store_field.field, vstack_ptr[1]);
@@ -500,7 +500,7 @@ LAUF_BC_OP(load_array_value, bc_inst_literal, {
     if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "array index out of bounds");
+        process->vm()->panic_handler(&info, "array index out of bounds");
         return false;
     }
 
@@ -532,7 +532,7 @@ LAUF_BC_OP(store_array_value, bc_inst_literal, {
     if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, "array index out of bounds");
+        process->vm()->panic_handler(&info, "array index out of bounds");
         return false;
     }
 
@@ -561,7 +561,7 @@ LAUF_BC_OP(panic, bc_inst_none, {
     auto message = vstack_ptr[0].as_address;
 
     auto info = make_panic_info(frame_ptr, ip);
-    process->vm->panic_handler(&info, process->get_const_cstr(message));
+    process->vm()->panic_handler(&info, process->get_const_cstr(message));
 
     return false;
 })
@@ -574,7 +574,7 @@ LAUF_BC_OP(panic_if, bc_inst_cc, {
     if (check_condition(ip->panic_if.cc, value))
     {
         auto info = make_panic_info(frame_ptr, ip);
-        process->vm->panic_handler(&info, process->get_const_cstr(message));
+        process->vm()->panic_handler(&info, process->get_const_cstr(message));
         return false;
     }
     vstack_ptr += 2;

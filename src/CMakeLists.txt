@@ -31,7 +31,8 @@ set(src_header_files
         lauf/bytecode_builder.hpp
         lauf/literal_pool.hpp
         lauf/stack_check.hpp
-        lauf/verify.hpp)
+        lauf/verify.hpp
+        lauf/vm_memory.hpp)
 set(src_files
         builder.cpp
         linker.cpp

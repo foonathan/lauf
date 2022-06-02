@@ -9,6 +9,7 @@
 #include <lauf/module.h>
 #include <lauf/support/joined_allocation.hpp>
 #include <lauf/value.h>
+#include <lauf/vm_memory.hpp>
 #include <memory>
 
 //=== debug metadata ===//
@@ -56,70 +57,6 @@ private:
 };
 } // namespace lauf
 
-//=== allocation ===//
-namespace lauf
-{
-struct allocation
-{
-    enum source_t : uint8_t
-    {
-        // Global const memory: no need to do anything on process start.
-        static_const_memory,
-        // Global mutable memory: allocate and copy on process start.
-        static_mutable_memory,
-        // Global zero memory: allocate and clear on process start.
-        static_zero_memory,
-
-        stack_memory,
-        heap_memory,
-    };
-    enum lifetime_t : uint8_t
-    {
-        allocated,
-        poisoned,
-        freed,
-    };
-    enum split_t : uint8_t
-    {
-        unsplit,
-        first_split,
-        middle_split,
-        last_split,
-    };
-
-    void*      ptr;
-    uint32_t   size;
-    source_t   source;
-    lifetime_t lifetime = allocated;
-    split_t    split    = unsplit;
-    // We're storing an 8 bit generation here, even though the actual address remembers only two
-    // bits. But we have the space, so why bother.
-    uint8_t generation = 0;
-
-    allocation(uint32_t size, source_t source = static_zero_memory)
-    : ptr(nullptr), size(size), source(source)
-    {}
-    allocation(const void* ptr, uint32_t size, source_t source = static_const_memory)
-    : ptr(const_cast<void*>(ptr)), size(size), source(source)
-    {}
-    allocation(void* ptr, uint32_t size) = delete;
-    allocation(void* ptr, uint32_t size, source_t source)
-    : ptr(const_cast<void*>(ptr)), size(size), source(source)
-    {}
-
-    void* offset(std::size_t o) const
-    {
-        return static_cast<unsigned char*>(ptr) + o;
-    }
-
-    bool is_split() const
-    {
-        return split != allocation::unsplit;
-    }
-};
-static_assert(sizeof(allocation) == 2 * sizeof(void*));
-} // namespace lauf
-
 //=== function ===//
 struct lauf_function_impl : lauf::joined_allocation<lauf_function_impl, lauf_vm_instruction>
 {
@@ -143,7 +80,7 @@ static_assert(sizeof(lauf_function_impl) == 3 * sizeof(void*) + sizeof(uint64_t)
 
 //=== module ===//
 struct alignas(lauf_value) lauf_module_impl
-: lauf::joined_allocation<lauf_module_impl, lauf_function, lauf_value, lauf::allocation>
+: lauf::joined_allocation<lauf_module_impl, lauf_function, lauf_value, lauf::vm_allocation>
 {
     const char* name;
     const char* path;
@@ -170,9 +107,9 @@ struct alignas(lauf_value) lauf_module_impl
         return array<lauf_value>({function_count, literal_count, allocation_count});
     }
 
-    lauf::allocation* allocation_data()
+    lauf::vm_allocation* allocation_data()
     {
-        return array<lauf::allocation>({function_count, literal_count, allocation_count});
+        return array<lauf::vm_allocation>({function_count, literal_count, allocation_count});
     }
 };
 static_assert(sizeof(lauf_module_impl) == 5 * sizeof(void*));

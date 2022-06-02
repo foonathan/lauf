@@ -16,20 +16,16 @@
 #include <lauf/impl/vm.hpp>
 #include <lauf/support/stack_allocator.hpp>
 #include <lauf/type.h>
-#include <type_traits>
-#include <vector>
 
 lauf_vm_impl::lauf_vm_impl(lauf_vm_options options)
-: panic_handler(options.panic_handler), allocator(options.allocator),
-  value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
+: process(lauf_vm_process_impl::create_null(this)), panic_handler(options.panic_handler),
+  allocator(options.allocator), value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
   memory_stack(options.max_stack_size)
-{
-    process = lauf::create_null_process(this);
-}
+{}
 
 lauf_vm_impl::~lauf_vm_impl()
 {
-    lauf::destroy_process(process);
+    lauf_vm_process_impl::destroy(process);
 }
 
 namespace
@@ -46,18 +42,19 @@ struct alignas(void*) stack_frame
 void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruction* return_ip,
                       lauf_function fn)
 {
-    auto marker     = process->allocator.top();
+    auto marker     = process->stack().top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
 
     // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
     // it; the builder takes care of it when computing the stack size.
-    auto memory = process->allocator.allocate(lauf::frame_size_for(fn));
+    auto memory = process->stack().allocate(lauf::frame_size_for(fn));
     if (memory == nullptr)
         return nullptr;
 
-    auto local_memory     = static_cast<stack_frame*>(memory) + 1;
-    auto local_allocation = lauf::add_allocation(process, {local_memory, fn->local_stack_size,
-                                                           lauf::allocation::stack_memory});
+    auto local_memory = static_cast<stack_frame*>(memory) + 1;
+    auto local_allocation
+        = lauf_vm_process_impl::add_allocation(process, {local_memory, fn->local_stack_size,
+                                                         lauf::vm_allocation::stack_memory});
 
     return ::new (memory) stack_frame{fn, return_ip, marker, local_allocation, prev_frame} + 1;
 }
@@ -331,13 +328,13 @@ bool lauf_builtin_panic(lauf_vm_process process, lauf_vm_instruction* ip, void* 
 {
     // call_builtin has already incremented ip, so undo it to get the location.
     auto info = make_panic_info(frame_ptr, ip - 1);
-    process->vm->panic_handler(&info, message);
+    process->vm()->panic_handler(&info, message);
     return false;
 }
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
-    lauf::init_process(vm->process, prog);
+    lauf_vm_process_impl::start(vm->process, prog);
     auto vstack_ptr = vm->value_stack();
 
     for (auto i = 0; i != prog.entry->input_count; ++i)
@@ -362,7 +359,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         }
     }
 
-    lauf::reset_process(vm->process);
+    lauf_vm_process_impl::finish(vm->process);
     vm->memory_stack.reset();
     return result;
 }

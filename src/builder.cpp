@@ -66,10 +66,10 @@ struct lauf_builder_impl
     {}
 
     //=== per module ===//
-    module_decl                   mod;
-    lauf::literal_pool            literals;
-    std::vector<function_decl>    functions;
-    std::vector<lauf::allocation> allocations;
+    module_decl                      mod;
+    lauf::literal_pool               literals;
+    std::vector<function_decl>       functions;
+    std::vector<lauf::vm_allocation> allocations;
 
     void reset_module()
     {
@@ -141,7 +141,7 @@ lauf_module lauf_finish_module(lauf_builder b)
 
     if (!b->allocations.empty())
         std::memcpy(result->allocation_data(), b->allocations.data(),
-                    b->allocations.size() * sizeof(lauf::allocation));
+                    b->allocations.size() * sizeof(lauf::vm_allocation));
 
     return result;
 }
@@ -167,7 +167,7 @@ lauf_global lauf_build_data(lauf_builder b, const void* memory, size_t size)
     LAUF_VERIFY(size < UINT32_MAX, "data", "allocation size limit exceeded");
 
     auto idx = b->allocations.size();
-    b->allocations.emplace_back(memory, uint32_t(size), lauf::allocation::static_mutable_memory);
+    b->allocations.emplace_back(memory, uint32_t(size), lauf::vm_allocation::static_mutable_memory);
     return {idx};
 }
 
