@@ -107,13 +107,6 @@ void lauf_build_load_array_value(lauf_builder b, lauf_local var);
 void lauf_build_store_value(lauf_builder b, lauf_local var);
 void lauf_build_store_array_value(lauf_builder b, lauf_local var);
 
-void lauf_build_heap_alloc(lauf_builder b);
-void lauf_build_free_alloc(lauf_builder b);
-void lauf_build_split_alloc(lauf_builder b);
-void lauf_build_merge_alloc(lauf_builder b);
-void lauf_build_poison_alloc(lauf_builder b);
-void lauf_build_unpoison_alloc(lauf_builder b);
-
 void lauf_build_panic(lauf_builder b);
 void lauf_build_panic_if(lauf_builder b, lauf_condition condition);
 

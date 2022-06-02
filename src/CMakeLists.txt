@@ -18,7 +18,8 @@ set(header_files
 
         ${include_dir}/frontend/text.h
 
-        ${include_dir}/lib/int.h)
+        ${include_dir}/lib/int.h
+        ${include_dir}/lib/memory.h)
 set(src_header_files
         lauf/support/joined_allocation.hpp
         lauf/support/stack_allocator.hpp
@@ -43,7 +44,8 @@ set(src_files
 
         frontend/text.cpp
 
-        lib/int.cpp)
+        lib/int.cpp
+        lib/memory.cpp)
 
 add_library(lauf_core)
 add_library(foonathan::lauf::core ALIAS lauf_core)

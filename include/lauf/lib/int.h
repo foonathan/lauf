@@ -8,6 +8,8 @@
 #include <lauf/config.h>
 #include <lauf/type.h>
 
+LAUF_HEADER_START
+
 //=== types ===//
 lauf_type lauf_native_sint_type(void);
 lauf_type lauf_native_uint_type(void);
@@ -36,6 +38,8 @@ lauf_builtin lauf_umul_builtin(lauf_integer_overflow overflow);
 //=== comparison ===//
 lauf_builtin lauf_scmp_builtin(void);
 lauf_builtin lauf_ucmp_builtin(void);
+
+LAUF_HEADER_END
 
 #endif // LAUF_LIB_INT_H_INCLUDED
 

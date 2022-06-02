@@ -14,4 +14,5 @@
 #include <lauf/frontend/text.h>
 
 #include <lauf/lib/int.h>
+#include <lauf/lib/memory.h>
 

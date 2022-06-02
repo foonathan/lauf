@@ -30,31 +30,33 @@ bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void
 bool lauf_builtin_panic(lauf_vm_process process, lauf_vm_instruction* ip, void* frame_ptr,
                         const char* message);
 
+// Creates a builtin that consumes one argument to produce N.
 #define LAUF_BUILTIN_UNARY_OPERATION(Name, N, ...)                                                 \
-    static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,        \
+    static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* _vstack_ptr, void* frame_ptr,       \
                           lauf_vm_process process)                                                 \
     {                                                                                              \
-        lauf_value value = vstack_ptr[0];                                                          \
-        vstack_ptr += 1 - N;                                                                       \
-        lauf_value* result = vstack_ptr;                                                           \
+        lauf_value value = _vstack_ptr[0];                                                         \
+        _vstack_ptr += 1 - N;                                                                      \
+        lauf_value* result = _vstack_ptr;                                                          \
         __VA_ARGS__                                                                                \
-        LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);           \
+        LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, _vstack_ptr, frame_ptr, process);          \
     }                                                                                              \
     lauf_builtin Name(void)                                                                        \
     {                                                                                              \
         return {{1, N}, &Name##_fn};                                                               \
     }
 
+// Creates a builtin that consumes two arguments to produce N.
 #define LAUF_BUILTIN_BINARY_OPERATION(Name, N, ...)                                                \
-    static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,        \
+    static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* _vstack_ptr, void* frame_ptr,       \
                           lauf_vm_process process)                                                 \
     {                                                                                              \
-        lauf_value lhs = vstack_ptr[1];                                                            \
-        lauf_value rhs = vstack_ptr[0];                                                            \
-        vstack_ptr += 2 - N;                                                                       \
-        lauf_value* result = vstack_ptr;                                                           \
+        lauf_value lhs = _vstack_ptr[1];                                                           \
+        lauf_value rhs = _vstack_ptr[0];                                                           \
+        _vstack_ptr += 2 - N;                                                                      \
+        lauf_value* result = _vstack_ptr;                                                          \
         __VA_ARGS__                                                                                \
-        LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);           \
+        LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, _vstack_ptr, frame_ptr, process);          \
     }                                                                                              \
     lauf_builtin Name(void)                                                                        \
     {                                                                                              \

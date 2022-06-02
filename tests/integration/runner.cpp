@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <lauf/frontend/text.h>
 #include <lauf/lib/int.h>
+#include <lauf/lib/memory.h>
 #include <lauf/linker.h>
 #include <lauf/vm.h>
 #include <lexy/input/file.hpp>
@@ -35,6 +36,14 @@ int main(int argc, char* argv[])
         lauf_frontend_text_register_builtin(parser, "ssub",
                                             lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
         lauf_frontend_text_register_builtin(parser, "scmp", lauf_scmp_builtin());
+
+        lauf_frontend_text_register_builtin(parser, "heap_alloc", lauf_heap_alloc_builtin());
+        lauf_frontend_text_register_builtin(parser, "free_alloc", lauf_free_alloc_builtin());
+        lauf_frontend_text_register_builtin(parser, "split_alloc", lauf_split_alloc_builtin());
+        lauf_frontend_text_register_builtin(parser, "merge_alloc", lauf_merge_alloc_builtin());
+        lauf_frontend_text_register_builtin(parser, "poison_alloc", lauf_poison_alloc_builtin());
+        lauf_frontend_text_register_builtin(parser, "unpoison_alloc",
+                                            lauf_unpoison_alloc_builtin());
     }
 
     auto mod = lauf_frontend_text(parser, argv[1], file.buffer().data(), file.buffer().size());
