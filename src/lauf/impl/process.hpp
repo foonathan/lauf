@@ -48,6 +48,17 @@ public:
         process->_vm->process = process;
         return result;
     }
+    static lauf_value_address add_local_allocations(lauf_vm_process&           process,
+                                                    unsigned char*             local_memory,
+                                                    const lauf::vm_allocation* alloc,
+                                                    std::size_t                count)
+    {
+        auto result
+            = lauf::vm_memory<lauf_vm_process_impl>::add_local_allocations(process, local_memory,
+                                                                           alloc, count);
+        process->_vm->process = process;
+        return result;
+    }
 
     lauf_vm vm() const
     {

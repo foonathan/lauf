@@ -45,23 +45,25 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(0 => 1) {
-            local %ptr : @Value;
-            local %ptr2 : @Value;
-            local %result : @Value;
+        function @fib_recursive(1 => 1) {
+            local %arg : @Value;
 
-            int 16; int 8; heap_alloc; store_value %ptr;
+            store_value %arg;
 
-            int 8; load_value %ptr; split_alloc; store_value %ptr2; store_value %ptr;
+            load_value %arg; int 1; call_builtin @scmp;
+            jump_if cmp_gt %recurse;
 
-            int 42; load_value %ptr; store_field @Value.0;
-            load_value %ptr; load_field @Value.0; store_value %result;
+            load_value %arg;
+            return;
 
-            load_value %ptr; load_value %ptr2; merge_alloc; store_value %ptr;
+        label %recurse:
+            load_value %arg; int 1; call_builtin @ssub;
+            call @fib_recursive;
 
-            load_value %ptr; free_alloc;
+            load_value %arg; int 2; call_builtin @ssub;
+            call @fib_recursive;
 
-            load_value %result;
+            call_builtin @sadd;
             return;
         }
     )");
@@ -72,7 +74,7 @@ int main()
     options.allocator = lauf_vm_malloc_allocator;
     auto vm           = lauf_vm_create(options);
 
-    lauf_value input = {.as_sint = 1};
+    lauf_value input = {.as_sint = 35};
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);

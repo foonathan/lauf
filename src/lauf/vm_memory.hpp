@@ -89,14 +89,10 @@ public:
     //=== allocation setup ===//
     static lauf_value_address add_allocation(Derived*& ptr, vm_allocation alloc)
     {
-        if (alloc.size == 0)
-            return lauf_value_address_invalid;
-
         auto self = static_cast<vm_memory*>(ptr);
         if (self->_first_unused == self->_capacity)
         {
             auto new_capacity = 2ull * self->_capacity;
-
             Derived::resize(ptr, {self->_capacity}, {new_capacity});
 
             self            = ptr;
@@ -106,6 +102,33 @@ public:
         alloc.generation                             = self->_generation;
         self->get_allocations()[self->_first_unused] = alloc;
         return {self->_first_unused++, self->_generation, 0};
+    }
+
+    static lauf_value_address add_local_allocations(Derived*& ptr, unsigned char* local_memory,
+                                                    const vm_allocation* allocs, std::size_t count)
+    {
+        auto self = static_cast<vm_memory*>(ptr);
+        if (self->_first_unused + count >= self->_capacity)
+        {
+            auto new_capacity = 2ull * self->_capacity;
+            Derived::resize(ptr, {self->_capacity}, {new_capacity});
+
+            self            = ptr;
+            self->_capacity = new_capacity;
+        }
+
+        auto first_alloc = self->_first_unused;
+        auto dest        = self->get_allocations() + first_alloc;
+        for (auto i = 0u; i != count; ++i)
+        {
+            *dest            = allocs[i];
+            dest->generation = self->_generation;
+            dest->ptr        = local_memory + reinterpret_cast<std::uintptr_t>(dest->ptr);
+            ++dest;
+        }
+        self->_first_unused += count;
+
+        return {first_alloc, self->_generation, 0};
     }
 
     static vm_allocation* remove_allocation(Derived* ptr, lauf_value_address addr)

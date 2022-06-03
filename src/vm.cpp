@@ -52,16 +52,10 @@ void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruc
         return nullptr;
 
     auto local_memory = reinterpret_cast<unsigned char*>(static_cast<stack_frame*>(memory) + 1);
-    auto first_local_allocation = lauf_value_address_invalid;
-    for (auto i = 0u; i != fn->local_allocation_count; ++i)
-    {
-        auto alloc = fn->local_allocations()[i];
-        alloc.ptr  = local_memory + reinterpret_cast<std::uintptr_t>(alloc.ptr);
-
-        auto addr = lauf_vm_process_impl::add_allocation(process, alloc);
-        if (i == 0)
-            first_local_allocation = addr;
-    }
+    auto first_local_allocation
+        = lauf_vm_process_impl::add_local_allocations(process, local_memory,
+                                                      fn->local_allocations(),
+                                                      fn->local_allocation_count);
 
     auto frame
         = ::new (memory) stack_frame{fn, return_ip, marker, first_local_allocation, prev_frame};
