@@ -113,6 +113,13 @@ function @test_local_arithmetic_next_panic(0 => 0) {
     int 42; local_addr %y; int 34359738368; call_builtin @sadd; store_field @Value.0;
     return;
 }
+function @test_local_arithmetic_alignment_panic(0 => 0) {
+    local %x : @Value[2];
+
+    # The offset advances x 4 bytes.
+    int 42; local_addr %x; int 17179869184; call_builtin @sadd; store_field @Value.0;
+    return;
+}
 
 function @dangling_addr(0 => 1) {
     local %x : @Value;
@@ -127,5 +134,4 @@ function @test_dangling_addr_reuse_panic(0 => 0) {
     call @dangling_addr; call @set_ptr;
     return;
 }
-
 

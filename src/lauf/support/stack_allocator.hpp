@@ -9,21 +9,9 @@
 #include <cstdint>
 #include <cstring>
 #include <lauf/config.h>
+#include <lauf/support/align.hpp>
 #include <lauf/value.h>
 #include <type_traits>
-
-namespace lauf
-{
-LAUF_INLINE constexpr std::size_t align_offset(std::uintptr_t address, std::size_t alignment)
-{
-    auto misaligned = address & (alignment - 1);
-    return misaligned != 0 ? (alignment - misaligned) : 0;
-}
-LAUF_INLINE std::size_t align_offset(const void* address, std::size_t alignment)
-{
-    return align_offset(reinterpret_cast<std::uintptr_t>(address), alignment);
-}
-} // namespace lauf
 
 namespace lauf
 {

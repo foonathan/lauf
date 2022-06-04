@@ -21,6 +21,7 @@ set(header_files
         ${include_dir}/lib/int.h
         ${include_dir}/lib/memory.h)
 set(src_header_files
+        lauf/support/align.hpp
         lauf/support/joined_allocation.hpp
         lauf/support/stack_allocator.hpp
         lauf/support/temporary_array.hpp

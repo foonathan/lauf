@@ -305,7 +305,7 @@ LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
         = static_cast<lauf_type>(process->get_literal(ip->load_field.literal_idx).as_native_ptr);
 
     auto addr   = vstack_ptr[0].as_address;
-    auto object = process->get_const_ptr(addr, type->layout.size);
+    auto object = process->get_const_ptr(addr, type->layout);
     if (object == nullptr)
         LAUF_DO_PANIC("invalid address");
 
@@ -322,7 +322,7 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
         = static_cast<lauf_type>(process->get_literal(ip->store_field.literal_idx).as_native_ptr);
 
     auto addr   = vstack_ptr[0].as_address;
-    auto object = process->get_mutable_ptr(addr, type->layout.size);
+    auto object = process->get_mutable_ptr(addr, type->layout);
     if (object == nullptr)
         LAUF_DO_PANIC("invalid address");
 

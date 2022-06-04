@@ -10,6 +10,7 @@
 #include <lauf/config.h>
 #include <lauf/support/joined_allocation.hpp>
 #include <lauf/support/stack_allocator.hpp>
+#include <lauf/type.h>
 #include <lauf/vm.h>
 
 namespace lauf
@@ -213,29 +214,33 @@ public:
         return alloc;
     }
 
-    LAUF_INLINE const void* get_const_ptr(lauf_value_address addr, size_t size)
+    LAUF_INLINE const void* get_const_ptr(lauf_value_address addr, lauf_layout layout)
     {
         if (auto alloc = get_allocation(addr))
         {
-            if (std::ptrdiff_t(alloc->size) - std::ptrdiff_t(addr.offset) < size
+            if (std::ptrdiff_t(alloc->size) - std::ptrdiff_t(addr.offset) < layout.size
                 || alloc->lifetime != vm_allocation::allocated)
                 return nullptr;
 
-            return alloc->offset(addr.offset);
+            auto ptr = alloc->offset(addr.offset);
+            if (is_aligned(ptr, layout.alignment))
+                return ptr;
         }
 
         return nullptr;
     }
-    LAUF_INLINE void* get_mutable_ptr(lauf_value_address addr, size_t size)
+    LAUF_INLINE void* get_mutable_ptr(lauf_value_address addr, lauf_layout layout)
     {
         if (auto alloc = get_allocation(addr))
         {
-            if (ptrdiff_t(alloc->size) - std::ptrdiff_t(addr.offset) < size
+            if (ptrdiff_t(alloc->size) - std::ptrdiff_t(addr.offset) < layout.size
                 || alloc->lifetime != vm_allocation::allocated
                 || alloc->source == vm_allocation::static_const_memory)
                 return nullptr;
 
-            return alloc->offset(addr.offset);
+            auto ptr = alloc->offset(addr.offset);
+            if (is_aligned(ptr, layout.alignment))
+                return ptr;
         }
 
         return nullptr;
