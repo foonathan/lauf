@@ -100,10 +100,19 @@ LAUF_BC_OP(add_local_allocations, bc_inst_none, {
 })
 
 // Calls the specified builtin function.
-LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
-    auto callee       = (lauf_builtin_function*)(process->get_literal(ip->call_builtin.literal_idx)
-                                               .as_native_ptr);
-    auto stack_change = ip->call_builtin.offset;
+LAUF_BC_OP(call_builtin, bc_inst_builtin, {
+    auto base_addr    = reinterpret_cast<unsigned char*>(&lauf_builtin_dispatch);
+    auto addr         = base_addr + ip->call_builtin.address * 16;
+    auto callee       = reinterpret_cast<lauf_builtin_function*>(addr);
+    auto stack_change = ip->call_builtin.stack_change;
+
+    ++ip;
+    LAUF_DISPATCH_BUILTIN(callee, stack_change);
+})
+LAUF_BC_OP(call_builtin_long, bc_inst_offset_literal_idx, {
+    auto addr         = process->get_literal(ip->call_builtin_long.literal_idx).as_native_ptr;
+    auto callee       = (lauf_builtin_function*)addr;
+    auto stack_change = ip->call_builtin_long.offset;
     ++ip;
     LAUF_DISPATCH_BUILTIN(callee, stack_change);
 })

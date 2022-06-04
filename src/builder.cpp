@@ -448,10 +448,20 @@ void lauf_build_call(lauf_builder b, lauf_function_decl fn)
 void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn)
 {
     b->bytecode.location(b->cur_location);
-
-    auto idx          = b->literals.insert(reinterpret_cast<void*>(fn.impl));
     auto stack_change = int32_t(fn.signature.input_count) - int32_t(fn.signature.output_count);
-    b->bytecode.instruction(LAUF_VM_INSTRUCTION(call_builtin, stack_change, idx));
+
+    auto diff = reinterpret_cast<unsigned char*>(fn.impl)
+                - reinterpret_cast<unsigned char*>(&lauf_builtin_dispatch);
+    auto addr = diff / 16;
+    if (diff % 16 != 0 || addr < INT16_MIN || addr > INT16_MAX)
+    {
+        auto idx = b->literals.insert(reinterpret_cast<void*>(fn.impl));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(call_builtin_long, stack_change, idx));
+    }
+    else
+    {
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(call_builtin, stack_change, int32_t(addr)));
+    }
 
     b->value_stack.pop("call_builtin", fn.signature.input_count);
     b->value_stack.push("call_builtin", fn.signature.output_count);

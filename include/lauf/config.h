@@ -64,5 +64,13 @@
 #    define LAUF_NOINLINE_IF_TAIL
 #endif
 
+#ifndef LAUF_SECTION
+#    if defined(__GNUC__)
+#        define LAUF_SECTION(Name) __attribute__((section(Name)))
+#    else
+#        define LAUF_SECTION(Name)
+#    endif
+#endif
+
 #endif // LAUF_CONFIG_H_INCLUDED
 

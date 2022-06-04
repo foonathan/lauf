@@ -117,6 +117,20 @@ struct bc_inst_offset_literal_idx
     }
 };
 
+struct bc_inst_builtin
+{
+    bc_op   op : 8;
+    int32_t stack_change : 8;
+    int32_t address : 16;
+
+    explicit bc_inst_builtin(bc_op op, int32_t stack, int32_t a)
+    : op(op), stack_change(stack), address(a)
+    {
+        LAUF_VERIFY(stack_change == stack, to_string(op), "encoding error");
+        LAUF_VERIFY(address == a, to_string(op), "encoding error");
+    }
+};
+
 enum class bc_function_idx : uint32_t
 {
 };

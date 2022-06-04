@@ -9,6 +9,8 @@
 
 LAUF_HEADER_START
 
+#define LAUF_BUILTIN_SECTION LAUF_SECTION("text.lauf_builtin")
+
 /// The signature of a builtin function.
 /// vstack_ptr is the value stack pointer, vstack_ptr[0] is the top of the stack, vstack_ptr[1] the
 /// item below that and so on. It can be incremented/decremented as necessary. The other arguments
@@ -23,18 +25,18 @@ typedef struct lauf_builtin
 } lauf_builtin;
 
 /// This function must be tail-called at the end of the builtin.
-bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                           lauf_vm_process process);
+LAUF_BUILTIN_SECTION bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                                void* frame_ptr, lauf_vm_process process);
 
 /// This function must be called at the end of a builtin that panics.
 /// vstack_ptr->as_native_ptr is the `const char*` message.
-bool lauf_builtin_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                        lauf_vm_process process);
+LAUF_BUILTIN_SECTION bool lauf_builtin_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                             void* frame_ptr, lauf_vm_process process);
 
 /// Creates a builtin that consumes one argument to produce N.
 #define LAUF_BUILTIN_UNARY_OPERATION(Name, N, ...)                                                 \
-    static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* _vstack_ptr, void* frame_ptr,       \
-                          lauf_vm_process process)                                                 \
+    LAUF_BUILTIN_SECTION static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* _vstack_ptr,   \
+                                               void* frame_ptr, lauf_vm_process process)           \
     {                                                                                              \
         lauf_value value = _vstack_ptr[0];                                                         \
         _vstack_ptr += 1 - N;                                                                      \
@@ -49,8 +51,8 @@ bool lauf_builtin_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* f
 
 /// Creates a builtin that consumes two arguments to produce N.
 #define LAUF_BUILTIN_BINARY_OPERATION(Name, N, ...)                                                \
-    static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* _vstack_ptr, void* frame_ptr,       \
-                          lauf_vm_process process)                                                 \
+    LAUF_BUILTIN_SECTION static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* _vstack_ptr,   \
+                                               void* frame_ptr, lauf_vm_process process)           \
     {                                                                                              \
         lauf_value lhs = _vstack_ptr[1];                                                           \
         lauf_value rhs = _vstack_ptr[0];                                                           \
