@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
     LAUF_BENCHMARK(trivial_add);
     LAUF_BENCHMARK(trivial_multiply);
     LAUF_BENCHMARK(recursive_fib);
+    LAUF_BENCHMARK(recursive_fib_memory);
     LAUF_BENCHMARK(iterative_fib);
 
     lauf_vm_destroy(vm);

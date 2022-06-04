@@ -64,6 +64,70 @@ lauf_program recursive_fib(lauf_builder b)
     return lauf_link_single_module(mod, fn);
 }
 
+lauf_program recursive_fib_memory(lauf_builder b)
+{
+    lauf_build_module(b, "fib", "");
+
+    auto fib  = lauf_declare_function(b, "fib", {1, 1});
+    auto main = lauf_declare_function(b, "main", {0, 1});
+
+    lauf_build_function(b, fib);
+    {
+        auto recurse = lauf_declare_label(b, 0);
+
+        // arg == 1
+        auto arg = lauf_build_local_variable(b, lauf_value_type.layout);
+        lauf_build_local_addr(b, arg);
+        lauf_build_store_field(b, &lauf_value_type, 0);
+        lauf_build_local_addr(b, arg);
+        lauf_build_load_field(b, &lauf_value_type, 0);
+        lauf_build_int(b, 1);
+        lauf_build_call_builtin(b, lauf_scmp_builtin());
+
+        lauf_build_jump_if(b, LAUF_CMP_GT, recurse);
+        {
+            // return arg
+            lauf_build_local_addr(b, arg);
+            lauf_build_load_field(b, &lauf_value_type, 0);
+            lauf_build_return(b);
+        }
+
+        lauf_place_label(b, recurse);
+        {
+            // fib(n - 1)
+            lauf_build_local_addr(b, arg);
+            lauf_build_load_field(b, &lauf_value_type, 0);
+            lauf_build_int(b, 1);
+            lauf_build_call_builtin(b, lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
+            lauf_build_call(b, fib);
+
+            // fib(n - 2)
+            lauf_build_local_addr(b, arg);
+            lauf_build_load_field(b, &lauf_value_type, 0);
+            lauf_build_int(b, 2);
+            lauf_build_call_builtin(b, lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
+            lauf_build_call(b, fib);
+
+            // +
+            lauf_build_call_builtin(b, lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
+            lauf_build_return(b);
+        }
+
+        lauf_finish_function(b);
+    }
+
+    lauf_build_function(b, main);
+    {
+        lauf_build_int(b, 35);
+        lauf_build_call(b, fib);
+        lauf_build_return(b);
+    }
+    auto fn = lauf_finish_function(b);
+
+    auto mod = lauf_finish_module(b);
+    return lauf_link_single_module(mod, fn);
+}
+
 lauf_program iterative_fib(lauf_builder b)
 {
     lauf_build_module(b, "fib", "");
