@@ -38,6 +38,17 @@ struct alignas(void*) stack_frame
     lauf_value_address            first_local_allocation;
     stack_frame*                  prev;
 };
+
+bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                             lauf_vm_process process)
+{
+    // We reserve a new stack block.
+    if (!process->stack().reserve_new_block())
+        return lauf_builtin_panic(process, ip, frame_ptr, "stack overflow");
+
+    // And try executing the same instruction again.
+    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
+}
 } // namespace
 
 std::size_t lauf::frame_size_for(lauf_function fn)

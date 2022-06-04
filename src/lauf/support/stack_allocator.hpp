@@ -140,6 +140,20 @@ public:
         return memory;
     }
 
+    template <std::size_t Alignment = 1>
+    void* try_allocate(std::size_t size)
+    {
+        assert(size < max_allocation_size());
+        auto offset = Alignment == 1 ? 0 : align_offset(_cur_pos, Alignment);
+        if (remaining_capacity() < offset + size)
+            return nullptr;
+
+        _cur_pos += offset;
+        auto memory = _cur_pos;
+        _cur_pos += size;
+        return memory;
+    }
+
     //=== unwinding ===//
     struct marker
     {
