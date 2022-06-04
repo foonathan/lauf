@@ -109,6 +109,19 @@ struct alignas(lauf_value) lauf_module_impl
         return function_begin() + function_count;
     }
 
+    lauf::bc_function_idx find_function(lauf_function fn)
+    {
+        auto idx  = 0u;
+        auto iter = function_begin();
+        while (true)
+        {
+            if (*iter == fn)
+                return lauf::bc_function_idx{idx};
+            ++idx;
+            ++iter;
+        }
+    }
+
     lauf_value* literal_data()
     {
         return array<lauf_value>({function_count, literal_count, allocation_count});

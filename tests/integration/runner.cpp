@@ -97,6 +97,7 @@ int main(int argc, char* argv[])
         ++exit_code;
     }
 
+    lauf_module_destroy(mod);
     lauf_vm_destroy(vm);
     lauf_frontend_text_destroy_parser(parser);
 

@@ -24,6 +24,9 @@ LAUF_BC_OP(jump_if, bc_inst_cc_offset, {
 })
 
 //=== calls ===//
+// Finishes VM execution.
+LAUF_BC_OP(exit, bc_inst_none, { return true; })
+
 // Return from current function.
 LAUF_BC_OP(return_, bc_inst_none, {
     auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
@@ -44,17 +47,27 @@ LAUF_BC_OP(return_, bc_inst_none, {
     LAUF_DISPATCH;
 })
 
+// Calls the specified function.
 LAUF_BC_OP(call, bc_inst_function_idx, {
-    auto callee = process->get_function(ip->call.function_idx);
+    auto callee     = process->get_function(ip->call.function_idx);
+    auto marker     = process->stack().top();
+    auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
 
-    auto new_frame_ptr = new_stack_frame(process, frame_ptr, ip + 1, callee);
-    if (new_frame_ptr == nullptr)
+    // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
+    // it; the builder takes care of it when computing the stack size.
+    auto memory = process->stack().allocate(lauf::frame_size_for(callee));
+    if (memory == nullptr)
     {
         auto info = make_panic_info(frame_ptr, ip);
         process->vm()->panic_handler(&info, "stack overflow");
         return false;
     }
-    frame_ptr = new_frame_ptr;
+
+    auto local_memory = reinterpret_cast<unsigned char*>(static_cast<stack_frame*>(memory) + 1);
+    auto first_local_allocation
+        = lauf_vm_process_impl::add_local_allocations(process, local_memory,
+                                                      callee->local_allocations(),
+                                                      callee->local_allocation_count);
 
     auto remaining_vstack_size = vstack_ptr - process->vm()->value_stack_limit();
     if (remaining_vstack_size < callee->max_vstack_size)
@@ -64,10 +77,13 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
         return false;
     }
 
+    frame_ptr
+        = new (memory) stack_frame{callee, ip + 1, marker, first_local_allocation, prev_frame} + 1;
     ip = callee->bytecode();
     LAUF_DISPATCH;
 })
 
+// Calls the specified builtin function.
 LAUF_BC_OP(call_builtin, bc_inst_offset_literal_idx, {
     auto callee       = (lauf_builtin_function*)(process->get_literal(ip->call_builtin.literal_idx)
                                                .as_native_ptr);

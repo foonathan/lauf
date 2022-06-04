@@ -38,29 +38,6 @@ struct alignas(void*) stack_frame
     lauf_value_address            first_local_allocation;
     stack_frame*                  prev;
 };
-
-void* new_stack_frame(lauf_vm_process& process, void* frame_ptr, lauf_vm_instruction* return_ip,
-                      lauf_function fn)
-{
-    auto marker     = process->stack().top();
-    auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
-
-    // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
-    // it; the builder takes care of it when computing the stack size.
-    auto memory = process->stack().allocate(lauf::frame_size_for(fn));
-    if (memory == nullptr)
-        return nullptr;
-
-    auto local_memory = reinterpret_cast<unsigned char*>(static_cast<stack_frame*>(memory) + 1);
-    auto first_local_allocation
-        = lauf_vm_process_impl::add_local_allocations(process, local_memory,
-                                                      fn->local_allocations(),
-                                                      fn->local_allocation_count);
-
-    auto frame
-        = ::new (memory) stack_frame{fn, return_ip, marker, first_local_allocation, prev_frame};
-    return frame + 1;
-}
 } // namespace
 
 std::size_t lauf::frame_size_for(lauf_function fn)
@@ -224,8 +201,6 @@ constexpr lauf_builtin_function* inst_fns[] = {
 bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
               lauf_vm_process process)
 {
-    if (ip == nullptr)
-        return true;
     LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
 }
 } // namespace
@@ -233,7 +208,6 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
 bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
                            lauf_vm_process process)
 {
-    // ip can't be null after a builtin as it can't return.
     LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
 }
 
@@ -257,8 +231,6 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
 #    define LAUF_DISPATCH                                                                          \
         do                                                                                         \
         {                                                                                          \
-            if (ip == nullptr)                                                                     \
-                return true;                                                                       \
             goto* labels[size_t(ip->tag.op)];                                                      \
         } while (0)
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
@@ -291,7 +263,7 @@ namespace
 bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
               lauf_vm_process process)
 {
-    while (ip != nullptr)
+    while (true)
     {
         switch (ip->tag.op)
         {
@@ -346,12 +318,12 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         vstack_ptr[0] = input[i];
     }
 
-    stack_frame prev{};
-    auto        frame_ptr = new_stack_frame(vm->process, &prev + 1, nullptr, prog.entry);
-    assert(frame_ptr); // initial stack frame should fit in first block
+    lauf_vm_instruction startup[]
+        = {LAUF_VM_INSTRUCTION(call, lauf::bc_function_idx(prog.mod->find_function(prog.entry))),
+           LAUF_VM_INSTRUCTION(exit)};
 
-    auto ip     = prog.entry->bytecode();
-    auto result = dispatch(ip, vstack_ptr, frame_ptr, vm->process);
+    stack_frame frame{};
+    auto        result = dispatch(startup, vstack_ptr, &frame + 1, vm->process);
     if (result)
     {
         vstack_ptr = vm->value_stack() - prog.entry->output_count;
