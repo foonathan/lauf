@@ -39,22 +39,22 @@ public:
     }
 
     // Override this one to update the back pointer properly.
-    static void resize_allocation_list(lauf_vm_process& process)
+    LAUF_INLINE static void resize_allocation_list(lauf_vm_process& process)
     {
         lauf::vm_memory<lauf_vm_process_impl>::resize_allocation_list(process);
         process->_vm->process = process;
     }
 
-    lauf_vm vm() const
+    LAUF_INLINE lauf_vm vm() const
     {
         return _vm;
     }
 
-    lauf_value get_literal(lauf::bc_literal_idx idx) const
+    LAUF_INLINE lauf_value get_literal(lauf::bc_literal_idx idx) const
     {
         return _literals[size_t(idx)];
     }
-    lauf_function get_function(lauf::bc_function_idx idx) const
+    LAUF_INLINE lauf_function get_function(lauf::bc_function_idx idx) const
     {
         return _functions[size_t(idx)];
     }

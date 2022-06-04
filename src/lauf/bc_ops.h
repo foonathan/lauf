@@ -61,7 +61,7 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
 
     // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
     // it; the builder takes care of it when computing the stack size.
-    auto memory = process->stack().try_allocate(lauf::frame_size_for(callee));
+    auto memory = process->stack().try_allocate(sizeof(stack_frame) + callee->local_stack_size);
     if (memory == nullptr)
         // Reserve a new stack block and try again.
         LAUF_TAIL_CALL return reserve_new_stack_block(ip, vstack_ptr, frame_ptr, process);

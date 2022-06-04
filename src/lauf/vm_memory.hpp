@@ -63,12 +63,12 @@ struct vm_allocation
     {}
 
     // UNCHECKED
-    void* offset(std::size_t o) const
+    LAUF_INLINE void* offset(std::size_t o) const
     {
         return static_cast<unsigned char*>(ptr) + o;
     }
 
-    bool is_split() const
+    LAUF_INLINE bool is_split() const
     {
         return split != vm_allocation::unsplit;
     }
@@ -87,7 +87,7 @@ public:
     {}
 
     //=== allocation setup ===//
-    bool has_capacity_for_allocations(std::size_t count) const
+    LAUF_INLINE bool has_capacity_for_allocations(std::size_t count) const
     {
         return _first_unused + count < _capacity;
     }
@@ -103,15 +103,16 @@ public:
         self->_capacity = new_capacity;
     }
 
-    lauf_value_address add_allocation(vm_allocation alloc)
+    LAUF_INLINE lauf_value_address add_allocation(vm_allocation alloc)
     {
         alloc.generation                 = _generation;
         get_allocations()[_first_unused] = alloc;
         return {_first_unused++, _generation, 0};
     }
 
-    lauf_value_address add_local_allocations(unsigned char*       local_memory,
-                                             const vm_allocation* allocs, std::size_t count)
+    LAUF_INLINE lauf_value_address add_local_allocations(unsigned char*       local_memory,
+                                                         const vm_allocation* allocs,
+                                                         std::size_t          count)
     {
         if (count == 0)
             return lauf_value_address_invalid;
@@ -130,7 +131,7 @@ public:
         return {first_alloc, _generation, 0};
     }
 
-    vm_allocation* remove_allocation(lauf_value_address addr)
+    LAUF_INLINE vm_allocation* remove_allocation(lauf_value_address addr)
     {
         auto alloc = get_allocation(addr);
         if (alloc == nullptr)
@@ -194,13 +195,13 @@ public:
     }
 
     //=== allocators ===//
-    stack_allocator& stack()
+    LAUF_INLINE stack_allocator& stack()
     {
         return _allocator;
     }
 
     //=== memory access ===//
-    vm_allocation* get_allocation(lauf_value_address addr)
+    LAUF_INLINE vm_allocation* get_allocation(lauf_value_address addr)
     {
         if (addr.allocation >= _capacity)
             return nullptr;
@@ -212,7 +213,7 @@ public:
         return alloc;
     }
 
-    const void* get_const_ptr(lauf_value_address addr, size_t size)
+    LAUF_INLINE const void* get_const_ptr(lauf_value_address addr, size_t size)
     {
         if (auto alloc = get_allocation(addr))
         {
@@ -225,7 +226,7 @@ public:
 
         return nullptr;
     }
-    void* get_mutable_ptr(lauf_value_address addr, size_t size)
+    LAUF_INLINE void* get_mutable_ptr(lauf_value_address addr, size_t size)
     {
         if (auto alloc = get_allocation(addr))
         {
@@ -240,7 +241,7 @@ public:
         return nullptr;
     }
 
-    const char* get_const_cstr(lauf_value_address addr)
+    LAUF_INLINE const char* get_const_cstr(lauf_value_address addr)
     {
         if (auto alloc = get_allocation(addr))
         {
@@ -255,7 +256,7 @@ public:
 
         return nullptr;
     }
-    const char* get_mutable_cstr(lauf_value_address addr)
+    LAUF_INLINE const char* get_mutable_cstr(lauf_value_address addr)
     {
         if (auto alloc = get_allocation(addr))
         {
@@ -276,7 +277,7 @@ protected:
     ~vm_memory() = default;
 
 private:
-    vm_allocation* get_allocations()
+    LAUF_INLINE vm_allocation* get_allocations()
     {
         return static_cast<Derived&>(*this).template array<vm_allocation>({});
     }

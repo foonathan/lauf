@@ -30,7 +30,7 @@
 #        define LAUF_HAS_TAIL_CALL 1
 #    else
 #        define LAUF_TAIL_CALL
-#        define LLAUF_HAS_TAIL_CALL 0
+#        define LAUF_HAS_TAIL_CALL 0
 #    endif
 #endif
 
@@ -42,12 +42,26 @@
 #    endif
 #endif
 
+#ifndef LAUF_INLINE
+#    if defined(__GNUC__)
+#        define LAUF_INLINE __attribute__((always_inline)) inline
+#    else
+#        define LAUF_INLINE inline
+#    endif
+#endif
+
 #ifndef LAUF_NOINLINE
 #    if defined(__GNUC__)
 #        define LAUF_NOINLINE __attribute__((noinline))
 #    else
 #        define LAUF_NOINLINE
 #    endif
+#endif
+
+#if LAUF_HAS_TAIL_CALL
+#    define LAUF_NOINLINE_IF_TAIL LAUF_NOINLINE
+#else
+#    define LAUF_NOINLINE_IF_TAIL
 #endif
 
 #endif // LAUF_CONFIG_H_INCLUDED

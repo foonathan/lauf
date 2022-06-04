@@ -69,15 +69,6 @@ struct lauf_panic_info_impl
     stack_frame fake_frame;
 };
 
-namespace
-{
-lauf_panic_info_impl make_panic_info(void* frame_ptr, lauf_vm_instruction* ip)
-{
-    auto cur_frame = static_cast<stack_frame*>(frame_ptr) - 1;
-    return {{nullptr, ip + 1, {}, lauf_value_address{}, cur_frame}};
-}
-} // namespace
-
 lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
 {
     return &info->fake_frame;
@@ -94,6 +85,7 @@ const lauf_vm_allocator lauf_vm_malloc_allocator
        },
        [](void*, void* memory) { std::free(memory); }};
 
+//=== vm functions ===//
 lauf_vm_impl::lauf_vm_impl(lauf_vm_options options)
 : process(lauf_vm_process_impl::create_null(this)), panic_handler(options.panic_handler),
   allocator(options.allocator), value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
@@ -104,7 +96,6 @@ lauf_vm_impl::~lauf_vm_impl()
 {
     lauf_vm_process_impl::destroy(process);
 }
-//=== vm functions ===//
 const lauf_vm_options lauf_default_vm_options
     = {size_t(128) * 1024, size_t(896) * 1024,
        // Panic handler prints message and backtrace.
@@ -150,8 +141,8 @@ void lauf_vm_set_panic_handler(lauf_vm vm, lauf_panic_handler handler)
 //=== execute ===//
 namespace
 {
-LAUF_NOINLINE bool do_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                            lauf_vm_process process)
+LAUF_NOINLINE_IF_TAIL bool do_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                    void* frame_ptr, lauf_vm_process process)
 {
     auto cur_frame = static_cast<stack_frame*>(frame_ptr) - 1;
     auto info      = lauf_panic_info_impl{{nullptr, ip + 1, {}, lauf_value_address{}, cur_frame}};
@@ -167,8 +158,8 @@ LAUF_NOINLINE bool do_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr, voi
         LAUF_TAIL_CALL return do_panic(ip, vstack_ptr, frame_ptr, process);                        \
     } while (0)
 
-LAUF_NOINLINE bool resize_allocation_list(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
-                                          void* frame_ptr, lauf_vm_process process)
+LAUF_NOINLINE_IF_TAIL bool resize_allocation_list(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                                  void* frame_ptr, lauf_vm_process process)
 {
     // We resize the allocation list.
     lauf_vm_process_impl::resize_allocation_list(process);
@@ -176,8 +167,8 @@ LAUF_NOINLINE bool resize_allocation_list(lauf_vm_instruction* ip, lauf_value* v
     LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
 }
 
-LAUF_NOINLINE bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
-                                           void* frame_ptr, lauf_vm_process process)
+LAUF_NOINLINE_IF_TAIL bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                                   void* frame_ptr, lauf_vm_process process)
 {
     // We reserve a new stack block.
     if (!process->stack().reserve_new_block())
@@ -187,7 +178,7 @@ LAUF_NOINLINE bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* 
     LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
 }
 
-bool check_condition(lauf::condition_code cc, lauf_value value)
+LAUF_INLINE bool check_condition(lauf::condition_code cc, lauf_value value)
 {
     switch (cc)
     {
@@ -212,8 +203,8 @@ bool check_condition(lauf::condition_code cc, lauf_value value)
 
 namespace
 {
-bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-              lauf_vm_process process);
+LAUF_INLINE bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                          lauf_vm_process process);
 
 #    define LAUF_BC_OP(Name, Data, ...)                                                            \
         bool execute_##Name(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,      \
@@ -234,8 +225,8 @@ constexpr lauf_builtin_function* inst_fns[] = {
 #    undef LAUF_BC_OP
 };
 
-bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-              lauf_vm_process process)
+LAUF_INLINE bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                          lauf_vm_process process)
 {
     LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
 }

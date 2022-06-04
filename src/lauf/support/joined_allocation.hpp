@@ -111,13 +111,13 @@ public:
 
     //=== array access ===//
     template <typename T>
-    T* array(std::initializer_list<std::size_t> previous_sizes) noexcept
+    LAUF_INLINE T* array(std::initializer_list<std::size_t> previous_sizes) noexcept
     {
         const auto& cthis = *this;
         return const_cast<T*>(cthis.template array<T>(previous_sizes));
     }
     template <typename T>
-    const T* array(std::initializer_list<std::size_t> previous_sizes) const noexcept
+    LAUF_INLINE const T* array(std::initializer_list<std::size_t> previous_sizes) const noexcept
     {
         using offsets = _joined_offsets<T, HeaderType, ArrayTypes...>;
         assert(previous_sizes.size() >= offsets::index - 1);
