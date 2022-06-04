@@ -73,11 +73,7 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
 
     auto remaining_vstack_size = vstack_ptr - process->vm()->value_stack_limit();
     if (remaining_vstack_size < callee->max_vstack_size)
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        process->vm()->panic_handler(&info, "value stack overflow");
-        return false;
-    }
+        LAUF_DO_PANIC("value stack overflow");
 
     frame_ptr
         = new (memory) stack_frame{callee, ip + 1, marker, first_local_allocation, prev_frame} + 1;
@@ -239,11 +235,7 @@ LAUF_BC_OP(select, bc_inst_literal, {
     auto max_index = ptrdiff_t(ip->select.literal);
     auto index     = vstack_ptr[max_index].as_uint;
     if (index >= max_index)
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        process->vm()->panic_handler(&info, "select index out of range");
-        return false;
-    }
+        LAUF_DO_PANIC("select index out of range");
 
     auto value = vstack_ptr[index];
 
@@ -288,11 +280,8 @@ LAUF_BC_OP(load_field, bc_inst_field_literal_idx, {
     auto addr   = vstack_ptr[0].as_address;
     auto object = process->get_const_ptr(addr, type->layout.size);
     if (object == nullptr)
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        process->vm()->panic_handler(&info, "invalid address");
-        return false;
-    }
+        LAUF_DO_PANIC("invalid address");
+
     vstack_ptr[0] = type->load_field(object, ip->load_field.field);
 
     ++ip;
@@ -308,11 +297,8 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
     auto addr   = vstack_ptr[0].as_address;
     auto object = process->get_mutable_ptr(addr, type->layout.size);
     if (object == nullptr)
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        process->vm()->panic_handler(&info, "invalid address");
-        return false;
-    }
+        LAUF_DO_PANIC("invalid address");
+
     type->store_field(object, ip->store_field.field, vstack_ptr[1]);
     vstack_ptr += 2;
 
@@ -340,11 +326,7 @@ LAUF_BC_OP(load_array_value, bc_inst_literal, {
 
     auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
     if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        process->vm()->panic_handler(&info, "array index out of bounds");
-        return false;
-    }
+        LAUF_DO_PANIC("array index out of bounds");
 
     vstack_ptr[0] = reinterpret_cast<lauf_value*>(array)[idx];
 
@@ -372,11 +354,7 @@ LAUF_BC_OP(store_array_value, bc_inst_literal, {
 
     auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
     if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        process->vm()->panic_handler(&info, "array index out of bounds");
-        return false;
-    }
+        LAUF_DO_PANIC("array index out of bounds");
 
     ::new (array + sizeof(lauf_value) * idx) lauf_value(vstack_ptr[1]);
     vstack_ptr += 2;
@@ -401,11 +379,7 @@ LAUF_BC_OP(save_value, bc_inst_literal, {
 // message => _
 LAUF_BC_OP(panic, bc_inst_none, {
     auto message = vstack_ptr[0].as_address;
-
-    auto info = make_panic_info(frame_ptr, ip);
-    process->vm()->panic_handler(&info, process->get_const_cstr(message));
-
-    return false;
+    LAUF_DO_PANIC(process->get_const_cstr(message));
 })
 
 // Invokes the panic handler if the condition is true.
@@ -414,11 +388,7 @@ LAUF_BC_OP(panic_if, bc_inst_cc, {
     auto value   = vstack_ptr[1];
     auto message = vstack_ptr[0].as_address;
     if (check_condition(ip->panic_if.cc, value))
-    {
-        auto info = make_panic_info(frame_ptr, ip);
-        process->vm()->panic_handler(&info, process->get_const_cstr(message));
-        return false;
-    }
+        LAUF_DO_PANIC(process->get_const_cstr(message));
     vstack_ptr += 2;
 
     ++ip;

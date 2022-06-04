@@ -68,7 +68,7 @@ LAUF_BUILTIN_BINARY_OPERATION(sadd_return, 2, {
 })
 LAUF_BUILTIN_BINARY_OPERATION(sadd_panic, 1, {
     if (__builtin_add_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
-        return lauf_builtin_panic(process, ip, frame_ptr, "integer overflow");
+        LAUF_BUILTIN_OPERATION_PANIC("integer overflow");
 })
 LAUF_BUILTIN_BINARY_OPERATION(sadd_wrap, 1, {
     __builtin_add_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint);
@@ -90,7 +90,7 @@ LAUF_BUILTIN_BINARY_OPERATION(ssub_return, 2, {
 })
 LAUF_BUILTIN_BINARY_OPERATION(ssub_panic, 1, {
     if (__builtin_sub_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
-        return lauf_builtin_panic(process, ip, frame_ptr, "integer overflow");
+        LAUF_BUILTIN_OPERATION_PANIC("integer overflow");
 })
 LAUF_BUILTIN_BINARY_OPERATION(ssub_wrap, 1, {
     __builtin_sub_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint);
@@ -112,7 +112,7 @@ LAUF_BUILTIN_BINARY_OPERATION(smul_return, 2, {
 })
 LAUF_BUILTIN_BINARY_OPERATION(smul_panic, 1, {
     if (__builtin_mul_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint))
-        return lauf_builtin_panic(process, ip, frame_ptr, "integer overflow");
+        LAUF_BUILTIN_OPERATION_PANIC("integer overflow");
 })
 LAUF_BUILTIN_BINARY_OPERATION(smul_wrap, 1, {
     __builtin_mul_overflow(lhs.as_sint, rhs.as_sint, &result->as_sint);
@@ -134,7 +134,7 @@ LAUF_BUILTIN_BINARY_OPERATION(uadd_return, 2, {
 })
 LAUF_BUILTIN_BINARY_OPERATION(uadd_panic, 1, {
     if (__builtin_add_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
-        return lauf_builtin_panic(process, ip, frame_ptr, "integer overflow");
+        LAUF_BUILTIN_OPERATION_PANIC("integer overflow");
 })
 LAUF_BUILTIN_BINARY_OPERATION(uadd_wrap, 1, {
     __builtin_add_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint);
@@ -151,7 +151,7 @@ LAUF_BUILTIN_BINARY_OPERATION(usub_return, 2, {
 })
 LAUF_BUILTIN_BINARY_OPERATION(usub_panic, 1, {
     if (__builtin_sub_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
-        return lauf_builtin_panic(process, ip, frame_ptr, "integer overflow");
+        LAUF_BUILTIN_OPERATION_PANIC("integer overflow");
 })
 LAUF_BUILTIN_BINARY_OPERATION(usub_wrap, 1, {
     __builtin_sub_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint);
@@ -168,7 +168,7 @@ LAUF_BUILTIN_BINARY_OPERATION(umul_return, 2, {
 })
 LAUF_BUILTIN_BINARY_OPERATION(umul_panic, 1, {
     if (__builtin_mul_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint))
-        return lauf_builtin_panic(process, ip, frame_ptr, "integer overflow");
+        LAUF_BUILTIN_OPERATION_PANIC("integer overflow");
 })
 LAUF_BUILTIN_BINARY_OPERATION(umul_wrap, 1, {
     __builtin_mul_overflow(lhs.as_uint, rhs.as_uint, &result->as_uint);

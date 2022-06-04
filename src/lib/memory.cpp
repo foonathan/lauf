@@ -14,7 +14,7 @@ LAUF_BUILTIN_BINARY_OPERATION(lauf_heap_alloc_builtin, 1, {
     auto alignment = rhs.as_uint;
     auto ptr       = vm->allocator.heap_alloc(vm->allocator.user_data, size, alignment);
     if (ptr == nullptr)
-        return lauf_builtin_panic(process, ip, frame_ptr, "out of heap memory");
+        LAUF_BUILTIN_OPERATION_PANIC("out of heap memory");
 
     auto alloc = lauf::vm_allocation(ptr, uint32_t(size), lauf::vm_allocation::heap_memory);
     if (!process->has_capacity_for_allocations(1))
@@ -31,7 +31,7 @@ LAUF_BUILTIN_UNARY_OPERATION(lauf_free_alloc_builtin, 0, {
         || alloc->source != lauf::vm_allocation::heap_memory
         // We do not allow freeing split memory as others might be using other parts.
         || alloc->split != lauf::vm_allocation::unsplit)
-        return lauf_builtin_panic(process, ip, frame_ptr, "invalid address");
+        LAUF_BUILTIN_OPERATION_PANIC("invalid address");
 
     vm->allocator.free_alloc(vm->allocator.user_data, alloc->ptr);
     process->remove_allocation(addr);
@@ -43,7 +43,7 @@ LAUF_BUILTIN_BINARY_OPERATION(lauf_split_alloc_builtin, 2, {
 
     auto base_alloc = process->get_allocation(base_addr);
     if (!base_alloc || length > base_alloc->size)
-        return lauf_builtin_panic(process, ip, frame_ptr, "invalid address");
+        LAUF_BUILTIN_OPERATION_PANIC("invalid address");
 
     auto alloc1 = *base_alloc;
     alloc1.size = length;
@@ -97,7 +97,7 @@ LAUF_BUILTIN_BINARY_OPERATION(lauf_merge_alloc_builtin, 1, {
         || !alloc2->is_split()
         // And they need to be next to each other.
         || alloc1->offset(alloc1->size) != alloc2->ptr)
-        return lauf_builtin_panic(process, ip, frame_ptr, "invalid address");
+        LAUF_BUILTIN_OPERATION_PANIC("invalid address");
 
     auto alloc1_first = alloc1->split == lauf::vm_allocation::first_split;
     auto alloc2_last  = alloc2->split == lauf::vm_allocation::last_split;
@@ -126,7 +126,7 @@ LAUF_BUILTIN_UNARY_OPERATION(lauf_poison_alloc_builtin, 0, {
     if (auto alloc = process->get_allocation(addr))
         alloc->lifetime = lauf::vm_allocation::poisoned;
     else
-        return lauf_builtin_panic(process, ip, frame_ptr, "invalid address");
+        LAUF_BUILTIN_OPERATION_PANIC("invalid address");
 })
 
 LAUF_BUILTIN_UNARY_OPERATION(lauf_unpoison_alloc_builtin, 0, {
@@ -134,6 +134,6 @@ LAUF_BUILTIN_UNARY_OPERATION(lauf_unpoison_alloc_builtin, 0, {
     if (auto alloc = process->get_allocation(addr))
         alloc->lifetime = lauf::vm_allocation::poisoned;
     else
-        return lauf_builtin_panic(process, ip, frame_ptr, "invalid address");
+        LAUF_BUILTIN_OPERATION_PANIC("invalid address");
 })
 

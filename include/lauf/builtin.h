@@ -27,10 +27,11 @@ bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void
                            lauf_vm_process process);
 
 /// This function must be called at the end of a builtin that panics.
-bool lauf_builtin_panic(lauf_vm_process process, lauf_vm_instruction* ip, void* frame_ptr,
-                        const char* message);
+/// vstack_ptr->as_native_ptr is the `const char*` message.
+bool lauf_builtin_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                        lauf_vm_process process);
 
-// Creates a builtin that consumes one argument to produce N.
+/// Creates a builtin that consumes one argument to produce N.
 #define LAUF_BUILTIN_UNARY_OPERATION(Name, N, ...)                                                 \
     static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* _vstack_ptr, void* frame_ptr,       \
                           lauf_vm_process process)                                                 \
@@ -46,7 +47,7 @@ bool lauf_builtin_panic(lauf_vm_process process, lauf_vm_instruction* ip, void* 
         return {{1, N}, &Name##_fn};                                                               \
     }
 
-// Creates a builtin that consumes two arguments to produce N.
+/// Creates a builtin that consumes two arguments to produce N.
 #define LAUF_BUILTIN_BINARY_OPERATION(Name, N, ...)                                                \
     static bool Name##_fn(lauf_vm_instruction* ip, lauf_value* _vstack_ptr, void* frame_ptr,       \
                           lauf_vm_process process)                                                 \
@@ -62,6 +63,14 @@ bool lauf_builtin_panic(lauf_vm_process process, lauf_vm_instruction* ip, void* 
     {                                                                                              \
         return {{2, N}, &Name##_fn};                                                               \
     }
+
+/// Panics within a builtin operation function.
+#define LAUF_BUILTIN_OPERATION_PANIC(Msg)                                                          \
+    do                                                                                             \
+    {                                                                                              \
+        result->as_native_ptr = (Msg);                                                             \
+        LAUF_TAIL_CALL return lauf_builtin_panic(ip, _vstack_ptr, frame_ptr, process);             \
+    } while (0)
 
 LAUF_HEADER_END
 

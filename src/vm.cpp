@@ -17,17 +17,6 @@
 #include <lauf/support/stack_allocator.hpp>
 #include <lauf/type.h>
 
-lauf_vm_impl::lauf_vm_impl(lauf_vm_options options)
-: process(lauf_vm_process_impl::create_null(this)), panic_handler(options.panic_handler),
-  allocator(options.allocator), value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
-  memory_stack(options.max_stack_size)
-{}
-
-lauf_vm_impl::~lauf_vm_impl()
-{
-    lauf_vm_process_impl::destroy(process);
-}
-
 namespace
 {
 struct alignas(void*) stack_frame
@@ -38,26 +27,6 @@ struct alignas(void*) stack_frame
     lauf_value_address            first_local_allocation;
     stack_frame*                  prev;
 };
-
-LAUF_NOINLINE bool resize_allocation_list(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
-                                          void* frame_ptr, lauf_vm_process process)
-{
-    // We resize the allocation list.
-    lauf_vm_process_impl::resize_allocation_list(process);
-    // And try executing the same instruction again.
-    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
-}
-
-LAUF_NOINLINE bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
-                                           void* frame_ptr, lauf_vm_process process)
-{
-    // We reserve a new stack block.
-    if (!process->stack().reserve_new_block())
-        return lauf_builtin_panic(process, ip, frame_ptr, "stack overflow");
-
-    // And try executing the same instruction again.
-    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
-}
 } // namespace
 
 std::size_t lauf::frame_size_for(lauf_function fn)
@@ -125,6 +94,16 @@ const lauf_vm_allocator lauf_vm_malloc_allocator
        },
        [](void*, void* memory) { std::free(memory); }};
 
+lauf_vm_impl::lauf_vm_impl(lauf_vm_options options)
+: process(lauf_vm_process_impl::create_null(this)), panic_handler(options.panic_handler),
+  allocator(options.allocator), value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
+  memory_stack(options.max_stack_size)
+{}
+
+lauf_vm_impl::~lauf_vm_impl()
+{
+    lauf_vm_process_impl::destroy(process);
+}
 //=== vm functions ===//
 const lauf_vm_options lauf_default_vm_options
     = {size_t(128) * 1024, size_t(896) * 1024,
@@ -171,6 +150,43 @@ void lauf_vm_set_panic_handler(lauf_vm vm, lauf_panic_handler handler)
 //=== execute ===//
 namespace
 {
+LAUF_NOINLINE bool do_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                            lauf_vm_process process)
+{
+    auto cur_frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto info      = lauf_panic_info_impl{{nullptr, ip + 1, {}, lauf_value_address{}, cur_frame}};
+    auto message   = static_cast<const char*>(vstack_ptr->as_native_ptr);
+    process->vm()->panic_handler(&info, message);
+    return false;
+}
+
+#define LAUF_DO_PANIC(Msg)                                                                         \
+    do                                                                                             \
+    {                                                                                              \
+        vstack_ptr->as_native_ptr = "stack overflow";                                              \
+        LAUF_TAIL_CALL return do_panic(ip, vstack_ptr, frame_ptr, process);                        \
+    } while (0)
+
+LAUF_NOINLINE bool resize_allocation_list(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                          void* frame_ptr, lauf_vm_process process)
+{
+    // We resize the allocation list.
+    lauf_vm_process_impl::resize_allocation_list(process);
+    // And try executing the same instruction again.
+    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
+}
+
+LAUF_NOINLINE bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                           void* frame_ptr, lauf_vm_process process)
+{
+    // We reserve a new stack block.
+    if (!process->stack().reserve_new_block())
+        LAUF_DO_PANIC("stack overflow");
+
+    // And try executing the same instruction again.
+    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
+}
+
 bool check_condition(lauf::condition_code cc, lauf_value value)
 {
     switch (cc)
@@ -318,13 +334,11 @@ bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm_pro
 
 #endif
 
-bool lauf_builtin_panic(lauf_vm_process process, lauf_vm_instruction* ip, void* frame_ptr,
-                        const char* message)
+bool lauf_builtin_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                        lauf_vm_process process)
 {
     // call_builtin has already incremented ip, so undo it to get the location.
-    auto info = make_panic_info(frame_ptr, ip - 1);
-    process->vm()->panic_handler(&info, message);
-    return false;
+    LAUF_TAIL_CALL return do_panic(ip - 1, vstack_ptr, frame_ptr, process);
 }
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
