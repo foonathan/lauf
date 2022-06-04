@@ -14,12 +14,12 @@
 
 namespace lauf
 {
-constexpr std::size_t align_offset(std::uintptr_t address, std::size_t alignment)
+LAUF_INLINE constexpr std::size_t align_offset(std::uintptr_t address, std::size_t alignment)
 {
     auto misaligned = address & (alignment - 1);
     return misaligned != 0 ? (alignment - misaligned) : 0;
 }
-inline std::size_t align_offset(const void* address, std::size_t alignment)
+LAUF_INLINE std::size_t align_offset(const void* address, std::size_t alignment)
 {
     return align_offset(reinterpret_cast<std::uintptr_t>(address), alignment);
 }
@@ -50,7 +50,7 @@ class memory_stack
             return next;
         }
 
-        unsigned char* end() noexcept
+        LAUF_INLINE unsigned char* end() noexcept
         {
             return &memory[block_size];
         }
@@ -141,17 +141,29 @@ public:
     }
 
     template <std::size_t Alignment = 1>
-    void* try_allocate(std::size_t size)
+    LAUF_INLINE void* try_allocate(std::size_t size)
     {
         assert(size < max_allocation_size());
-        auto offset = Alignment == 1 ? 0 : align_offset(_cur_pos, Alignment);
-        if (remaining_capacity() < offset + size)
-            return nullptr;
+        if constexpr (Alignment == 1)
+        {
+            if (remaining_capacity() < size)
+                return nullptr;
 
-        _cur_pos += offset;
-        auto memory = _cur_pos;
-        _cur_pos += size;
-        return memory;
+            auto memory = _cur_pos;
+            _cur_pos += size;
+            return memory;
+        }
+        else
+        {
+            auto offset = align_offset(_cur_pos, Alignment);
+            if (remaining_capacity() < offset + size)
+                return nullptr;
+
+            _cur_pos += offset;
+            auto memory = _cur_pos;
+            _cur_pos += size;
+            return memory;
+        }
     }
 
     //=== unwinding ===//
@@ -161,19 +173,19 @@ public:
         unsigned char*       _block_pos;
     };
 
-    marker top() const
+    LAUF_INLINE marker top() const
     {
         return {_cur_block, _cur_pos};
     }
 
-    void unwind(marker m) noexcept
+    LAUF_INLINE void unwind(marker m) noexcept
     {
         _cur_block = m._block;
         _cur_pos   = m._block_pos;
     }
 
 private:
-    std::size_t remaining_capacity() const noexcept
+    LAUF_INLINE std::size_t remaining_capacity() const noexcept
     {
         return std::size_t(_cur_block->end() - _cur_pos);
     }
