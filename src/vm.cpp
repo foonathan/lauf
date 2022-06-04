@@ -154,7 +154,7 @@ LAUF_NOINLINE_IF_TAIL bool do_panic(lauf_vm_instruction* ip, lauf_value* vstack_
 #define LAUF_DO_PANIC(Msg)                                                                         \
     do                                                                                             \
     {                                                                                              \
-        vstack_ptr->as_native_ptr = "stack overflow";                                              \
+        vstack_ptr->as_native_ptr = (Msg);                                                         \
         LAUF_TAIL_CALL return do_panic(ip, vstack_ptr, frame_ptr, process);                        \
     } while (0)
 

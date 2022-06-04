@@ -200,7 +200,7 @@ lauf_function lauf_finish_function(lauf_builder b)
     auto local_size = b->stack_frame.size();
 
     // Allocate and set function members.
-    auto result              = lauf_function_impl::create({b->bytecode.size(), 0});
+    auto result              = lauf_function_impl::create({b->bytecode.size() + 1, 0});
     result->name             = fn_decl.name;
     result->local_stack_size = static_cast<uint16_t>(local_size);
     result->max_vstack_size  = b->value_stack.max_stack_size();
@@ -215,7 +215,16 @@ lauf_function lauf_finish_function(lauf_builder b)
     result->local_allocation_count = b->local_allocations.size();
 
     // Copy and patch bytecode.
-    b->bytecode.finish(result->bytecode());
+    if (result->local_allocation_count > 0)
+    {
+        auto bc = result->bytecode();
+        *bc++   = LAUF_VM_INSTRUCTION(add_local_allocations);
+        b->bytecode.finish(bc, true);
+    }
+    else
+    {
+        b->bytecode.finish(result->bytecode(), false);
+    }
 
     fn_decl.fn = result;
     return result;

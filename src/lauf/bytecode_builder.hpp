@@ -98,7 +98,7 @@ public:
         return _bytecode.size();
     }
 
-    void finish(bc_inst* dest)
+    void finish(bc_inst* dest, bool has_local_allocations = true)
     {
         auto cur_offset = ptrdiff_t(0);
         for (auto inst : _bytecode)
@@ -112,6 +112,11 @@ public:
             {
                 auto dest = _labels[inst.jump_if.offset].bytecode_offset;
                 inst      = LAUF_VM_INSTRUCTION(jump_if, inst.jump_if.cc, dest - cur_offset);
+            }
+            else if (inst.tag.op == bc_op::return_)
+            {
+                if (!has_local_allocations)
+                    inst = LAUF_VM_INSTRUCTION(return_no_alloc);
             }
 
             dest[cur_offset] = inst;

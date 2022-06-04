@@ -46,18 +46,22 @@ LAUF_BC_OP(return_, bc_inst_none, {
 
     LAUF_DISPATCH;
 })
+LAUF_BC_OP(return_no_alloc, bc_inst_none, {
+    auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto marker = frame->unwind;
+
+    ip        = frame->return_ip;
+    frame_ptr = frame->prev + 1;
+    process->stack().unwind(marker);
+
+    LAUF_DISPATCH;
+})
 
 // Calls the specified function.
 LAUF_BC_OP(call, bc_inst_function_idx, {
     auto callee     = process->get_function(ip->call.function_idx);
     auto marker     = process->stack().top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
-
-    // We need to check for allocation capacity first, as we don't want to have allocated the stack
-    // already.
-    if (!process->has_capacity_for_allocations(callee->local_allocation_count))
-        // Resize the list and try again.
-        LAUF_TAIL_CALL return resize_allocation_list(ip, vstack_ptr, frame_ptr, process);
 
     // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
     // it; the builder takes care of it when computing the stack size.
@@ -66,18 +70,32 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
         // Reserve a new stack block and try again.
         LAUF_TAIL_CALL return reserve_new_stack_block(ip, vstack_ptr, frame_ptr, process);
 
-    auto local_memory = reinterpret_cast<unsigned char*>(static_cast<stack_frame*>(memory) + 1);
-    auto first_local_allocation
-        = process->add_local_allocations(local_memory, callee->local_allocations(),
-                                         callee->local_allocation_count);
-
     auto remaining_vstack_size = vstack_ptr - process->vm()->value_stack_limit();
     if (remaining_vstack_size < callee->max_vstack_size)
         LAUF_DO_PANIC("value stack overflow");
 
-    frame_ptr
-        = new (memory) stack_frame{callee, ip + 1, marker, first_local_allocation, prev_frame} + 1;
+    frame_ptr = new (memory)
+                    stack_frame{callee, ip + 1, marker, lauf_value_address_invalid, prev_frame}
+                + 1;
     ip = callee->bytecode();
+    LAUF_DISPATCH;
+})
+
+// Creates the local allocations for the current function.
+LAUF_BC_OP(add_local_allocations, bc_inst_none, {
+    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto fn    = frame->fn;
+
+    if (!process->has_capacity_for_allocations(fn->local_allocation_count))
+        // Resize the list and try again.
+        LAUF_TAIL_CALL return resize_allocation_list(ip, vstack_ptr, frame_ptr, process);
+
+    auto local_memory = reinterpret_cast<unsigned char*>(frame_ptr);
+    frame->first_local_allocation
+        = process->add_local_allocations(local_memory, fn->local_allocations(),
+                                         fn->local_allocation_count);
+
+    ++ip;
     LAUF_DISPATCH;
 })
 
