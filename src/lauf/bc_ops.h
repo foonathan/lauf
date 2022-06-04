@@ -37,7 +37,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
         auto addr = frame->first_local_allocation;
         addr.allocation += i;
         // Guaranteed to be valid.
-        lauf_vm_process_impl::remove_allocation(process, addr);
+        process->remove_allocation(addr);
     }
 
     ip        = frame->return_ip;
@@ -53,6 +53,12 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
     auto marker     = process->stack().top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
 
+    // We need to check for allocation capacity first, as we don't want to have allocated the stack
+    // already.
+    if (!process->has_capacity_for_allocations(callee->local_allocation_count))
+        // Resize the list and try again.
+        LAUF_TAIL_CALL return resize_allocation_list(ip, vstack_ptr, frame_ptr, process);
+
     // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
     // it; the builder takes care of it when computing the stack size.
     auto memory = process->stack().try_allocate(lauf::frame_size_for(callee));
@@ -62,9 +68,8 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
 
     auto local_memory = reinterpret_cast<unsigned char*>(static_cast<stack_frame*>(memory) + 1);
     auto first_local_allocation
-        = lauf_vm_process_impl::add_local_allocations(process, local_memory,
-                                                      callee->local_allocations(),
-                                                      callee->local_allocation_count);
+        = process->add_local_allocations(local_memory, callee->local_allocations(),
+                                         callee->local_allocation_count);
 
     auto remaining_vstack_size = vstack_ptr - process->vm()->value_stack_limit();
     if (remaining_vstack_size < callee->max_vstack_size)

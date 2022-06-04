@@ -22,45 +22,27 @@ public:
         return lauf_vm_process_impl::create(1024, vm, 1024);
     }
 
-    static void start(lauf_vm_process& process, lauf_program program)
+    void start(lauf_program program)
     {
-        auto mod            = program.mod;
-        process->_literals  = mod->literal_data();
-        process->_functions = mod->function_begin();
+        auto mod   = program.mod;
+        _literals  = mod->literal_data();
+        _functions = mod->function_begin();
 
-        lauf::vm_memory<lauf_vm_process_impl>::allocate_program_memory(process,
-                                                                       mod->allocation_data(),
-                                                                       mod->allocation_data()
-                                                                           + mod->allocation_count);
-        process->_vm->process = process;
+        allocate_program_memory(mod->allocation_data(),
+                                mod->allocation_data() + mod->allocation_count);
+        _vm->process = this;
     }
 
-    static void finish(lauf_vm_process process)
+    void finish()
     {
-        lauf::vm_memory<lauf_vm_process_impl>::free_process_memory(process,
-                                                                   process->_vm->allocator);
+        free_process_memory(_vm->allocator);
     }
 
     // Override this one to update the back pointer properly.
-    static lauf_value_address add_allocation(lauf_vm_process& process, lauf::vm_allocation alloc)
+    static void resize_allocation_list(lauf_vm_process& process)
     {
-        auto result = lauf::vm_memory<lauf_vm_process_impl>::add_allocation(process, alloc);
+        lauf::vm_memory<lauf_vm_process_impl>::resize_allocation_list(process);
         process->_vm->process = process;
-        return result;
-    }
-    static lauf_value_address add_local_allocations(lauf_vm_process&           process,
-                                                    unsigned char*             local_memory,
-                                                    const lauf::vm_allocation* alloc,
-                                                    std::size_t                count)
-    {
-        if (count == 0)
-            return lauf_value_address_invalid;
-
-        auto result
-            = lauf::vm_memory<lauf_vm_process_impl>::add_local_allocations(process, local_memory,
-                                                                           alloc, count);
-        process->_vm->process = process;
-        return result;
     }
 
     lauf_vm vm() const

@@ -87,106 +87,101 @@ public:
     {}
 
     //=== allocation setup ===//
-    static lauf_value_address add_allocation(Derived*& ptr, vm_allocation alloc)
+    bool has_capacity_for_allocations(std::size_t count) const
     {
-        auto self = static_cast<vm_memory*>(ptr);
-        if (self->_first_unused == self->_capacity)
-        {
-            auto new_capacity = 2ull * self->_capacity;
-            Derived::resize(ptr, {self->_capacity}, {new_capacity});
-
-            self            = ptr;
-            self->_capacity = new_capacity;
-        }
-
-        alloc.generation                             = self->_generation;
-        self->get_allocations()[self->_first_unused] = alloc;
-        return {self->_first_unused++, self->_generation, 0};
+        return _first_unused + count < _capacity;
     }
 
-    static lauf_value_address add_local_allocations(Derived*& ptr, unsigned char* local_memory,
-                                                    const vm_allocation* allocs, std::size_t count)
+    static void resize_allocation_list(Derived*& ptr)
     {
         auto self = static_cast<vm_memory*>(ptr);
-        if (self->_first_unused + count >= self->_capacity)
-        {
-            auto new_capacity = 2ull * self->_capacity;
-            Derived::resize(ptr, {self->_capacity}, {new_capacity});
 
-            self            = ptr;
-            self->_capacity = new_capacity;
-        }
+        auto new_capacity = 2ull * self->_capacity;
+        Derived::resize(ptr, {self->_capacity}, {new_capacity});
 
-        auto first_alloc = self->_first_unused;
-        auto dest        = self->get_allocations() + first_alloc;
+        self            = ptr;
+        self->_capacity = new_capacity;
+    }
+
+    lauf_value_address add_allocation(vm_allocation alloc)
+    {
+        alloc.generation                 = _generation;
+        get_allocations()[_first_unused] = alloc;
+        return {_first_unused++, _generation, 0};
+    }
+
+    lauf_value_address add_local_allocations(unsigned char*       local_memory,
+                                             const vm_allocation* allocs, std::size_t count)
+    {
+        if (count == 0)
+            return lauf_value_address_invalid;
+
+        auto first_alloc = _first_unused;
+        auto dest        = get_allocations() + first_alloc;
         for (auto i = 0u; i != count; ++i)
         {
             *dest            = allocs[i];
-            dest->generation = self->_generation;
+            dest->generation = _generation;
             dest->ptr        = local_memory + reinterpret_cast<std::uintptr_t>(dest->ptr);
             ++dest;
         }
-        self->_first_unused += count;
+        _first_unused += count;
 
-        return {first_alloc, self->_generation, 0};
+        return {first_alloc, _generation, 0};
     }
 
-    static vm_allocation* remove_allocation(Derived* ptr, lauf_value_address addr)
+    vm_allocation* remove_allocation(lauf_value_address addr)
     {
-        auto self = static_cast<vm_memory*>(ptr);
-
-        auto alloc = self->get_allocation(addr);
+        auto alloc = get_allocation(addr);
         if (alloc == nullptr)
             return nullptr;
         alloc->lifetime = vm_allocation::freed;
 
-        if (addr.allocation == self->_first_unused - 1u)
+        if (addr.allocation == _first_unused - 1u)
         {
             // We can remove the allocation as its at the end.
             // Potentially, we can also remove more subsequent allocations.
             do
             {
-                --self->_first_unused;
+                --_first_unused;
                 // We increment the generation to detect use-after free.
-                ++self->_generation;
-            } while (self->_first_unused > 0u
-                     && self->get_allocations()[self->_first_unused - 1u].lifetime
-                            == vm_allocation::freed);
+                ++_generation;
+            } while (_first_unused > 0u
+                     && get_allocations()[_first_unused - 1u].lifetime == vm_allocation::freed);
         }
 
         return alloc;
     }
 
-    static void allocate_program_memory(Derived*& derived, vm_allocation* begin, vm_allocation* end)
+    void allocate_program_memory(vm_allocation* begin, vm_allocation* end)
     {
+        assert(has_capacity_for_allocations(std::ptrdiff_t(end - begin)));
+
         for (auto ptr = begin; ptr != end; ++ptr)
         {
             auto alloc = *ptr;
             if (alloc.source == vm_allocation::static_zero_memory)
             {
-                auto ptr = static_cast<vm_memory*>(derived)
-                               ->_allocator.template allocate<alignof(void*)>(alloc.size);
+                auto ptr = _allocator.template allocate<alignof(void*)>(alloc.size);
                 std::memset(ptr, 0, alloc.size);
                 alloc.ptr = ptr;
             }
             else if (alloc.source == vm_allocation::static_mutable_memory)
             {
-                auto ptr = static_cast<vm_memory*>(derived)
-                               ->_allocator.template allocate<alignof(void*)>(alloc.size);
+                auto ptr = _allocator.template allocate<alignof(void*)>(alloc.size);
                 std::memcpy(ptr, alloc.ptr, alloc.size);
                 alloc.ptr = ptr;
             }
 
-            add_allocation(derived, alloc);
+            add_allocation(alloc);
         }
     }
 
-    static void free_process_memory(Derived* derived, lauf_vm_allocator heap)
+    void free_process_memory(lauf_vm_allocator heap)
     {
-        auto self = static_cast<vm_memory*>(derived);
-        for (auto idx = uint32_t(0); idx != self->_first_unused; ++idx)
+        for (auto idx = uint32_t(0); idx != _first_unused; ++idx)
         {
-            auto alloc = self->get_allocations()[idx];
+            auto alloc = get_allocations()[idx];
             if (alloc.source == vm_allocation::heap_memory
                 && alloc.lifetime != vm_allocation::freed
                 // Either the allocation isn't split, or it's the first split.
@@ -195,7 +190,7 @@ public:
                 heap.free_alloc(heap.user_data, alloc.ptr);
         }
 
-        self->_first_unused = 0;
+        _first_unused = 0;
     }
 
     //=== allocators ===//

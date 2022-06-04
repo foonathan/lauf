@@ -39,8 +39,17 @@ struct alignas(void*) stack_frame
     stack_frame*                  prev;
 };
 
-bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                             lauf_vm_process process)
+LAUF_NOINLINE bool resize_allocation_list(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                          void* frame_ptr, lauf_vm_process process)
+{
+    // We resize the allocation list.
+    lauf_vm_process_impl::resize_allocation_list(process);
+    // And try executing the same instruction again.
+    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
+}
+
+LAUF_NOINLINE bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                           void* frame_ptr, lauf_vm_process process)
 {
     // We reserve a new stack block.
     if (!process->stack().reserve_new_block())
@@ -320,7 +329,7 @@ bool lauf_builtin_panic(lauf_vm_process process, lauf_vm_instruction* ip, void* 
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
-    lauf_vm_process_impl::start(vm->process, prog);
+    vm->process->start(prog);
     auto vstack_ptr = vm->value_stack();
 
     for (auto i = 0; i != prog.entry->input_count; ++i)
@@ -345,7 +354,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         }
     }
 
-    lauf_vm_process_impl::finish(vm->process);
+    vm->process->finish();
     vm->memory_stack.reset();
     return result;
 }

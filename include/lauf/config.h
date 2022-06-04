@@ -42,5 +42,13 @@
 #    endif
 #endif
 
+#ifndef LAUF_NOINLINE
+#    if defined(__GNUC__)
+#        define LAUF_NOINLINE __attribute__((noinline))
+#    else
+#        define LAUF_NOINLINE
+#    endif
+#endif
+
 #endif // LAUF_CONFIG_H_INCLUDED
 

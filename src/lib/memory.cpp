@@ -16,8 +16,10 @@ LAUF_BUILTIN_BINARY_OPERATION(lauf_heap_alloc_builtin, 1, {
     if (ptr == nullptr)
         return lauf_builtin_panic(process, ip, frame_ptr, "out of heap memory");
 
-    auto alloc         = lauf::vm_allocation(ptr, uint32_t(size), lauf::vm_allocation::heap_memory);
-    result->as_address = lauf_vm_process_impl::add_allocation(process, alloc);
+    auto alloc = lauf::vm_allocation(ptr, uint32_t(size), lauf::vm_allocation::heap_memory);
+    if (!process->has_capacity_for_allocations(1))
+        lauf_vm_process_impl::resize_allocation_list(process);
+    result->as_address = process->add_allocation(alloc);
 })
 
 LAUF_BUILTIN_UNARY_OPERATION(lauf_free_alloc_builtin, 0, {
@@ -32,7 +34,7 @@ LAUF_BUILTIN_UNARY_OPERATION(lauf_free_alloc_builtin, 0, {
         return lauf_builtin_panic(process, ip, frame_ptr, "invalid address");
 
     vm->allocator.free_alloc(vm->allocator.user_data, alloc->ptr);
-    lauf_vm_process_impl::remove_allocation(process, addr);
+    process->remove_allocation(addr);
 })
 
 LAUF_BUILTIN_BINARY_OPERATION(lauf_split_alloc_builtin, 2, {
@@ -73,7 +75,10 @@ LAUF_BUILTIN_BINARY_OPERATION(lauf_split_alloc_builtin, 2, {
     *base_alloc  = alloc1;
     auto addr1   = base_addr;
     addr1.offset = 0;
-    auto addr2   = lauf_vm_process_impl::add_allocation(process, alloc2);
+
+    if (!process->has_capacity_for_allocations(1))
+        lauf_vm_process_impl::resize_allocation_list(process);
+    auto addr2 = process->add_allocation(alloc2);
 
     result[1].as_address = addr1;
     result[0].as_address = addr2;
@@ -111,7 +116,7 @@ LAUF_BUILTIN_BINARY_OPERATION(lauf_merge_alloc_builtin, 1, {
     }
     auto base_addr = addr1;
 
-    lauf_vm_process_impl::remove_allocation(process, addr2);
+    process->remove_allocation(addr2);
 
     result->as_address = base_addr;
 })
