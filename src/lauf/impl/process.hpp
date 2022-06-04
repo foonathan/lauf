@@ -53,6 +53,9 @@ public:
                                                     const lauf::vm_allocation* alloc,
                                                     std::size_t                count)
     {
+        if (count == 0)
+            return lauf_value_address_invalid;
+
         auto result
             = lauf::vm_memory<lauf_vm_process_impl>::add_local_allocations(process, local_memory,
                                                                            alloc, count);
