@@ -12,9 +12,10 @@ lauf_value load_value(const void* object_address, size_t)
     return *static_cast<const lauf_value*>(object_address);
 }
 
-void store_value(void* object_address, size_t, lauf_value value)
+bool store_value(void* object_address, size_t, lauf_value value)
 {
     ::new (object_address) lauf_value(value);
+    return true;
 }
 } // namespace
 

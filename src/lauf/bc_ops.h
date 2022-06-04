@@ -326,7 +326,8 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
     if (object == nullptr)
         LAUF_DO_PANIC("invalid address");
 
-    type->store_field(object, ip->store_field.field, vstack_ptr[1]);
+    if (!type->store_field(object, ip->store_field.field, vstack_ptr[1]))
+        LAUF_DO_PANIC("invalid field value");
     vstack_ptr += 2;
 
     ++ip;

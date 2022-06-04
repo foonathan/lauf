@@ -29,6 +29,7 @@ constexpr lauf_type_data int_type = {LAUF_NATIVE_LAYOUT_OF(int), 1,
                                      },
                                      [](void* object_address, size_t, lauf_value value) {
                                          ::new (object_address) lauf_value_sint(value.as_sint);
+                                         return true;
                                      }};
 
 int main()

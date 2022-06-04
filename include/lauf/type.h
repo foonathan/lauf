@@ -25,7 +25,7 @@ typedef struct lauf_type_data
     lauf_layout layout;
     size_t      field_count;
     lauf_value (*load_field)(const void* object_address, size_t field_index);
-    void (*store_field)(void* object_address, size_t field_index, lauf_value value);
+    bool (*store_field)(void* object_address, size_t field_index, lauf_value value);
 } lauf_type_data;
 
 typedef const lauf_type_data* lauf_type;

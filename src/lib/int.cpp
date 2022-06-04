@@ -17,6 +17,7 @@ constexpr lauf_type_data sint_type
        },
        [](void* object_address, size_t, lauf_value value) {
            ::new (object_address) lauf_value_sint(value.as_sint);
+           return true;
        }};
 
 constexpr lauf_type_data uint_type
@@ -28,6 +29,7 @@ constexpr lauf_type_data uint_type
        },
        [](void* object_address, size_t, lauf_value value) {
            ::new (object_address) lauf_value_uint(value.as_uint);
+           return true;
        }};
 } // namespace
 
