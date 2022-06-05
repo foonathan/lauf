@@ -259,8 +259,12 @@ struct function_decl
     struct body
     {
         static constexpr auto rule = [] {
-            auto impl = dsl::lit_c<'{'> >> dsl::loop(dsl::lit_c<'}'> >> dsl::break_ | whitespace
-                                                     | dsl::else_ >> dsl::code_point);
+            auto counter               = dsl::context_counter<int>;
+            auto skip_balanced_curlies = dsl::loop(counter.is_zero() >> dsl::break_   //
+                                                   | dsl::lit_c<'{'> >> counter.inc() //
+                                                   | dsl::lit_c<'}'> >> counter.dec() //
+                                                   | whitespace | dsl::code_point);
+            auto impl = dsl::lit_c<'{'> >> counter.create<1>() + skip_balanced_curlies;
             return dsl::capture(dsl::token(impl));
         }();
         static constexpr auto value = lexy::as_string<std::string_view>;
@@ -381,8 +385,12 @@ namespace lauf::text_grammar
 {
 struct skip_instruction
 {
-    static constexpr auto rule  = identifier >> dsl::loop(dsl::semicolon >> dsl::break_ | whitespace
-                                                          | dsl::else_ >> dsl::code_point);
+    static constexpr auto rule = [] {
+        auto single = identifier >> dsl::loop(dsl::semicolon >> dsl::break_ | whitespace
+                                              | dsl::else_ >> dsl::code_point);
+        auto list   = dsl::curly_bracketed.list(dsl::recurse<skip_instruction>);
+        return list | dsl::else_ >> single;
+    }();
     static constexpr auto value = lexy::noop;
 };
 
@@ -405,7 +413,7 @@ struct function_body_decls
 {
     static constexpr auto whitespace = text_grammar::whitespace;
     static constexpr auto rule       = dsl::curly_bracketed.opt_list(
-              dsl::p<label_decl> | dsl::p<local_decl> | dsl::p<skip_instruction>);
+              dsl::p<label_decl> | dsl::p<local_decl> | dsl::else_ >> dsl::p<skip_instruction>);
 };
 } // namespace lauf::text_grammar
 
@@ -616,9 +624,12 @@ struct inst
               | dsl::p<inst_load_value> | dsl::p<inst_load_array_value>                      //
               | dsl::p<inst_store_value> | dsl::p<inst_store_array_value>                    //
               | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
-        return dsl::p<debug_location> + insts + dsl::semicolon;
+
+        auto single_inst  = dsl::p<debug_location> + insts + dsl::semicolon;
+        auto grouped_inst = dsl::curly_bracketed.list(dsl::recurse<inst>);
+        return grouped_inst | dsl::else_ >> single_inst;
     }();
-    static constexpr auto value = lexy::forward<void>;
+    static constexpr auto value = lexy::noop;
 };
 
 struct function_body
