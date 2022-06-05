@@ -57,7 +57,7 @@ lauf_backtrace lauf_backtrace_parent(lauf_backtrace bt)
     // We need to go to the parent.
     auto next_bt = frame->prev;
 
-    if (next_bt->return_ip == nullptr)
+    if (next_bt->prev->fn == nullptr)
         return nullptr;
     else
         return next_bt;

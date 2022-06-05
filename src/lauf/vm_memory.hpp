@@ -193,6 +193,7 @@ public:
         }
 
         _first_unused = 0;
+        _generation   = 0;
     }
 
     //=== allocators ===//
