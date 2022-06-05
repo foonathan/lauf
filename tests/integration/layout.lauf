@@ -80,6 +80,7 @@ function @test_aggregate(0 => 0) {
 
     return;
 }
+
 function @test_nested_aggregate(0 => 0) {
     local %x : {@Value, @Pair};
 

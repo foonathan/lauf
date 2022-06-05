@@ -216,15 +216,8 @@ lauf_function lauf_finish_function(lauf_builder b)
 
     // Copy and patch bytecode.
     if (result->local_allocation_count > 0)
-    {
-        auto bc = result->bytecode();
-        *bc++   = LAUF_VM_INSTRUCTION(add_local_allocations);
-        b->bytecode.finish(bc, true);
-    }
-    else
-    {
-        b->bytecode.finish(result->bytecode(), false);
-    }
+        b->bytecode.replace_entry_instruction(LAUF_VM_INSTRUCTION(add_local_allocations));
+    b->bytecode.finish(result->bytecode(), result->local_allocation_count > 0);
 
     fn_decl.fn = result;
     return result;

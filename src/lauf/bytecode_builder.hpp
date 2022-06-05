@@ -59,6 +59,11 @@ public:
             new_basic_block();
     }
 
+    void replace_entry_instruction(bc_inst inst)
+    {
+        _bytecode.front() = inst;
+    }
+
     // We're assuming that this does not affect control flow.
     void replace_last_instruction(bc_inst inst)
     {
@@ -135,6 +140,9 @@ public:
         _bytecode.clear_and_reserve(*_alloc, 512);
         _locations.clear_and_reserve(*_alloc, 512);
         _cur_basic_block_begin = 0;
+
+        // We keep one nop instruction at the beginning, so we can properly patch it.
+        instruction(LAUF_VM_INSTRUCTION(nop));
     }
 
 private:

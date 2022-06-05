@@ -51,6 +51,15 @@ public:
         return _data[idx];
     }
 
+    T& front() noexcept
+    {
+        return _data[0];
+    }
+    const T& front() const noexcept
+    {
+        return _data[0];
+    }
+
     T& back() noexcept
     {
         return _data[_size - 1];
