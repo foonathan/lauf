@@ -107,6 +107,21 @@ void lauf_frontend_text_register_type(lauf_frontend_text_parser p, const char* n
 }
 
 //=== common elements ===//
+namespace
+{
+struct layout_expr
+{
+    lauf_layout layout;
+    // We need them to properly compute the offsets.
+    std::optional<std::vector<lauf_layout>> aggregate_members;
+
+    operator lauf_layout() const
+    {
+        return layout;
+    }
+};
+} // namespace
+
 namespace lauf::text_grammar
 {
 namespace dsl = lexy::dsl;
@@ -157,16 +172,28 @@ struct ref_builtin
     static constexpr auto rule = dsl::p<global_identifier>;
 };
 
-struct layout_literal
-{
-    static constexpr auto rule
-        = dsl::parenthesized(dsl::twice(dsl::integer<std::size_t>, dsl::sep(dsl::comma)));
-    static constexpr auto value = lexy::construct<lauf_layout>;
-};
-
 struct layout_expr : lexy::expression_production
 {
-    static constexpr auto atom = dsl::p<global_identifier> | dsl::p<layout_literal>;
+    struct literal
+    {
+        static constexpr auto rule
+            = dsl::parenthesized(dsl::twice(dsl::integer<std::size_t>, dsl::sep(dsl::comma)));
+        static constexpr auto value = lexy::construct<lauf_layout>;
+    };
+
+    struct aggregate
+    {
+        static constexpr auto rule
+            = dsl::curly_bracketed.list(dsl::recurse<layout_expr>, dsl::sep(dsl::comma));
+        static constexpr auto value
+            = lexy::as_list<std::vector<lauf_layout>> >> lexy::callback<::layout_expr>(
+                  [](std::vector<lauf_layout>&& members) {
+                      return ::layout_expr{lauf_aggregate_layout(members.data(), members.size()),
+                                           std::move(members)};
+                  });
+    };
+
+    static constexpr auto atom = dsl::p<global_identifier> | dsl::p<literal> | dsl::p<aggregate>;
 
     struct array : dsl::postfix_op
     {
@@ -178,29 +205,39 @@ struct layout_expr : lexy::expression_production
 
     struct callback
     {
-        lauf_frontend_text_parser        p;
-        const symbol_table<lauf_layout>& layouts;
+        lauf_frontend_text_parser          p;
+        const symbol_table<::layout_expr>& layouts;
 
-        using return_type = lauf_layout;
+        using return_type = ::layout_expr;
 
+        return_type operator()(::layout_expr&& layout) const
+        {
+            return std::move(layout);
+        }
         return_type operator()(lauf_layout layout) const
         {
-            return layout;
+            return {layout};
         }
         return_type operator()(std::string_view name) const
         {
             if (auto layout = layouts.try_lookup(name))
                 return *layout;
 
-            return p->types.lookup(name)->layout;
+            return {p->types.lookup(name)->layout};
         }
 
         template <typename Base>
-        return_type operator()(Base base, std::size_t length) const
+        return_type operator()(Base&& base, std::size_t length) const
         {
-            return lauf_array_layout(operator()(base), length);
+            return {lauf_array_layout(operator()(std::move(base)).layout, length)};
         }
     };
+};
+
+struct ref_layout
+{
+    static constexpr auto rule  = dsl::p<layout_expr>;
+    static constexpr auto value = lexy::mem_fn(&::layout_expr::layout);
 };
 } // namespace lauf::text_grammar
 
@@ -326,7 +363,7 @@ struct module_decl
 {
     symbol_table<lauf_global>   global;
     symbol_table<function_decl> functions;
-    symbol_table<lauf_layout>   layouts;
+    symbol_table<layout_expr>   layouts;
 };
 
 auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
@@ -386,8 +423,8 @@ auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
         }
         auto value_of(lauf::text_grammar::layout_decl) const
         {
-            return lexy::callback([&](std::string_view name, lauf_layout layout) {
-                result.layouts.insert(name, layout);
+            return lexy::callback([&](std::string_view name, layout_expr&& layout) {
+                result.layouts.insert(name, std::move(layout));
             });
         }
 
@@ -477,8 +514,8 @@ auto parse_function_body_decls(lauf_frontend_text_parser p, const module_decl&  
 
         auto value_of(lauf::text_grammar::local_decl) const
         {
-            return lexy::callback([&](std::string_view name, lauf_layout layout) {
-                result.locals.insert(name, lauf_build_local_variable(p->b, layout));
+            return lexy::callback([&](std::string_view name, const layout_expr& layout) {
+                result.locals.insert(name, lauf_build_local_variable(p->b, layout.layout));
             });
         }
 
@@ -599,6 +636,24 @@ struct inst_array_element_addr
         = LEXY_KEYWORD("array_element_addr", identifier) >> dsl::p<layout_expr>;
     static constexpr auto build = &lauf_build_array_element_addr;
 };
+struct inst_aggregate_member_addr
+{
+    struct member_offset
+    {
+        static constexpr auto rule = dsl::p<layout_expr> + dsl::period + dsl::integer<size_t>;
+        static constexpr auto value
+            = lexy::callback<std::size_t>([](const ::layout_expr& layout, std::size_t member_idx) {
+                  LAUF_VERIFY(layout.aggregate_members, "aggregate_member_addr",
+                              "layout is not an aggregate");
+                  return lauf_aggregate_member_offset(member_idx, layout.aggregate_members->data(),
+                                                      layout.aggregate_members->size());
+              });
+    };
+
+    static constexpr auto rule
+        = LEXY_KEYWORD("aggregate_member_addr", identifier) >> dsl::p<member_offset>;
+    static constexpr auto build = &lauf_build_aggregate_member_addr;
+};
 struct inst_load_field
 {
     static constexpr auto rule = LEXY_KEYWORD("load_field", identifier)
@@ -611,6 +666,7 @@ struct inst_store_field
                                  >> dsl::p<ref_type> + dsl::period + dsl::integer<size_t>;
     static constexpr auto build = &lauf_build_store_field;
 };
+
 struct inst_load_value
 {
     static constexpr auto rule  = LEXY_KEYWORD("load_value", identifier) >> dsl::p<ref_local>;
@@ -653,7 +709,7 @@ struct inst
               | dsl::p<inst_pop> | dsl::p<inst_pick> | dsl::p<inst_roll> | dsl::p<inst_drop> //
               | dsl::p<inst_select> | dsl::p<inst_select_if>                                 //
               | dsl::p<inst_call> | dsl::p<inst_call_builtin>                                //
-              | dsl::p<inst_array_element_addr>                                              //
+              | dsl::p<inst_array_element_addr> | dsl::p<inst_aggregate_member_addr>         //
               | dsl::p<inst_load_field> | dsl::p<inst_store_field>                           //
               | dsl::p<inst_load_value> | dsl::p<inst_load_array_value>                      //
               | dsl::p<inst_store_value> | dsl::p<inst_store_array_value>                    //

@@ -477,6 +477,16 @@ void lauf_build_array_element_addr(lauf_builder b, lauf_layout layout)
     b->value_stack.push("array_element_addr");
 }
 
+void lauf_build_aggregate_member_addr(lauf_builder b, size_t member_offset)
+{
+    b->bytecode.location(b->cur_location);
+
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(aggregate_member_addr, member_offset));
+
+    b->value_stack.pop("aggregate_member_addr");
+    b->value_stack.push("aggregate_member_addr");
+}
+
 void lauf_build_load_field(lauf_builder b, lauf_type type, size_t field)
 {
     b->bytecode.location(b->cur_location);

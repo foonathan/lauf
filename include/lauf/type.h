@@ -23,6 +23,10 @@ typedef struct lauf_layout
 
 lauf_layout lauf_array_layout(lauf_layout base, size_t length);
 
+lauf_layout lauf_aggregate_layout(const lauf_layout* members, size_t member_count);
+size_t      lauf_aggregate_member_offset(size_t member_idx, const lauf_layout* members,
+                                         size_t member_count);
+
 //=== type ===//
 typedef struct lauf_type_data
 {

@@ -32,35 +32,6 @@ function @test_value_field(0 => 0) {
     return;
 }
 
-function @test_array(0 => 0) {
-    local %x : @Value[2];
-
-    int 42; int 0; local_addr %x; array_element_addr @Value; store_field @Value.0;
-    int 11; int 1; local_addr %x; array_element_addr @Value; store_field @Value.0;
-
-    int 0; local_addr %x; array_element_addr @Value; load_field @Value.0;
-    int 42; call @assert_eq;
-
-    int 1; local_addr %x; array_element_addr @Value; load_field @Value.0;
-    int 11; call @assert_eq;
-
-    return;
-}
-function @test_nested_array(0 => 0) {
-    local %x : @Value[1][2];
-
-    int 42; int 0; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; store_field @Value.0;
-    int 11; int 1; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; store_field @Value.0;
-
-    int 0; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; load_field @Value.0;
-    int 42; call @assert_eq;
-
-    int 0; {int 1; local_addr %x; array_element_addr @Value;} array_element_addr @Value; load_field @Value.0;
-    int 11; call @assert_eq;
-
-    return;
-}
-
 function @test_array_value(0 => 0) {
     local %x : @Value[2];
 

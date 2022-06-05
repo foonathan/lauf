@@ -35,3 +35,64 @@ function @test_named_layout(0 => 0) {
     return;
 }
 
+function @test_array(0 => 0) {
+    local %x : @Value[2];
+
+    int 42; int 0; local_addr %x; array_element_addr @Value; store_field @Value.0;
+    int 11; int 1; local_addr %x; array_element_addr @Value; store_field @Value.0;
+
+    int 0; local_addr %x; array_element_addr @Value; load_field @Value.0;
+    int 42; call @assert_eq;
+
+    int 1; local_addr %x; array_element_addr @Value; load_field @Value.0;
+    int 11; call @assert_eq;
+
+    return;
+}
+function @test_nested_array(0 => 0) {
+    local %x : @Value[1][2];
+
+    int 42; int 0; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; store_field @Value.0;
+    int 11; int 1; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; store_field @Value.0;
+
+    int 0; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; load_field @Value.0;
+    int 42; call @assert_eq;
+
+    int 0; {int 1; local_addr %x; array_element_addr @Value;} array_element_addr @Value; load_field @Value.0;
+    int 11; call @assert_eq;
+
+    return;
+}
+
+layout @Pair = {@Value, @Value};
+
+function @test_aggregate(0 => 0) {
+    local %x : @Pair;
+
+    int 42; local_addr %x; aggregate_member_addr @Pair.0; store_field @Value.0;
+    int 11; local_addr %x; aggregate_member_addr @Pair.1; store_field @Value.0;
+
+    local_addr %x; aggregate_member_addr @Pair.0; load_field @Value.0;
+    int 42; call @assert_eq;
+
+    local_addr %x; aggregate_member_addr @Pair.1; load_field @Value.0;
+    int 11; call @assert_eq;
+
+    return;
+}
+function @test_nested_aggregate(0 => 0) {
+    local %x : {@Value, @Pair};
+
+    int 42; local_addr %x; aggregate_member_addr {@Value, @Pair}.1; aggregate_member_addr @Pair.0; store_field @Value.0;
+    int 11; local_addr %x; aggregate_member_addr {@Value, @Pair}.1; aggregate_member_addr @Pair.1; store_field @Value.0;
+
+    local_addr %x; aggregate_member_addr {@Value, @Pair}.1; aggregate_member_addr @Pair.0; load_field @Value.0;
+    int 42; call @assert_eq;
+
+    local_addr %x; aggregate_member_addr {@Value, @Pair}.1; aggregate_member_addr @Pair.1; load_field @Value.0;
+    int 11; call @assert_eq;
+
+    return;
+}
+
+

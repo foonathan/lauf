@@ -199,6 +199,17 @@ LAUF_BC_OP(array_element_addr, bc_inst_literal, {
     LAUF_DISPATCH;
 })
 
+// Computes the address of an aggregate, literal is offset.
+// addr => addr + offset
+LAUF_BC_OP(aggregate_member_addr, bc_inst_literal, {
+    auto addr = vstack_ptr[0].as_address;
+    addr.offset += ip->aggregate_member_addr.literal;
+    vstack_ptr[0].as_address = addr;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+
 //=== value stack manipulation ===//
 // Pops n values from stack.
 // b an ... a1 => b
