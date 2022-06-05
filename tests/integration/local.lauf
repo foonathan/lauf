@@ -32,19 +32,6 @@ function @test_value_field(0 => 0) {
     return;
 }
 
-function @test_layout(0 => 0) {
-    # layout of Value type hardcoded.
-    local %x : (8, 8);
-
-    int 42; store_value %x;
-    int 11; store_value %x;
-
-    load_value %x;
-    int 11; call @assert_eq;
-
-    return;
-}
-
 function @test_array(0 => 0) {
     local %x : @Value[2];
 

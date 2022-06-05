@@ -26,14 +26,21 @@ template <typename T>
 class symbol_table
 {
 public:
-    const T& lookup(std::string_view name) const
+    const T* try_lookup(std::string_view name) const
     {
         auto iter = map.find(name);
         if (iter != map.end())
-            return iter->second;
-
-        lauf::verification_failure("text", ("unknown name '" + std::string(name) + "'").c_str());
-        return iter->second;
+            return &iter->second;
+        else
+            return nullptr;
+    }
+    const T& lookup(std::string_view name) const
+    {
+        auto ptr = try_lookup(name);
+        if (!ptr)
+            lauf::verification_failure("text",
+                                       ("unknown name '" + std::string(name) + "'").c_str());
+        return *ptr;
     }
 
     void insert(std::string_view name, T&& data)
@@ -125,7 +132,7 @@ struct global_identifier
     static constexpr auto value = lexy::as_string<std::string_view>;
 };
 
-struct ref_primitive_type
+struct ref_type
 {
     static constexpr auto rule = dsl::p<global_identifier>;
 };
@@ -171,7 +178,8 @@ struct layout_expr : lexy::expression_production
 
     struct callback
     {
-        lauf_frontend_text_parser p;
+        lauf_frontend_text_parser        p;
+        const symbol_table<lauf_layout>& layouts;
 
         using return_type = lauf_layout;
 
@@ -181,6 +189,9 @@ struct layout_expr : lexy::expression_production
         }
         return_type operator()(std::string_view name) const
         {
+            if (auto layout = layouts.try_lookup(name))
+                return *layout;
+
             return p->types.lookup(name)->layout;
         }
 
@@ -277,6 +288,13 @@ struct function_decl
     }();
 };
 
+struct layout_decl
+{
+    static constexpr auto rule
+        = LEXY_KEYWORD("layout", identifier)
+          >> dsl::p<global_identifier> + dsl::equal_sign + dsl::p<layout_expr> + dsl::semicolon;
+};
+
 struct module_decl
 {
     static constexpr auto whitespace = text_grammar::whitespace;
@@ -287,8 +305,9 @@ struct module_decl
     };
 
     static constexpr auto rule = [] {
-        auto decls
-            = dsl::list(dsl::p<function_decl> | dsl::p<const_decl> | dsl::p<data_decl>) + dsl::eof;
+        auto decl
+            = dsl::p<function_decl> | dsl::p<const_decl> | dsl::p<data_decl> | dsl::p<layout_decl>;
+        auto decls = dsl::terminator(dsl::eof).list(decl);
 
         return LEXY_KEYWORD("module", identifier) >> dsl::p<header> + decls;
     }();
@@ -307,6 +326,7 @@ struct module_decl
 {
     symbol_table<lauf_global>   global;
     symbol_table<function_decl> functions;
+    symbol_table<lauf_layout>   layouts;
 };
 
 auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
@@ -358,6 +378,17 @@ auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
                     auto decl = lauf_declare_function(p->b, p->intern(name), sig);
                     result.functions.insert(name, {decl, body});
                 });
+        }
+
+        auto value_of(lauf::text_grammar::layout_expr) const
+        {
+            return lauf::text_grammar::layout_expr::callback{p, result.layouts};
+        }
+        auto value_of(lauf::text_grammar::layout_decl) const
+        {
+            return lexy::callback([&](std::string_view name, lauf_layout layout) {
+                result.layouts.insert(name, layout);
+            });
         }
 
         auto value_of(lauf::text_grammar::module_decl) const
@@ -419,17 +450,21 @@ struct function_body_decls
 
 namespace
 {
-auto parse_function_body_decls(lauf_frontend_text_parser p,
+auto parse_function_body_decls(lauf_frontend_text_parser p, const module_decl&            mod,
                                lexy::string_input<lexy::ascii_encoding>, std::string_view body)
 {
     struct parser
     {
         lauf_frontend_text_parser   p;
+        const module_decl*          mod;
         mutable function_body_decls result;
 
         auto value_of(lauf::text_grammar::layout_expr) const
         {
-            return lauf::text_grammar::layout_expr::callback{p};
+            return lauf::text_grammar::layout_expr::callback{
+                p,
+                mod->layouts,
+            };
         }
 
         auto value_of(lauf::text_grammar::label_decl) const
@@ -455,7 +490,7 @@ auto parse_function_body_decls(lauf_frontend_text_parser p,
     };
 
     auto body_input = lexy::string_input<lexy::ascii_encoding>(body);
-    return lexy::parse<lauf::text_grammar::function_body_decls>(body_input, parser{p, {}},
+    return lexy::parse<lauf::text_grammar::function_body_decls>(body_input, parser{p, &mod, {}},
                                                                 // TODO: support partial input for
                                                                 // correct location
                                                                 lexy_ext::report_error);
@@ -502,8 +537,7 @@ struct inst_int
 };
 struct inst_layout_of
 {
-    static constexpr auto rule
-        = LEXY_KEYWORD("layout_of", identifier) >> dsl::p<ref_primitive_type>;
+    static constexpr auto rule  = LEXY_KEYWORD("layout_of", identifier) >> dsl::p<ref_type>;
     static constexpr auto build = &lauf_build_layout_of;
 };
 struct inst_global_addr
@@ -568,13 +602,13 @@ struct inst_array_element_addr
 struct inst_load_field
 {
     static constexpr auto rule = LEXY_KEYWORD("load_field", identifier)
-                                 >> dsl::p<ref_primitive_type> + dsl::period + dsl::integer<size_t>;
+                                 >> dsl::p<ref_type> + dsl::period + dsl::integer<size_t>;
     static constexpr auto build = &lauf_build_load_field;
 };
 struct inst_store_field
 {
     static constexpr auto rule = LEXY_KEYWORD("store_field", identifier)
-                                 >> dsl::p<ref_primitive_type> + dsl::period + dsl::integer<size_t>;
+                                 >> dsl::p<ref_type> + dsl::period + dsl::integer<size_t>;
     static constexpr auto build = &lauf_build_store_field;
 };
 struct inst_load_value
@@ -695,14 +729,14 @@ struct function_body_parser
         return lexy::callback<lauf_builtin>(
             [&](std::string_view name) { return p->builtins.lookup(name); });
     }
-    auto value_of(lauf::text_grammar::ref_primitive_type) const
+    auto value_of(lauf::text_grammar::ref_type) const
     {
         return lexy::callback<lauf_type>(
             [&](std::string_view name) { return p->types.lookup(name); });
     }
     auto value_of(lauf::text_grammar::layout_expr) const
     {
-        return lauf::text_grammar::layout_expr::callback{p};
+        return lauf::text_grammar::layout_expr::callback{p, mod->layouts};
     }
 
     auto value_of(lauf::text_grammar::local_decl) const
@@ -748,7 +782,7 @@ lauf_module lauf_frontend_text(lauf_frontend_text_parser p, const char* path, co
     {
         lauf_build_function(p->b, function.decl);
 
-        auto body_decls = parse_function_body_decls(p, input, function.body);
+        auto body_decls = parse_function_body_decls(p, mod_decl.value(), input, function.body);
         if (!body_decls)
             return nullptr;
 

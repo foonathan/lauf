@@ -1,0 +1,37 @@
+module @layout;
+
+const @test_failure = "test failure", 0;
+
+function @assert_eq(2 => 0) {
+    call_builtin @scmp;
+    global_addr @test_failure; panic_if cmp_ne;
+    return;
+}
+
+function @test_layout(0 => 0) {
+    # layout of Value type hardcoded.
+    local %x : (8, 8);
+
+    int 42; store_value %x;
+    int 11; store_value %x;
+
+    load_value %x;
+    int 11; call @assert_eq;
+
+    return;
+}
+
+layout @MyValue = @Value;
+
+function @test_named_layout(0 => 0) {
+    local %x : @MyValue;
+
+    int 42; store_value %x;
+    int 11; store_value %x;
+
+    load_value %x;
+    int 11; call @assert_eq;
+
+    return;
+}
+
