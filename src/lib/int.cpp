@@ -8,29 +8,8 @@
 //=== types ===//
 namespace
 {
-constexpr lauf_type_data sint_type
-    = {LAUF_NATIVE_LAYOUT_OF(lauf_value_sint), 1,
-       [](const void* object_address, size_t) {
-           lauf_value result;
-           result.as_sint = *static_cast<const lauf_value_sint*>(object_address);
-           return result;
-       },
-       [](void* object_address, size_t, lauf_value value) {
-           ::new (object_address) lauf_value_sint(value.as_sint);
-           return true;
-       }};
-
-constexpr lauf_type_data uint_type
-    = {LAUF_NATIVE_LAYOUT_OF(lauf_value_sint), 1,
-       [](const void* object_address, size_t) {
-           lauf_value result;
-           result.as_uint = *static_cast<const lauf_value_uint*>(object_address);
-           return result;
-       },
-       [](void* object_address, size_t, lauf_value value) {
-           ::new (object_address) lauf_value_uint(value.as_uint);
-           return true;
-       }};
+LAUF_NATIVE_SINGLE_VALUE_TYPE(sint_type, lauf_value_sint, as_sint);
+LAUF_NATIVE_SINGLE_VALUE_TYPE(uint_type, lauf_value_uint, as_uint);
 } // namespace
 
 lauf_type lauf_native_sint_type(void)
