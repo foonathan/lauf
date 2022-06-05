@@ -3,7 +3,14 @@
 
 #include <lauf/type.h>
 
+#include <lauf/support/align.hpp>
 #include <new>
+
+lauf_layout lauf_array_layout(lauf_layout base, size_t length)
+{
+    auto base_size = lauf::round_to_multiple_of_alignment(base.size, base.alignment);
+    return {base_size * length, base.alignment};
+}
 
 namespace
 {

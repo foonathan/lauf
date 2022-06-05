@@ -21,7 +21,9 @@ typedef struct lauf_layout
         sizeof(Type), alignof(Type)                                                                \
     }
 
-//=== primitive type ===//
+lauf_layout lauf_array_layout(lauf_layout base, size_t length);
+
+//=== type ===//
 typedef struct lauf_type_data
 {
     lauf_layout layout;

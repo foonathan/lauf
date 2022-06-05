@@ -467,11 +467,11 @@ void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn)
     b->value_stack.push("call_builtin", fn.signature.output_count);
 }
 
-void lauf_build_array_element_addr(lauf_builder b, lauf_type type)
+void lauf_build_array_element_addr(lauf_builder b, lauf_layout layout)
 {
     b->bytecode.location(b->cur_location);
 
-    b->bytecode.instruction(LAUF_VM_INSTRUCTION(array_element_addr, type->layout.size));
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(array_element_addr, layout.size));
 
     b->value_stack.pop("array_element_addr", 2);
     b->value_stack.push("array_element_addr");
