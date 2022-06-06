@@ -442,10 +442,21 @@ auto parse_module_decls(lauf_frontend_text_parser p, const char* path,
 //=== function body declarations ===//
 namespace
 {
+struct local_decl
+{
+    lauf_local                              local;
+    std::optional<std::vector<lauf_layout>> aggregate_members;
+
+    operator lauf_local() const
+    {
+        return local;
+    }
+};
+
 struct function_body_decls
 {
     symbol_table<lauf_label> labels;
-    symbol_table<lauf_local> locals;
+    symbol_table<local_decl> locals;
 };
 } // namespace
 
@@ -514,8 +525,9 @@ auto parse_function_body_decls(lauf_frontend_text_parser p, const module_decl&  
 
         auto value_of(lauf::text_grammar::local_decl) const
         {
-            return lexy::callback([&](std::string_view name, const layout_expr& layout) {
-                result.locals.insert(name, lauf_build_local_variable(p->b, layout.layout));
+            return lexy::callback([&](std::string_view name, layout_expr&& layout) {
+                result.locals.insert(name, {lauf_build_local_variable(p->b, layout.layout),
+                                            std::move(layout.aggregate_members)});
             });
         }
 
@@ -677,6 +689,11 @@ struct inst_load_array_value
     static constexpr auto rule  = LEXY_KEYWORD("load_array_value", identifier) >> dsl::p<ref_local>;
     static constexpr auto build = &lauf_build_load_array_value;
 };
+struct inst_load_aggregate_value
+{
+    static constexpr auto rule = LEXY_KEYWORD("load_aggregate_value", identifier)
+                                 >> dsl::p<ref_local> + dsl::period + dsl::integer<size_t>;
+};
 struct inst_store_value
 {
     static constexpr auto rule  = LEXY_KEYWORD("store_value", identifier) >> dsl::p<ref_local>;
@@ -686,6 +703,11 @@ struct inst_store_array_value
 {
     static constexpr auto rule = LEXY_KEYWORD("store_array_value", identifier) >> dsl::p<ref_local>;
     static constexpr auto build = &lauf_build_store_array_value;
+};
+struct inst_store_aggregate_value
+{
+    static constexpr auto rule = LEXY_KEYWORD("store_aggregate_value", identifier)
+                                 >> dsl::p<ref_local> + dsl::period + dsl::integer<size_t>;
 };
 
 struct inst_panic
@@ -712,7 +734,9 @@ struct inst
               | dsl::p<inst_array_element_addr> | dsl::p<inst_aggregate_member_addr>         //
               | dsl::p<inst_load_field> | dsl::p<inst_store_field>                           //
               | dsl::p<inst_load_value> | dsl::p<inst_load_array_value>                      //
+              | dsl::p<inst_load_aggregate_value>                                            //
               | dsl::p<inst_store_value> | dsl::p<inst_store_array_value>                    //
+              | dsl::p<inst_store_aggregate_value>                                           //
               | dsl::p<inst_panic> | dsl::p<inst_panic_if>;
 
         auto single_inst  = dsl::p<debug_location> + insts + dsl::semicolon;
@@ -762,7 +786,7 @@ struct function_body_parser
 
     auto value_of(lauf::text_grammar::ref_local) const
     {
-        return lexy::callback<lauf_local>(
+        return lexy::callback<local_decl>(
             [&](std::string_view name) { return body->locals.lookup(name); });
     }
     auto value_of(lauf::text_grammar::ref_label) const
@@ -810,6 +834,26 @@ struct function_body_parser
     auto value_of(Inst) const
     {
         return lexy::callback([&](const auto&... args) { Inst::build(p->b, args...); });
+    }
+    auto value_of(lauf::text_grammar::inst_load_aggregate_value) const
+    {
+        return lexy::callback([&](const local_decl& local, size_t member_idx) {
+            LAUF_VERIFY(local.aggregate_members, "load_aggregate_value",
+                        "local is not an aggregate");
+            auto offset = lauf_aggregate_member_offset(member_idx, local.aggregate_members->data(),
+                                                       local.aggregate_members->size());
+            lauf_build_load_aggregate_value(p->b, local, offset);
+        });
+    }
+    auto value_of(lauf::text_grammar::inst_store_aggregate_value) const
+    {
+        return lexy::callback([&](const local_decl& local, size_t member_idx) {
+            LAUF_VERIFY(local.aggregate_members, "store_aggregate_value",
+                        "local is not an aggregate");
+            auto offset = lauf_aggregate_member_offset(member_idx, local.aggregate_members->data(),
+                                                       local.aggregate_members->size());
+            lauf_build_store_aggregate_value(p->b, local, offset);
+        });
     }
 };
 

@@ -47,6 +47,18 @@ function @test_array_value(0 => 0) {
     return;
 }
 
+function @test_aggregate_value(0 => 0) {
+    local %x : {@Value, @Value};
+
+    int 42; store_aggregate_value %x.0;
+    int 11; store_aggregate_value %x.1;
+
+    load_aggregate_value %x.0; int 42; call @assert_eq;
+    load_aggregate_value %x.1; int 11; call @assert_eq;
+
+    return;
+}
+
 function @set_ptr(1 => 0) {
     int 42; roll 1; store_field @Value.0;
     return;

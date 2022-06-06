@@ -105,8 +105,10 @@ void lauf_build_store_field(lauf_builder b, lauf_type type, size_t field);
 
 void lauf_build_load_value(lauf_builder b, lauf_local var);
 void lauf_build_load_array_value(lauf_builder b, lauf_local var);
+void lauf_build_load_aggregate_value(lauf_builder b, lauf_local var, size_t member_offset);
 void lauf_build_store_value(lauf_builder b, lauf_local var);
 void lauf_build_store_array_value(lauf_builder b, lauf_local var);
+void lauf_build_store_aggregate_value(lauf_builder b, lauf_local var, size_t member_offset);
 
 void lauf_build_panic(lauf_builder b);
 void lauf_build_panic_if(lauf_builder b, lauf_condition condition);

@@ -503,17 +503,32 @@ void lauf_build_store_field(lauf_builder b, lauf_type type, size_t field)
     b->value_stack.pop("store_field", 2);
 }
 
-void lauf_build_load_value(lauf_builder b, lauf_local var)
+namespace
 {
-    LAUF_VERIFY(var._size >= sizeof(lauf_value), "load_value", "wrong layout");
+void build_load_value_impl(const char* name, lauf_builder b, lauf_local var, size_t member_offset)
+{
+    LAUF_VERIFY(member_offset + sizeof(lauf_value) <= var._size
+                    && (var._addr + member_offset) % alignof(lauf_value) == 0,
+                name, "wrong layout");
     b->bytecode.location(b->cur_location);
 
     // If the last instruction is a store of the same address, turn it into a save instead.
-    if (b->bytecode.get_cur_idom() == LAUF_VM_INSTRUCTION(store_value, var._addr))
+    if (b->bytecode.get_cur_idom() == LAUF_VM_INSTRUCTION(store_value, var._addr + member_offset))
         b->bytecode.replace_last_instruction(lauf::bc_op::save_value);
     else
-        b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_value, var._addr));
-    b->value_stack.push("load_value");
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(load_value, var._addr + member_offset));
+    b->value_stack.push(name);
+}
+} // namespace
+
+void lauf_build_load_value(lauf_builder b, lauf_local var)
+{
+    build_load_value_impl("load_value", b, var, 0);
+}
+
+void lauf_build_load_aggregate_value(lauf_builder b, lauf_local var, size_t member_offset)
+{
+    build_load_value_impl("load_aggregate_value", b, var, member_offset);
 }
 
 void lauf_build_load_array_value(lauf_builder b, lauf_local var)
@@ -527,13 +542,28 @@ void lauf_build_load_array_value(lauf_builder b, lauf_local var)
     b->value_stack.push("load_array_value");
 }
 
-void lauf_build_store_value(lauf_builder b, lauf_local var)
+namespace
 {
-    LAUF_VERIFY(var._size >= sizeof(lauf_value), "store_value", "wrong layout");
+void build_store_value_impl(const char* name, lauf_builder b, lauf_local var, size_t member_offset)
+{
+    LAUF_VERIFY(member_offset + sizeof(lauf_value) <= var._size
+                    && (var._addr + member_offset) % alignof(lauf_value) == 0,
+                name, "wrong layout");
     b->bytecode.location(b->cur_location);
 
-    b->bytecode.instruction(LAUF_VM_INSTRUCTION(store_value, var._addr));
-    b->value_stack.pop("store_value");
+    b->bytecode.instruction(LAUF_VM_INSTRUCTION(store_value, var._addr + member_offset));
+    b->value_stack.pop(name);
+}
+} // namespace
+
+void lauf_build_store_value(lauf_builder b, lauf_local var)
+{
+    build_store_value_impl("store_value", b, var, 0);
+}
+
+void lauf_build_store_aggregate_value(lauf_builder b, lauf_local var, size_t member_offset)
+{
+    build_store_value_impl("store_aggregate_value", b, var, member_offset);
 }
 
 void lauf_build_store_array_value(lauf_builder b, lauf_local var)
