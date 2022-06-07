@@ -10,6 +10,7 @@
 #include <cstring>
 #include <lauf/builtin.h>
 #include <lauf/bytecode.hpp>
+#include <lauf/impl/builtin.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/process.hpp>
 #include <lauf/impl/program.hpp>
@@ -73,6 +74,23 @@ lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
 {
     return &info->fake_frame;
 }
+
+LAUF_NOINLINE_IF_TAIL bool lauf::do_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                          void* frame_ptr, lauf_vm_process process)
+{
+    auto cur_frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto info      = lauf_panic_info_impl{{nullptr, ip + 1, {}, lauf_value_address{}, cur_frame}};
+    auto message   = static_cast<const char*>(vstack_ptr->as_native_ptr);
+    process->vm()->panic_handler(&info, message);
+    return false;
+}
+
+#define LAUF_DO_PANIC(Msg)                                                                         \
+    do                                                                                             \
+    {                                                                                              \
+        vstack_ptr->as_native_ptr = (Msg);                                                         \
+        LAUF_TAIL_CALL return lauf::do_panic(ip, vstack_ptr, frame_ptr, process);                  \
+    } while (0)
 
 //=== allocator ===//
 const lauf_vm_allocator lauf_vm_null_allocator
@@ -141,23 +159,6 @@ void lauf_vm_set_panic_handler(lauf_vm vm, lauf_panic_handler handler)
 //=== execute ===//
 namespace
 {
-LAUF_NOINLINE_IF_TAIL bool do_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
-                                    void* frame_ptr, lauf_vm_process process)
-{
-    auto cur_frame = static_cast<stack_frame*>(frame_ptr) - 1;
-    auto info      = lauf_panic_info_impl{{nullptr, ip + 1, {}, lauf_value_address{}, cur_frame}};
-    auto message   = static_cast<const char*>(vstack_ptr->as_native_ptr);
-    process->vm()->panic_handler(&info, message);
-    return false;
-}
-
-#define LAUF_DO_PANIC(Msg)                                                                         \
-    do                                                                                             \
-    {                                                                                              \
-        vstack_ptr->as_native_ptr = (Msg);                                                         \
-        LAUF_TAIL_CALL return do_panic(ip, vstack_ptr, frame_ptr, process);                        \
-    } while (0)
-
 LAUF_NOINLINE_IF_TAIL bool resize_allocation_list(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
                                                   void* frame_ptr, lauf_vm_process process)
 {
@@ -203,13 +204,11 @@ LAUF_INLINE bool check_condition(lauf::condition_code cc, lauf_value value)
 
 namespace
 {
-LAUF_INLINE bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                          lauf_vm_process process);
-
 #    define LAUF_BC_OP(Name, Data, ...)                                                            \
         bool execute_##Name(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,      \
                             lauf_vm_process process) __VA_ARGS__
-#    define LAUF_DISPATCH LAUF_TAIL_CALL return dispatch(ip, vstack_ptr, frame_ptr, process)
+#    define LAUF_DISPATCH                                                                          \
+        LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process)
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
         LAUF_TAIL_CALL return Callee(ip, vstack_ptr, frame_ptr, process)
 
@@ -219,24 +218,14 @@ LAUF_INLINE bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void*
 #    undef LAUF_DISPATCH
 #    undef LAUF_DISPATCH_BUILTIN
 
-constexpr lauf_builtin_function* inst_fns[] = {
+constexpr auto dispatch = &lauf_builtin_dispatch;
+} // namespace
+
+lauf_builtin_function* const lauf::inst_fns[] = {
 #    define LAUF_BC_OP(Name, Data, ...) &execute_##Name,
 #    include "lauf/bc_ops.h"
 #    undef LAUF_BC_OP
 };
-
-LAUF_INLINE bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                          lauf_vm_process process)
-{
-    LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
-}
-} // namespace
-
-bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                           lauf_vm_process process)
-{
-    LAUF_TAIL_CALL return inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
-}
 
 #elif LAUF_HAS_COMPUTED_GOTO
 // Use computed goto for dispatch.
@@ -276,12 +265,6 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
 }
 } // namespace
 
-bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm_process)
-{
-    // We terminate the call here.
-    return true;
-}
-
 #else
 // Simple switch statement in a loop.
 
@@ -317,20 +300,7 @@ return true;
 } // namespace
 } // namespace
 
-bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm_process)
-{
-    // We terminate the call here.
-    return true;
-}
-
 #endif
-
-bool lauf_builtin_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                        lauf_vm_process process)
-{
-    // call_builtin has already incremented ip, so undo it to get the location.
-    LAUF_TAIL_CALL return do_panic(ip - 1, vstack_ptr, frame_ptr, process);
-}
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {

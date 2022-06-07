@@ -25,6 +25,7 @@ set(src_header_files
         lauf/support/joined_allocation.hpp
         lauf/support/stack_allocator.hpp
         lauf/support/temporary_array.hpp
+        lauf/impl/builtin.hpp
         lauf/impl/module.hpp
         lauf/impl/process.hpp
         lauf/impl/program.hpp

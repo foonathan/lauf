@@ -16,6 +16,8 @@ enum class bc_op : uint8_t
 #define LAUF_BC_OP(Name, Type, ...) Name,
 #include "bc_ops.h"
 #undef LAUF_BC_OP
+
+    _count,
 };
 
 inline const char* to_string(bc_op op)
@@ -27,6 +29,9 @@ case bc_op::Name:                                                               
     return #Name;
 #include "bc_ops.h"
 #undef LAUF_BC_OP
+
+    case bc_op::_count:
+        return nullptr;
     }
 }
 

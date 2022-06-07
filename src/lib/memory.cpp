@@ -3,6 +3,7 @@
 
 #include <lauf/lib/memory.h>
 
+#include <lauf/impl/builtin.hpp>
 #include <lauf/impl/process.hpp>
 #include <lauf/impl/vm.hpp>
 #include <lauf/vm_memory.hpp>

@@ -3,6 +3,7 @@
 
 #include <lauf/lib/int.h>
 
+#include <lauf/impl/builtin.hpp>
 #include <new>
 
 //=== types ===//
