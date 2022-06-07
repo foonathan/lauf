@@ -37,6 +37,10 @@ int main(int argc, char* argv[])
                                             lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
         lauf_frontend_text_register_builtin(parser, "scmp", lauf_scmp_builtin());
 
+        lauf_frontend_text_register_builtin(parser, "address_to_int",
+                                            lauf_address_to_int_builtin());
+        lauf_frontend_text_register_builtin(parser, "address_from_int",
+                                            lauf_address_from_int_builtin());
         lauf_frontend_text_register_builtin(parser, "heap_alloc", lauf_heap_alloc_builtin());
         lauf_frontend_text_register_builtin(parser, "free_alloc", lauf_free_alloc_builtin());
         lauf_frontend_text_register_builtin(parser, "split_alloc", lauf_split_alloc_builtin());

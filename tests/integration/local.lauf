@@ -95,14 +95,13 @@ function @test_local_arithmetic_next_panic(0 => 0) {
     local %z : @Value;
 
     # The offset advances y to the next local.
-    int 42; local_addr %y; int 34359738368; call_builtin @sadd; store_field @Value.0;
+    int 42; local_addr %y; call_builtin @address_to_int; int 8; call_builtin @sadd; call_builtin @address_from_int; store_field @Value.0;
     return;
 }
 function @test_local_arithmetic_alignment_panic(0 => 0) {
     local %x : @Value[2];
 
-    # The offset advances x 4 bytes.
-    int 42; local_addr %x; int 17179869184; call_builtin @sadd; store_field @Value.0;
+    int 42; local_addr %x; call_builtin @address_to_int; int 4; call_builtin @sadd; call_builtin @address_from_int; store_field @Value.0;
     return;
 }
 

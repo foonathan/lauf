@@ -9,6 +9,14 @@
 
 LAUF_HEADER_START
 
+// Splits an address into an (allocation, offset) pair.
+// address => allocation offset
+lauf_builtin lauf_address_to_int_builtin(void);
+
+// Converst an (allocation, offset) pair back into an address.
+// allocation offset => address
+lauf_builtin lauf_address_from_int_builtin(void);
+
 // Allocates new heap memory.
 // size alignment => addr
 lauf_builtin lauf_heap_alloc_builtin(void);

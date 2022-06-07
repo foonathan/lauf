@@ -63,6 +63,17 @@ function @test_nested_array(0 => 0) {
 
     return;
 }
+function @test_overaligned_array(0 => 0) {
+    local %x : (8, 16)[2]; # spaced 16 apart
+
+    int 0; local_addr %x; array_element_addr (8, 16); call_builtin @address_to_int;
+    int 0; call @assert_eq; pop 1;
+
+    int 1; local_addr %x; array_element_addr (8, 16); call_builtin @address_to_int;
+    int 16; call @assert_eq; pop 1;
+
+    return;
+}
 
 layout @Pair = {@Value, @Value};
 

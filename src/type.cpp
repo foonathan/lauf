@@ -13,6 +13,12 @@ lauf_layout lauf_array_layout(lauf_layout base, size_t length)
     return {base_size * length, base.alignment};
 }
 
+size_t lauf_array_element_offset(size_t index, lauf_layout base, size_t)
+{
+    auto base_size = lauf::round_to_multiple_of_alignment(base.size, base.alignment);
+    return base_size * index;
+}
+
 lauf_layout lauf_aggregate_layout(const lauf_layout* members, size_t member_count)
 {
     // Alignment is member with greatest alignment.

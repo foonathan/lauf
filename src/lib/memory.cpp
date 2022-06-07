@@ -7,6 +7,22 @@
 #include <lauf/impl/vm.hpp>
 #include <lauf/vm_memory.hpp>
 
+LAUF_BUILTIN_UNARY_OPERATION(lauf_address_to_int_builtin, 2, {
+    result[1].as_uint = lauf_value_uint(value.as_address.allocation) << 34
+                        | lauf_value_uint(value.as_address.generation) << 32;
+    result[0].as_uint = value.as_address.offset;
+})
+
+LAUF_BUILTIN_BINARY_OPERATION(lauf_address_from_int_builtin, 1, {
+    lauf_value_address addr;
+    addr.allocation = lhs.as_uint >> 34;
+    addr.generation = lhs.as_uint & 0b11;
+    addr.offset     = rhs.as_uint;
+    if (addr.offset != rhs.as_uint)
+        LAUF_BUILTIN_OPERATION_PANIC("adress offset overflow");
+    result->as_address = addr;
+})
+
 LAUF_BUILTIN_BINARY_OPERATION(lauf_heap_alloc_builtin, 1, {
     auto vm = process->vm();
 

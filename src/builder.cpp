@@ -464,7 +464,9 @@ void lauf_build_array_element_addr(lauf_builder b, lauf_layout layout)
 {
     b->bytecode.location(b->cur_location);
 
-    b->bytecode.instruction(LAUF_VM_INSTRUCTION(array_element_addr, layout.size));
+    b->bytecode.instruction(
+        LAUF_VM_INSTRUCTION(array_element_addr,
+                            lauf::round_to_multiple_of_alignment(layout.size, layout.alignment)));
 
     b->value_stack.pop("array_element_addr", 2);
     b->value_stack.push("array_element_addr");
