@@ -36,6 +36,12 @@ public:
         v.as_sint = value;
         return insert(v);
     }
+    auto insert(lauf_value_uint value)
+    {
+        lauf_value v;
+        v.as_uint = value;
+        return insert(v);
+    }
     auto insert(lauf_value_address value)
     {
         lauf_value v;

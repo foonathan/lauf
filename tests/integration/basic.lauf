@@ -13,166 +13,166 @@ function @test_empty(0 => 0) {
 }
 
 function @test_pop(0 => 0) {
-    int 42;
-    int 11;
+    sint 42;
+    sint 11;
     pop 2;
     return;
 }
 
 function @test_pick(0 => 0) {
-    int 42;
-    int 11;
+    sint 42;
+    sint 11;
 
     pick 0;
-    int 11; call @assert_eq;
+    sint 11; call @assert_eq;
 
     pick 1;
-    int 42; call @assert_eq;
+    sint 42; call @assert_eq;
 
     pop 2; return;
 }
 
 function @test_roll0(0 => 0) {
-    int 4;
-    int 3;
-    int 2;
-    int 1;
-    int 0;
+    sint 4;
+    sint 3;
+    sint 2;
+    sint 1;
+    sint 0;
 
     roll 0;
 
-    int 0; call @assert_eq;
-    int 1; call @assert_eq;
-    int 2; call @assert_eq;
-    int 3; call @assert_eq;
-    int 4; call @assert_eq;
+    sint 0; call @assert_eq;
+    sint 1; call @assert_eq;
+    sint 2; call @assert_eq;
+    sint 3; call @assert_eq;
+    sint 4; call @assert_eq;
     return;
 }
 function @test_roll1(0 => 0) {
-    int 4;
-    int 3;
-    int 2;
-    int 1;
-    int 0;
+    sint 4;
+    sint 3;
+    sint 2;
+    sint 1;
+    sint 0;
 
     roll 1;
 
-    int 1; call @assert_eq;
-    int 0; call @assert_eq;
-    int 2; call @assert_eq;
-    int 3; call @assert_eq;
-    int 4; call @assert_eq;
+    sint 1; call @assert_eq;
+    sint 0; call @assert_eq;
+    sint 2; call @assert_eq;
+    sint 3; call @assert_eq;
+    sint 4; call @assert_eq;
     return;
 }
 function @test_roll3(0 => 0) {
-    int 4;
-    int 3;
-    int 2;
-    int 1;
-    int 0;
+    sint 4;
+    sint 3;
+    sint 2;
+    sint 1;
+    sint 0;
 
     roll 3;
 
-    int 3; call @assert_eq;
-    int 0; call @assert_eq;
-    int 1; call @assert_eq;
-    int 2; call @assert_eq;
-    int 4; call @assert_eq;
+    sint 3; call @assert_eq;
+    sint 0; call @assert_eq;
+    sint 1; call @assert_eq;
+    sint 2; call @assert_eq;
+    sint 4; call @assert_eq;
     return;
 }
 
 function @test_drop0(0 => 0) {
-    int 4;
-    int 3;
-    int 2;
-    int 1;
-    int 0;
+    sint 4;
+    sint 3;
+    sint 2;
+    sint 1;
+    sint 0;
 
     drop 0;
 
-    int 1; call @assert_eq;
-    int 2; call @assert_eq;
-    int 3; call @assert_eq;
-    int 4; call @assert_eq;
+    sint 1; call @assert_eq;
+    sint 2; call @assert_eq;
+    sint 3; call @assert_eq;
+    sint 4; call @assert_eq;
     return;
 }
 function @test_drop1(0 => 0) {
-    int 4;
-    int 3;
-    int 2;
-    int 1;
-    int 0;
+    sint 4;
+    sint 3;
+    sint 2;
+    sint 1;
+    sint 0;
 
     drop 1;
 
-    int 0; call @assert_eq;
-    int 2; call @assert_eq;
-    int 3; call @assert_eq;
-    int 4; call @assert_eq;
+    sint 0; call @assert_eq;
+    sint 2; call @assert_eq;
+    sint 3; call @assert_eq;
+    sint 4; call @assert_eq;
     return;
 }
 function @test_drop3(0 => 0) {
-    int 4;
-    int 3;
-    int 2;
-    int 1;
-    int 0;
+    sint 4;
+    sint 3;
+    sint 2;
+    sint 1;
+    sint 0;
 
     drop 3;
 
-    int 0; call @assert_eq;
-    int 1; call @assert_eq;
-    int 2; call @assert_eq;
-    int 4; call @assert_eq;
+    sint 0; call @assert_eq;
+    sint 1; call @assert_eq;
+    sint 2; call @assert_eq;
+    sint 4; call @assert_eq;
     return;
 }
 
 function @test_select2(0 => 0) {
-    int 0;
-    int 42; int 11;
-    select 2; int 11; call @assert_eq;
+    sint 0;
+    sint 42; sint 11;
+    select 2; sint 11; call @assert_eq;
 
-    int 1;
-    int 42; int 11;
-    select 2; int 42; call @assert_eq;
+    sint 1;
+    sint 42; sint 11;
+    select 2; sint 42; call @assert_eq;
 
     return;
 }
 function @test_select3(0 => 0) {
-    int 0;
-    int 42; int 11; int 13;
-    select 3; int 13; call @assert_eq;
+    sint 0;
+    sint 42; sint 11; sint 13;
+    select 3; sint 13; call @assert_eq;
 
-    int 1;
-    int 42; int 11; int 13;
-    select 3; int 11; call @assert_eq;
+    sint 1;
+    sint 42; sint 11; sint 13;
+    select 3; sint 11; call @assert_eq;
 
-    int 2;
-    int 42; int 11; int 13;
-    select 3; int 42; call @assert_eq;
+    sint 2;
+    sint 42; sint 11; sint 13;
+    select 3; sint 42; call @assert_eq;
 
     return;
 }
 
 function @test_select_if_true(0 => 0) {
-    int 0;
-    int 42; int 11;
-    select_if is_true; int 11; call @assert_eq;
+    sint 0;
+    sint 42; sint 11;
+    select_if is_true; sint 11; call @assert_eq;
 
-    int 1;
-    int 42; int 11;
-    select_if is_true; int 42; call @assert_eq;
+    sint 1;
+    sint 42; sint 11;
+    select_if is_true; sint 42; call @assert_eq;
 
     return;
 }
 function @test_select_if_false(0 => 0) {
-    int 0;
-    int 42; int 11;
-    select_if is_false; int 42; call @assert_eq;
+    sint 0;
+    sint 42; sint 11;
+    select_if is_false; sint 42; call @assert_eq;
 
-    int 1;
-    int 42; int 11;
-    select_if is_false; int 11; call @assert_eq;
+    sint 1;
+    sint 42; sint 11;
+    select_if is_false; sint 11; call @assert_eq;
 
     return;
 }
@@ -181,6 +181,6 @@ function @test_panic(0 => 0) {
     global_addr @test_failure; panic;
 }
 function @test_panic_if(0 => 0) {
-    int 0; global_addr @test_failure; panic_if is_false;
+    sint 0; global_addr @test_failure; panic_if is_false;
 }
 

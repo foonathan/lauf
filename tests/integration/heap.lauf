@@ -13,10 +13,10 @@ function @test_heap_alloc(0 => 0) {
 
     layout_of $Value; $heap_alloc; store_value %ptr;
 
-    int 42; load_value %ptr; store_field $Value.0;
+    sint 42; load_value %ptr; store_field $Value.0;
 
     load_value %ptr; load_field $Value.0;
-    int 42; call @assert_eq;
+    sint 42; call @assert_eq;
 
     load_value %ptr; $free_alloc;
     return;
@@ -27,19 +27,19 @@ function @test_many_heap_alloc(0 => 0) {
     local %n : $Value;
 
     layout_of $Value; $heap_alloc; store_value %ptr;
-    int 42; load_value %ptr; store_field $Value.0;
+    sint 42; load_value %ptr; store_field $Value.0;
 
-    int 0; store_value %n;
+    sint 0; store_value %n;
 label %loop:
     layout_of $Value; $heap_alloc; pop 1;
 
-    load_value %n; int 1; $sadd;
+    load_value %n; sint 1; $sadd;
     pick 0; store_value %n;
-    int 4096; $scmp;
+    sint 4096; $scmp;
     jump_if cmp_ne %loop;
 
     load_value %ptr; load_field $Value.0;
-    int 42; call @assert_eq;
+    sint 42; call @assert_eq;
     return;
 }
 
@@ -48,10 +48,10 @@ function @test_missing_free(0 => 0) {
 
     layout_of $Value; $heap_alloc; store_value %ptr;
 
-    int 42; load_value %ptr; store_field $Value.0;
+    sint 42; load_value %ptr; store_field $Value.0;
 
     load_value %ptr; load_field $Value.0;
-    int 42; call @assert_eq;
+    sint 42; call @assert_eq;
 
     return;
 }
@@ -60,15 +60,15 @@ function @test_split(0 => 0) {
     local %ptr : $Value;
     local %ptr2 : $Value;
 
-    int 16; int 8; $heap_alloc; store_value %ptr;
+    sint 16; sint 8; $heap_alloc; store_value %ptr;
 
-    int 8; load_value %ptr; $split_alloc; store_value %ptr2; store_value %ptr;
+    sint 8; load_value %ptr; $split_alloc; store_value %ptr2; store_value %ptr;
 
-    int 42; load_value %ptr; store_field $Value.0;
-    int 11; load_value %ptr2; store_field $Value.0;
+    sint 42; load_value %ptr; store_field $Value.0;
+    sint 11; load_value %ptr2; store_field $Value.0;
 
-    load_value %ptr; load_field $Value.0; int 42; call @assert_eq;
-    load_value %ptr2; load_field $Value.0; int 11; call @assert_eq;
+    load_value %ptr; load_field $Value.0; sint 42; call @assert_eq;
+    load_value %ptr2; load_field $Value.0; sint 11; call @assert_eq;
 
     load_value %ptr; load_value %ptr2; $merge_alloc; store_value %ptr;
     load_value %ptr; $free_alloc;
@@ -78,29 +78,29 @@ function @test_split(0 => 0) {
 function @test_split4(0 => 0) {
     local %ptr : $Value[4];
 
-    int 32; int 8; $heap_alloc; int 0; store_array_value %ptr;
+    sint 32; sint 8; $heap_alloc; sint 0; store_array_value %ptr;
 
-    int 16; int 0; load_array_value %ptr; $split_alloc; int 2; store_array_value %ptr; int 0; store_array_value %ptr;
+    sint 16; sint 0; load_array_value %ptr; $split_alloc; sint 2; store_array_value %ptr; sint 0; store_array_value %ptr;
 
-    int 8; int 0; load_array_value %ptr; $split_alloc; int 1; store_array_value %ptr; int 0; store_array_value %ptr;
-    int 8; int 2; load_array_value %ptr; $split_alloc; int 3; store_array_value %ptr; int 2; store_array_value %ptr;
+    sint 8; sint 0; load_array_value %ptr; $split_alloc; sint 1; store_array_value %ptr; sint 0; store_array_value %ptr;
+    sint 8; sint 2; load_array_value %ptr; $split_alloc; sint 3; store_array_value %ptr; sint 2; store_array_value %ptr;
 
-    int 42; int 0; load_array_value %ptr; store_field $Value.0;
-    int 11; int 1; load_array_value %ptr; store_field $Value.0;
-    int 77; int 2; load_array_value %ptr; store_field $Value.0;
-    int 99; int 3; load_array_value %ptr; store_field $Value.0;
+    sint 42; sint 0; load_array_value %ptr; store_field $Value.0;
+    sint 11; sint 1; load_array_value %ptr; store_field $Value.0;
+    sint 77; sint 2; load_array_value %ptr; store_field $Value.0;
+    sint 99; sint 3; load_array_value %ptr; store_field $Value.0;
 
-    int 0; load_array_value %ptr; load_field $Value.0; int 42; call @assert_eq;
-    int 1; load_array_value %ptr; load_field $Value.0; int 11; call @assert_eq;
-    int 2; load_array_value %ptr; load_field $Value.0; int 77; call @assert_eq;
-    int 3; load_array_value %ptr; load_field $Value.0; int 99; call @assert_eq;
+    sint 0; load_array_value %ptr; load_field $Value.0; sint 42; call @assert_eq;
+    sint 1; load_array_value %ptr; load_field $Value.0; sint 11; call @assert_eq;
+    sint 2; load_array_value %ptr; load_field $Value.0; sint 77; call @assert_eq;
+    sint 3; load_array_value %ptr; load_field $Value.0; sint 99; call @assert_eq;
 
-    int 0; load_array_value %ptr;
-    int 1; load_array_value %ptr;
+    sint 0; load_array_value %ptr;
+    sint 1; load_array_value %ptr;
     $merge_alloc;
-    int 2; load_array_value %ptr;
+    sint 2; load_array_value %ptr;
     $merge_alloc;
-    int 3; load_array_value %ptr;
+    sint 3; load_array_value %ptr;
     $merge_alloc;
     $free_alloc;
 

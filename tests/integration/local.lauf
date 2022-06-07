@@ -11,11 +11,11 @@ function @assert_eq(2 => 0) {
 function @test_value(0 => 0) {
     local %x : $Value;
 
-    int 42; store_value %x;
-    int 11; store_value %x;
+    sint 42; store_value %x;
+    sint 11; store_value %x;
 
     load_value %x;
-    int 11; call @assert_eq;
+    sint 11; call @assert_eq;
 
     return;
 }
@@ -23,11 +23,11 @@ function @test_value(0 => 0) {
 function @test_value_field(0 => 0) {
     local %x : $Value;
 
-    int 42; local_addr %x; store_field $Value.0;
-    int 11; local_addr %x; store_field $Value.0;
+    sint 42; local_addr %x; store_field $Value.0;
+    sint 11; local_addr %x; store_field $Value.0;
 
     local_addr %x; load_field $Value.0;
-    int 11; call @assert_eq;
+    sint 11; call @assert_eq;
 
     return;
 }
@@ -35,14 +35,14 @@ function @test_value_field(0 => 0) {
 function @test_array_value(0 => 0) {
     local %x : $Value[2];
 
-    int 42; int 0; store_array_value %x;
-    int 11; int 1; store_array_value %x;
+    sint 42; sint 0; store_array_value %x;
+    sint 11; sint 1; store_array_value %x;
 
-    int 0; load_array_value %x;
-    int 42; call @assert_eq;
+    sint 0; load_array_value %x;
+    sint 42; call @assert_eq;
 
-    int 1; load_array_value %x;
-    int 11; call @assert_eq;
+    sint 1; load_array_value %x;
+    sint 11; call @assert_eq;
 
     return;
 }
@@ -50,43 +50,43 @@ function @test_array_value(0 => 0) {
 function @test_aggregate_value(0 => 0) {
     local %x : {$Value, $Value};
 
-    int 42; store_aggregate_value %x.0;
-    int 11; store_aggregate_value %x.1;
+    sint 42; store_aggregate_value %x.0;
+    sint 11; store_aggregate_value %x.1;
 
-    load_aggregate_value %x.0; int 42; call @assert_eq;
-    load_aggregate_value %x.1; int 11; call @assert_eq;
+    load_aggregate_value %x.0; sint 42; call @assert_eq;
+    load_aggregate_value %x.1; sint 11; call @assert_eq;
 
     return;
 }
 
 function @set_ptr(1 => 0) {
-    int 42; roll 1; store_field $Value.0;
+    sint 42; roll 1; store_field $Value.0;
     return;
 }
 function @test_pass_local_to_function(0 => 0) {
     local %x : $Value;
     local_addr %x; call @set_ptr;
 
-    load_value %x; int 42; call @assert_eq;
+    load_value %x; sint 42; call @assert_eq;
     return;
 }
 
 function @test_invalid_array_index_panic(0 => 0) {
     local %x : $Value[2];
 
-    int 42; int 2; local_addr %x; array_element_addr $Value; store_field $Value.0;
+    sint 42; sint 2; local_addr %x; array_element_addr $Value; store_field $Value.0;
     return;
 }
 function @test_invalid_array_value_index_panic(0 => 0) {
     local %x : $Value[2];
 
-    int 42; int 2; store_array_value %x;
+    sint 42; sint 2; store_array_value %x;
     return;
 }
 function @test_local_arithmetic_panic(0 => 0) {
     local %x : $Value;
 
-    int 42; local_addr %x; int 11; $sadd; store_field $Value.0;
+    sint 42; local_addr %x; sint 11; $sadd; store_field $Value.0;
     return;
 }
 function @test_local_arithmetic_next_panic(0 => 0) {
@@ -95,13 +95,13 @@ function @test_local_arithmetic_next_panic(0 => 0) {
     local %z : $Value;
 
     # The offset advances y to the next local.
-    int 42; local_addr %y; $address_to_int; int 8; $sadd; $address_from_int; store_field $Value.0;
+    sint 42; local_addr %y; $address_to_int; sint 8; $sadd; $address_from_int; store_field $Value.0;
     return;
 }
 function @test_local_arithmetic_alignment_panic(0 => 0) {
     local %x : $Value[2];
 
-    int 42; local_addr %x; $address_to_int; int 4; $sadd; $address_from_int; store_field $Value.0;
+    sint 42; local_addr %x; $address_to_int; sint 4; $sadd; $address_from_int; store_field $Value.0;
     return;
 }
 
@@ -110,7 +110,7 @@ function @dangling_addr(0 => 1) {
     local_addr %x; return;
 }
 function @test_dangling_addr_panic(0 => 0) {
-    int 42; call @dangling_addr; store_field $Value.0;
+    sint 42; call @dangling_addr; store_field $Value.0;
     return;
 }
 

@@ -11,8 +11,8 @@ lauf_program trivial_add(lauf_builder b)
 
     auto decl = lauf_declare_function(b, "add", {0, 1});
     lauf_build_function(b, decl);
-    lauf_build_int(b, 42);
-    lauf_build_int(b, 11);
+    lauf_build_sint(b, 42);
+    lauf_build_sint(b, 11);
     lauf_build_call_builtin(b, lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
     lauf_build_return(b);
 
@@ -27,10 +27,10 @@ lauf_program trivial_multiply(lauf_builder b)
 
     auto decl = lauf_declare_function(b, "multiply", {0, 1});
     lauf_build_function(b, decl);
-    lauf_build_int(b, 4);
-    lauf_build_int(b, 1024);
+    lauf_build_sint(b, 4);
+    lauf_build_sint(b, 1024);
     lauf_build_call_builtin(b, lauf_smul_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
-    lauf_build_int(b, 1024);
+    lauf_build_sint(b, 1024);
     lauf_build_call_builtin(b, lauf_smul_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
     lauf_build_return(b);
 

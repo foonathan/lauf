@@ -598,13 +598,24 @@ struct inst_jump_if
     static constexpr auto build = &lauf_build_jump_if;
 };
 
-struct inst_int
+struct inst_sint
+{
+    struct literal : lexy::transparent_production
+    {
+        static constexpr auto rule  = dsl::sign + dsl::integer<lauf_value_sint>;
+        static constexpr auto value = lexy::as_integer<lauf_value_sint>;
+    };
+
+    static constexpr auto rule  = LEXY_KEYWORD("sint", identifier) >> dsl::p<literal>;
+    static constexpr auto build = &lauf_build_sint;
+};
+struct inst_uint
 {
     static constexpr auto rule
-        = LEXY_KEYWORD("int", identifier)
+        = LEXY_KEYWORD("uint", identifier)
           >> (LEXY_LIT("0x") >> dsl::integer<lauf_value_uint>(dsl::digits<dsl::hex>)
               | dsl::integer<lauf_value_uint>);
-    static constexpr auto build = &lauf_build_int;
+    static constexpr auto build = &lauf_build_uint;
 };
 struct inst_layout_of
 {
@@ -748,7 +759,7 @@ struct inst
     static constexpr auto rule = [] {
         auto insts
             = dsl::p<inst_return> | dsl::p<inst_jump> | dsl::p<inst_jump_if>                 //
-              | dsl::p<inst_int> | dsl::p<inst_layout_of>                                    //
+              | dsl::p<inst_sint> | dsl::p<inst_uint> | dsl::p<inst_layout_of>               //
               | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>                           //
               | dsl::p<inst_pop> | dsl::p<inst_pick> | dsl::p<inst_roll> | dsl::p<inst_drop> //
               | dsl::p<inst_select> | dsl::p<inst_select_if>                                 //

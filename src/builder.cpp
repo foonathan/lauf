@@ -286,7 +286,7 @@ void lauf_build_jump_if(lauf_builder b, lauf_condition condition, lauf_label des
                 "jump_if", "value stack size does not match label");
 }
 
-void lauf_build_int(lauf_builder b, lauf_value_sint value)
+void lauf_build_sint(lauf_builder b, lauf_value_sint value)
 {
     b->bytecode.location(b->cur_location);
 
@@ -308,7 +308,28 @@ void lauf_build_int(lauf_builder b, lauf_value_sint value)
         b->bytecode.instruction(LAUF_VM_INSTRUCTION(push, idx));
     }
 
-    b->value_stack.push("int");
+    b->value_stack.push("sint");
+}
+
+void lauf_build_uint(lauf_builder b, lauf_value_uint value)
+{
+    b->bytecode.location(b->cur_location);
+
+    if (value == 0)
+    {
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_zero));
+    }
+    else if (0 < value && value <= 0xFF'FFFF)
+    {
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push_small_zext, uint32_t(value)));
+    }
+    else
+    {
+        auto idx = b->literals.insert(value);
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(push, idx));
+    }
+
+    b->value_stack.push("uint");
 }
 
 void lauf_build_global_addr(lauf_builder b, lauf_global global)

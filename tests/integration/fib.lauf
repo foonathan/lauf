@@ -7,17 +7,17 @@ function @fib_recursive(1 => 1) {
 
     store_value %arg;
 
-    load_value %arg; int 1; $scmp;
+    load_value %arg; sint 1; $scmp;
     jump_if cmp_gt %recurse;
 
     load_value %arg;
     return;
 
 label %recurse:
-    load_value %arg; int 1; $ssub;
+    load_value %arg; sint 1; $ssub;
     call @fib_recursive;
 
-    load_value %arg; int 2; $ssub;
+    load_value %arg; sint 2; $ssub;
     call @fib_recursive;
 
     $sadd;
@@ -31,7 +31,7 @@ function @fib_tail_call(3 => 1) { # n a b => F_n
     store_value %b;
     store_value %a;
 
-    pick 0; int 1; $scmp;
+    pick 0; sint 1; $scmp;
     jump_if cmp_gt %recurse;
 
     # (0 or 1) b a => (a or b)
@@ -39,7 +39,7 @@ function @fib_tail_call(3 => 1) { # n a b => F_n
     return;
 
 label %recurse(1):
-    int 1; $ssub;                 # n => (n-1)
+    sint 1; $ssub;                 # n => (n-1)
     load_value %b;                             # => (n-1) b
     pick 0; load_value %a; $sadd; # => (n-1) b (b+a)
     call @fib_tail_call;
@@ -50,10 +50,10 @@ function @fib_iter(1 => 1) {
     local %a : $Value;
     local %b : $Value;
 
-    int 0; store_value %a;
-    int 1; store_value %b;
+    sint 0; store_value %a;
+    sint 1; store_value %b;
 
-    pick 0; int 0; $scmp;
+    pick 0; sint 0; $scmp;
     jump_if cmp_eq %exit;
 
 label %loop(1):
@@ -66,8 +66,8 @@ label %loop(1):
     store_value %b;
     store_value %a;
 
-    int 1; $ssub;
-    pick 0; int 0; $scmp;
+    sint 1; $ssub;
+    pick 0; sint 0; $scmp;
     jump_if cmp_ne %loop;
 
 label %exit(1):
@@ -77,16 +77,16 @@ label %exit(1):
 }
 
 function @test_fib(0 => 0) {
-    int 10; call @fib_recursive;
-    int 55; $scmp;
+    sint 10; call @fib_recursive;
+    sint 55; $scmp;
     global_addr @test_failure; panic_if cmp_ne;
 
-    int 10; int 0; int 1; call @fib_tail_call;
-    int 55; $scmp;
+    sint 10; sint 0; sint 1; call @fib_tail_call;
+    sint 55; $scmp;
     global_addr @test_failure; panic_if cmp_ne;
 
-    int 10; call @fib_iter;
-    int 55; $scmp;
+    sint 10; call @fib_iter;
+    sint 55; $scmp;
     global_addr @test_failure; panic_if cmp_ne;
 
     return;

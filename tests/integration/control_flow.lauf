@@ -9,22 +9,22 @@ function @assert_eq(2 => 0) {
 }
 
 function @test_jump(0 => 0) {
-    int 0;
+    sint 0;
     jump %next;
 label %next(1):
-    int 1;
+    sint 1;
     jump %last;
 label %last(2):
-    int 2;
+    sint 2;
 
-    int 2; call @assert_eq;
-    int 1; call @assert_eq;
-    int 0; call @assert_eq;
+    sint 2; call @assert_eq;
+    sint 1; call @assert_eq;
+    sint 0; call @assert_eq;
     return;
 }
 
 function @test_branch_is_false(0 => 0) {
-    int 0;
+    sint 0;
     jump_if is_false %okay;
     jump %error;
 
@@ -36,7 +36,7 @@ label %error:
     return;
 }
 function @test_branch_is_true(0 => 0) {
-    int 1;
+    sint 1;
     jump_if is_true %okay;
     jump %error;
 label %okay:

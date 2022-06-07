@@ -20,7 +20,7 @@ lauf_program recursive_fib(lauf_builder b)
         auto arg = lauf_build_local_variable(b, lauf_value_type.layout);
         lauf_build_store_value(b, arg);
         lauf_build_load_value(b, arg);
-        lauf_build_int(b, 1);
+        lauf_build_sint(b, 1);
         lauf_build_call_builtin(b, lauf_scmp_builtin());
 
         lauf_build_jump_if(b, LAUF_CMP_GT, recurse);
@@ -34,13 +34,13 @@ lauf_program recursive_fib(lauf_builder b)
         {
             // fib(n - 1)
             lauf_build_load_value(b, arg);
-            lauf_build_int(b, 1);
+            lauf_build_sint(b, 1);
             lauf_build_call_builtin(b, lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
             lauf_build_call(b, fib);
 
             // fib(n - 2)
             lauf_build_load_value(b, arg);
-            lauf_build_int(b, 2);
+            lauf_build_sint(b, 2);
             lauf_build_call_builtin(b, lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
             lauf_build_call(b, fib);
 
@@ -54,7 +54,7 @@ lauf_program recursive_fib(lauf_builder b)
 
     lauf_build_function(b, main);
     {
-        lauf_build_int(b, 35);
+        lauf_build_sint(b, 35);
         lauf_build_call(b, fib);
         lauf_build_return(b);
     }
@@ -81,7 +81,7 @@ lauf_program recursive_fib_memory(lauf_builder b)
         lauf_build_store_field(b, &lauf_value_type, 0);
         lauf_build_local_addr(b, arg);
         lauf_build_load_field(b, &lauf_value_type, 0);
-        lauf_build_int(b, 1);
+        lauf_build_sint(b, 1);
         lauf_build_call_builtin(b, lauf_scmp_builtin());
 
         lauf_build_jump_if(b, LAUF_CMP_GT, recurse);
@@ -97,14 +97,14 @@ lauf_program recursive_fib_memory(lauf_builder b)
             // fib(n - 1)
             lauf_build_local_addr(b, arg);
             lauf_build_load_field(b, &lauf_value_type, 0);
-            lauf_build_int(b, 1);
+            lauf_build_sint(b, 1);
             lauf_build_call_builtin(b, lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
             lauf_build_call(b, fib);
 
             // fib(n - 2)
             lauf_build_local_addr(b, arg);
             lauf_build_load_field(b, &lauf_value_type, 0);
-            lauf_build_int(b, 2);
+            lauf_build_sint(b, 2);
             lauf_build_call_builtin(b, lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
             lauf_build_call(b, fib);
 
@@ -118,7 +118,7 @@ lauf_program recursive_fib_memory(lauf_builder b)
 
     lauf_build_function(b, main);
     {
-        lauf_build_int(b, 35);
+        lauf_build_sint(b, 35);
         lauf_build_call(b, fib);
         lauf_build_return(b);
     }
@@ -144,15 +144,15 @@ lauf_program iterative_fib(lauf_builder b)
         auto exit = lauf_declare_label(b, 0);
 
         // a := 0
-        lauf_build_int(b, 0);
+        lauf_build_sint(b, 0);
         lauf_build_store_value(b, var_a);
         // b := 1
-        lauf_build_int(b, 1);
+        lauf_build_sint(b, 1);
         lauf_build_store_value(b, var_b);
 
         // n == 0?
         lauf_build_pick(b, 0);
-        lauf_build_int(b, 0);
+        lauf_build_sint(b, 0);
         lauf_build_call_builtin(b, lauf_scmp_builtin());
         lauf_build_jump_if(b, LAUF_CMP_EQ, exit);
 
@@ -169,12 +169,12 @@ lauf_program iterative_fib(lauf_builder b)
             lauf_build_store_value(b, var_a);
 
             // n - 1
-            lauf_build_int(b, 1);
+            lauf_build_sint(b, 1);
             lauf_build_call_builtin(b, lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
 
             // n == 0?
             lauf_build_pick(b, 0);
-            lauf_build_int(b, 0);
+            lauf_build_sint(b, 0);
             lauf_build_call_builtin(b, lauf_scmp_builtin());
             lauf_build_jump_if(b, LAUF_CMP_NE, loop);
         }
@@ -191,7 +191,7 @@ lauf_program iterative_fib(lauf_builder b)
 
     lauf_build_function(b, main);
     {
-        lauf_build_int(b, 90);
+        lauf_build_sint(b, 90);
         lauf_build_call(b, fib);
         lauf_build_return(b);
     }

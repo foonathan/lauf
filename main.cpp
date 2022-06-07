@@ -51,17 +51,17 @@ int main()
 
             store_value %arg;
 
-            load_value %arg; int 1; $scmp;
+            load_value %arg; sint 1; $scmp;
             jump_if cmp_gt %recurse;
 
             load_value %arg;
             return;
 
         label %recurse:
-            load_value %arg; int 1; $ssub;
+            load_value %arg; sint 1; $ssub;
             call @fib_recursive;
 
-            load_value %arg; int 2; $ssub;
+            load_value %arg; sint 2; $ssub;
             call @fib_recursive;
 
             $sadd;

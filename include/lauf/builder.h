@@ -83,7 +83,8 @@ void lauf_build_return(lauf_builder b);
 void lauf_build_jump(lauf_builder b, lauf_label dest);
 void lauf_build_jump_if(lauf_builder b, lauf_condition condition, lauf_label dest);
 
-void lauf_build_int(lauf_builder b, lauf_value_sint value);
+void lauf_build_sint(lauf_builder b, lauf_value_sint value);
+void lauf_build_uint(lauf_builder b, lauf_value_uint value);
 void lauf_build_global_addr(lauf_builder b, lauf_global global);
 void lauf_build_local_addr(lauf_builder b, lauf_local var);
 void lauf_build_layout_of(lauf_builder b, lauf_type type);
