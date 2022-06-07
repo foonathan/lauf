@@ -3,35 +3,35 @@ module @fib;
 const @test_failure = "test failure", 0;
 
 function @fib_recursive(1 => 1) {
-    local %arg : @Value;
+    local %arg : $Value;
 
     store_value %arg;
 
-    load_value %arg; int 1; call_builtin @scmp;
+    load_value %arg; int 1; $scmp;
     jump_if cmp_gt %recurse;
 
     load_value %arg;
     return;
 
 label %recurse:
-    load_value %arg; int 1; call_builtin @ssub;
+    load_value %arg; int 1; $ssub;
     call @fib_recursive;
 
-    load_value %arg; int 2; call_builtin @ssub;
+    load_value %arg; int 2; $ssub;
     call @fib_recursive;
 
-    call_builtin @sadd;
+    $sadd;
     return;
 }
 
 function @fib_tail_call(3 => 1) { # n a b => F_n
-    local %a : @Value;
-    local %b : @Value;
+    local %a : $Value;
+    local %b : $Value;
 
     store_value %b;
     store_value %a;
 
-    pick 0; int 1; call_builtin @scmp;
+    pick 0; int 1; $scmp;
     jump_if cmp_gt %recurse;
 
     # (0 or 1) b a => (a or b)
@@ -39,21 +39,21 @@ function @fib_tail_call(3 => 1) { # n a b => F_n
     return;
 
 label %recurse(1):
-    int 1; call_builtin @ssub;                 # n => (n-1)
+    int 1; $ssub;                 # n => (n-1)
     load_value %b;                             # => (n-1) b
-    pick 0; load_value %a; call_builtin @sadd; # => (n-1) b (b+a)
+    pick 0; load_value %a; $sadd; # => (n-1) b (b+a)
     call @fib_tail_call;
     return;
 }
 
 function @fib_iter(1 => 1) {
-    local %a : @Value;
-    local %b : @Value;
+    local %a : $Value;
+    local %b : $Value;
 
     int 0; store_value %a;
     int 1; store_value %b;
 
-    pick 0; int 0; call_builtin @scmp;
+    pick 0; int 0; $scmp;
     jump_if cmp_eq %exit;
 
 label %loop(1):
@@ -61,13 +61,13 @@ label %loop(1):
 
     pick 0;             # => b b
     load_value %a;      # => b b a
-    call_builtin @sadd; # => b (b+a)
+    $sadd; # => b (b+a)
 
     store_value %b;
     store_value %a;
 
-    int 1; call_builtin @ssub;
-    pick 0; int 0; call_builtin @scmp;
+    int 1; $ssub;
+    pick 0; int 0; $scmp;
     jump_if cmp_ne %loop;
 
 label %exit(1):
@@ -78,15 +78,15 @@ label %exit(1):
 
 function @test_fib(0 => 0) {
     int 10; call @fib_recursive;
-    int 55; call_builtin @scmp;
+    int 55; $scmp;
     global_addr @test_failure; panic_if cmp_ne;
 
     int 10; int 0; int 1; call @fib_tail_call;
-    int 55; call_builtin @scmp;
+    int 55; $scmp;
     global_addr @test_failure; panic_if cmp_ne;
 
     int 10; call @fib_iter;
-    int 55; call_builtin @scmp;
+    int 55; $scmp;
     global_addr @test_failure; panic_if cmp_ne;
 
     return;

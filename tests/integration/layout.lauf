@@ -3,7 +3,7 @@ module @layout;
 const @test_failure = "test failure", 0;
 
 function @assert_eq(2 => 0) {
-    call_builtin @scmp;
+    $scmp;
     global_addr @test_failure; panic_if cmp_ne;
     return;
 }
@@ -21,7 +21,7 @@ function @test_layout(0 => 0) {
     return;
 }
 
-layout @MyValue = @Value;
+layout @MyValue = $Value;
 
 function @test_named_layout(0 => 0) {
     local %x : @MyValue;
@@ -36,29 +36,29 @@ function @test_named_layout(0 => 0) {
 }
 
 function @test_array(0 => 0) {
-    local %x : @Value[2];
+    local %x : $Value[2];
 
-    int 42; int 0; local_addr %x; array_element_addr @Value; store_field @Value.0;
-    int 11; int 1; local_addr %x; array_element_addr @Value; store_field @Value.0;
+    int 42; int 0; local_addr %x; array_element_addr $Value; store_field $Value.0;
+    int 11; int 1; local_addr %x; array_element_addr $Value; store_field $Value.0;
 
-    int 0; local_addr %x; array_element_addr @Value; load_field @Value.0;
+    int 0; local_addr %x; array_element_addr $Value; load_field $Value.0;
     int 42; call @assert_eq;
 
-    int 1; local_addr %x; array_element_addr @Value; load_field @Value.0;
+    int 1; local_addr %x; array_element_addr $Value; load_field $Value.0;
     int 11; call @assert_eq;
 
     return;
 }
 function @test_nested_array(0 => 0) {
-    local %x : @Value[1][2];
+    local %x : $Value[1][2];
 
-    int 42; int 0; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; store_field @Value.0;
-    int 11; int 1; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; store_field @Value.0;
+    int 42; int 0; {int 0; local_addr %x; array_element_addr $Value[1];} array_element_addr $Value; store_field $Value.0;
+    int 11; int 1; {int 0; local_addr %x; array_element_addr $Value[1];} array_element_addr $Value; store_field $Value.0;
 
-    int 0; {int 0; local_addr %x; array_element_addr @Value[1];} array_element_addr @Value; load_field @Value.0;
+    int 0; {int 0; local_addr %x; array_element_addr $Value[1];} array_element_addr $Value; load_field $Value.0;
     int 42; call @assert_eq;
 
-    int 0; {int 1; local_addr %x; array_element_addr @Value;} array_element_addr @Value; load_field @Value.0;
+    int 0; {int 1; local_addr %x; array_element_addr $Value;} array_element_addr $Value; load_field $Value.0;
     int 11; call @assert_eq;
 
     return;
@@ -66,42 +66,42 @@ function @test_nested_array(0 => 0) {
 function @test_overaligned_array(0 => 0) {
     local %x : (8, 16)[2]; # spaced 16 apart
 
-    int 0; local_addr %x; array_element_addr (8, 16); call_builtin @address_to_int;
+    int 0; local_addr %x; array_element_addr (8, 16); $address_to_int;
     int 0; call @assert_eq; pop 1;
 
-    int 1; local_addr %x; array_element_addr (8, 16); call_builtin @address_to_int;
+    int 1; local_addr %x; array_element_addr (8, 16); $address_to_int;
     int 16; call @assert_eq; pop 1;
 
     return;
 }
 
-layout @Pair = {@Value, @Value};
+layout @Pair = {$Value, $Value};
 
 function @test_aggregate(0 => 0) {
     local %x : @Pair;
 
-    int 42; local_addr %x; aggregate_member_addr @Pair.0; store_field @Value.0;
-    int 11; local_addr %x; aggregate_member_addr @Pair.1; store_field @Value.0;
+    int 42; local_addr %x; aggregate_member_addr @Pair.0; store_field $Value.0;
+    int 11; local_addr %x; aggregate_member_addr @Pair.1; store_field $Value.0;
 
-    local_addr %x; aggregate_member_addr @Pair.0; load_field @Value.0;
+    local_addr %x; aggregate_member_addr @Pair.0; load_field $Value.0;
     int 42; call @assert_eq;
 
-    local_addr %x; aggregate_member_addr @Pair.1; load_field @Value.0;
+    local_addr %x; aggregate_member_addr @Pair.1; load_field $Value.0;
     int 11; call @assert_eq;
 
     return;
 }
 
 function @test_nested_aggregate(0 => 0) {
-    local %x : {@Value, @Pair};
+    local %x : {$Value, @Pair};
 
-    int 42; local_addr %x; aggregate_member_addr {@Value, @Pair}.1; aggregate_member_addr @Pair.0; store_field @Value.0;
-    int 11; local_addr %x; aggregate_member_addr {@Value, @Pair}.1; aggregate_member_addr @Pair.1; store_field @Value.0;
+    int 42; local_addr %x; aggregate_member_addr {$Value, @Pair}.1; aggregate_member_addr @Pair.0; store_field $Value.0;
+    int 11; local_addr %x; aggregate_member_addr {$Value, @Pair}.1; aggregate_member_addr @Pair.1; store_field $Value.0;
 
-    local_addr %x; aggregate_member_addr {@Value, @Pair}.1; aggregate_member_addr @Pair.0; load_field @Value.0;
+    local_addr %x; aggregate_member_addr {$Value, @Pair}.1; aggregate_member_addr @Pair.0; load_field $Value.0;
     int 42; call @assert_eq;
 
-    local_addr %x; aggregate_member_addr {@Value, @Pair}.1; aggregate_member_addr @Pair.1; load_field @Value.0;
+    local_addr %x; aggregate_member_addr {$Value, @Pair}.1; aggregate_member_addr @Pair.1; load_field $Value.0;
     int 11; call @assert_eq;
 
     return;

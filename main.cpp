@@ -47,24 +47,24 @@ int main()
         module @mod;
 
         function @fib_recursive(1 => 1) {
-            local %arg : @Value;
+            local %arg : $Value;
 
             store_value %arg;
 
-            load_value %arg; int 1; call_builtin @scmp;
+            load_value %arg; int 1; $scmp;
             jump_if cmp_gt %recurse;
 
             load_value %arg;
             return;
 
         label %recurse:
-            load_value %arg; int 1; call_builtin @ssub;
+            load_value %arg; int 1; $ssub;
             call @fib_recursive;
 
-            load_value %arg; int 2; call_builtin @ssub;
+            load_value %arg; int 2; $ssub;
             call @fib_recursive;
 
-            call_builtin @sadd;
+            $sadd;
             return;
         }
     )");

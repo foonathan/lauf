@@ -138,19 +138,35 @@ constexpr auto identifier
 
 struct local_identifier
 {
+    struct name : std::string_view
+    {
+        using std::string_view::string_view;
+    };
+
     static constexpr auto rule  = dsl::percent_sign >> identifier;
-    static constexpr auto value = lexy::as_string<std::string_view>;
+    static constexpr auto value = lexy::as_string<name>;
 };
 struct global_identifier
 {
+    struct name : std::string_view
+    {
+        using std::string_view::string_view;
+    };
+
     static constexpr auto rule  = dsl::at_sign >> identifier;
-    static constexpr auto value = lexy::as_string<std::string_view>;
+    static constexpr auto value = lexy::as_string<name>;
+};
+struct builtin_identifier
+{
+    struct name : std::string_view
+    {
+        using std::string_view::string_view;
+    };
+
+    static constexpr auto rule  = dsl::dollar_sign >> identifier;
+    static constexpr auto value = lexy::as_string<name>;
 };
 
-struct ref_type
-{
-    static constexpr auto rule = dsl::p<global_identifier>;
-};
 struct ref_label
 {
     static constexpr auto rule = dsl::p<local_identifier>;
@@ -167,9 +183,13 @@ struct ref_global
 {
     static constexpr auto rule = dsl::p<global_identifier>;
 };
+struct ref_type
+{
+    static constexpr auto rule = dsl::p<builtin_identifier>;
+};
 struct ref_builtin
 {
-    static constexpr auto rule = dsl::p<global_identifier>;
+    static constexpr auto rule = dsl::p<builtin_identifier>;
 };
 
 struct layout_expr : lexy::expression_production
@@ -193,7 +213,8 @@ struct layout_expr : lexy::expression_production
                   });
     };
 
-    static constexpr auto atom = dsl::p<global_identifier> | dsl::p<literal> | dsl::p<aggregate>;
+    static constexpr auto atom = dsl::p<builtin_identifier> | dsl::p<global_identifier> //
+                                 | dsl::p<literal> | dsl::p<aggregate>;
 
     struct array : dsl::postfix_op
     {
@@ -218,11 +239,12 @@ struct layout_expr : lexy::expression_production
         {
             return {layout};
         }
-        return_type operator()(std::string_view name) const
+        return_type operator()(global_identifier::name name) const
         {
-            if (auto layout = layouts.try_lookup(name))
-                return *layout;
-
+            return {layouts.lookup(name)};
+        }
+        return_type operator()(builtin_identifier::name name) const
+        {
             return {p->types.lookup(name)->layout};
         }
 
@@ -465,9 +487,9 @@ namespace lauf::text_grammar
 struct skip_instruction
 {
     static constexpr auto rule = [] {
-        auto single = identifier >> dsl::loop(dsl::semicolon >> dsl::break_ | whitespace
-                                              | dsl::else_ >> dsl::code_point);
-        auto list   = dsl::curly_bracketed.list(dsl::recurse<skip_instruction>);
+        auto single
+            = dsl::loop(dsl::semicolon >> dsl::break_ | whitespace | dsl::else_ >> dsl::code_point);
+        auto list = dsl::curly_bracketed.list(dsl::recurse<skip_instruction>);
         return list | dsl::else_ >> single;
     }();
     static constexpr auto value = lexy::noop;
@@ -638,7 +660,7 @@ struct inst_call
 };
 struct inst_call_builtin
 {
-    static constexpr auto rule  = LEXY_KEYWORD("call_builtin", identifier) >> dsl::p<ref_builtin>;
+    static constexpr auto rule  = dsl::p<ref_builtin>;
     static constexpr auto build = &lauf_build_call_builtin;
 };
 
