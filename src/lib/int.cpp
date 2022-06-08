@@ -163,19 +163,9 @@ LAUF_MAKE_ARITHMETIC_BUILTIN(umul)
 
 //=== comparison ===//
 LAUF_BUILTIN_BINARY_OPERATION(lauf_scmp_builtin, 1, {
-    if (lhs.as_sint < rhs.as_sint)
-        result->as_sint = -1;
-    else if (lhs.as_sint == rhs.as_sint)
-        result->as_sint = 0;
-    else
-        result->as_sint = 1;
+    result->as_sint = (lhs.as_sint > rhs.as_sint) - (lhs.as_sint < rhs.as_sint);
 })
 LAUF_BUILTIN_BINARY_OPERATION(lauf_ucmp_builtin, 1, {
-    if (lhs.as_uint < rhs.as_uint)
-        result->as_sint = -1;
-    else if (lhs.as_uint == rhs.as_uint)
-        result->as_sint = 0;
-    else
-        result->as_sint = 1;
+    result->as_sint = (lhs.as_uint > rhs.as_uint) - (lhs.as_uint < rhs.as_uint);
 })
 

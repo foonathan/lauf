@@ -20,18 +20,6 @@ LAUF_BUILTIN_UNARY_OPERATION(print, 1, {
     *result = value;
 })
 
-constexpr lauf_type_data int_type = {LAUF_NATIVE_LAYOUT_OF(int), 1,
-                                     [](const void* object_address, size_t) {
-                                         lauf_value result;
-                                         result.as_sint
-                                             = *static_cast<const lauf_value_sint*>(object_address);
-                                         return result;
-                                     },
-                                     [](void* object_address, size_t, lauf_value value) {
-                                         ::new (object_address) lauf_value_sint(value.as_sint);
-                                         return true;
-                                     }};
-
 int main()
 {
     auto parser = lauf_frontend_text_create_parser();
@@ -39,9 +27,8 @@ int main()
     lauf_frontend_text_register_builtin(parser, "sadd",
                                         lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
     lauf_frontend_text_register_builtin(parser, "ssub",
-                                        lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
+                                        lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
     lauf_frontend_text_register_builtin(parser, "scmp", lauf_scmp_builtin());
-    lauf_frontend_text_register_type(parser, "Int", &int_type);
     lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
