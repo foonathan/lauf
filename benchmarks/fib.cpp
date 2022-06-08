@@ -16,14 +16,14 @@ lauf_program recursive_fib(lauf_builder b)
     {
         auto recurse = lauf_declare_label(b, 0);
 
-        // arg == 1
+        // arg >= 2
         auto arg = lauf_build_local_variable(b, lauf_value_type.layout);
         lauf_build_store_value(b, arg);
         lauf_build_load_value(b, arg);
-        lauf_build_sint(b, 1);
+        lauf_build_sint(b, 2);
         lauf_build_call_builtin(b, lauf_scmp_builtin());
 
-        lauf_build_jump_if(b, LAUF_CMP_GT, recurse);
+        lauf_build_jump_if(b, LAUF_CMP_GE, recurse);
         {
             // return arg
             lauf_build_load_value(b, arg);
@@ -75,16 +75,16 @@ lauf_program recursive_fib_memory(lauf_builder b)
     {
         auto recurse = lauf_declare_label(b, 0);
 
-        // arg == 1
+        // arg >= 2
         auto arg = lauf_build_local_variable(b, lauf_value_type.layout);
         lauf_build_local_addr(b, arg);
         lauf_build_store_field(b, &lauf_value_type, 0);
         lauf_build_local_addr(b, arg);
         lauf_build_load_field(b, &lauf_value_type, 0);
-        lauf_build_sint(b, 1);
+        lauf_build_sint(b, 2);
         lauf_build_call_builtin(b, lauf_scmp_builtin());
 
-        lauf_build_jump_if(b, LAUF_CMP_GT, recurse);
+        lauf_build_jump_if(b, LAUF_CMP_GE, recurse);
         {
             // return arg
             lauf_build_local_addr(b, arg);

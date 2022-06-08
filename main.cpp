@@ -38,8 +38,8 @@ int main()
 
             store_value %arg;
 
-            load_value %arg; sint 1; $scmp;
-            jump_if cmp_gt %recurse;
+            load_value %arg; sint 2; $scmp;
+            jump_if cmp_ge %recurse;
 
             load_value %arg;
             return;

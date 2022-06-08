@@ -22,6 +22,30 @@ LAUF_BC_OP(jump_if, bc_inst_cc_offset, {
     ++ip;
     LAUF_DISPATCH;
 })
+// Termination condition for loop with `i != n`.
+// (We keep the unused cc field, to patch it.)
+LAUF_BC_OP(jump_ifz, bc_inst_cc_offset, {
+    auto top_value = vstack_ptr[0];
+    ++vstack_ptr;
+
+    if (top_value.as_sint == 0)
+        ip += ip->jump_ifz.offset;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
+// Termination condition for loop with `i < n`.
+// (We keep the unused cc field, to patch it.)
+LAUF_BC_OP(jump_ifge, bc_inst_cc_offset, {
+    auto top_value = vstack_ptr[0];
+    ++vstack_ptr;
+
+    if (top_value.as_sint >= 0)
+        ip += ip->jump_ifge.offset;
+
+    ++ip;
+    LAUF_DISPATCH;
+})
 
 //=== calls ===//
 // Finishes VM execution.
