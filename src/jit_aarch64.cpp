@@ -34,6 +34,27 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
 {
     compiler->emitter.clear();
 
+    //=== prologue ===//
+    // Save callee saved registers x19-x29 and link register x30, in case we might need them.
+    // TODO: only save them, when we need them.
+    compiler->emitter.push_pair(19, 20);
+    compiler->emitter.push_pair(21, 22);
+    compiler->emitter.push_pair(23, 24);
+    compiler->emitter.push_pair(25, 26);
+    compiler->emitter.push_pair(27, 28);
+    compiler->emitter.push_pair(29, 30);
+
+    auto emit_epilogue = [&] {
+        // Restore the registers we've pushed above.
+        compiler->emitter.pop_pair(29, 30);
+        compiler->emitter.pop_pair(27, 28);
+        compiler->emitter.pop_pair(25, 26);
+        compiler->emitter.pop_pair(23, 24);
+        compiler->emitter.pop_pair(21, 22);
+        compiler->emitter.pop_pair(19, 20);
+    };
+
+    //=== emit body ===//
     auto emit = [&](lauf_vm_instruction* ip) {
         while (true)
         {
@@ -43,8 +64,11 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 break;
 
             case lauf::bc_op::return_no_alloc:
+                emit_epilogue();
                 compiler->emitter.tail_call(&lauf_builtin_dispatch);
                 return;
+
+            case lauf::bc_op::push_zero:
 
             default:
                 assert(false); // unimplemented
@@ -56,6 +80,7 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     };
     emit(fn->bytecode());
 
+    //=== finish ===//
     auto mod      = fn->mod;
     auto jit_size = compiler->emitter.size() * sizeof(uint32_t);
     if (mod->cur_jit_offset + jit_size > mod->jit_memory.size)

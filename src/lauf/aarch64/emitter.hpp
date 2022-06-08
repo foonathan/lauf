@@ -37,6 +37,25 @@ public:
         _inst.push_back(data[1]);
     }
 
+    //=== stack ===//
+    void push_pair(std::uint8_t r1, std::uint8_t r2)
+    {
+        // STP r1, r2, [SP, #-16]!
+        auto base = 0b10'101'0'011'0'1111110'00000'11111'00000;
+        base |= (r2 & 0b11111) << 10;
+        base |= (r1 & 0b11111) << 0;
+        _inst.push_back(base);
+    }
+
+    void pop_pair(std::uint8_t r1, std::uint8_t r2)
+    {
+        // LDP r1, r2, [SP], #16
+        auto base = 0b10'101'0'001'1'0000010'00000'11111'00000;
+        base |= (r2 & 0b111111) << 10;
+        base |= (r1 & 0b111111) << 00;
+        _inst.push_back(base);
+    }
+
     //=== finish ===//
     void clear()
     {
