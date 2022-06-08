@@ -83,7 +83,13 @@ LAUF_BC_OP(return_no_alloc, bc_inst_none, {
 
 // Calls the specified function.
 LAUF_BC_OP(call, bc_inst_function_idx, {
-    auto callee     = process->get_function(ip->call.function_idx);
+    auto callee = process->get_function(ip->call.function_idx);
+    if (callee->jit_fn != nullptr)
+    {
+        ++ip;
+        LAUF_DISPATCH_BUILTIN(callee->jit_fn, callee->input_count - callee->output_count);
+    }
+
     auto marker     = process->stack().top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
 

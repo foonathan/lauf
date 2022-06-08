@@ -6,8 +6,10 @@
 
 #include <cstring>
 #include <lauf/bytecode.hpp>
+#include <lauf/jit.h>
 #include <lauf/module.h>
 #include <lauf/support/joined_allocation.hpp>
+#include <lauf/support/virtual_memory.hpp>
 #include <lauf/value.h>
 #include <lauf/vm_memory.hpp>
 #include <memory>
@@ -61,6 +63,7 @@ private:
 struct lauf_function_impl
 : lauf::joined_allocation<lauf_function_impl, lauf::vm_allocation, lauf_vm_instruction>
 {
+    lauf_builtin_function*   jit_fn;
     lauf_module              mod;
     const char*              name;
     uint16_t                 max_vstack_size;
@@ -83,21 +86,23 @@ struct lauf_function_impl
         return array<lauf_vm_instruction>({local_allocation_count});
     }
 };
-static_assert(sizeof(lauf_function_impl) == 3 * sizeof(void*) + sizeof(uint64_t));
 
 //=== module ===//
 struct alignas(lauf_value) lauf_module_impl
 : lauf::joined_allocation<lauf_module_impl, lauf_function, lauf_value, lauf::vm_allocation>
 {
-    const char* name;
-    const char* path;
-    size_t      function_count, literal_count, allocation_count;
+    const char*          name;
+    const char*          path;
+    size_t               function_count, literal_count, allocation_count;
+    lauf::virtual_memory jit_memory;
+    size_t               cur_jit_offset = 0;
 
     lauf_module_impl() = default;
     ~lauf_module_impl()
     {
         for (auto fn = function_begin(); fn != function_end(); ++fn)
             lauf_function_impl::destroy(*fn);
+        lauf::free_executable_memory(jit_memory);
     }
 
     lauf_function* function_begin()
@@ -132,7 +137,6 @@ struct alignas(lauf_value) lauf_module_impl
         return array<lauf::vm_allocation>({function_count, literal_count, allocation_count});
     }
 };
-static_assert(sizeof(lauf_module_impl) == 5 * sizeof(void*));
 
 #endif // SRC_IMPL_MODULE_HPP_INCLUDED
 

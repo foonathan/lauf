@@ -10,6 +10,7 @@
 #include <lauf/builder.h>
 #include <lauf/builtin.h>
 #include <lauf/frontend/text.h>
+#include <lauf/jit.h>
 #include <lauf/lib/int.h>
 #include <lauf/linker.h>
 #include <lauf/module.h>
@@ -61,6 +62,9 @@ int main()
     auto options      = lauf_default_vm_options;
     options.allocator = lauf_vm_malloc_allocator;
     auto vm           = lauf_vm_create(options);
+
+    auto compiler = lauf_vm_jit_compiler(vm);
+    lauf_jit_compile(compiler, fn);
 
     lauf_value input = {.as_sint = 35};
     lauf_value output;

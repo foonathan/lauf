@@ -9,6 +9,7 @@ get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf A
 set(header_files
         ${include_dir}/builder.h
         ${include_dir}/config.h
+        ${include_dir}/jit.h
         ${include_dir}/linker.h
         ${include_dir}/module.h
         ${include_dir}/program.h
@@ -20,11 +21,13 @@ set(header_files
 
         ${include_dir}/lib/int.h
         ${include_dir}/lib/memory.h)
-set(src_header_files
+set(src_additional_files
         lauf/support/align.hpp
         lauf/support/joined_allocation.hpp
         lauf/support/stack_allocator.hpp
         lauf/support/temporary_array.hpp
+        lauf/support/virtual_memory.hpp
+        lauf/support/virtual_memory.cpp
         lauf/impl/builtin.hpp
         lauf/impl/module.hpp
         lauf/impl/process.hpp
@@ -55,6 +58,9 @@ target_compile_features(lauf_core PRIVATE cxx_std_17)
 target_include_directories(lauf_core PUBLIC ../include .)
 target_link_libraries(lauf_core PRIVATE foonathan::lexy::core foonathan::lexy::ext)
 target_sources(lauf_core PUBLIC ${header_files})
-target_sources(lauf_core PRIVATE ${src_header_files})
+target_sources(lauf_core PRIVATE ${src_additional_files})
 target_sources(lauf_core PRIVATE lauf.c ${src_files})
+
+message(STATUS "lauf: JIT compiler not available on this platform or it has been disabled")
+target_sources(lauf_core PRIVATE jit_null.cpp)
 
