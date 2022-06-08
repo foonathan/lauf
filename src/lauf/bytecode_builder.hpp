@@ -116,7 +116,8 @@ public:
             else if (inst.tag.op == bc_op::jump_if)
             {
                 auto dest = _labels[inst.jump_if.offset].bytecode_offset;
-                inst      = LAUF_VM_INSTRUCTION(jump_if, inst.jump_if.cc, dest - cur_offset);
+                // The +1 is there because it always increments by one unconditionally.
+                inst = LAUF_VM_INSTRUCTION(jump_if, inst.jump_if.cc, dest - (cur_offset + 1));
             }
             else if (inst.tag.op == bc_op::return_)
             {

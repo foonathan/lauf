@@ -14,12 +14,12 @@ LAUF_BC_OP(jump, bc_inst_offset, {
 // Increments ip by offset if cc matches.
 LAUF_BC_OP(jump_if, bc_inst_cc_offset, {
     auto top_value = vstack_ptr[0];
-    if (check_condition(ip->jump_if.cc, top_value))
-        ip += ip->jump_if.offset;
-    else
-        ++ip;
     ++vstack_ptr;
 
+    if (check_condition(ip->jump_if.cc, top_value))
+        ip += ip->jump_if.offset;
+
+    ++ip;
     LAUF_DISPATCH;
 })
 
