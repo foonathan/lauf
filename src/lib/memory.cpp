@@ -54,6 +54,20 @@ LAUF_BUILTIN_UNARY_OPERATION(lauf_free_alloc_builtin, 0, {
     process->remove_allocation(addr);
 })
 
+LAUF_BUILTIN_UNARY_OPERATION(lauf_leak_alloc_builtin, 0, {
+    auto vm   = process->vm();
+    auto addr = value.as_address;
+
+    auto alloc = process->get_allocation(addr);
+    if (alloc == nullptr
+        || alloc->source != lauf::vm_allocation::heap_memory
+        // We do not allow leaking split memory as others might be using other parts.
+        || alloc->split != lauf::vm_allocation::unsplit)
+        LAUF_BUILTIN_OPERATION_PANIC("invalid address");
+
+    alloc->lifetime = lauf::vm_allocation::leaked;
+})
+
 LAUF_BUILTIN_BINARY_OPERATION(lauf_split_alloc_builtin, 2, {
     auto length    = lhs.as_uint;
     auto base_addr = rhs.as_address;

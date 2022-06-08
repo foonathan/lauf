@@ -12,8 +12,7 @@ LAUF_HEADER_START
 // Splits an address into an (allocation, offset) pair.
 // address => allocation offset
 lauf_builtin lauf_address_to_int_builtin(void);
-
-// Converst an (allocation, offset) pair back into an address.
+// Converts an (allocation, offset) pair back into an address.
 // allocation offset => address
 lauf_builtin lauf_address_from_int_builtin(void);
 
@@ -23,6 +22,9 @@ lauf_builtin lauf_heap_alloc_builtin(void);
 // Frees the heap allocation the address is in.
 // addr => _
 lauf_builtin lauf_free_alloc_builtin(void);
+// Leaks the heap allocation the address is in; memory can be accessed after VM execution has
+// finished. addr => _
+lauf_builtin lauf_leak_alloc_builtin(void);
 
 // Splits a memory allocation after length bytes.
 // length base_addr => addr1 addr2

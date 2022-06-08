@@ -34,6 +34,7 @@ struct vm_allocation
         allocated,
         poisoned,
         freed,
+        leaked,
     };
     enum split_t : uint8_t
     {
@@ -185,7 +186,9 @@ public:
         {
             auto alloc = get_allocations()[idx];
             if (alloc.source == vm_allocation::heap_memory
+                // Allocation must not be freed nor leaked.
                 && alloc.lifetime != vm_allocation::freed
+                && alloc.lifetime != vm_allocation::leaked
                 // Either the allocation isn't split, or it's the first split.
                 && (alloc.split == vm_allocation::unsplit
                     || alloc.split == vm_allocation::first_split))

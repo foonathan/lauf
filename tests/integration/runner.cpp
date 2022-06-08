@@ -43,6 +43,7 @@ int main(int argc, char* argv[])
                                             lauf_address_from_int_builtin());
         lauf_frontend_text_register_builtin(parser, "heap_alloc", lauf_heap_alloc_builtin());
         lauf_frontend_text_register_builtin(parser, "free_alloc", lauf_free_alloc_builtin());
+        lauf_frontend_text_register_builtin(parser, "leak_alloc", lauf_leak_alloc_builtin());
         lauf_frontend_text_register_builtin(parser, "split_alloc", lauf_split_alloc_builtin());
         lauf_frontend_text_register_builtin(parser, "merge_alloc", lauf_merge_alloc_builtin());
         lauf_frontend_text_register_builtin(parser, "poison_alloc", lauf_poison_alloc_builtin());
@@ -59,16 +60,16 @@ int main(int argc, char* argv[])
 
     auto exit_code = 0;
 
-    std::size_t allocated_heap_memory = 0;
-    auto        options               = [&] {
+    auto allocated_heap_memory = 0;
+    auto options               = [&] {
         auto options      = lauf_default_vm_options;
         options.allocator = {&allocated_heap_memory,
                              [](void* data, std::size_t size, std::size_t) {
-                                 *static_cast<std::size_t*>(data) += 1;
+                                 *static_cast<int*>(data) += 1;
                                  return std::malloc(size);
                              },
                              [](void* data, void* ptr) {
-                                 *static_cast<std::size_t*>(data) -= 1;
+                                 *static_cast<int*>(data) -= 1;
                                  std::free(ptr);
                              }};
         return options;
@@ -93,11 +94,20 @@ int main(int argc, char* argv[])
         if (has_paniced != should_panic)
             ++exit_code;
         lauf_program_destroy(program);
+
+        if (std::string_view(name).find("leak") != std::string_view::npos)
+            // We allow a leak of one allocation.
+            --allocated_heap_memory;
     }
 
     if (allocated_heap_memory > 0)
     {
         std::fputs("memory leak", stderr);
+        ++exit_code;
+    }
+    else if (allocated_heap_memory < 0)
+    {
+        std::fputs("duplicate memory leak", stderr);
         ++exit_code;
     }
 
