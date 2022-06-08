@@ -11,8 +11,8 @@ namespace lauf
 {
 struct virtual_memory
 {
-    void*       ptr  = nullptr;
-    std::size_t size = 0;
+    unsigned char* ptr  = nullptr;
+    std::size_t    size = 0;
 };
 
 virtual_memory allocate_executable_memory(std::size_t page_count);

@@ -38,7 +38,8 @@ set(src_additional_files
         lauf/literal_pool.hpp
         lauf/stack_check.hpp
         lauf/verify.hpp
-        lauf/vm_memory.hpp)
+        lauf/vm_memory.hpp
+        lauf/aarch64/emitter.hpp)
 set(src_files
         builder.cpp
         linker.cpp
@@ -61,6 +62,10 @@ target_sources(lauf_core PUBLIC ${header_files})
 target_sources(lauf_core PRIVATE ${src_additional_files})
 target_sources(lauf_core PRIVATE lauf.c ${src_files})
 
-message(STATUS "lauf: JIT compiler not available on this platform or it has been disabled")
-target_sources(lauf_core PRIVATE jit_null.cpp)
+if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+    target_sources(lauf_core PRIVATE jit_aarch64.cpp)
+else()
+    message(STATUS "lauf: JIT compiler not available on this platform or it has been disabled")
+    target_sources(lauf_core PRIVATE jit_null.cpp)
+endif()
 

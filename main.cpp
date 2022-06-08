@@ -34,6 +34,10 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
+        function @test(1 => 1) {
+            return;
+        }
+
         function @fib_recursive(1 => 1) {
             local %arg : $Value;
 

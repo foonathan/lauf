@@ -107,12 +107,13 @@ const lauf_vm_allocator lauf_vm_malloc_allocator
 lauf_vm_impl::lauf_vm_impl(lauf_vm_options options)
 : process(lauf_vm_process_impl::create_null(this)), panic_handler(options.panic_handler),
   allocator(options.allocator), value_stack_size(options.max_value_stack_size / sizeof(lauf_value)),
-  memory_stack(options.max_stack_size)
+  memory_stack(options.max_stack_size), jit(lauf_jit_compiler_create())
 {}
 
 lauf_vm_impl::~lauf_vm_impl()
 {
     lauf_vm_process_impl::destroy(process);
+    lauf_jit_compiler_destroy(jit);
 }
 const lauf_vm_options lauf_default_vm_options
     = {size_t(128) * 1024, size_t(896) * 1024,

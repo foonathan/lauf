@@ -18,23 +18,26 @@ lauf::virtual_memory lauf::allocate_executable_memory(std::size_t page_count)
     if (pages == nullptr)
         return {nullptr, 0};
 
-    return {pages, page_count * page_size};
+    return {static_cast<unsigned char*>(pages), page_count * page_size};
 }
 
 void lauf::free_executable_memory(virtual_memory memory)
 {
-    if (memory.ptr)
+    if (memory.ptr != nullptr)
         ::munmap(memory.ptr, memory.size);
 }
 
 lauf::virtual_memory lauf::resize_executable_memory(virtual_memory memory,
                                                     std::size_t    new_page_count)
 {
+    if (memory.ptr == nullptr)
+        return allocate_executable_memory(new_page_count);
+
     auto pages = ::mremap(memory.ptr, memory.size, new_page_count * page_size, MREMAP_MAYMOVE);
     if (pages == nullptr)
         return {nullptr, 0};
 
-    return {pages, new_page_count * page_size};
+    return {static_cast<unsigned char*>(pages), new_page_count * page_size};
 }
 
 void lauf::lock_executable_memory(virtual_memory memory)

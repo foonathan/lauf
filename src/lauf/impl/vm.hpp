@@ -4,6 +4,7 @@
 #ifndef SRC_LAUF_IMPL_VM_HPP_INCLUDED
 #define SRC_LAUF_IMPL_VM_HPP_INCLUDED
 
+#include <lauf/jit.h>
 #include <lauf/support/stack_allocator.hpp>
 #include <lauf/vm.h>
 
@@ -14,6 +15,7 @@ struct alignas(lauf_value) lauf_vm_impl
     lauf_vm_allocator  allocator;
     size_t             value_stack_size;
     lauf::memory_stack memory_stack;
+    lauf_jit_compiler  jit;
 
     lauf_vm_impl(lauf_vm_options options);
 
