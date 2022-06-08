@@ -66,7 +66,7 @@
 
 #ifndef LAUF_SECTION
 #    if defined(__GNUC__)
-#        define LAUF_SECTION(Name) __attribute__((section(Name)))
+#        define LAUF_SECTION(Name) __attribute__((section(Name), aligned(16)))
 #    else
 #        define LAUF_SECTION(Name)
 #    endif
