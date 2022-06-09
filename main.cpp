@@ -34,8 +34,10 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(1 => 2) {
+        function @test(0 => 2) {
+            uint 11;
             uint 42;
+            roll 1;
             return;
         }
 

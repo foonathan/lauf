@@ -3,6 +3,7 @@
 
 #include <lauf/jit.h>
 
+#include <algorithm>
 #include <cstdio> // TODO
 #include <lauf/aarch64/emitter.hpp>
 #include <lauf/impl/module.hpp>
@@ -16,28 +17,53 @@ public:
     void reset()
     {
         _stack.clear();
-        _next_free_register = 19;
+        for (auto r = 19; r != 29; ++r)
+            _pool.push_back(r);
     }
 
     std::uint8_t push()
     {
-        assert(_next_free_register < 29); // TODO: bigger value stack
-        _stack.push_back(_next_free_register);
-        return _next_free_register++;
+        assert(!_pool.empty()); // TODO
+        auto r = _pool.back();
+        _pool.pop_back();
+        _stack.push_back(r);
+        return r;
     }
 
     std::uint8_t pop()
     {
         auto reg = _stack.back();
         _stack.pop_back();
-        --_next_free_register;
+
+        auto contains = std::find(_stack.begin(), _stack.end(), reg) != _stack.end();
+        if (!contains)
+            // If the register isn't used already, push it back to the pool.
+            _pool.push_back(reg);
+
         return reg;
+    }
+    void pop(std::size_t n)
+    {
+        for (auto i = 0u; i != n; ++i)
+            pop();
+    }
+
+    void pick(std::size_t idx)
+    {
+        auto reg = _stack[_stack.size() - idx - 1];
+        _stack.push_back(reg);
+    }
+
+    void roll(std::size_t idx)
+    {
+        auto iter = std::prev(_stack.end(), std::ptrdiff_t(idx) + 1);
+        std::rotate(iter, iter + 1, _stack.end());
     }
 
 private:
     // _stack.back() is the register that stores the value on top of the stack.
     std::vector<std::uint8_t> _stack;
-    std::uint8_t              _next_free_register = 19;
+    std::vector<std::uint8_t> _pool;
 };
 } // namespace
 
@@ -138,6 +164,22 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 compiler->emitter.mov(reg, ip->push_small_zext.literal);
                 break;
             }
+
+            case lauf::bc_op::pop:
+                compiler->stack.pop(ip->pop.literal);
+                break;
+            case lauf::bc_op::pick:
+                compiler->stack.pick(ip->pick.literal);
+                break;
+            case lauf::bc_op::dup:
+                compiler->stack.pick(0);
+                break;
+            case lauf::bc_op::roll:
+                compiler->stack.roll(ip->roll.literal);
+                break;
+            case lauf::bc_op::swap:
+                compiler->stack.roll(1);
+                break;
 
             default:
                 assert(false); // unimplemented
