@@ -14,11 +14,30 @@ namespace lauf::aarch64
 class emitter
 {
 public:
+    //=== data ===//
+    template <typename T>
+    void data(T t)
+    {
+        static_assert(std::is_trivially_copyable_v<T> && sizeof(T) % sizeof(std::uint32_t) == 0);
+        std::uint32_t data[sizeof(T) / sizeof(std::uint32_t)];
+        std::memcpy(&data, &t, sizeof(T));
+        for (auto i = 0u; i != sizeof(T) / sizeof(std::uint32_t); ++i)
+            _inst.push_back(data[i]);
+    }
+
     //=== control flow ===//
     void ret()
     {
         // RET X30
         _inst.push_back(0b1101011'0'0'10'11111'0000'0'0'11110'00000);
+    }
+
+    void b(std::int32_t offset)
+    {
+        // B #offset
+        auto inst = 0b0'00101 << 26;
+        inst |= offset & ((1 << 26) - 1);
+        _inst.push_back(inst);
     }
 
     template <typename Fn>
@@ -31,20 +50,38 @@ public:
         // BR x9
         _inst.push_back(0b1101011'0'0'00'11111'0000'0'0'01001'00000);
         // literal value
-        std::uint32_t data[2];
-        std::memcpy(&data, &fn, sizeof(fn));
-        _inst.push_back(data[0]);
-        _inst.push_back(data[1]);
+        data(fn);
     }
 
     //=== register operations ===//
-    void mov(std::uint8_t r, std::uint16_t imm)
+    void mov(std::uint8_t r, std::uint64_t imm)
     {
-        // MOV r, #imm
-        auto inst = 0b1'10'100101'00'0000000000000000'00000;
-        inst |= imm << 5;
-        inst |= (r & 0b11111) << 0;
-        _inst.push_back(inst);
+        if (imm <= UINT16_MAX)
+        {
+            // MOV r, #imm
+            auto inst = 0b1'10'100101'00'0000000000000000'00000;
+            inst |= imm << 5;
+            inst |= (r & 0b11111) << 0;
+            _inst.push_back(inst);
+        }
+        else if (imm <= UINT32_MAX)
+        {
+            // LDR r, +2 (32 bit)
+            _inst.push_back(0b00'011'0'00'0000000000000000010'00000 | (r & 0b11111));
+            // B +2
+            b(2);
+            // literal value
+            data(std::uint32_t(imm));
+        }
+        else
+        {
+            // LDR r, +2 (64 bit)
+            _inst.push_back(0b01'011'0'00'0000000000000000010'00000 | (r & 0b11111));
+            // B +3
+            b(3);
+            // literal value
+            data(imm);
+        }
     }
 
     void add_imm(std::uint8_t rd, std::uint8_t r, std::uint16_t imm)

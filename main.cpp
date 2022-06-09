@@ -34,7 +34,8 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(2 => 2) {
+        function @test(1 => 2) {
+            uint 42;
             return;
         }
 

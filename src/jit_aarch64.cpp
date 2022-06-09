@@ -122,13 +122,18 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 compiler->emitter.tail_call(&lauf_builtin_dispatch);
                 return;
 
+            case lauf::bc_op::push: {
+                auto reg = compiler->stack.push();
+                auto lit = fn->mod->literal_data()[size_t(ip->push.literal_idx)];
+                compiler->emitter.mov(reg, lit.as_uint);
+                break;
+            }
             case lauf::bc_op::push_zero: {
                 auto reg = compiler->stack.push();
-                compiler->emitter.mov(reg, 0);
+                compiler->emitter.mov(reg, std::uint16_t(0));
                 break;
             }
             case lauf::bc_op::push_small_zext: {
-                assert(ip->push_small_zext.literal <= UINT16_MAX); // TODO
                 auto reg = compiler->stack.push();
                 compiler->emitter.mov(reg, ip->push_small_zext.literal);
                 break;
