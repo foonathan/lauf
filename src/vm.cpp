@@ -322,6 +322,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
     auto        result = dispatch(startup, vstack_ptr, &frame + 1, vm->process);
     if (result)
     {
+        // TODO: is this really the correct output order?
         vstack_ptr = vm->value_stack() - prog.entry->output_count;
         for (auto i = 0; i != prog.entry->output_count; ++i)
         {

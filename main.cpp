@@ -34,7 +34,7 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(1 => 1) {
+        function @test(2 => 2) {
             return;
         }
 
@@ -70,10 +70,10 @@ int main()
     auto compiler = lauf_vm_jit_compiler(vm);
     lauf_jit_compile(compiler, fn);
 
-    lauf_value input = {.as_sint = 35};
-    lauf_value output;
-    if (lauf_vm_execute(vm, program, &input, &output))
-        std::printf("result: %ld\n", output.as_sint);
+    lauf_value input[2] = {{.as_sint = 1}, {.as_sint = 2}};
+    lauf_value output[2];
+    if (lauf_vm_execute(vm, program, input, output))
+        std::printf("result: %ld %ld\n", output[0].as_sint, output[1].as_sint);
 
     lauf_program_destroy(program);
     lauf_module_destroy(mod);
