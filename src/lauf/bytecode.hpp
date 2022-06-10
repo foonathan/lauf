@@ -32,7 +32,7 @@ case bc_op::Name:                                                               
 #undef LAUF_BC_OP
 
     case bc_op::_count:
-        return nullptr;
+        return "<invalid, count>";
     }
 }
 
@@ -112,42 +112,42 @@ struct bc_inst_field_literal_idx
 struct bc_inst_builtin
 {
     bc_op   op : 8;
-    int32_t input : 4;
-    int32_t output : 4;
+    int32_t input_count : 4;
+    int32_t output_count : 4;
     int32_t address : 16;
 
     explicit bc_inst_builtin(bc_op op, lauf_signature sig, int32_t a)
-    : op(op), input(sig.input_count), output(sig.output_count), address(a)
+    : op(op), input_count(sig.input_count), output_count(sig.output_count), address(a)
     {
         LAUF_VERIFY(address == a, to_string(op), "encoding error");
-        LAUF_VERIFY(input == sig.input_count, to_string(op), "encoding error");
-        LAUF_VERIFY(output == sig.output_count, to_string(op), "encoding error");
+        LAUF_VERIFY(input_count == sig.input_count, to_string(op), "encoding error");
+        LAUF_VERIFY(output_count == sig.output_count, to_string(op), "encoding error");
     }
 
     int32_t stack_change() const
     {
-        return int32_t(input) - int32_t(output);
+        return int32_t(input_count) - int32_t(output_count);
     }
 };
 
 struct bc_inst_builtin_long
 {
     bc_op          op : 8;
-    int32_t        input : 4;
-    int32_t        output : 4;
+    int32_t        input_count : 4;
+    int32_t        output_count : 4;
     bc_literal_idx address : 16;
 
     explicit bc_inst_builtin_long(bc_op op, lauf_signature sig, bc_literal_idx a)
-    : op(op), input(sig.input_count), output(sig.output_count), address(a)
+    : op(op), input_count(sig.input_count), output_count(sig.output_count), address(a)
     {
         LAUF_VERIFY(address == a, to_string(op), "encoding error");
-        LAUF_VERIFY(input == sig.input_count, to_string(op), "encoding error");
-        LAUF_VERIFY(output == sig.output_count, to_string(op), "encoding error");
+        LAUF_VERIFY(input_count == sig.input_count, to_string(op), "encoding error");
+        LAUF_VERIFY(output_count == sig.output_count, to_string(op), "encoding error");
     }
 
     int32_t stack_change() const
     {
-        return int32_t(input) - int32_t(output);
+        return int32_t(input_count) - int32_t(output_count);
     }
 };
 

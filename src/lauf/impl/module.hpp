@@ -85,6 +85,11 @@ struct lauf_function_impl
     {
         return array<lauf_vm_instruction>({local_allocation_count});
     }
+
+    int32_t stack_change() const
+    {
+        return int32_t(input_count) - int32_t(output_count);
+    }
 };
 
 //=== module ===//

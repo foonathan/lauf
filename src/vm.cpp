@@ -203,18 +203,18 @@ LAUF_INLINE bool check_condition(lauf::condition_code cc, lauf_value value)
 #if LAUF_HAS_TAIL_CALL
 // Each instruction is a function that tail calls the next one.
 
-namespace
-{
-LAUF_INLINE bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                          lauf_vm_process process)
+bool lauf::dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                    lauf_vm_process process)
 {
     LAUF_TAIL_CALL return lauf::inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
 }
 
+namespace
+{
 #    define LAUF_BC_OP(Name, Data, ...)                                                            \
         bool execute_##Name(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,      \
                             lauf_vm_process process) __VA_ARGS__
-#    define LAUF_DISPATCH LAUF_TAIL_CALL return dispatch(ip, vstack_ptr, frame_ptr, process)
+#    define LAUF_DISPATCH LAUF_TAIL_CALL return lauf::dispatch(ip, vstack_ptr, frame_ptr, process)
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
         LAUF_TAIL_CALL return Callee(ip, vstack_ptr, frame_ptr, process)
 
@@ -235,10 +235,8 @@ lauf_builtin_function* const lauf::inst_fns[] = {
 #elif LAUF_HAS_COMPUTED_GOTO
 // Use computed goto for dispatch.
 
-namespace
-{
-bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-              lauf_vm_process process)
+bool lauf::dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                    lauf_vm_process process)
 {
     void* labels[] = {
 #    define LAUF_BC_OP(Name, Data, ...) &&execute_##Name,
@@ -268,15 +266,12 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
 #    undef LAUF_DISPATCH
 #    undef LAUF_DISPATCH_BUILTIN
 }
-} // namespace
 
 #else
 // Simple switch statement in a loop.
 
-namespace
-{
-bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-              lauf_vm_process process)
+bool lauf::dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                    lauf_vm_process process)
 {
     while (true)
     {
@@ -302,8 +297,7 @@ bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
 }
 
 return true;
-} // namespace
-} // namespace
+}
 
 #endif
 
@@ -323,7 +317,7 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
            LAUF_VM_INSTRUCTION(exit)};
 
     stack_frame frame{};
-    auto        result = dispatch(startup, vstack_ptr, &frame + 1, vm->process);
+    auto        result = lauf::dispatch(startup, vstack_ptr, &frame + 1, vm->process);
     if (result)
     {
         // TODO: is this really the correct output order?

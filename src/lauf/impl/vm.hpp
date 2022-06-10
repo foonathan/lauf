@@ -37,6 +37,9 @@ struct alignas(lauf_value) lauf_vm_impl
 namespace lauf
 {
 size_t frame_size_for(lauf_function fn);
+
+bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+              lauf_vm_process process);
 } // namespace lauf
 
 #endif // SRC_LAUF_IMPL_VM_HPP_INCLUDED

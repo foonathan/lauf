@@ -36,8 +36,14 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(0 => 1) {
-            uint 0;
+        function @test(0 => 2) {
+            call @inner;
+            uint 2;
+            return;
+        }
+
+        function @inner(0 => 1) {
+            uint 3;
             uint 1;
             $usub;
             return;

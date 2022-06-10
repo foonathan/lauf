@@ -64,6 +64,10 @@ LAUF_BC_OP(return_, bc_inst_none, {
         process->remove_allocation(addr);
     }
 
+    if (auto ipv = reinterpret_cast<std::uintptr_t>(frame->return_ip); (ipv & 0b1) != 0)
+        // We're returning to a JIT function, actual return.
+        return true;
+
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
     process->stack().unwind(marker);
@@ -73,6 +77,10 @@ LAUF_BC_OP(return_, bc_inst_none, {
 LAUF_BC_OP(return_no_alloc, bc_inst_none, {
     auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
     auto marker = frame->unwind;
+
+    if (auto ipv = reinterpret_cast<std::uintptr_t>(frame->return_ip); (ipv & 0b1) != 0)
+        // We're returning to a JIT function, actual return.
+        return true;
 
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
@@ -105,7 +113,8 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
     if (callee->jit_fn != nullptr)
     {
         ++ip;
-        LAUF_DISPATCH_BUILTIN(callee->jit_fn, callee->input_count - callee->output_count);
+        auto stack_change = int32_t(callee->input_count) - int32_t(callee->output_count);
+        LAUF_DISPATCH_BUILTIN(callee->jit_fn, stack_change);
     }
     else
     {

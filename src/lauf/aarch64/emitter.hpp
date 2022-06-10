@@ -11,13 +11,16 @@
 
 namespace lauf::aarch64
 {
-enum class register_t : std::uint8_t
+enum class register_ : std::uint8_t
 {
-    // Arbitrary register that is caller saved.
-    scratch = 10,
+    scratch1 = 9,
+    scratch2 = 10,
+
+    // For emitter use only.
+    _scratch = 17,
 };
 
-std::uint8_t encode(register_t reg)
+std::uint8_t encode(register_ reg)
 {
     return std::uint8_t(reg) & 0b11111;
 }
@@ -56,10 +59,10 @@ public:
     {
         static_assert(std::is_function_v<Fn> && sizeof(fn) == sizeof(std::uint64_t));
 
-        mov(register_t::scratch, reinterpret_cast<std::uintptr_t>(fn));
+        mov_imm(register_::_scratch, reinterpret_cast<std::uintptr_t>(fn));
         // BLR scratch
         _inst.push_back(0b1101011'0'0'01'11111'0000'0'0'00000'00000
-                        | encode(register_t::scratch) << 5);
+                        | encode(register_::_scratch) << 5);
     }
 
     template <typename Fn>
@@ -68,16 +71,29 @@ public:
         static_assert(std::is_function_v<Fn> && sizeof(fn) == sizeof(std::uint64_t));
 
         // LDR scratch, +2
-        _inst.push_back(0b01'011'0'00'0000000000000000010'00000 | encode(register_t::scratch));
+        _inst.push_back(0b01'011'0'00'0000000000000000010'00000 | encode(register_::_scratch));
         // BR scratch
         _inst.push_back(0b1101011'0'0'00'11111'0000'0'0'00000'00000
-                        | encode(register_t::scratch) << 5);
+                        | encode(register_::_scratch) << 5);
         // literal value
         data(fn);
     }
 
     //=== register operations ===//
-    void mov(register_t r, std::uint64_t imm)
+    void mov(register_ rd, register_ r)
+    {
+        auto inst = 0b1'01'01010'00'0'00000'000000'11111'00000;
+        inst |= encode(rd) << 0;
+        inst |= encode(r) << 16;
+        _inst.push_back(inst);
+    }
+    void mov_from_sp(register_ r)
+    {
+        auto inst = 0b1'0'0'100010'0'000000000000'11111'00000;
+        inst |= encode(r) << 0;
+        _inst.push_back(inst);
+    }
+    void mov_imm(register_ r, std::uint64_t imm)
     {
         if (imm <= UINT16_MAX)
         {
@@ -107,7 +123,18 @@ public:
         }
     }
 
-    void add_imm(register_t rd, register_t r, std::uint16_t imm)
+    void adr(register_ rd, std::int32_t imm)
+    {
+        imm &= (1 << 21) - 1;
+
+        auto inst = 0b0'00'10000 << 24;
+        inst |= (imm & 0b11) << 29;
+        inst |= (imm >> 2) << 5;
+        inst |= encode(rd) << 0;
+        _inst.push_back(inst);
+    }
+
+    void add_imm(register_ rd, register_ r, std::uint16_t imm)
     {
         // ADD rd, r, #imm
         auto inst = 0b1'0'0'100010'0'000000000000'00000'00000;
@@ -116,7 +143,7 @@ public:
         inst |= (imm & 0b111111111111) << 10;
         _inst.push_back(inst);
     }
-    void sub_imm(register_t rd, register_t r, std::uint16_t imm)
+    void sub_imm(register_ rd, register_ r, std::uint16_t imm)
     {
         // SUB rd, r, #imm
         auto inst = 0b1'1'0'100010'0'000000000000'00000'00000;
@@ -127,7 +154,7 @@ public:
     }
 
     //=== memory ===//
-    void push(register_t r)
+    void push(register_ r)
     {
         // STR r, [SP, #-16]!
         // We subtract 16 as SP needs to have 16 byte alignment at all times.
@@ -135,7 +162,7 @@ public:
         inst |= encode(r) << 0;
         _inst.push_back(inst);
     }
-    void push_pair(register_t r1, register_t r2)
+    void push_pair(register_ r1, register_ r2)
     {
         // STP r1, r2, [SP, #-16]!
         auto inst = 0b10'101'0'011'0'1111110'00000'11111'00000;
@@ -144,7 +171,7 @@ public:
         _inst.push_back(inst);
     }
 
-    void pop(register_t r)
+    void pop(register_ r)
     {
         // LDR r, [SP], #16
         // We add 16 as SP needs to have 16 byte alignment at all times.
@@ -152,7 +179,7 @@ public:
         inst |= encode(r) << 0;
         _inst.push_back(inst);
     }
-    void pop_pair(register_t r1, register_t r2)
+    void pop_pair(register_ r1, register_ r2)
     {
         // LDP r1, r2, [SP], #16
         auto inst = 0b10'101'0'001'1'0000010'00000'11111'00000;
@@ -161,7 +188,7 @@ public:
         _inst.push_back(inst);
     }
 
-    void str_imm(register_t reg, register_t base, std::uint16_t index)
+    void str_imm(register_ reg, register_ base, std::uint16_t index)
     {
         // STR reg, base, #(index * 8)
         auto inst = 0b11'111'0'01'00'000000000000'00000'00000;
@@ -170,7 +197,7 @@ public:
         inst |= (index & 0b111111111111) << 10;
         _inst.push_back(inst);
     }
-    void ldr_imm(register_t reg, register_t base, std::uint16_t index)
+    void ldr_imm(register_ reg, register_ base, std::uint16_t index)
     {
         // LDR reg, base, #(index * 8)
         auto inst = 0b11'111'0'01'01'000000000000'00000'00000;

@@ -18,7 +18,7 @@ public:
     {
         _stack.clear();
         for (auto r = 19; r <= 29; ++r)
-            _pool.push_back(lauf::aarch64::register_t(r));
+            _pool.push_back(lauf::aarch64::register_(r));
     }
 
     auto push()
@@ -62,8 +62,8 @@ public:
 
 private:
     // _stack.back() is the register that stores the value on top of the stack.
-    std::vector<lauf::aarch64::register_t> _stack;
-    std::vector<lauf::aarch64::register_t> _pool;
+    std::vector<lauf::aarch64::register_> _stack;
+    std::vector<lauf::aarch64::register_> _pool;
 };
 } // namespace
 
@@ -95,10 +95,10 @@ namespace
 
 // Calling convention: x0 is parent ip, x1 is vstack_ptr, x2 is frame_ptr, x3 is process.
 // Register x19-x29 are used for the value stack.
-constexpr auto r_ip         = lauf::aarch64::register_t(0);
-constexpr auto r_vstack_ptr = lauf::aarch64::register_t(1);
-constexpr auto r_frame_ptr  = lauf::aarch64::register_t(2);
-constexpr auto r_process    = lauf::aarch64::register_t(3);
+constexpr auto r_ip         = lauf::aarch64::register_(0);
+constexpr auto r_vstack_ptr = lauf::aarch64::register_(1);
+constexpr auto r_frame_ptr  = lauf::aarch64::register_(2);
+constexpr auto r_process    = lauf::aarch64::register_(3);
 
 void save_args(lauf_jit_compiler compiler)
 {
@@ -131,45 +131,57 @@ void store_to_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
         compiler->emitter.str_imm(compiler->stack.pop(), r_vstack_ptr, i);
 }
 
-template <typename Inst>
-void call_builtin(lauf_jit_compiler compiler, lauf_builtin_function fn, Inst* call)
+template <typename Call, typename RegOrImm>
+void call_builtin(lauf_jit_compiler compiler, const Call& call, lauf_builtin_function fn,
+                  RegOrImm ip)
 {
-    // Store the input values to the stack.
-    store_to_value_stack(compiler, call->input);
+    store_to_value_stack(compiler, call.input_count);
 
-    // As we're calling a function, we need to save registers.
     save_args(compiler);
-    // Set ip to the next instruction, but set the flag to mark that we're a builtin.
-    auto ip = (reinterpret_cast<std::uintptr_t>(call) + sizeof(lauf_vm_instruction)) | 1;
-    compiler->emitter.mov(r_ip, ip);
-    // Call the builtin.
-    compiler->emitter.call(fn);
+    {
+        if constexpr (std::is_same_v<RegOrImm, lauf::aarch64::register_>)
+            compiler->emitter.mov(r_ip, ip);
+        else
+            compiler->emitter.mov_imm(r_ip, ip);
 
-    // Restore the previously saved arguments.
+        compiler->emitter.call(fn);
+    }
     restore_args(compiler);
-    // Update the vstack_ptr to account for the stack change.
-    compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr,
-                              call->stack_change() * sizeof(lauf_value));
 
-    // Load the output values into registers.
-    load_from_value_stack(compiler, call->output);
+    if (call.stack_change() > 0)
+        compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr,
+                                  call.stack_change() * sizeof(lauf_value));
+    else
+        compiler->emitter.sub_imm(r_vstack_ptr, r_vstack_ptr,
+                                  -call.stack_change() * sizeof(lauf_value));
+
+    load_from_value_stack(compiler, call.output_count);
+}
+
+auto encode_as_int(lauf_vm_instruction inst)
+{
+    static_assert(sizeof(lauf_vm_instruction) == sizeof(std::uint32_t));
+    std::uint32_t data;
+    std::memcpy(&data, &inst, sizeof(std::uint32_t));
+    return data;
 }
 } // namespace
 
 lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
 {
+    using namespace lauf::aarch64;
     compiler->emitter.clear();
     compiler->stack.reset();
 
     //=== prologue ===//
     // Save callee saved registers x19-x29 and link register x30, in case we might need them.
     // TODO: only save them, when we need them.
-    compiler->emitter.push_pair(lauf::aarch64::register_t(19), lauf::aarch64::register_t(20));
-    compiler->emitter.push_pair(lauf::aarch64::register_t(21), lauf::aarch64::register_t(22));
-    compiler->emitter.push_pair(lauf::aarch64::register_t(23), lauf::aarch64::register_t(24));
-    compiler->emitter.push_pair(lauf::aarch64::register_t(25), lauf::aarch64::register_t(26));
-    compiler->emitter.push_pair(lauf::aarch64::register_t(27), lauf::aarch64::register_t(28));
-    compiler->emitter.push_pair(lauf::aarch64::register_t(29), lauf::aarch64::register_t(30));
+    compiler->emitter.push_pair(register_(19), register_(20));
+    compiler->emitter.push_pair(register_(21), register_(22));
+    compiler->emitter.push_pair(register_(23), register_(24));
+    compiler->emitter.push_pair(register_(25), register_(26));
+    compiler->emitter.push_pair(register_(27), register_(28));
+    compiler->emitter.push_pair(register_(29), register_(30));
 
     // Transfer the input values from the value stack.
     load_from_value_stack(compiler, fn->input_count);
@@ -179,12 +191,12 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
         store_to_value_stack(compiler, fn->output_count);
 
         // Restore the registers we've pushed above.
-        compiler->emitter.pop_pair(lauf::aarch64::register_t(29), lauf::aarch64::register_t(30));
-        compiler->emitter.pop_pair(lauf::aarch64::register_t(27), lauf::aarch64::register_t(28));
-        compiler->emitter.pop_pair(lauf::aarch64::register_t(25), lauf::aarch64::register_t(26));
-        compiler->emitter.pop_pair(lauf::aarch64::register_t(23), lauf::aarch64::register_t(24));
-        compiler->emitter.pop_pair(lauf::aarch64::register_t(21), lauf::aarch64::register_t(22));
-        compiler->emitter.pop_pair(lauf::aarch64::register_t(19), lauf::aarch64::register_t(20));
+        compiler->emitter.pop_pair(register_(29), register_(30));
+        compiler->emitter.pop_pair(register_(27), register_(28));
+        compiler->emitter.pop_pair(register_(25), register_(26));
+        compiler->emitter.pop_pair(register_(23), register_(24));
+        compiler->emitter.pop_pair(register_(21), register_(22));
+        compiler->emitter.pop_pair(register_(19), register_(20));
     };
 
     //=== emit body ===//
@@ -201,35 +213,52 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 compiler->emitter.tail_call(&lauf_builtin_dispatch);
                 return;
 
+            case lauf::bc_op::call: {
+                auto callee = fn->mod->function_begin()[size_t(ip->call.function_idx)];
+
+                // We create a temporary array consisting the call instruction, followed by exit.
+                compiler->emitter.b(3);
+                compiler->emitter.data(*ip);
+                compiler->emitter.data(LAUF_VM_INSTRUCTION(exit));
+                compiler->emitter.adr(register_::scratch1,
+                                      -2 * int32_t(sizeof(lauf_vm_instruction)));
+
+                call_builtin(compiler, *callee, &lauf::dispatch, register_::scratch1);
+                break;
+            }
             case lauf::bc_op::call_builtin: {
                 auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_dispatch);
                 auto addr      = base_addr + ip->call_builtin.address * std::ptrdiff_t(16);
                 auto fn        = reinterpret_cast<lauf_builtin_function*>(addr);
-                call_builtin(compiler, fn, &ip->call_builtin);
+
+                auto dispatch_ip = reinterpret_cast<std::uintptr_t>(ip + 1) | 1;
+                call_builtin(compiler, ip->call_builtin, fn, dispatch_ip);
                 break;
             }
             case lauf::bc_op::call_builtin_long: {
                 auto addr
                     = fn->mod->literal_data()[size_t(ip->call_builtin_long.address)].as_native_ptr;
                 auto fn = (lauf_builtin_function*)addr;
-                call_builtin(compiler, fn, &ip->call_builtin_long);
+
+                auto dispatch_ip = reinterpret_cast<std::uintptr_t>(ip + 1) | 1;
+                call_builtin(compiler, ip->call_builtin_long, fn, dispatch_ip);
                 break;
             }
 
             case lauf::bc_op::push: {
                 auto reg = compiler->stack.push();
                 auto lit = fn->mod->literal_data()[size_t(ip->push.literal_idx)];
-                compiler->emitter.mov(reg, lit.as_uint);
+                compiler->emitter.mov_imm(reg, lit.as_uint);
                 break;
             }
             case lauf::bc_op::push_zero: {
                 auto reg = compiler->stack.push();
-                compiler->emitter.mov(reg, std::uint16_t(0));
+                compiler->emitter.mov_imm(reg, std::uint16_t(0));
                 break;
             }
             case lauf::bc_op::push_small_zext: {
                 auto reg = compiler->stack.push();
-                compiler->emitter.mov(reg, ip->push_small_zext.literal);
+                compiler->emitter.mov_imm(reg, ip->push_small_zext.literal);
                 break;
             }
 
