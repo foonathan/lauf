@@ -17,7 +17,7 @@ public:
     void reset()
     {
         _stack.clear();
-        for (auto r = 19; r != 29; ++r)
+        for (auto r = 19; r <= 29; ++r)
             _pool.push_back(r);
     }
 
@@ -90,15 +90,76 @@ lauf_jit_compiler lauf_vm_jit_compiler(lauf_vm vm)
 }
 
 //=== compile ===//
+namespace
+{
+
+// Calling convention: x0 is parent ip, x1 is vstack_ptr, x2 is frame_ptr, x3 is process.
+// Register x19-x29 are used for the value stack.
+constexpr auto r_ip         = 0;
+constexpr auto r_vstack_ptr = 1;
+constexpr auto r_frame_ptr  = 2;
+constexpr auto r_process    = 3;
+
+void save_args(lauf_jit_compiler compiler)
+{
+    compiler->emitter.push_pair(r_ip, r_vstack_ptr);
+    compiler->emitter.push_pair(r_frame_ptr, r_process);
+}
+void restore_args(lauf_jit_compiler compiler)
+{
+    compiler->emitter.pop_pair(r_frame_ptr, r_process);
+    compiler->emitter.pop_pair(r_ip, r_vstack_ptr);
+}
+
+void load_from_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
+{
+    if (count == 0)
+        return;
+
+    for (auto i = 0u; i != count; ++i)
+        compiler->emitter.ldr_imm(compiler->stack.push(), r_vstack_ptr, count - i - 1);
+    compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr, count * 8);
+}
+
+void store_to_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
+{
+    if (count == 0)
+        return;
+
+    compiler->emitter.sub_imm(r_vstack_ptr, r_vstack_ptr, count * 8);
+    for (auto i = 0u; i != count; ++i)
+        compiler->emitter.str_imm(compiler->stack.pop(), r_vstack_ptr, i);
+}
+
+template <typename Inst>
+void call_builtin(lauf_jit_compiler compiler, lauf_builtin_function fn, Inst call)
+{
+    // Store the input values to the stack.
+    store_to_value_stack(compiler, call.input);
+
+    // As we're calling a function, we need to save registers.
+    save_args(compiler);
+    // Set r_ip to 0 so the builtin call returns and doesn't do a tail call.
+    compiler->emitter.mov(r_ip, 0);
+    // Call the builtin.
+    compiler->emitter.call(fn);
+
+    // Restore the previously saved arguments.
+    restore_args(compiler);
+    // Update the vstack_ptr to account for the stack change.
+    compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr, call.stack_change() * sizeof(lauf_value));
+
+    // Load the output values into registers.
+    load_from_value_stack(compiler, call.output);
+}
+} // namespace
+
 lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
 {
     compiler->emitter.clear();
     compiler->stack.reset();
 
     //=== prologue ===//
-    // Calling convention: x0 is parent ip, x1 is vstack_ptr, x3 is frame_ptr, x4 is process.
-    // Register x19-x29 are used for the value stack.
-
     // Save callee saved registers x19-x29 and link register x30, in case we might need them.
     // TODO: only save them, when we need them.
     compiler->emitter.push_pair(19, 20);
@@ -109,21 +170,11 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     compiler->emitter.push_pair(29, 30);
 
     // Transfer the input values from the value stack.
-    if (fn->input_count > 0)
-    {
-        for (auto i = 0u; i != fn->input_count; ++i)
-            compiler->emitter.ldr_imm(compiler->stack.push(), 1, fn->input_count - i - 1);
-        compiler->emitter.add_imm(1, 1, fn->input_count * 8);
-    }
+    load_from_value_stack(compiler, fn->input_count);
 
     auto emit_epilogue = [&] {
         // Transfer the output values to the value stack.
-        if (fn->output_count > 0)
-        {
-            compiler->emitter.sub_imm(1, 1, fn->output_count * 8);
-            for (auto i = 0u; i != fn->output_count; ++i)
-                compiler->emitter.str_imm(compiler->stack.pop(), 1, i);
-        }
+        store_to_value_stack(compiler, fn->output_count);
 
         // Restore the registers we've pushed above.
         compiler->emitter.pop_pair(29, 30);
@@ -147,6 +198,21 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 emit_epilogue();
                 compiler->emitter.tail_call(&lauf_builtin_dispatch);
                 return;
+
+            case lauf::bc_op::call_builtin: {
+                auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_dispatch);
+                auto addr      = base_addr + ip->call_builtin.address * std::ptrdiff_t(16);
+                auto fn        = reinterpret_cast<lauf_builtin_function*>(addr);
+                call_builtin(compiler, fn, ip->call_builtin);
+                break;
+            }
+            case lauf::bc_op::call_builtin_long: {
+                auto addr
+                    = fn->mod->literal_data()[size_t(ip->call_builtin_long.address)].as_native_ptr;
+                auto fn = (lauf_builtin_function*)addr;
+                call_builtin(compiler, fn, ip->call_builtin_long);
+                break;
+            }
 
             case lauf::bc_op::push: {
                 auto reg = compiler->stack.push();

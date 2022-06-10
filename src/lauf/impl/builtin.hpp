@@ -17,6 +17,11 @@ extern lauf_builtin_function* const inst_fns[size_t(bc_op::_count)];
 LAUF_INLINE bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
                                        void* frame_ptr, lauf_vm_process process)
 {
+    if (ip == nullptr)
+        // This happens when we call a builtin from a JIT function.
+        // We need to return at this point.
+        return true;
+
     LAUF_TAIL_CALL return lauf::inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
 }
 #else

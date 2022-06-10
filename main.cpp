@@ -35,9 +35,10 @@ int main()
         module @mod;
 
         function @test(0 => 2) {
-            uint 11;
-            uint 42;
-            roll 1;
+            uint 2;
+            pick 0;
+            $sadd;
+            uint 3;
             return;
         }
 

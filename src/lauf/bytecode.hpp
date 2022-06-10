@@ -5,6 +5,7 @@
 #define SRC_BYTECODE_HPP_INCLUDED
 
 #include <lauf/config.h>
+#include <lauf/module.h>
 #include <lauf/verify.hpp>
 
 union lauf_vm_instruction;
@@ -108,31 +109,45 @@ struct bc_inst_field_literal_idx
     }
 };
 
-struct bc_inst_offset_literal_idx
-{
-    bc_op          op : 8;
-    int32_t        offset : 8;
-    bc_literal_idx literal_idx : 16;
-
-    explicit bc_inst_offset_literal_idx(bc_op op, int32_t o, bc_literal_idx idx)
-    : op(op), offset(o), literal_idx(idx)
-    {
-        LAUF_VERIFY(offset == o, to_string(op), "encoding error");
-        LAUF_VERIFY(literal_idx == idx, to_string(op), "encoding error");
-    }
-};
-
 struct bc_inst_builtin
 {
     bc_op   op : 8;
-    int32_t stack_change : 8;
+    int32_t input : 4;
+    int32_t output : 4;
     int32_t address : 16;
 
-    explicit bc_inst_builtin(bc_op op, int32_t stack, int32_t a)
-    : op(op), stack_change(stack), address(a)
+    explicit bc_inst_builtin(bc_op op, lauf_signature sig, int32_t a)
+    : op(op), input(sig.input_count), output(sig.output_count), address(a)
     {
-        LAUF_VERIFY(stack_change == stack, to_string(op), "encoding error");
         LAUF_VERIFY(address == a, to_string(op), "encoding error");
+        LAUF_VERIFY(input == sig.input_count, to_string(op), "encoding error");
+        LAUF_VERIFY(output == sig.output_count, to_string(op), "encoding error");
+    }
+
+    int32_t stack_change() const
+    {
+        return int32_t(input) - int32_t(output);
+    }
+};
+
+struct bc_inst_builtin_long
+{
+    bc_op          op : 8;
+    int32_t        input : 4;
+    int32_t        output : 4;
+    bc_literal_idx address : 16;
+
+    explicit bc_inst_builtin_long(bc_op op, lauf_signature sig, bc_literal_idx a)
+    : op(op), input(sig.input_count), output(sig.output_count), address(a)
+    {
+        LAUF_VERIFY(address == a, to_string(op), "encoding error");
+        LAUF_VERIFY(input == sig.input_count, to_string(op), "encoding error");
+        LAUF_VERIFY(output == sig.output_count, to_string(op), "encoding error");
+    }
+
+    int32_t stack_change() const
+    {
+        return int32_t(input) - int32_t(output);
     }
 };
 

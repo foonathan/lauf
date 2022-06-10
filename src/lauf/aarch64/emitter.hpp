@@ -41,6 +41,16 @@ public:
     }
 
     template <typename Fn>
+    void call(Fn* fn)
+    {
+        static_assert(std::is_function_v<Fn> && sizeof(fn) == sizeof(std::uint64_t));
+
+        mov(9, reinterpret_cast<std::uintptr_t>(fn));
+        // BLR x9
+        _inst.push_back(0b1101011'0'0'01'11111'0000'0'0'01001'00000);
+    }
+
+    template <typename Fn>
     void tail_call(Fn* fn)
     {
         static_assert(std::is_function_v<Fn> && sizeof(fn) == sizeof(std::uint64_t));
@@ -104,12 +114,29 @@ public:
     }
 
     //=== memory ===//
+    void push(std::uint8_t r)
+    {
+        // STR r, [SP, #-16]!
+        // We subtract 16 as SP needs to have 16 byte alignment at all times.
+        auto inst = 0b11'111'0'00'00'0'111110000'11'11111'00000;
+        inst |= (r & 0b11111) << 0;
+        _inst.push_back(inst);
+    }
     void push_pair(std::uint8_t r1, std::uint8_t r2)
     {
         // STP r1, r2, [SP, #-16]!
         auto inst = 0b10'101'0'011'0'1111110'00000'11111'00000;
         inst |= (r2 & 0b11111) << 10;
         inst |= (r1 & 0b11111) << 0;
+        _inst.push_back(inst);
+    }
+
+    void pop(std::uint8_t r)
+    {
+        // LDR r, [SP], #16
+        // We add 16 as SP needs to have 16 byte alignment at all times.
+        auto inst = 0b11'111'0'00'01'0'000010000'01'11111'00000;
+        inst |= (r & 0b11111) << 0;
         _inst.push_back(inst);
     }
     void pop_pair(std::uint8_t r1, std::uint8_t r2)
