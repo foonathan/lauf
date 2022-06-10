@@ -205,11 +205,16 @@ LAUF_INLINE bool check_condition(lauf::condition_code cc, lauf_value value)
 
 namespace
 {
+LAUF_INLINE bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                          lauf_vm_process process)
+{
+    LAUF_TAIL_CALL return lauf::inst_fns[size_t(ip->tag.op)](ip, vstack_ptr, frame_ptr, process);
+}
+
 #    define LAUF_BC_OP(Name, Data, ...)                                                            \
         bool execute_##Name(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,      \
                             lauf_vm_process process) __VA_ARGS__
-#    define LAUF_DISPATCH                                                                          \
-        LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process)
+#    define LAUF_DISPATCH LAUF_TAIL_CALL return dispatch(ip, vstack_ptr, frame_ptr, process)
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
         LAUF_TAIL_CALL return Callee(ip, vstack_ptr, frame_ptr, process)
 
@@ -219,7 +224,6 @@ namespace
 #    undef LAUF_DISPATCH
 #    undef LAUF_DISPATCH_BUILTIN
 
-constexpr auto dispatch = &lauf_builtin_dispatch;
 } // namespace
 
 lauf_builtin_function* const lauf::inst_fns[] = {

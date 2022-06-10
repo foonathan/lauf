@@ -29,16 +29,17 @@ int main()
                                         lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
     lauf_frontend_text_register_builtin(parser, "ssub",
                                         lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
+    lauf_frontend_text_register_builtin(parser, "usub",
+                                        lauf_usub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
     lauf_frontend_text_register_builtin(parser, "scmp", lauf_scmp_builtin());
     lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(0 => 2) {
-            uint 2;
-            pick 0;
-            $sadd;
-            uint 3;
+        function @test(0 => 1) {
+            uint 0;
+            uint 1;
+            $usub;
             return;
         }
 

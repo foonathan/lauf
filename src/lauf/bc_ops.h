@@ -83,13 +83,7 @@ LAUF_BC_OP(return_no_alloc, bc_inst_none, {
 
 // Calls the specified function.
 LAUF_BC_OP(call, bc_inst_function_idx, {
-    auto callee = process->get_function(ip->call.function_idx);
-    if (callee->jit_fn != nullptr)
-    {
-        ++ip;
-        LAUF_DISPATCH_BUILTIN(callee->jit_fn, callee->input_count - callee->output_count);
-    }
-
+    auto callee     = process->get_function(ip->call.function_idx);
     auto marker     = process->stack().top();
     auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
 
@@ -107,8 +101,17 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
     frame_ptr = new (memory)
                     stack_frame{callee, ip + 1, marker, lauf_value_address_invalid, prev_frame}
                 + 1;
-    ip = callee->bytecode();
-    LAUF_DISPATCH;
+
+    if (callee->jit_fn != nullptr)
+    {
+        ++ip;
+        LAUF_DISPATCH_BUILTIN(callee->jit_fn, callee->input_count - callee->output_count);
+    }
+    else
+    {
+        ip = callee->bytecode();
+        LAUF_DISPATCH;
+    }
 })
 
 // Creates the local allocations for the current function.

@@ -132,25 +132,27 @@ void store_to_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
 }
 
 template <typename Inst>
-void call_builtin(lauf_jit_compiler compiler, lauf_builtin_function fn, Inst call)
+void call_builtin(lauf_jit_compiler compiler, lauf_builtin_function fn, Inst* call)
 {
     // Store the input values to the stack.
-    store_to_value_stack(compiler, call.input);
+    store_to_value_stack(compiler, call->input);
 
     // As we're calling a function, we need to save registers.
     save_args(compiler);
-    // Set r_ip to 0 so the builtin call returns and doesn't do a tail call.
-    compiler->emitter.mov(r_ip, 0);
+    // Set ip to the next instruction, but set the flag to mark that we're a builtin.
+    auto ip = (reinterpret_cast<std::uintptr_t>(call) + sizeof(lauf_vm_instruction)) | 1;
+    compiler->emitter.mov(r_ip, ip);
     // Call the builtin.
     compiler->emitter.call(fn);
 
     // Restore the previously saved arguments.
     restore_args(compiler);
     // Update the vstack_ptr to account for the stack change.
-    compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr, call.stack_change() * sizeof(lauf_value));
+    compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr,
+                              call->stack_change() * sizeof(lauf_value));
 
     // Load the output values into registers.
-    load_from_value_stack(compiler, call.output);
+    load_from_value_stack(compiler, call->output);
 }
 } // namespace
 
@@ -203,14 +205,14 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_dispatch);
                 auto addr      = base_addr + ip->call_builtin.address * std::ptrdiff_t(16);
                 auto fn        = reinterpret_cast<lauf_builtin_function*>(addr);
-                call_builtin(compiler, fn, ip->call_builtin);
+                call_builtin(compiler, fn, &ip->call_builtin);
                 break;
             }
             case lauf::bc_op::call_builtin_long: {
                 auto addr
                     = fn->mod->literal_data()[size_t(ip->call_builtin_long.address)].as_native_ptr;
                 auto fn = (lauf_builtin_function*)addr;
-                call_builtin(compiler, fn, ip->call_builtin_long);
+                call_builtin(compiler, fn, &ip->call_builtin_long);
                 break;
             }
 
