@@ -27,6 +27,17 @@ struct alignas(void*) stack_frame
     lauf::stack_allocator::marker unwind;
     lauf_value_address            first_local_allocation;
     stack_frame*                  prev;
+
+    LAUF_INLINE void free_local_allocations(lauf_vm_process process)
+    {
+        for (auto i = 0u; i != fn->local_allocation_count; ++i)
+        {
+            auto addr = first_local_allocation;
+            addr.allocation += i;
+            // Guaranteed to be valid.
+            process->remove_allocation(addr);
+        }
+    }
 };
 } // namespace
 
@@ -166,7 +177,7 @@ LAUF_NOINLINE_IF_TAIL bool resize_allocation_list(lauf_vm_instruction* ip, lauf_
     // We resize the allocation list.
     lauf_vm_process_impl::resize_allocation_list(process);
     // And try executing the same instruction again.
-    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
+    LAUF_TAIL_CALL return lauf_builtin_finish(ip, vstack_ptr, frame_ptr, process);
 }
 
 LAUF_NOINLINE_IF_TAIL bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
@@ -177,7 +188,7 @@ LAUF_NOINLINE_IF_TAIL bool reserve_new_stack_block(lauf_vm_instruction* ip, lauf
         LAUF_DO_PANIC("stack overflow");
 
     // And try executing the same instruction again.
-    LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, vstack_ptr, frame_ptr, process);
+    LAUF_TAIL_CALL return lauf_builtin_finish(ip, vstack_ptr, frame_ptr, process);
 }
 
 LAUF_INLINE bool check_condition(lauf::condition_code cc, lauf_value value)
@@ -255,7 +266,8 @@ bool lauf::dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
         do                                                                                         \
         {                                                                                          \
-            Callee(ip, vstack_ptr, frame_ptr, process);                                            \
+            if (!Callee(ip, vstack_ptr, frame_ptr, process))                                       \
+                return false;                                                                      \
             vstack_ptr += (StackChange);                                                           \
             goto* labels[size_t(ip->tag.op)];                                                      \
         } while (0);
@@ -283,7 +295,8 @@ bool lauf::dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame
 #    define LAUF_DISPATCH break
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
         {                                                                                          \
-            Callee(ip, vstack_ptr, frame_ptr, process);                                            \
+            if (!Callee(ip, vstack_ptr, frame_ptr, process))                                       \
+                return false;                                                                      \
             vstack_ptr += (StackChange);                                                           \
             break
         }
@@ -300,6 +313,15 @@ return true;
 }
 
 #endif
+
+bool lauf::jit_finish(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
+                      lauf_vm_process process)
+{
+    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    frame->free_local_allocations(process);
+    process->stack().unwind(frame->unwind);
+    LAUF_TAIL_CALL return lauf_builtin_finish(ip, vstack_ptr, frame_ptr, process);
+}
 
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {

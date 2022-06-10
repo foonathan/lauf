@@ -25,8 +25,8 @@ typedef struct lauf_builtin
 } lauf_builtin;
 
 /// This function must be tail-called at the end of the builtin.
-LAUF_BUILTIN_SECTION bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
-                                                void* frame_ptr, lauf_vm_process process);
+LAUF_BUILTIN_SECTION bool lauf_builtin_finish(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                              void* frame_ptr, lauf_vm_process process);
 
 /// This function must be called at the end of a builtin that panics.
 /// vstack_ptr->as_native_ptr is the `const char*` message.
@@ -42,7 +42,7 @@ LAUF_BUILTIN_SECTION bool lauf_builtin_panic(lauf_vm_instruction* ip, lauf_value
         _vstack_ptr += 1 - N;                                                                      \
         lauf_value* result = _vstack_ptr;                                                          \
         __VA_ARGS__                                                                                \
-        LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, _vstack_ptr, frame_ptr, process);          \
+        LAUF_TAIL_CALL return lauf_builtin_finish(ip, _vstack_ptr, frame_ptr, process);            \
     }                                                                                              \
     lauf_builtin Name(void)                                                                        \
     {                                                                                              \
@@ -59,7 +59,7 @@ LAUF_BUILTIN_SECTION bool lauf_builtin_panic(lauf_vm_instruction* ip, lauf_value
         _vstack_ptr += 2 - N;                                                                      \
         lauf_value* result = _vstack_ptr;                                                          \
         __VA_ARGS__                                                                                \
-        LAUF_TAIL_CALL return lauf_builtin_dispatch(ip, _vstack_ptr, frame_ptr, process);          \
+        LAUF_TAIL_CALL return lauf_builtin_finish(ip, _vstack_ptr, frame_ptr, process);            \
     }                                                                                              \
     lauf_builtin Name(void)                                                                        \
     {                                                                                              \

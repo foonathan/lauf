@@ -15,8 +15,8 @@ namespace lauf
 extern lauf_builtin_function* const inst_fns[size_t(bc_op::_count)];
 }
 
-LAUF_INLINE bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
-                                       void* frame_ptr, lauf_vm_process process)
+LAUF_INLINE bool lauf_builtin_finish(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
+                                     void* frame_ptr, lauf_vm_process process)
 {
     auto ipv = reinterpret_cast<std::uintptr_t>(ip);
     if ((ipv & 0b1) != 0)
@@ -28,7 +28,7 @@ LAUF_INLINE bool lauf_builtin_dispatch(lauf_vm_instruction* ip, lauf_value* vsta
                                                                  process);
 }
 #else
-LAUF_INLINE bool lauf_builtin_dispatch(lauf_vm_instruction*, lauf_value*, void*, lauf_vm_process)
+LAUF_INLINE bool lauf_builtin_finish(lauf_vm_instruction*, lauf_value*, void*, lauf_vm_process)
 {
     // We terminate the call here, so we don't get a stack overflow.
     return true;

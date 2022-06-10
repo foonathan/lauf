@@ -92,13 +92,14 @@ lauf_jit_compiler lauf_vm_jit_compiler(lauf_vm vm)
 //=== compile ===//
 namespace
 {
+using namespace lauf::aarch64;
 
 // Calling convention: x0 is parent ip, x1 is vstack_ptr, x2 is frame_ptr, x3 is process.
 // Register x19-x29 are used for the value stack.
-constexpr auto r_ip         = lauf::aarch64::register_(0);
-constexpr auto r_vstack_ptr = lauf::aarch64::register_(1);
-constexpr auto r_frame_ptr  = lauf::aarch64::register_(2);
-constexpr auto r_process    = lauf::aarch64::register_(3);
+constexpr auto r_ip         = register_(0);
+constexpr auto r_vstack_ptr = register_(1);
+constexpr auto r_frame_ptr  = register_(2);
+constexpr auto r_process    = register_(3);
 
 void save_args(lauf_jit_compiler compiler)
 {
@@ -132,7 +133,8 @@ void store_to_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
 }
 
 template <typename Call, typename Imm>
-void call_builtin(lauf_jit_compiler compiler, const Call& call, lauf_builtin_function fn, Imm ip)
+void call_builtin(lauf_jit_compiler compiler, emitter::label lab_panic, const Call& call,
+                  lauf_builtin_function fn, Imm ip)
 {
     store_to_value_stack(compiler, call.input_count);
 
@@ -140,8 +142,10 @@ void call_builtin(lauf_jit_compiler compiler, const Call& call, lauf_builtin_fun
     {
         compiler->emitter.mov_imm(r_ip, ip);
         compiler->emitter.call(fn);
+        compiler->emitter.mov(register_::scratch1, register_::result);
     }
     restore_args(compiler);
+    compiler->emitter.cbz(register_::scratch1, lab_panic);
 
     if (call.stack_change() > 0)
         compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr,
@@ -152,21 +156,15 @@ void call_builtin(lauf_jit_compiler compiler, const Call& call, lauf_builtin_fun
 
     load_from_value_stack(compiler, call.output_count);
 }
-
-auto encode_as_int(lauf_vm_instruction inst)
-{
-    static_assert(sizeof(lauf_vm_instruction) == sizeof(std::uint32_t));
-    std::uint32_t data;
-    std::memcpy(&data, &inst, sizeof(std::uint32_t));
-    return data;
-}
 } // namespace
 
 lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
 {
-    using namespace lauf::aarch64;
     compiler->emitter.clear();
     compiler->stack.reset();
+
+    const auto lab_success = compiler->emitter.declare_label();
+    const auto lab_panic   = compiler->emitter.declare_label();
 
     //=== prologue ===//
     // Save callee saved registers x19-x29 and link register x30, in case we might need them.
@@ -178,13 +176,7 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     compiler->emitter.push_pair(register_(27), register_(28));
     compiler->emitter.push_pair(register_(29), register_(30));
 
-    // Transfer the input values from the value stack.
-    load_from_value_stack(compiler, fn->input_count);
-
     auto emit_epilogue = [&] {
-        // Transfer the output values to the value stack.
-        store_to_value_stack(compiler, fn->output_count);
-
         // Restore the registers we've pushed above.
         compiler->emitter.pop_pair(register_(29), register_(30));
         compiler->emitter.pop_pair(register_(27), register_(28));
@@ -193,6 +185,9 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
         compiler->emitter.pop_pair(register_(21), register_(22));
         compiler->emitter.pop_pair(register_(19), register_(20));
     };
+
+    // Transfer the input values from the value stack.
+    load_from_value_stack(compiler, fn->input_count);
 
     //=== emit body ===//
     auto emit = [&](lauf_vm_instruction* ip) {
@@ -204,22 +199,21 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 break;
 
             case lauf::bc_op::return_no_alloc:
-                emit_epilogue();
-                compiler->emitter.tail_call(&lauf_builtin_dispatch);
+                compiler->emitter.b(lab_success);
                 return;
 
             case lauf::bc_op::call: {
                 auto callee = fn->mod->function_begin()[size_t(ip->call.function_idx)];
-                call_builtin(compiler, *callee, &lauf::dispatch, ip);
+                call_builtin(compiler, lab_panic, *callee, &lauf::dispatch, ip);
                 break;
             }
             case lauf::bc_op::call_builtin: {
-                auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_dispatch);
+                auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_finish);
                 auto addr      = base_addr + ip->call_builtin.address * std::ptrdiff_t(16);
                 auto fn        = reinterpret_cast<lauf_builtin_function*>(addr);
 
                 auto dispatch_ip = reinterpret_cast<std::uintptr_t>(ip + 1) | 1;
-                call_builtin(compiler, ip->call_builtin, fn, dispatch_ip);
+                call_builtin(compiler, lab_panic, ip->call_builtin, fn, dispatch_ip);
                 break;
             }
             case lauf::bc_op::call_builtin_long: {
@@ -228,7 +222,7 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 auto fn = (lauf_builtin_function*)addr;
 
                 auto dispatch_ip = reinterpret_cast<std::uintptr_t>(ip + 1) | 1;
-                call_builtin(compiler, ip->call_builtin_long, fn, dispatch_ip);
+                call_builtin(compiler, lab_panic, ip->call_builtin_long, fn, dispatch_ip);
                 break;
             }
 
@@ -275,7 +269,25 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     };
     emit(fn->bytecode());
 
+    //=== lab_success ===//
+    compiler->emitter.place_label(lab_success);
+
+    // Transfer the output values to the value stack.
+    store_to_value_stack(compiler, fn->output_count);
+
+    emit_epilogue();
+    compiler->emitter.tail_call(&lauf::jit_finish);
+
+    //=== lab_panic ===//
+    compiler->emitter.place_label(lab_panic);
+
+    emit_epilogue();
+    compiler->emitter.mov_imm(register_::result, std::uint64_t(0));
+    compiler->emitter.ret();
+
     //=== finish ===//
+    compiler->emitter.finish();
+
     auto mod      = fn->mod;
     auto jit_size = compiler->emitter.size() * sizeof(uint32_t);
     if (mod->cur_jit_offset + jit_size > mod->jit_memory.size)

@@ -13,6 +13,8 @@ namespace lauf::aarch64
 {
 enum class register_ : std::uint8_t
 {
+    result = 0,
+
     scratch1 = 9,
     scratch2 = 10,
 
@@ -40,6 +42,22 @@ public:
     }
 
     //=== control flow ===//
+    enum class label : std::uint16_t
+    {
+    };
+
+    label declare_label()
+    {
+        auto idx = _labels.size();
+        _labels.push_back(UINT32_MAX);
+        return label(idx);
+    }
+
+    void place_label(label l)
+    {
+        _labels[std::size_t(l)] = _inst.size();
+    }
+
     void ret()
     {
         // RET X30
@@ -48,9 +66,31 @@ public:
 
     void b(std::int32_t offset)
     {
-        // B #offset
         auto inst = 0b0'00101 << 26;
         inst |= offset & ((1 << 26) - 1);
+        _inst.push_back(inst);
+    }
+    void b(label l)
+    {
+        if (auto pos = _labels[std::size_t(l)]; pos != UINT32_MAX)
+        {
+            b(std::int32_t(pos) - std::int32_t(_inst.size()));
+        }
+        else
+        {
+            _patches.push_back(make_patch(_inst.size(), branch_kind::b));
+            b(std::int32_t(l));
+        }
+    }
+
+    void cbz(register_ r, label l)
+    {
+        _patches.push_back(make_patch(_inst.size(), branch_kind::cbz));
+
+        // CBZ r, l
+        auto inst = std::uint32_t(0b1'011010'0 << 24);
+        inst |= std::uint32_t(l) << 5;
+        inst |= encode(r);
         _inst.push_back(inst);
     }
 
@@ -215,6 +255,14 @@ public:
     void clear()
     {
         _inst.clear();
+        _patches.clear();
+        _labels.clear();
+    }
+
+    void finish()
+    {
+        for (auto p : _patches)
+            resolve_patch(p);
     }
 
     std::size_t size() const
@@ -228,7 +276,44 @@ public:
     }
 
 private:
+    enum class branch_kind
+    {
+        b,
+        cbz
+    };
+
+    std::uint32_t make_patch(std::size_t inst_idx, branch_kind kind)
+    {
+        return std::uint32_t(inst_idx << 1) | std::uint32_t(kind);
+    }
+
+    void resolve_patch(std::uint32_t patch)
+    {
+        auto idx  = patch >> 1;
+        auto kind = branch_kind(patch & 0b1);
+
+        auto [mask, shift] = [&] {
+            switch (kind)
+            {
+            case branch_kind::b:
+                return std::make_pair((1 << 26) - 1, 0);
+            case branch_kind::cbz:
+                return std::make_pair(((1 << 19) - 1) << 5, 5);
+            }
+        }();
+
+        auto lab    = (_inst[idx] & mask) >> shift;
+        auto offset = std::int32_t(_labels[lab]) - std::int32_t(idx);
+
+        _inst[idx] &= ~mask;
+        _inst[idx] |= (offset << shift) & mask;
+    }
+
     std::vector<std::uint32_t> _inst;
+    // Set of instruction indices that require patching.
+    std::vector<std::uint32_t> _patches;
+    // Mapping label index to position, -1 if unknown.
+    std::vector<std::uint32_t> _labels;
 };
 } // namespace lauf::aarch64
 

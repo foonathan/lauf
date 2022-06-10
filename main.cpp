@@ -37,14 +37,14 @@ int main()
         module @mod;
 
         function @test(0 => 2) {
+            uint 1;
             call @inner;
-            uint 2;
             return;
         }
 
         function @inner(0 => 1) {
             uint 3;
-            uint 4;
+            uint 1;
             $usub;
             return;
         }

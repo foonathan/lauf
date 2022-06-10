@@ -56,37 +56,31 @@ LAUF_BC_OP(return_, bc_inst_none, {
     auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
     auto marker = frame->unwind;
 
-    for (auto i = 0u; i != frame->fn->local_allocation_count; ++i)
-    {
-        auto addr = frame->first_local_allocation;
-        addr.allocation += i;
-        // Guaranteed to be valid.
-        process->remove_allocation(addr);
-    }
-
-    if (frame->prev->fn && frame->prev->fn->jit_fn)
-        // We're returning to a JIT function, actual return.
-        return true;
+    frame->free_local_allocations(process);
 
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
     process->stack().unwind(marker);
 
-    LAUF_DISPATCH;
+    if (frame->prev->fn && frame->prev->fn->jit_fn)
+        // We're returning to a JIT function, actual return.
+        return true;
+    else
+        LAUF_DISPATCH;
 })
 LAUF_BC_OP(return_no_alloc, bc_inst_none, {
     auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
     auto marker = frame->unwind;
 
-    if (frame->prev->fn && frame->prev->fn->jit_fn)
-        // We're returning to a JIT function, actual return.
-        return true;
-
     ip        = frame->return_ip;
     frame_ptr = frame->prev + 1;
     process->stack().unwind(marker);
 
-    LAUF_DISPATCH;
+    if (frame->prev->fn && frame->prev->fn->jit_fn)
+        // We're returning to a JIT function, actual return.
+        return true;
+    else
+        LAUF_DISPATCH;
 })
 
 // Calls the specified function.
@@ -143,7 +137,7 @@ LAUF_BC_OP(add_local_allocations, bc_inst_none, {
 
 // Calls the specified builtin function.
 LAUF_BC_OP(call_builtin, bc_inst_builtin, {
-    auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_dispatch);
+    auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_finish);
     auto addr      = base_addr + ip->call_builtin.address * std::ptrdiff_t(16);
     auto callee    = reinterpret_cast<lauf_builtin_function*>(addr);
 

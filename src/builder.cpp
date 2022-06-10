@@ -464,7 +464,7 @@ void lauf_build_call_builtin(lauf_builder b, struct lauf_builtin fn)
     b->bytecode.location(b->cur_location);
 
     auto diff = reinterpret_cast<unsigned char*>(fn.impl)
-                - reinterpret_cast<unsigned char*>(&lauf_builtin_dispatch);
+                - reinterpret_cast<unsigned char*>(&lauf_builtin_finish);
     auto addr = diff / 16;
     if (diff % 16 != 0 || addr < INT16_MIN || addr > INT16_MAX)
     {
