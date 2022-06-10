@@ -80,6 +80,7 @@ int main()
 
     auto compiler = lauf_vm_jit_compiler(vm);
     lauf_jit_compile(compiler, fn);
+    lauf_jit_compile(compiler, lauf_module_function_begin(mod)[1]);
 
     lauf_value input[2] = {{.as_sint = 1}, {.as_sint = 2}};
     lauf_value output[2];

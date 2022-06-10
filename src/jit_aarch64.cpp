@@ -299,12 +299,12 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     lauf::lock_executable_memory(mod->jit_memory);
     auto jit_fn_addr = mod->jit_memory.ptr + mod->cur_jit_offset;
     std::memcpy(jit_fn_addr, compiler->emitter.data(), jit_size);
-    mod->cur_jit_offset += compiler->emitter.size();
+    mod->cur_jit_offset += jit_size;
     lauf::unlock_executable_memory(mod->jit_memory);
 
     // TODO
     {
-        auto file = std::fopen("test.bin", "w");
+        auto file = std::fopen(fn->name, "w");
         std::fwrite(compiler->emitter.data(), sizeof(uint32_t), compiler->emitter.size(), file);
         std::fclose(file);
     }
