@@ -18,10 +18,10 @@ public:
     {
         _stack.clear();
         for (auto r = 19; r <= 29; ++r)
-            _pool.push_back(r);
+            _pool.push_back(lauf::aarch64::register_t(r));
     }
 
-    std::uint8_t push()
+    auto push()
     {
         assert(!_pool.empty()); // TODO
         auto r = _pool.back();
@@ -30,7 +30,7 @@ public:
         return r;
     }
 
-    std::uint8_t pop()
+    auto pop()
     {
         auto reg = _stack.back();
         _stack.pop_back();
@@ -62,8 +62,8 @@ public:
 
 private:
     // _stack.back() is the register that stores the value on top of the stack.
-    std::vector<std::uint8_t> _stack;
-    std::vector<std::uint8_t> _pool;
+    std::vector<lauf::aarch64::register_t> _stack;
+    std::vector<lauf::aarch64::register_t> _pool;
 };
 } // namespace
 
@@ -95,10 +95,10 @@ namespace
 
 // Calling convention: x0 is parent ip, x1 is vstack_ptr, x2 is frame_ptr, x3 is process.
 // Register x19-x29 are used for the value stack.
-constexpr auto r_ip         = 0;
-constexpr auto r_vstack_ptr = 1;
-constexpr auto r_frame_ptr  = 2;
-constexpr auto r_process    = 3;
+constexpr auto r_ip         = lauf::aarch64::register_t(0);
+constexpr auto r_vstack_ptr = lauf::aarch64::register_t(1);
+constexpr auto r_frame_ptr  = lauf::aarch64::register_t(2);
+constexpr auto r_process    = lauf::aarch64::register_t(3);
 
 void save_args(lauf_jit_compiler compiler)
 {
@@ -162,12 +162,12 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     //=== prologue ===//
     // Save callee saved registers x19-x29 and link register x30, in case we might need them.
     // TODO: only save them, when we need them.
-    compiler->emitter.push_pair(19, 20);
-    compiler->emitter.push_pair(21, 22);
-    compiler->emitter.push_pair(23, 24);
-    compiler->emitter.push_pair(25, 26);
-    compiler->emitter.push_pair(27, 28);
-    compiler->emitter.push_pair(29, 30);
+    compiler->emitter.push_pair(lauf::aarch64::register_t(19), lauf::aarch64::register_t(20));
+    compiler->emitter.push_pair(lauf::aarch64::register_t(21), lauf::aarch64::register_t(22));
+    compiler->emitter.push_pair(lauf::aarch64::register_t(23), lauf::aarch64::register_t(24));
+    compiler->emitter.push_pair(lauf::aarch64::register_t(25), lauf::aarch64::register_t(26));
+    compiler->emitter.push_pair(lauf::aarch64::register_t(27), lauf::aarch64::register_t(28));
+    compiler->emitter.push_pair(lauf::aarch64::register_t(29), lauf::aarch64::register_t(30));
 
     // Transfer the input values from the value stack.
     load_from_value_stack(compiler, fn->input_count);
@@ -177,12 +177,12 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
         store_to_value_stack(compiler, fn->output_count);
 
         // Restore the registers we've pushed above.
-        compiler->emitter.pop_pair(29, 30);
-        compiler->emitter.pop_pair(27, 28);
-        compiler->emitter.pop_pair(25, 26);
-        compiler->emitter.pop_pair(23, 24);
-        compiler->emitter.pop_pair(21, 22);
-        compiler->emitter.pop_pair(19, 20);
+        compiler->emitter.pop_pair(lauf::aarch64::register_t(29), lauf::aarch64::register_t(30));
+        compiler->emitter.pop_pair(lauf::aarch64::register_t(27), lauf::aarch64::register_t(28));
+        compiler->emitter.pop_pair(lauf::aarch64::register_t(25), lauf::aarch64::register_t(26));
+        compiler->emitter.pop_pair(lauf::aarch64::register_t(23), lauf::aarch64::register_t(24));
+        compiler->emitter.pop_pair(lauf::aarch64::register_t(21), lauf::aarch64::register_t(22));
+        compiler->emitter.pop_pair(lauf::aarch64::register_t(19), lauf::aarch64::register_t(20));
     };
 
     //=== emit body ===//
