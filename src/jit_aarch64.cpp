@@ -48,6 +48,11 @@ public:
             pop();
     }
 
+    auto top()
+    {
+        return _stack.back();
+    }
+
     void pick(std::size_t idx)
     {
         auto reg = _stack[_stack.size() - idx - 1];
@@ -257,6 +262,19 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
                 break;
             case lauf::bc_op::swap:
                 compiler->stack.roll(1);
+                break;
+
+            case lauf::bc_op::load_value:
+                compiler->emitter.ldr_imm(compiler->stack.push(), r_frame_ptr,
+                                          ip->load_value.literal);
+                break;
+            case lauf::bc_op::store_value:
+                compiler->emitter.str_imm(compiler->stack.pop(), r_frame_ptr,
+                                          ip->load_value.literal);
+                break;
+            case lauf::bc_op::save_value:
+                compiler->emitter.str_imm(compiler->stack.top(), r_frame_ptr,
+                                          ip->load_value.literal);
                 break;
 
             default:

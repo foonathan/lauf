@@ -37,8 +37,10 @@ int main()
         module @mod;
 
         function @test(0 => 2) {
-            uint 1;
-            call @inner;
+            local %tmp : $Value;
+            uint 1; store_value %tmp;
+            load_value %tmp;
+            uint 2;
             return;
         }
 
