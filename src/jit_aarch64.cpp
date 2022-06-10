@@ -131,19 +131,14 @@ void store_to_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
         compiler->emitter.str_imm(compiler->stack.pop(), r_vstack_ptr, i);
 }
 
-template <typename Call, typename RegOrImm>
-void call_builtin(lauf_jit_compiler compiler, const Call& call, lauf_builtin_function fn,
-                  RegOrImm ip)
+template <typename Call, typename Imm>
+void call_builtin(lauf_jit_compiler compiler, const Call& call, lauf_builtin_function fn, Imm ip)
 {
     store_to_value_stack(compiler, call.input_count);
 
     save_args(compiler);
     {
-        if constexpr (std::is_same_v<RegOrImm, lauf::aarch64::register_>)
-            compiler->emitter.mov(r_ip, ip);
-        else
-            compiler->emitter.mov_imm(r_ip, ip);
-
+        compiler->emitter.mov_imm(r_ip, ip);
         compiler->emitter.call(fn);
     }
     restore_args(compiler);
@@ -215,15 +210,7 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
 
             case lauf::bc_op::call: {
                 auto callee = fn->mod->function_begin()[size_t(ip->call.function_idx)];
-
-                // We create a temporary array consisting the call instruction, followed by exit.
-                compiler->emitter.b(3);
-                compiler->emitter.data(*ip);
-                compiler->emitter.data(LAUF_VM_INSTRUCTION(exit));
-                compiler->emitter.adr(register_::scratch1,
-                                      -2 * int32_t(sizeof(lauf_vm_instruction)));
-
-                call_builtin(compiler, *callee, &lauf::dispatch, register_::scratch1);
+                call_builtin(compiler, *callee, &lauf::dispatch, ip);
                 break;
             }
             case lauf::bc_op::call_builtin: {

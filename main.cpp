@@ -44,7 +44,7 @@ int main()
 
         function @inner(0 => 1) {
             uint 3;
-            uint 1;
+            uint 4;
             $usub;
             return;
         }

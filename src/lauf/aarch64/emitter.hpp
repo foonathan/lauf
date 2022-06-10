@@ -122,6 +122,10 @@ public:
             data(imm);
         }
     }
+    void mov_imm(register_ r, void* imm)
+    {
+        mov_imm(r, std::uint64_t(reinterpret_cast<std::uintptr_t>(imm)));
+    }
 
     void adr(register_ rd, std::int32_t imm)
     {
