@@ -62,11 +62,7 @@ LAUF_BC_OP(return_, bc_inst_none, {
     frame_ptr = frame->prev + 1;
     process->stack().unwind(marker);
 
-    if (frame->prev->fn && frame->prev->fn->jit_fn)
-        // We're returning to a JIT function, actual return.
-        return true;
-    else
-        LAUF_DISPATCH;
+    LAUF_DISPATCH;
 })
 LAUF_BC_OP(return_no_alloc, bc_inst_none, {
     auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
@@ -76,11 +72,7 @@ LAUF_BC_OP(return_no_alloc, bc_inst_none, {
     frame_ptr = frame->prev + 1;
     process->stack().unwind(marker);
 
-    if (frame->prev->fn && frame->prev->fn->jit_fn)
-        // We're returning to a JIT function, actual return.
-        return true;
-    else
-        LAUF_DISPATCH;
+    LAUF_DISPATCH;
 })
 
 // Calls the specified function.

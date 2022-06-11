@@ -27,6 +27,17 @@ std::uint8_t encode(register_ reg)
     return std::uint8_t(reg) & 0b11111;
 }
 
+enum class condition_code : std::uint8_t
+{
+    eq = 0b0000,
+    ne = 0b0001,
+
+    ge = 0b1010,
+    lt = 0b1011,
+    gt = 0b1100,
+    le = 0b1101,
+};
+
 class emitter
 {
 public:
@@ -78,17 +89,37 @@ public:
         }
         else
         {
-            _patches.push_back(make_patch(_inst.size(), branch_kind::b));
+            _patches.push_back(make_patch(_inst.size(), branch_kind::unconditional));
             b(std::int32_t(l));
         }
+    }
+    void b_cond(label l, condition_code cond)
+    {
+        _patches.push_back(make_patch(_inst.size(), branch_kind::conditional));
+
+        // B.cond l
+        auto inst = std::uint32_t(0b0101010'0 << 24);
+        inst |= std::uint32_t(l) << 5;
+        inst |= std::uint8_t(cond) << 0;
+        _inst.push_back(inst);
     }
 
     void cbz(register_ r, label l)
     {
-        _patches.push_back(make_patch(_inst.size(), branch_kind::cbz));
+        _patches.push_back(make_patch(_inst.size(), branch_kind::conditional));
 
         // CBZ r, l
         auto inst = std::uint32_t(0b1'011010'0 << 24);
+        inst |= std::uint32_t(l) << 5;
+        inst |= encode(r);
+        _inst.push_back(inst);
+    }
+    void cbnz(register_ r, label l)
+    {
+        _patches.push_back(make_patch(_inst.size(), branch_kind::conditional));
+
+        // CBNZ r, l
+        auto inst = std::uint32_t(0b1'011010'1 << 24);
         inst |= std::uint32_t(l) << 5;
         inst |= encode(r);
         _inst.push_back(inst);
@@ -197,6 +228,15 @@ public:
         _inst.push_back(inst);
     }
 
+    void cmp_imm(register_ r, std::uint16_t imm)
+    {
+        // CMP r, #imm
+        auto inst = 0b1'1'1'100010'0'000000000000'00000'11111;
+        inst |= encode(r) << 5;
+        inst |= (imm & 0b111111111111) << 10;
+        _inst.push_back(inst);
+    }
+
     //=== memory ===//
     void push(register_ r)
     {
@@ -278,8 +318,8 @@ public:
 private:
     enum class branch_kind
     {
-        b,
-        cbz
+        unconditional,
+        conditional,
     };
 
     std::uint32_t make_patch(std::size_t inst_idx, branch_kind kind)
@@ -295,9 +335,9 @@ private:
         auto [mask, shift] = [&] {
             switch (kind)
             {
-            case branch_kind::b:
+            case branch_kind::unconditional:
                 return std::make_pair((1 << 26) - 1, 0);
-            case branch_kind::cbz:
+            case branch_kind::conditional:
                 return std::make_pair(((1 << 19) - 1) << 5, 5);
             }
         }();

@@ -17,7 +17,7 @@
 #include <lauf/vm.h>
 
 LAUF_BUILTIN_UNARY_OPERATION(print, 1, {
-    std::printf("%d\n", value.as_address.allocation);
+    std::printf("%ld\n", value.as_sint);
     *result = value;
 })
 
@@ -36,24 +36,8 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(0 => 2) {
-            local %tmp : $Value;
-            uint 1; store_value %tmp;
-            load_value %tmp;
-            uint 2;
-            return;
-        }
-
-        function @inner(0 => 1) {
-            uint 3;
-            uint 1;
-            $usub;
-            return;
-        }
-
         function @fib_recursive(1 => 1) {
             local %arg : $Value;
-
             store_value %arg;
 
             load_value %arg; sint 2; $scmp;
@@ -82,12 +66,11 @@ int main()
 
     auto compiler = lauf_vm_jit_compiler(vm);
     lauf_jit_compile(compiler, fn);
-    lauf_jit_compile(compiler, lauf_module_function_begin(mod)[1]);
 
-    lauf_value input[2] = {{.as_sint = 1}, {.as_sint = 2}};
-    lauf_value output[2];
-    if (lauf_vm_execute(vm, program, input, output))
-        std::printf("result: %ld %ld\n", output[0].as_sint, output[1].as_sint);
+    lauf_value input = {.as_sint = 35};
+    lauf_value output;
+    if (lauf_vm_execute(vm, program, &input, &output))
+        std::printf("result: %ld\n", output.as_sint);
 
     lauf_program_destroy(program);
     lauf_module_destroy(mod);

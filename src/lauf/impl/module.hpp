@@ -69,6 +69,7 @@ struct lauf_function_impl
     uint16_t                 max_vstack_size;
     uint16_t                 local_stack_size;
     uint16_t                 local_allocation_count;
+    uint16_t                 instruction_count;
     uint8_t                  input_count;
     uint8_t                  output_count;
     lauf::debug_location_map debug_locations;

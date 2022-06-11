@@ -8,7 +8,9 @@
 #include <lauf/aarch64/emitter.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/vm.hpp>
+#include <map>
 
+//=== register allocator ===//
 namespace
 {
 class fake_stack
@@ -72,13 +74,13 @@ private:
 };
 } // namespace
 
+//=== compiler functions ===//
 struct lauf_jit_compiler_impl
 {
     lauf::aarch64::emitter emitter;
     fake_stack             stack;
 };
 
-//=== compiler functions ===//
 lauf_jit_compiler lauf_jit_compiler_create(void)
 {
     return new lauf_jit_compiler_impl{};
@@ -124,7 +126,7 @@ void load_from_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
 
     for (auto i = 0u; i != count; ++i)
         compiler->emitter.ldr_imm(compiler->stack.push(), r_vstack_ptr, count - i - 1);
-    compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr, count * 8);
+    compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr, count * sizeof(lauf_value));
 }
 
 void store_to_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
@@ -132,7 +134,7 @@ void store_to_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
     if (count == 0)
         return;
 
-    compiler->emitter.sub_imm(r_vstack_ptr, r_vstack_ptr, count * 8);
+    compiler->emitter.sub_imm(r_vstack_ptr, r_vstack_ptr, count * sizeof(lauf_value));
     for (auto i = 0u; i != count; ++i)
         compiler->emitter.str_imm(compiler->stack.pop(), r_vstack_ptr, i);
 }
@@ -155,7 +157,7 @@ void call_builtin(lauf_jit_compiler compiler, emitter::label lab_panic, const Ca
     if (call.stack_change() > 0)
         compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr,
                                   call.stack_change() * sizeof(lauf_value));
-    else
+    else if (call.stack_change() < 0)
         compiler->emitter.sub_imm(r_vstack_ptr, r_vstack_ptr,
                                   -call.stack_change() * sizeof(lauf_value));
 
@@ -195,103 +197,149 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     load_from_value_stack(compiler, fn->input_count);
 
     //=== emit body ===//
-    auto emit = [&](lauf_vm_instruction* ip) {
-        while (true)
-        {
-            switch (ip->tag.op)
-            {
-            case lauf::bc_op::nop:
-                break;
+    std::map<lauf_vm_instruction*, emitter::label> labels;
+    auto                                           get_label_for = [&](lauf_vm_instruction* dest) {
+        auto iter = labels.find(dest);
+        if (iter != labels.end())
+            return iter->second;
 
-            case lauf::bc_op::return_no_alloc:
-                compiler->emitter.b(lab_success);
-                return;
-
-            case lauf::bc_op::call: {
-                auto callee = fn->mod->function_begin()[size_t(ip->call.function_idx)];
-                call_builtin(compiler, lab_panic, *callee, &lauf::dispatch, ip);
-                break;
-            }
-            case lauf::bc_op::call_builtin: {
-                auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_finish);
-                auto addr      = base_addr + ip->call_builtin.address * std::ptrdiff_t(16);
-                auto fn        = reinterpret_cast<lauf_builtin_function*>(addr);
-
-                auto dispatch_ip = reinterpret_cast<std::uintptr_t>(ip + 1) | 1;
-                call_builtin(compiler, lab_panic, ip->call_builtin, fn, dispatch_ip);
-                break;
-            }
-            case lauf::bc_op::call_builtin_long: {
-                auto addr
-                    = fn->mod->literal_data()[size_t(ip->call_builtin_long.address)].as_native_ptr;
-                auto fn = (lauf_builtin_function*)addr;
-
-                auto dispatch_ip = reinterpret_cast<std::uintptr_t>(ip + 1) | 1;
-                call_builtin(compiler, lab_panic, ip->call_builtin_long, fn, dispatch_ip);
-                break;
-            }
-
-            case lauf::bc_op::push: {
-                auto reg = compiler->stack.push();
-                auto lit = fn->mod->literal_data()[size_t(ip->push.literal_idx)];
-                compiler->emitter.mov_imm(reg, lit.as_uint);
-                break;
-            }
-            case lauf::bc_op::push_zero: {
-                auto reg = compiler->stack.push();
-                compiler->emitter.mov_imm(reg, std::uint16_t(0));
-                break;
-            }
-            case lauf::bc_op::push_small_zext: {
-                auto reg = compiler->stack.push();
-                compiler->emitter.mov_imm(reg, ip->push_small_zext.literal);
-                break;
-            }
-
-            case lauf::bc_op::pop:
-                compiler->stack.pop(ip->pop.literal);
-                break;
-            case lauf::bc_op::pick:
-                compiler->stack.pick(ip->pick.literal);
-                break;
-            case lauf::bc_op::dup:
-                compiler->stack.pick(0);
-                break;
-            case lauf::bc_op::roll:
-                compiler->stack.roll(ip->roll.literal);
-                break;
-            case lauf::bc_op::swap:
-                compiler->stack.roll(1);
-                break;
-
-            case lauf::bc_op::load_value:
-                compiler->emitter.ldr_imm(compiler->stack.push(), r_frame_ptr,
-                                          ip->load_value.literal);
-                break;
-            case lauf::bc_op::store_value:
-                compiler->emitter.str_imm(compiler->stack.pop(), r_frame_ptr,
-                                          ip->load_value.literal);
-                break;
-            case lauf::bc_op::save_value:
-                compiler->emitter.str_imm(compiler->stack.top(), r_frame_ptr,
-                                          ip->load_value.literal);
-                break;
-
-            default:
-                assert(false); // unimplemented
-                break;
-            }
-
-            ++ip;
-        }
+        return labels[dest] = compiler->emitter.declare_label();
     };
-    emit(fn->bytecode());
+
+    for (auto ip = fn->bytecode(); ip != fn->bytecode() + fn->instruction_count; ++ip)
+    {
+        // TODO: make this less shitty
+        auto iter = labels.find(ip);
+        if (iter != labels.end())
+            compiler->emitter.place_label(iter->second);
+        else
+            compiler->emitter.place_label(get_label_for(ip));
+
+        switch (ip->tag.op)
+        {
+        case lauf::bc_op::nop:
+            break;
+
+        case lauf::bc_op::jump: {
+            auto dest = get_label_for(ip + ip->jump.offset);
+            compiler->emitter.b(dest);
+            break;
+        }
+        case lauf::bc_op::jump_if:
+        case lauf::bc_op::jump_ifz:
+        case lauf::bc_op::jump_ifge: {
+            auto dest = get_label_for(ip + ip->jump_if.offset + 1);
+            switch (ip->jump_if.cc)
+            {
+            case lauf::condition_code::is_zero:
+                compiler->emitter.cbz(compiler->stack.pop(), dest);
+                break;
+            case lauf::condition_code::is_nonzero:
+                compiler->emitter.cbnz(compiler->stack.pop(), dest);
+                break;
+
+            case lauf::condition_code::cmp_lt:
+                compiler->emitter.cmp_imm(compiler->stack.pop(), 0);
+                compiler->emitter.b_cond(dest, lauf::aarch64::condition_code::lt);
+                break;
+            case lauf::condition_code::cmp_le:
+                compiler->emitter.cmp_imm(compiler->stack.pop(), 0);
+                compiler->emitter.b_cond(dest, lauf::aarch64::condition_code::le);
+                break;
+            case lauf::condition_code::cmp_gt:
+                compiler->emitter.cmp_imm(compiler->stack.pop(), 0);
+                compiler->emitter.b_cond(dest, lauf::aarch64::condition_code::gt);
+                break;
+            case lauf::condition_code::cmp_ge:
+                compiler->emitter.cmp_imm(compiler->stack.pop(), 0);
+                compiler->emitter.b_cond(dest, lauf::aarch64::condition_code::ge);
+                break;
+            }
+            break;
+        }
+
+        case lauf::bc_op::return_:
+        case lauf::bc_op::return_no_alloc:
+            // Transfer the output values to the value stack.
+            store_to_value_stack(compiler, fn->output_count);
+            compiler->emitter.b(lab_success);
+            break;
+
+        case lauf::bc_op::call: {
+            auto callee = fn->mod->function_begin()[size_t(ip->call.function_idx)];
+            call_builtin(compiler, lab_panic, *callee, &lauf::dispatch, ip);
+            break;
+        }
+        case lauf::bc_op::call_builtin: {
+            auto base_addr = reinterpret_cast<unsigned char*>(&lauf_builtin_finish);
+            auto addr      = base_addr + ip->call_builtin.address * std::ptrdiff_t(16);
+            auto fn        = reinterpret_cast<lauf_builtin_function*>(addr);
+
+            auto dispatch_ip = reinterpret_cast<std::uintptr_t>(ip + 1) | 1;
+            call_builtin(compiler, lab_panic, ip->call_builtin, fn, dispatch_ip);
+            break;
+        }
+        case lauf::bc_op::call_builtin_long: {
+            auto addr
+                = fn->mod->literal_data()[size_t(ip->call_builtin_long.address)].as_native_ptr;
+            auto fn = (lauf_builtin_function*)addr;
+
+            auto dispatch_ip = reinterpret_cast<std::uintptr_t>(ip + 1) | 1;
+            call_builtin(compiler, lab_panic, ip->call_builtin_long, fn, dispatch_ip);
+            break;
+        }
+
+        case lauf::bc_op::push: {
+            auto reg = compiler->stack.push();
+            auto lit = fn->mod->literal_data()[size_t(ip->push.literal_idx)];
+            compiler->emitter.mov_imm(reg, lit.as_uint);
+            break;
+        }
+        case lauf::bc_op::push_zero: {
+            auto reg = compiler->stack.push();
+            compiler->emitter.mov_imm(reg, std::uint16_t(0));
+            break;
+        }
+        case lauf::bc_op::push_small_zext: {
+            auto reg = compiler->stack.push();
+            compiler->emitter.mov_imm(reg, ip->push_small_zext.literal);
+            break;
+        }
+
+        case lauf::bc_op::pop:
+            compiler->stack.pop(ip->pop.literal);
+            break;
+        case lauf::bc_op::pick:
+            compiler->stack.pick(ip->pick.literal);
+            break;
+        case lauf::bc_op::dup:
+            compiler->stack.pick(0);
+            break;
+        case lauf::bc_op::roll:
+            compiler->stack.roll(ip->roll.literal);
+            break;
+        case lauf::bc_op::swap:
+            compiler->stack.roll(1);
+            break;
+
+        case lauf::bc_op::load_value:
+            compiler->emitter.ldr_imm(compiler->stack.push(), r_frame_ptr, ip->load_value.literal);
+            break;
+        case lauf::bc_op::store_value:
+            compiler->emitter.str_imm(compiler->stack.pop(), r_frame_ptr, ip->load_value.literal);
+            break;
+        case lauf::bc_op::save_value:
+            compiler->emitter.str_imm(compiler->stack.top(), r_frame_ptr, ip->load_value.literal);
+            break;
+
+        default:
+            assert(false); // unimplemented
+            break;
+        }
+    }
 
     //=== lab_success ===//
     compiler->emitter.place_label(lab_success);
-
-    // Transfer the output values to the value stack.
-    store_to_value_stack(compiler, fn->output_count);
 
     emit_epilogue();
     compiler->emitter.tail_call(&lauf::jit_finish);
