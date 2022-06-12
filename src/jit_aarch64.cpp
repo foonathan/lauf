@@ -167,7 +167,7 @@ void call_builtin(lauf_jit_compiler compiler, emitter::label lab_panic, const Ca
 
 lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
 {
-    compiler->emitter.clear();
+    compiler->emitter.reset();
     compiler->stack.reset();
 
     const auto lab_success = compiler->emitter.declare_label();
@@ -352,10 +352,8 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     compiler->emitter.ret();
 
     //=== finish ===//
-    compiler->emitter.finish();
-
+    auto jit_size = compiler->emitter.jit_size();
     auto mod      = fn->mod;
-    auto jit_size = compiler->emitter.size() * sizeof(uint32_t);
     if (mod->cur_jit_offset + jit_size > mod->jit_memory.size)
     {
         // TODO: adjust pointers, actual growth
@@ -363,15 +361,14 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     }
 
     lauf::lock_executable_memory(mod->jit_memory);
-    auto jit_fn_addr = mod->jit_memory.ptr + mod->cur_jit_offset;
-    std::memcpy(jit_fn_addr, compiler->emitter.data(), jit_size);
-    mod->cur_jit_offset += jit_size;
+    auto jit_addr    = mod->jit_memory.ptr + mod->cur_jit_offset;
+    auto jit_fn_addr = compiler->emitter.finish(jit_addr);
     lauf::unlock_executable_memory(mod->jit_memory);
 
     // TODO
     {
         auto file = std::fopen(fn->name, "w");
-        std::fwrite(compiler->emitter.data(), sizeof(uint32_t), compiler->emitter.size(), file);
+        std::fwrite(jit_addr, 1, jit_size, file);
         std::fclose(file);
     }
 

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <lauf/config.h>
+#include <lauf/literal_pool.hpp>
 #include <vector>
 
 namespace lauf::aarch64
@@ -41,17 +42,6 @@ enum class condition_code : std::uint8_t
 class emitter
 {
 public:
-    //=== data ===//
-    template <typename T>
-    void data(T t)
-    {
-        static_assert(std::is_trivially_copyable_v<T> && sizeof(T) % sizeof(std::uint32_t) == 0);
-        std::uint32_t data[sizeof(T) / sizeof(std::uint32_t)];
-        std::memcpy(&data, &t, sizeof(T));
-        for (auto i = 0u; i != sizeof(T) / sizeof(std::uint32_t); ++i)
-            _inst.push_back(data[i]);
-    }
-
     //=== control flow ===//
     enum class label : std::uint16_t
     {
@@ -125,6 +115,16 @@ public:
         _inst.push_back(inst);
     }
 
+    void recurse()
+    {
+        auto offset = (-std::int32_t(_inst.size())) & ((1 << 26) - 1);
+
+        // BL offset
+        auto inst = 0b1'00101 << 26;
+        inst |= offset;
+        _inst.push_back(inst);
+    }
+
     template <typename Fn>
     void call(Fn* fn)
     {
@@ -141,13 +141,10 @@ public:
     {
         static_assert(std::is_function_v<Fn> && sizeof(fn) == sizeof(std::uint64_t));
 
-        // LDR scratch, +2
-        _inst.push_back(0b01'011'0'00'0000000000000000010'00000 | encode(register_::_scratch));
+        mov_imm(register_::_scratch, reinterpret_cast<std::uintptr_t>(fn));
         // BR scratch
         _inst.push_back(0b1101011'0'0'00'11111'0000'0'0'00000'00000
                         | encode(register_::_scratch) << 5);
-        // literal value
-        data(fn);
     }
 
     //=== register operations ===//
@@ -174,23 +171,15 @@ public:
             inst |= encode(r) << 0;
             _inst.push_back(inst);
         }
-        else if (imm <= UINT32_MAX)
-        {
-            // LDR r, +2 (32 bit)
-            _inst.push_back(0b00'011'0'00'0000000000000000010'00000 | encode(r));
-            // B +2
-            b(2);
-            // literal value
-            data(std::uint32_t(imm));
-        }
         else
         {
-            // LDR r, +2 (64 bit)
-            _inst.push_back(0b01'011'0'00'0000000000000000010'00000 | encode(r));
-            // B +3
-            b(3);
-            // literal value
-            data(imm);
+            auto offset = literal(imm) & ((1 << 19) - 1);
+
+            // LDR r, offset
+            auto inst = 0b01'011'0'00 << 24;
+            inst |= offset << 5;
+            inst |= encode(r) << 0;
+            _inst.push_back(inst);
         }
     }
     void mov_imm(register_ r, void* imm)
@@ -292,22 +281,41 @@ public:
     }
 
     //=== finish ===//
-    void clear()
+    void reset()
     {
+        _literals.reset();
         _inst.clear();
         _patches.clear();
         _labels.clear();
     }
 
-    void finish()
+    std::size_t instruction_count() const
+    {
+        return _inst.size();
+    }
+
+    std::size_t jit_size() const
+    {
+        return instruction_count() * sizeof(std::uint32_t) + _literals.size() * sizeof(lauf_value);
+    }
+
+    void* finish(void* memory)
     {
         for (auto p : _patches)
             resolve_patch(p);
-    }
 
-    std::size_t size() const
-    {
-        return _inst.size();
+        auto ptr = static_cast<unsigned char*>(memory);
+
+        // Literals are stored in reverse.
+        for (auto lit = _literals.data() + _literals.size(); lit != _literals.data(); --lit)
+        {
+            std::memcpy(ptr, lit - 1, sizeof(lauf_value));
+            ptr += sizeof(lauf_value);
+        }
+
+        auto entry = ptr;
+        std::memcpy(ptr, _inst.data(), _inst.size() * sizeof(std::uint32_t));
+        return entry;
     }
 
     const std::uint32_t* data() const
@@ -316,6 +324,17 @@ public:
     }
 
 private:
+    //=== literals ===//
+    template <typename T>
+    std::int32_t literal(T value)
+    {
+        auto lit_idx    = static_cast<std::ptrdiff_t>(_literals.insert(value));
+        auto lit_offset = (lit_idx + 1) * sizeof(lauf_value);
+        auto pc_offset  = _inst.size() * sizeof(std::uint32_t);
+        return static_cast<std::int32_t>(-(lit_offset + pc_offset) / sizeof(std::uint32_t));
+    }
+
+    //=== patches ===//
     enum class branch_kind
     {
         unconditional,
@@ -349,6 +368,8 @@ private:
         _inst[idx] |= (offset << shift) & mask;
     }
 
+    //=== data ===//
+    literal_pool               _literals;
     std::vector<std::uint32_t> _inst;
     // Set of instruction indices that require patching.
     std::vector<std::uint32_t> _patches;
