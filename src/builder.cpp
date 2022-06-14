@@ -200,11 +200,11 @@ lauf_function lauf_finish_function(lauf_builder b)
     auto local_size = b->stack_frame.size();
 
     // Allocate and set function members.
-    auto result               = lauf_function_impl::create({b->bytecode.size() + 1, 0});
+    auto result               = lauf_function_impl::create({b->bytecode.size(), 0});
     result->name              = fn_decl.name;
     result->local_stack_size  = static_cast<uint16_t>(local_size);
     result->max_vstack_size   = b->value_stack.max_stack_size();
-    result->instruction_count = b->bytecode.size() + 1;
+    result->instruction_count = b->bytecode.size();
     result->input_count       = fn_decl.signature.input_count;
     result->output_count      = fn_decl.signature.output_count;
     result->debug_locations   = b->bytecode.debug_locations();

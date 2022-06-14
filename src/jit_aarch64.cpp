@@ -6,79 +6,16 @@
 #include <algorithm>
 #include <cstdio> // TODO
 #include <lauf/aarch64/emitter.hpp>
+#include <lauf/aarch64/register_allocator.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/vm.hpp>
 #include <map>
 
-//=== register allocator ===//
-namespace
-{
-class fake_stack
-{
-public:
-    void reset()
-    {
-        _stack.clear();
-        for (auto r = 19; r <= 29; ++r)
-            _pool.push_back(lauf::aarch64::register_(r));
-    }
-
-    auto push()
-    {
-        assert(!_pool.empty()); // TODO
-        auto r = _pool.back();
-        _pool.pop_back();
-        _stack.push_back(r);
-        return r;
-    }
-
-    auto pop()
-    {
-        auto reg = _stack.back();
-        _stack.pop_back();
-
-        auto contains = std::find(_stack.begin(), _stack.end(), reg) != _stack.end();
-        if (!contains)
-            // If the register isn't used already, push it back to the pool.
-            _pool.push_back(reg);
-
-        return reg;
-    }
-    void pop(std::size_t n)
-    {
-        for (auto i = 0u; i != n; ++i)
-            pop();
-    }
-
-    auto top()
-    {
-        return _stack.back();
-    }
-
-    void pick(std::size_t idx)
-    {
-        auto reg = _stack[_stack.size() - idx - 1];
-        _stack.push_back(reg);
-    }
-
-    void roll(std::size_t idx)
-    {
-        auto iter = std::prev(_stack.end(), std::ptrdiff_t(idx) + 1);
-        std::rotate(iter, iter + 1, _stack.end());
-    }
-
-private:
-    // _stack.back() is the register that stores the value on top of the stack.
-    std::vector<lauf::aarch64::register_> _stack;
-    std::vector<lauf::aarch64::register_> _pool;
-};
-} // namespace
-
 //=== compiler functions ===//
 struct lauf_jit_compiler_impl
 {
-    lauf::aarch64::emitter emitter;
-    fake_stack             stack;
+    lauf::aarch64::emitter            emitter;
+    lauf::aarch64::register_allocator reg;
 };
 
 lauf_jit_compiler lauf_jit_compiler_create(void)
@@ -119,31 +56,11 @@ void restore_args(lauf_jit_compiler compiler)
     compiler->emitter.pop_pair(r_ip, r_vstack_ptr);
 }
 
-void load_from_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
-{
-    if (count == 0)
-        return;
-
-    for (auto i = 0u; i != count; ++i)
-        compiler->emitter.ldr_imm(compiler->stack.push(), r_vstack_ptr, count - i - 1);
-    compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr, count * sizeof(lauf_value));
-}
-
-void store_to_value_stack(lauf_jit_compiler compiler, std::uint8_t count)
-{
-    if (count == 0)
-        return;
-
-    compiler->emitter.sub_imm(r_vstack_ptr, r_vstack_ptr, count * sizeof(lauf_value));
-    for (auto i = 0u; i != count; ++i)
-        compiler->emitter.str_imm(compiler->stack.pop(), r_vstack_ptr, i);
-}
-
 template <typename Call, typename Imm>
 void call_builtin(lauf_jit_compiler compiler, emitter::label lab_panic, const Call& call,
                   lauf_builtin_function fn, Imm ip)
 {
-    store_to_value_stack(compiler, call.input_count);
+    compiler->reg.push_inputs(compiler->emitter, r_vstack_ptr, call.input_count);
 
     save_args(compiler);
     {
@@ -154,47 +71,21 @@ void call_builtin(lauf_jit_compiler compiler, emitter::label lab_panic, const Ca
     restore_args(compiler);
     compiler->emitter.cbz(register_::scratch1, lab_panic);
 
-    if (call.stack_change() > 0)
-        compiler->emitter.add_imm(r_vstack_ptr, r_vstack_ptr,
-                                  call.stack_change() * sizeof(lauf_value));
-    else if (call.stack_change() < 0)
-        compiler->emitter.sub_imm(r_vstack_ptr, r_vstack_ptr,
-                                  -call.stack_change() * sizeof(lauf_value));
-
-    load_from_value_stack(compiler, call.output_count);
+    compiler->reg.pop_outputs(call.output_count, call.stack_change());
 }
 } // namespace
 
 lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
 {
     compiler->emitter.reset();
-    compiler->stack.reset();
+    compiler->reg.reset();
 
     const auto lab_success = compiler->emitter.declare_label();
     const auto lab_panic   = compiler->emitter.declare_label();
 
     //=== prologue ===//
-    // Save callee saved registers x19-x29 and link register x30, in case we might need them.
-    // TODO: only save them, when we need them.
-    compiler->emitter.push_pair(register_(19), register_(20));
-    compiler->emitter.push_pair(register_(21), register_(22));
-    compiler->emitter.push_pair(register_(23), register_(24));
-    compiler->emitter.push_pair(register_(25), register_(26));
-    compiler->emitter.push_pair(register_(27), register_(28));
-    compiler->emitter.push_pair(register_(29), register_(30));
-
-    auto emit_epilogue = [&] {
-        // Restore the registers we've pushed above.
-        compiler->emitter.pop_pair(register_(29), register_(30));
-        compiler->emitter.pop_pair(register_(27), register_(28));
-        compiler->emitter.pop_pair(register_(25), register_(26));
-        compiler->emitter.pop_pair(register_(23), register_(24));
-        compiler->emitter.pop_pair(register_(21), register_(22));
-        compiler->emitter.pop_pair(register_(19), register_(20));
-    };
-
-    // Transfer the input values from the value stack.
-    load_from_value_stack(compiler, fn->input_count);
+    compiler->reg.save_restore_registers(true, compiler->emitter, fn->max_vstack_size);
+    compiler->reg.enter_function(fn->input_count);
 
     //=== emit body ===//
     std::map<lauf_vm_instruction*, emitter::label> labels;
@@ -222,6 +113,7 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
 
         case lauf::bc_op::jump: {
             auto dest = get_label_for(ip + ip->jump.offset);
+            compiler->reg.branch(compiler->emitter, r_vstack_ptr);
             compiler->emitter.b(dest);
             break;
         }
@@ -229,29 +121,31 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
         case lauf::bc_op::jump_ifz:
         case lauf::bc_op::jump_ifge: {
             auto dest = get_label_for(ip + ip->jump_if.offset + 1);
+            auto reg  = compiler->reg.pop_as_register(compiler->emitter, r_vstack_ptr);
+            compiler->reg.branch(compiler->emitter, r_vstack_ptr);
             switch (ip->jump_if.cc)
             {
             case lauf::condition_code::is_zero:
-                compiler->emitter.cbz(compiler->stack.pop(), dest);
+                compiler->emitter.cbz(reg, dest);
                 break;
             case lauf::condition_code::is_nonzero:
-                compiler->emitter.cbnz(compiler->stack.pop(), dest);
+                compiler->emitter.cbnz(reg, dest);
                 break;
 
             case lauf::condition_code::cmp_lt:
-                compiler->emitter.cmp_imm(compiler->stack.pop(), 0);
+                compiler->emitter.cmp_imm(reg, 0);
                 compiler->emitter.b_cond(dest, lauf::aarch64::condition_code::lt);
                 break;
             case lauf::condition_code::cmp_le:
-                compiler->emitter.cmp_imm(compiler->stack.pop(), 0);
+                compiler->emitter.cmp_imm(reg, 0);
                 compiler->emitter.b_cond(dest, lauf::aarch64::condition_code::le);
                 break;
             case lauf::condition_code::cmp_gt:
-                compiler->emitter.cmp_imm(compiler->stack.pop(), 0);
+                compiler->emitter.cmp_imm(reg, 0);
                 compiler->emitter.b_cond(dest, lauf::aarch64::condition_code::gt);
                 break;
             case lauf::condition_code::cmp_ge:
-                compiler->emitter.cmp_imm(compiler->stack.pop(), 0);
+                compiler->emitter.cmp_imm(reg, 0);
                 compiler->emitter.b_cond(dest, lauf::aarch64::condition_code::ge);
                 break;
             }
@@ -260,8 +154,7 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
 
         case lauf::bc_op::return_:
         case lauf::bc_op::return_no_alloc:
-            // Transfer the output values to the value stack.
-            store_to_value_stack(compiler, fn->output_count);
+            compiler->reg.exit_function(compiler->emitter, r_vstack_ptr, fn->output_count);
             compiler->emitter.b(lab_success);
             break;
 
@@ -290,47 +183,52 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
         }
 
         case lauf::bc_op::push: {
-            auto reg = compiler->stack.push();
+            auto reg = compiler->reg.push_as_register();
             auto lit = fn->mod->literal_data()[size_t(ip->push.literal_idx)];
             compiler->emitter.mov_imm(reg, lit.as_uint);
             break;
         }
         case lauf::bc_op::push_zero: {
-            auto reg = compiler->stack.push();
+            auto reg = compiler->reg.push_as_register();
             compiler->emitter.mov_imm(reg, std::uint16_t(0));
             break;
         }
         case lauf::bc_op::push_small_zext: {
-            auto reg = compiler->stack.push();
+            auto reg = compiler->reg.push_as_register();
             compiler->emitter.mov_imm(reg, ip->push_small_zext.literal);
             break;
         }
 
         case lauf::bc_op::pop:
-            compiler->stack.pop(ip->pop.literal);
+            compiler->reg.discard(ip->pop.literal);
             break;
         case lauf::bc_op::pick:
-            compiler->stack.pick(ip->pick.literal);
+            compiler->reg.pick(compiler->emitter, r_vstack_ptr, ip->pick.literal);
             break;
         case lauf::bc_op::dup:
-            compiler->stack.pick(0);
+            compiler->reg.pick(compiler->emitter, r_vstack_ptr, 0);
             break;
         case lauf::bc_op::roll:
-            compiler->stack.roll(ip->roll.literal);
+            compiler->reg.roll(compiler->emitter, r_vstack_ptr, ip->roll.literal);
             break;
         case lauf::bc_op::swap:
-            compiler->stack.roll(1);
+            compiler->reg.roll(compiler->emitter, r_vstack_ptr, 1);
             break;
 
         case lauf::bc_op::load_value:
-            compiler->emitter.ldr_imm(compiler->stack.push(), r_frame_ptr, ip->load_value.literal);
+            compiler->emitter.ldr_imm(compiler->reg.push_as_register(), r_frame_ptr,
+                                      ip->load_value.literal);
             break;
-        case lauf::bc_op::store_value:
-            compiler->emitter.str_imm(compiler->stack.pop(), r_frame_ptr, ip->load_value.literal);
+        case lauf::bc_op::store_value: {
+            auto reg = compiler->reg.pop_as_register(compiler->emitter, r_vstack_ptr);
+            compiler->emitter.str_imm(reg, r_frame_ptr, ip->load_value.literal);
             break;
-        case lauf::bc_op::save_value:
-            compiler->emitter.str_imm(compiler->stack.top(), r_frame_ptr, ip->load_value.literal);
+        }
+        case lauf::bc_op::save_value: {
+            auto reg = compiler->reg.top_as_register(compiler->emitter, r_vstack_ptr);
+            compiler->emitter.str_imm(reg, r_frame_ptr, ip->load_value.literal);
             break;
+        }
 
         default:
             assert(false); // unimplemented
@@ -341,13 +239,13 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     //=== lab_success ===//
     compiler->emitter.place_label(lab_success);
 
-    emit_epilogue();
+    compiler->reg.save_restore_registers(false, compiler->emitter, fn->max_vstack_size);
     compiler->emitter.tail_call(&lauf::jit_finish);
 
     //=== lab_panic ===//
     compiler->emitter.place_label(lab_panic);
 
-    emit_epilogue();
+    compiler->reg.save_restore_registers(false, compiler->emitter, fn->max_vstack_size);
     compiler->emitter.mov_imm(register_::result, std::uint64_t(0));
     compiler->emitter.ret();
 

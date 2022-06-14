@@ -58,11 +58,16 @@ LAUF_BC_OP(return_, bc_inst_none, {
 
     frame->free_local_allocations(process);
 
-    ip        = frame->return_ip;
-    frame_ptr = frame->prev + 1;
+    auto prev_frame = frame->prev;
+    ip              = frame->return_ip;
+    frame_ptr       = prev_frame + 1;
     process->stack().unwind(marker);
 
-    LAUF_DISPATCH;
+    if (prev_frame->fn != nullptr && prev_frame->fn->jit_fn != nullptr)
+        // We're returning to a JIT function, actual return.
+        return true;
+    else
+        LAUF_DISPATCH;
 })
 LAUF_BC_OP(return_no_alloc, bc_inst_none, {
     auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
@@ -72,7 +77,16 @@ LAUF_BC_OP(return_no_alloc, bc_inst_none, {
     frame_ptr = frame->prev + 1;
     process->stack().unwind(marker);
 
-    LAUF_DISPATCH;
+    auto prev_frame = frame->prev;
+    ip              = frame->return_ip;
+    frame_ptr       = prev_frame + 1;
+    process->stack().unwind(marker);
+
+    if (prev_frame->fn != nullptr && prev_frame->fn->jit_fn != nullptr)
+        // We're returning to a JIT function, actual return.
+        return true;
+    else
+        LAUF_DISPATCH;
 })
 
 // Calls the specified function.

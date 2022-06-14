@@ -261,23 +261,69 @@ public:
         _inst.push_back(inst);
     }
 
-    void str_imm(register_ reg, register_ base, std::uint16_t index)
+    void str_imm(register_ reg, register_ base, std::ptrdiff_t index)
     {
-        // STR reg, base, #(index * 8)
-        auto inst = 0b11'111'0'01'00'000000000000'00000'00000;
-        inst |= encode(reg) << 0;
-        inst |= encode(base) << 5;
-        inst |= (index & 0b111111111111) << 10;
-        _inst.push_back(inst);
+        if (index >= 0)
+        {
+            // STR reg, base, #index
+            auto inst = std::uint32_t(0b11'111'0'01'00) << 22;
+            inst |= encode(reg) << 0;
+            inst |= encode(base) << 5;
+            inst |= (index & 0b111111111111) << 10;
+            _inst.push_back(inst);
+        }
+        else if (index * 8 >= -256)
+        {
+            // STUR reg, base, #(index * 8)
+            auto inst = std::uint32_t(0b11'111'0'00'00'0) << 21;
+            inst |= encode(reg) << 0;
+            inst |= encode(base) << 5;
+            inst |= (std::uint32_t(index * 8) & 0b111111111) << 12;
+            _inst.push_back(inst);
+        }
+        else
+        {
+            mov_imm(register_::_scratch, index);
+
+            // STR reg, [base, scratch LSL 3]
+            auto inst = 0b11'111'0'00'00'1'00000'0111'10'00000'00000;
+            inst |= encode(reg) << 0;
+            inst |= encode(base) << 5;
+            inst |= encode(register_::_scratch) << 16;
+            _inst.push_back(inst);
+        }
     }
-    void ldr_imm(register_ reg, register_ base, std::uint16_t index)
+    void ldr_imm(register_ reg, register_ base, std::ptrdiff_t index)
     {
-        // LDR reg, base, #(index * 8)
-        auto inst = 0b11'111'0'01'01'000000000000'00000'00000;
-        inst |= encode(reg) << 0;
-        inst |= encode(base) << 5;
-        inst |= (index & 0b111111111111) << 10;
-        _inst.push_back(inst);
+        if (index >= 0)
+        {
+            // LDR reg, base, #(index * 8)
+            auto inst = std::uint32_t(0b11'111'0'01'01) << 22;
+            inst |= encode(reg) << 0;
+            inst |= encode(base) << 5;
+            inst |= (index & 0b111111111111) << 10;
+            _inst.push_back(inst);
+        }
+        else if (index * 8 >= -256)
+        {
+            // LDUR reg, base, #(index * 8)
+            auto inst = std::uint32_t(0b11'111'0'00'01'0) << 21;
+            inst |= encode(reg) << 0;
+            inst |= encode(base) << 5;
+            inst |= (std::uint32_t(index * 8) & 0b111111111) << 12;
+            _inst.push_back(inst);
+        }
+        else
+        {
+            mov_imm(register_::_scratch, index);
+
+            // LDR reg, [base, scratch LSL 3]
+            auto inst = 0b11'111'0'00'01'1'00000'0111'10'00000'00000;
+            inst |= encode(reg) << 0;
+            inst |= encode(base) << 5;
+            inst |= encode(register_::_scratch) << 16;
+            _inst.push_back(inst);
+        }
     }
 
     //=== finish ===//
