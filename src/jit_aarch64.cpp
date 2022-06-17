@@ -5,19 +5,12 @@
 
 #include <algorithm>
 #include <cstdio> // TODO
-#include <lauf/aarch64/emitter.hpp>
-#include <lauf/aarch64/register_allocator.hpp>
+#include <lauf/aarch64/jit.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/vm.hpp>
 #include <map>
 
 //=== compiler functions ===//
-struct lauf_jit_compiler_impl
-{
-    lauf::aarch64::emitter            emitter;
-    lauf::aarch64::register_allocator reg;
-};
-
 lauf_jit_compiler lauf_jit_compiler_create(void)
 {
     return new lauf_jit_compiler_impl{};
@@ -60,18 +53,25 @@ template <typename Call, typename Imm>
 void call_builtin(lauf_jit_compiler compiler, emitter::label lab_panic, const Call& call,
                   lauf_builtin_function fn, Imm ip)
 {
-    compiler->reg.push_inputs(compiler->emitter, r_vstack_ptr, call.input_count);
-
-    save_args(compiler);
+    if (lauf_try_jit_int(compiler, fn))
     {
-        compiler->emitter.mov_imm(r_ip, ip);
-        compiler->emitter.call(fn);
-        compiler->emitter.mov(register_::scratch1, register_::result);
+        compiler->emitter.cbz(register_::panic_result, lab_panic);
     }
-    restore_args(compiler);
-    compiler->emitter.cbz(register_::scratch1, lab_panic);
+    else
+    {
+        compiler->reg.push_inputs(compiler->emitter, r_vstack_ptr, call.input_count);
 
-    compiler->reg.pop_outputs(call.output_count, call.stack_change());
+        save_args(compiler);
+        {
+            compiler->emitter.mov_imm(r_ip, ip);
+            compiler->emitter.call(fn);
+            compiler->emitter.mov(register_::panic_result, register_::result);
+        }
+        restore_args(compiler);
+        compiler->emitter.cbz(register_::panic_result, lab_panic);
+
+        compiler->reg.pop_outputs(call.output_count, call.stack_change());
+    }
 }
 } // namespace
 

@@ -16,14 +16,13 @@ enum class register_ : std::uint8_t
 {
     result = 0,
 
-    scratch1 = 9,
-    scratch2 = 10,
+    panic_result = 9,
 
     // For emitter use only.
     _scratch = 17,
 };
 
-std::uint8_t encode(register_ reg)
+constexpr std::uint8_t encode(register_ reg)
 {
     return std::uint8_t(reg) & 0b11111;
 }
