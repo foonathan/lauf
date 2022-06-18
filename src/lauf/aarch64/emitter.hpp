@@ -197,6 +197,15 @@ public:
         _inst.push_back(inst);
     }
 
+    void add(register_ rd, register_ rn, register_ rm)
+    {
+        // ADD rd, rn, rm
+        auto inst = std::uint32_t(0b1'0'0'01011'00'0) << 21;
+        inst |= encode(rd) << 0;
+        inst |= encode(rn) << 5;
+        inst |= encode(rm) << 16;
+        _inst.push_back(inst);
+    }
     void add_imm(register_ rd, register_ r, std::uint16_t imm)
     {
         // ADD rd, r, #imm
@@ -204,6 +213,16 @@ public:
         inst |= encode(rd) << 0;
         inst |= encode(r) << 5;
         inst |= (imm & 0b111111111111) << 10;
+        _inst.push_back(inst);
+    }
+
+    void sub(register_ rd, register_ rn, register_ rm)
+    {
+        // SUB rd, rn, rm
+        auto inst = std::uint32_t(0b1'1'0'01011'00'0) << 21;
+        inst |= encode(rd) << 0;
+        inst |= encode(rn) << 5;
+        inst |= encode(rm) << 16;
         _inst.push_back(inst);
     }
     void sub_imm(register_ rd, register_ r, std::uint16_t imm)
@@ -216,12 +235,29 @@ public:
         _inst.push_back(inst);
     }
 
+    void cmp(register_ rn, register_ rm)
+    {
+        // CMP rn, rm
+        auto inst = 0b1'1'1'01011'00'0'00000'000000'00000'11111;
+        inst |= encode(rn) << 5;
+        inst |= encode(rm) << 16;
+        _inst.push_back(inst);
+    }
     void cmp_imm(register_ r, std::uint16_t imm)
     {
         // CMP r, #imm
         auto inst = 0b1'1'1'100010'0'000000000000'00000'11111;
         inst |= encode(r) << 5;
         inst |= (imm & 0b111111111111) << 10;
+        _inst.push_back(inst);
+    }
+
+    void cset(register_ rd, condition_code cc)
+    {
+        // CSET rd, cc
+        auto inst = 0b1'0'0'11010100'11111'0000'0'1'11111'00000;
+        inst |= (std::uint8_t(cc) ^ 1) << 12;
+        inst |= encode(rd) << 0;
         _inst.push_back(inst);
     }
 

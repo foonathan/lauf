@@ -5,6 +5,7 @@
 #define SRC_LAUF_AARCH64_REGISTER_ALLOCATOR_HPP_INCLUDED
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <lauf/aarch64/emitter.hpp>
 #include <lauf/config.h>
@@ -151,12 +152,24 @@ public:
         }
     }
 
-    register_ pop_as_register(emitter& e, register_ vstack_ptr)
+    template <std::size_t N = 1>
+    auto pop_as_register(emitter& e, register_ vstack_ptr)
     {
-        auto reg = top_as_register(e, vstack_ptr);
-        _value_stack.pop_back();
-        free_register(reg);
-        return reg;
+        std::array<register_, N> regs;
+
+        for (auto i = 0u; i != N; ++i)
+        {
+            regs[N - i - 1] = top_as_register(e, vstack_ptr);
+            _value_stack.pop_back();
+        }
+
+        for (auto& reg : regs)
+            free_register(reg);
+
+        if constexpr (N == 1)
+            return regs[0];
+        else
+            return regs;
     }
 
     void discard(std::size_t n)
