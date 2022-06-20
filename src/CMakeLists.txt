@@ -36,6 +36,8 @@ set(src_additional_files
         lauf/impl/process.hpp
         lauf/impl/program.hpp
         lauf/impl/vm.hpp
+        lauf/ir/cfg.hpp
+        lauf/ir/cfg.cpp
         lauf/support/align.hpp
         lauf/support/joined_allocation.hpp
         lauf/support/stack_allocator.hpp

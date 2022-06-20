@@ -102,6 +102,7 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
         switch (ip->tag.op)
         {
         case lauf::bc_op::nop:
+        case lauf::bc_op::label:
             break;
 
         case lauf::bc_op::jump: {

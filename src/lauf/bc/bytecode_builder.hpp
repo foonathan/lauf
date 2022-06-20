@@ -32,6 +32,10 @@ public:
 
     void place_label(lauf_label l)
     {
+        if (can_fallthrough())
+            // If we can fall through to this instruction, we need a label.
+            _bytecode.push_back(*_alloc, LAUF_VM_INSTRUCTION(label));
+
         auto& decl           = _labels[l._idx];
         decl.bytecode_offset = ptrdiff_t(_bytecode.size());
 
@@ -94,6 +98,9 @@ public:
             return false;
 
         auto op = _bytecode.back().tag.op;
+        if (op == bc_op::label)
+            // If it's the label, the instruction before that matters.
+            op = _bytecode[_bytecode.size() - 2].tag.op;
         return op != bc_op::jump && op != bc_op::return_ && op != bc_op::panic;
     }
 

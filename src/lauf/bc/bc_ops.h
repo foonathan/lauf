@@ -5,6 +5,13 @@ LAUF_BC_OP(nop, bc_inst_none, {
     LAUF_DISPATCH;
 })
 
+// Dummy instruction to indicate that the next instruction is also reached by a jump instruction.
+// This ensures that we know when we need to split basic blocks.
+LAUF_BC_OP(label, bc_inst_none, {
+    ++ip;
+    LAUF_DISPATCH;
+})
+
 // Increments ip by offset.
 LAUF_BC_OP(jump, bc_inst_offset, {
     ip += ip->jump.offset;

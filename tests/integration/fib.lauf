@@ -39,8 +39,8 @@ function @fib_tail_call(3 => 1) { # n a b => F_n
     return;
 
 label %recurse(1):
-    sint 1; $ssub;                 # n => (n-1)
-    load_value %b;                             # => (n-1) b
+    sint 1; $ssub;                # n => (n-1)
+    load_value %b;                # => (n-1) b
     pick 0; load_value %a; $sadd; # => (n-1) b (b+a)
     call @fib_tail_call;
     return;
@@ -59,9 +59,9 @@ function @fib_iter(1 => 1) {
 label %loop(1):
     load_value %b; # => b
 
-    pick 0;             # => b b
-    load_value %a;      # => b b a
-    $sadd; # => b (b+a)
+    pick 0;        # => b b
+    load_value %a; # => b b a
+    $sadd;         # => b (b+a)
 
     store_value %b;
     store_value %a;

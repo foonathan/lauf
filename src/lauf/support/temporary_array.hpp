@@ -27,6 +27,24 @@ public:
     temporary_array(const temporary_array&) = delete;
     temporary_array& operator=(const temporary_array&) = delete;
 
+    temporary_array(temporary_array&& other) noexcept
+    : _data(other._data), _size(other._size), _capacity(other._capacity)
+    {
+        other._data = nullptr;
+        other._size = other._capacity = 0;
+    }
+    temporary_array& operator=(temporary_array&& other) noexcept
+    {
+        _data     = other._data;
+        _size     = other._size;
+        _capacity = other._capacity;
+
+        other._data = nullptr;
+        other._size = other._capacity = 0;
+
+        return *this;
+    }
+
     // Note: memory freed when stack allocator reset.
     ~temporary_array() noexcept = default;
 
@@ -112,6 +130,32 @@ public:
 
         _data[_size] = object;
         ++_size;
+    }
+    template <typename... Args>
+    void emplace_back(stack_allocator& alloc, Args&&... args)
+    {
+        if (_size == _capacity)
+            grow(alloc);
+
+        _data[_size] = T(static_cast<Args&&>(args)...);
+        ++_size;
+    }
+
+    void resize(stack_allocator& alloc, std::size_t n, const T& value = {})
+    {
+        if (n <= _size)
+        {
+            // No need to free anything.
+            _size = n;
+        }
+        else
+        {
+            if (n > _capacity)
+                grow(alloc);
+
+            for (; _size != n; ++_size)
+                _data[_size] = value;
+        }
     }
 
 private:
