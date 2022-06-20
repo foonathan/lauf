@@ -6,8 +6,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <lauf/bc/literal_pool.hpp>
 #include <lauf/config.h>
-#include <lauf/literal_pool.hpp>
 #include <vector>
 
 namespace lauf::aarch64

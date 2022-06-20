@@ -3,15 +3,15 @@
 
 #include <lauf/builder.h>
 
+#include <lauf/bc/bytecode.hpp>
+#include <lauf/bc/bytecode_builder.hpp>
+#include <lauf/bc/literal_pool.hpp>
+#include <lauf/bc/stack_check.hpp>
+#include <lauf/bc/verify.hpp>
 #include <lauf/builtin.h>
-#include <lauf/bytecode.hpp>
-#include <lauf/bytecode_builder.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/vm.hpp>
-#include <lauf/literal_pool.hpp>
-#include <lauf/stack_check.hpp>
 #include <lauf/support/stack_allocator.hpp>
-#include <lauf/verify.hpp>
 #include <vector>
 
 namespace

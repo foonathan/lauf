@@ -1,8 +1,8 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_LAUF_VM_MEMORY_HPP_INCLUDED
-#define SRC_LAUF_VM_MEMORY_HPP_INCLUDED
+#ifndef SRC_LAUF_BC_VM_MEMORY_HPP_INCLUDED
+#define SRC_LAUF_BC_VM_MEMORY_HPP_INCLUDED
 
 #include <cstddef>
 #include <cstdint>
@@ -298,5 +298,5 @@ private:
 };
 } // namespace lauf
 
-#endif // SRC_LAUF_VM_MEMORY_HPP_INCLUDED
+#endif // SRC_LAUF_BC_VM_MEMORY_HPP_INCLUDED
 

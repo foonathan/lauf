@@ -5,13 +5,13 @@
 #define SRC_IMPL_MODULE_HPP_INCLUDED
 
 #include <cstring>
-#include <lauf/bytecode.hpp>
+#include <lauf/bc/bytecode.hpp>
+#include <lauf/bc/vm_memory.hpp>
 #include <lauf/jit.h>
 #include <lauf/module.h>
 #include <lauf/support/joined_allocation.hpp>
 #include <lauf/support/virtual_memory.hpp>
 #include <lauf/value.h>
-#include <lauf/vm_memory.hpp>
 #include <memory>
 
 //=== debug metadata ===//

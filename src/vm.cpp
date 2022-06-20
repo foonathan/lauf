@@ -8,8 +8,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <lauf/bc/bytecode.hpp>
 #include <lauf/builtin.h>
-#include <lauf/bytecode.hpp>
 #include <lauf/impl/builtin.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/process.hpp>
@@ -229,7 +229,7 @@ namespace
 #    define LAUF_DISPATCH_BUILTIN(Callee, StackChange)                                             \
         LAUF_TAIL_CALL return Callee(ip, vstack_ptr, frame_ptr, process)
 
-#    include "lauf/bc_ops.h"
+#    include "lauf/bc/bc_ops.h"
 
 #    undef LAUF_BC_OP
 #    undef LAUF_DISPATCH
@@ -239,7 +239,7 @@ namespace
 
 lauf_builtin_function* const lauf::inst_fns[] = {
 #    define LAUF_BC_OP(Name, Data, ...) &execute_##Name,
-#    include "lauf/bc_ops.h"
+#    include "lauf/bc/bc_ops.h"
 #    undef LAUF_BC_OP
 };
 
@@ -251,7 +251,7 @@ bool lauf::dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame
 {
     void* labels[] = {
 #    define LAUF_BC_OP(Name, Data, ...) &&execute_##Name,
-#    include "lauf/bc_ops.h"
+#    include "lauf/bc/bc_ops.h"
 #    undef LAUF_BC_OP
     };
 
@@ -272,7 +272,7 @@ bool lauf::dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame
             goto* labels[size_t(ip->tag.op)];                                                      \
         } while (0);
 
-#    include "lauf/bc_ops.h"
+#    include "lauf/bc/bc_ops.h"
 
 #    undef LAUF_BC_OP
 #    undef LAUF_DISPATCH
@@ -301,7 +301,7 @@ bool lauf::dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame
             break
         }
 
-#    include "lauf/bc_ops.h"
+#    include "lauf/bc/bc_ops.h"
 
 #    undef LAUF_BC_OP
 #    undef LAUF_DISPATCH

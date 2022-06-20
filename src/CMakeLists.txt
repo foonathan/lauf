@@ -22,26 +22,27 @@ set(header_files
         ${include_dir}/lib/int.h
         ${include_dir}/lib/memory.h)
 set(src_additional_files
+        lauf/aarch64/emitter.hpp
+        lauf/aarch64/jit.hpp
+        lauf/aarch64/register_allocator.hpp
+        lauf/bc/bytecode.hpp
+        lauf/bc/bytecode_builder.hpp
+        lauf/bc/literal_pool.hpp
+        lauf/bc/stack_check.hpp
+        lauf/bc/verify.hpp
+        lauf/bc/vm_memory.hpp
+        lauf/impl/builtin.hpp
+        lauf/impl/module.hpp
+        lauf/impl/process.hpp
+        lauf/impl/program.hpp
+        lauf/impl/vm.hpp
         lauf/support/align.hpp
         lauf/support/joined_allocation.hpp
         lauf/support/stack_allocator.hpp
         lauf/support/temporary_array.hpp
         lauf/support/virtual_memory.hpp
         lauf/support/virtual_memory.cpp
-        lauf/impl/builtin.hpp
-        lauf/impl/module.hpp
-        lauf/impl/process.hpp
-        lauf/impl/program.hpp
-        lauf/impl/vm.hpp
-        lauf/bytecode.hpp
-        lauf/bytecode_builder.hpp
-        lauf/literal_pool.hpp
-        lauf/stack_check.hpp
-        lauf/verify.hpp
-        lauf/vm_memory.hpp
-        lauf/aarch64/emitter.hpp
-        lauf/aarch64/jit.hpp
-        lauf/aarch64/register_allocator.hpp)
+        )
 set(src_files
         builder.cpp
         linker.cpp

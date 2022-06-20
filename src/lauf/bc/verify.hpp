@@ -1,8 +1,8 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_VERIFY_HPP_INCLUDED
-#define SRC_VERIFY_HPP_INCLUDED
+#ifndef SRC_LAUF_BC_VERIFY_HPP_INCLUDED
+#define SRC_LAUF_BC_VERIFY_HPP_INCLUDED
 
 #include <cstdio>
 #include <cstdlib>
@@ -31,5 +31,5 @@ inline void verification_failure(const char* inst, const char* msg)
 #    define LAUF_VERIFY_RESULT(Cond, Inst, Msg) Cond
 #endif
 
-#endif // SRC_VERIFY_HPP_INCLUDED
+#endif // SRC_LAUF_BC_VERIFY_HPP_INCLUDED
 

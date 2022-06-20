@@ -4,9 +4,9 @@
 #include <lauf/frontend/text.h>
 
 #include <cstring>
+#include <lauf/bc/verify.hpp>
 #include <lauf/builder.h>
 #include <lauf/value.h>
-#include <lauf/verify.hpp>
 #include <lexy/action/parse.hpp>
 #include <lexy/callback.hpp>
 #include <lexy/dsl.hpp>

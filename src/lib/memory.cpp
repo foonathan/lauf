@@ -3,10 +3,10 @@
 
 #include <lauf/lib/memory.h>
 
+#include <lauf/bc/vm_memory.hpp>
 #include <lauf/impl/builtin.hpp>
 #include <lauf/impl/process.hpp>
 #include <lauf/impl/vm.hpp>
-#include <lauf/vm_memory.hpp>
 
 LAUF_BUILTIN_UNARY_OPERATION(lauf_address_to_int_builtin, 2, {
     result[1].as_uint = lauf_value_uint(value.as_address.allocation) << 34

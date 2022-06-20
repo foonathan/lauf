@@ -5,8 +5,8 @@
 #define SRC_LAUF_IMPL_BUILTIN_HPP_INCLUDED
 
 #include <cstdint>
+#include <lauf/bc/bytecode.hpp>
 #include <lauf/builtin.h>
-#include <lauf/bytecode.hpp>
 
 //=== lauf_builtin_dispatch ===//
 #if LAUF_HAS_TAIL_CALL

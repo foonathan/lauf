@@ -1,11 +1,11 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
-#define SRC_DETAIL_STACK_CHECK_HPP_INCLUDED
+#ifndef SRC_LAUF_BC_STACK_CHECK_HPP_INCLUDED
+#define SRC_LAUF_BC_STACK_CHECK_HPP_INCLUDED
 
 #include <cstdint>
-#include <lauf/verify.hpp>
+#include <lauf/bc/verify.hpp>
 
 namespace lauf
 {
@@ -50,5 +50,5 @@ private:
 };
 } // namespace lauf
 
-#endif // SRC_STACK_CHECK_HPP_INCLUDED
+#endif // SRC_LAUF_BC_STACK_CHECK_HPP_INCLUDED
 

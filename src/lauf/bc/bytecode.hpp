@@ -1,12 +1,12 @@
 // Copyright (C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#ifndef SRC_BYTECODE_HPP_INCLUDED
-#define SRC_BYTECODE_HPP_INCLUDED
+#ifndef SRC_LAUF_BC_BYTECODE_HPP_INCLUDED
+#define SRC_LAUF_BC_BYTECODE_HPP_INCLUDED
 
+#include <lauf/bc/verify.hpp>
 #include <lauf/config.h>
 #include <lauf/module.h>
-#include <lauf/verify.hpp>
 
 union lauf_vm_instruction;
 
@@ -230,5 +230,5 @@ static_assert(sizeof(lauf_vm_instruction) == sizeof(uint32_t));
         return inst;                                                                               \
     }(__VA_ARGS__)
 
-#endif // SRC_BYTECODE_HPP_INCLUDED
+#endif // SRC_LAUF_BC_BYTECODE_HPP_INCLUDED
 

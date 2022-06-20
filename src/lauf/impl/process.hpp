@@ -5,10 +5,10 @@
 #define SRC_LAUF_IMPL_PROCESS_HPP_INCLUDED
 
 #include <cassert>
+#include <lauf/bc/vm_memory.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/program.hpp>
 #include <lauf/impl/vm.hpp>
-#include <lauf/vm_memory.hpp>
 
 // Stores additionally data that don't get their own arguments in dispatch.
 struct lauf_vm_process_impl : lauf::joined_allocation<lauf_vm_process_impl, lauf::vm_allocation>,
