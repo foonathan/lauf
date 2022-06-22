@@ -32,11 +32,9 @@ public:
 
     void place_label(lauf_label l)
     {
-        if (can_fallthrough())
-            // If we can fall through to this instruction, we need a label.
-            _bytecode.push_back(*_alloc, LAUF_VM_INSTRUCTION(label));
-
-        auto& decl           = _labels[l._idx];
+        auto& decl = _labels[l._idx];
+        if (!_bytecode.empty())
+            _bytecode.push_back(*_alloc, LAUF_VM_INSTRUCTION(label, decl.vstack_size));
         decl.bytecode_offset = ptrdiff_t(_bytecode.size());
 
         // We terminate the current basic block and add a new one.

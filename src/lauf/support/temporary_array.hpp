@@ -20,9 +20,13 @@ public:
     temporary_array() : _data(nullptr), _size(0), _capacity(0) {}
 
     explicit temporary_array(stack_allocator& alloc, size_t expected_size)
-    : _data(static_cast<T*>(alloc.allocate<alignof(T)>(expected_size * sizeof(T)))), _size(0),
-      _capacity(uint32_t(expected_size))
-    {}
+    : _data(nullptr), _size(0), _capacity(uint32_t(expected_size))
+    {
+        if (_capacity * sizeof(T) <= alloc.max_allocation_size())
+            _data = static_cast<T*>(alloc.allocate<alignof(T)>(expected_size * sizeof(T)));
+        else
+            _data = static_cast<T*>(::operator new(sizeof(T) * _capacity));
+    }
 
     temporary_array(const temporary_array&) = delete;
     temporary_array& operator=(const temporary_array&) = delete;
@@ -35,6 +39,9 @@ public:
     }
     temporary_array& operator=(temporary_array&& other) noexcept
     {
+        if (_capacity * sizeof(T) > stack_allocator::max_allocation_size())
+            ::operator delete(_data);
+
         _data     = other._data;
         _size     = other._size;
         _capacity = other._capacity;
@@ -45,8 +52,11 @@ public:
         return *this;
     }
 
-    // Note: memory freed when stack allocator reset.
-    ~temporary_array() noexcept = default;
+    ~temporary_array() noexcept
+    {
+        if (_capacity * sizeof(T) > stack_allocator::max_allocation_size())
+            ::operator delete(_data);
+    }
 
     //=== access ===//
     bool empty() const noexcept
@@ -123,6 +133,12 @@ public:
         _capacity   = capacity;
     }
 
+    void push_back(const T& object)
+    {
+        assert(_size < _capacity);
+        _data[_size] = object;
+        ++_size;
+    }
     void push_back(stack_allocator& alloc, const T& object)
     {
         if (_size == _capacity)
@@ -131,6 +147,7 @@ public:
         _data[_size] = object;
         ++_size;
     }
+
     template <typename... Args>
     void emplace_back(stack_allocator& alloc, Args&&... args)
     {
@@ -141,6 +158,20 @@ public:
         ++_size;
     }
 
+    void resize(std::size_t n, const T& value = {})
+    {
+        if (n <= _size)
+        {
+            // No need to free anything.
+            _size = n;
+        }
+        else
+        {
+            assert(n <= _capacity);
+            for (; _size != n; ++_size)
+                _data[_size] = value;
+        }
+    }
     void resize(stack_allocator& alloc, std::size_t n, const T& value = {})
     {
         if (n <= _size)
@@ -158,11 +189,14 @@ public:
         }
     }
 
+    void pop_back()
+    {
+        --_size;
+    }
+
 private:
     void grow(stack_allocator& alloc)
     {
-        // We don't free the previous allocation (we can't with a stack allocator).
-        // However, this is fine, as it's temporary storage.
         constexpr auto default_capacity = 128;
         auto twice_capacity = _capacity == 0 ? default_capacity : 2 * std::size_t(_capacity);
         auto new_capacity   = twice_capacity < alloc.max_allocation_size()
@@ -172,6 +206,12 @@ private:
 
         auto new_memory = alloc.allocate<alignof(T)>(new_capacity * sizeof(T));
         std::memcpy(new_memory, _data, _size * sizeof(T));
+
+        // We only free the previous allocation if it's from the heap (we can't with a stack
+        // allocator). However, this is fine, as it's temporary storage.
+        if (_capacity * sizeof(T) > stack_allocator::max_allocation_size())
+            ::operator delete(_data);
+
         _data     = static_cast<T*>(new_memory);
         _capacity = new_capacity;
     }

@@ -58,6 +58,25 @@ enum class condition_code : unsigned char
     cmp_ge = 7
 };
 
+constexpr const char* to_string(condition_code cc)
+{
+    switch (cc)
+    {
+    case condition_code::is_zero:
+        return "z";
+    case condition_code::is_nonzero:
+        return "nzero";
+    case condition_code::cmp_lt:
+        return "lt";
+    case condition_code::cmp_le:
+        return "le";
+    case condition_code::cmp_gt:
+        return "gt";
+    case condition_code::cmp_ge:
+        return "ge";
+    }
+}
+
 struct bc_inst_none
 {
     bc_op    op : 8;

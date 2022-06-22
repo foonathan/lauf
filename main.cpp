@@ -16,6 +16,8 @@
 #include <lauf/module.h>
 #include <lauf/vm.h>
 
+#include "src/lauf/ir/irdump.hpp"
+
 LAUF_BUILTIN_UNARY_OPERATION(print, 1, {
     std::printf("%ld\n", value.as_sint);
     *result = value;
@@ -35,6 +37,29 @@ int main()
     lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
+
+        function @test(1 => 2) {
+            local %arg : $Value;
+
+            store_value %arg;
+            load_value %arg;
+            sint 42;
+            $scmp;
+            jump_if cmp_eq %foo;
+            load_value %arg;
+            sint 1;
+            return;
+
+        label %foo:
+            load_value %arg;
+            sint 2;
+            return;
+        }
+
+        function @foo(0 => 1) {
+            sint 11;
+            return;
+        }
 
         function @fib_recursive(1 => 1) {
             local %arg : $Value;
@@ -64,6 +89,12 @@ int main()
     options.allocator = lauf_vm_malloc_allocator;
     auto vm           = lauf_vm_create(options);
 
+    lauf::memory_stack    stack;
+    lauf::stack_allocator alloc(stack);
+    auto                  ir = lauf::irgen(alloc, fn);
+    std::puts(lauf::irdump(ir).c_str());
+
+#if 0
     auto compiler = lauf_vm_jit_compiler(vm);
     lauf_jit_compile(compiler, fn);
 
@@ -71,6 +102,7 @@ int main()
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);
+#endif
 
     lauf_program_destroy(program);
     lauf_module_destroy(mod);

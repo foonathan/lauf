@@ -396,7 +396,7 @@ void lauf_build_pick(lauf_builder b, size_t n)
     b->bytecode.location(b->cur_location);
 
     if (n == 0)
-        b->bytecode.instruction(LAUF_VM_INSTRUCTION(dup));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(dup, n));
     else
         b->bytecode.instruction(LAUF_VM_INSTRUCTION(pick, n));
     LAUF_VERIFY(n < b->value_stack.cur_stack_size(), "pick", "invalid stack index");
@@ -410,7 +410,7 @@ void lauf_build_roll(lauf_builder b, size_t n)
     if (n == 0)
     {} // noop
     else if (n == 1)
-        b->bytecode.instruction(LAUF_VM_INSTRUCTION(swap));
+        b->bytecode.instruction(LAUF_VM_INSTRUCTION(swap, n));
     else
         b->bytecode.instruction(LAUF_VM_INSTRUCTION(roll, n));
     LAUF_VERIFY(n < b->value_stack.cur_stack_size(), "roll", "invalid stack index");

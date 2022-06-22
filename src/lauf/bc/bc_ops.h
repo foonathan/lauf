@@ -7,7 +7,7 @@ LAUF_BC_OP(nop, bc_inst_none, {
 
 // Dummy instruction to indicate that the next instruction is also reached by a jump instruction.
 // This ensures that we know when we need to split basic blocks.
-LAUF_BC_OP(label, bc_inst_none, {
+LAUF_BC_OP(label, bc_inst_literal, {
     ++ip;
     LAUF_DISPATCH;
 })
@@ -283,7 +283,7 @@ LAUF_BC_OP(pick, bc_inst_literal, {
 
 // Duplicates the item on top of the stack (pick 0)
 // a => a a
-LAUF_BC_OP(dup, bc_inst_none, {
+LAUF_BC_OP(dup, bc_inst_literal, {
     --vstack_ptr;
     vstack_ptr[0] = vstack_ptr[1];
 
@@ -305,7 +305,7 @@ LAUF_BC_OP(roll, bc_inst_literal, {
 
 // Swaps the top two items of the stack (roll 1)
 // b a => a b
-LAUF_BC_OP(swap, bc_inst_none, {
+LAUF_BC_OP(swap, bc_inst_literal, {
     auto tmp      = vstack_ptr[1];
     vstack_ptr[1] = vstack_ptr[0];
     vstack_ptr[0] = tmp;

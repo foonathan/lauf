@@ -131,7 +131,7 @@ public:
     template <std::size_t Alignment = 1>
     LAUF_INLINE void* try_allocate(std::size_t size)
     {
-        assert(size < max_allocation_size());
+        assert(size <= max_allocation_size());
         if constexpr (Alignment == 1)
         {
             if (remaining_capacity() < size)
