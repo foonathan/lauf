@@ -5,7 +5,7 @@
 #define SRC_LAUF_BC_STACK_CHECK_HPP_INCLUDED
 
 #include <cstdint>
-#include <lauf/bc/verify.hpp>
+#include <lauf/support/verify.hpp>
 
 namespace lauf
 {

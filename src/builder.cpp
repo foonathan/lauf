@@ -7,11 +7,11 @@
 #include <lauf/bc/bytecode_builder.hpp>
 #include <lauf/bc/literal_pool.hpp>
 #include <lauf/bc/stack_check.hpp>
-#include <lauf/bc/verify.hpp>
 #include <lauf/builtin.h>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/vm.hpp>
 #include <lauf/support/stack_allocator.hpp>
+#include <lauf/support/verify.hpp>
 #include <vector>
 
 namespace

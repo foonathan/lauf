@@ -22,6 +22,7 @@ set(header_files
         ${include_dir}/lib/int.h
         ${include_dir}/lib/memory.h)
 set(src_additional_files
+        lauf/aarch64/assembler.hpp
         lauf/aarch64/emitter.hpp
         lauf/aarch64/jit.hpp
         lauf/aarch64/register_allocator.hpp
@@ -29,7 +30,6 @@ set(src_additional_files
         lauf/bc/bytecode_builder.hpp
         lauf/bc/literal_pool.hpp
         lauf/bc/stack_check.hpp
-        lauf/bc/verify.hpp
         lauf/bc/vm_memory.hpp
         lauf/impl/builtin.hpp
         lauf/impl/module.hpp
@@ -46,6 +46,7 @@ set(src_additional_files
         lauf/support/joined_allocation.hpp
         lauf/support/stack_allocator.hpp
         lauf/support/temporary_array.hpp
+        lauf/support/verify.hpp
         lauf/support/virtual_memory.hpp
         lauf/support/virtual_memory.cpp
         )

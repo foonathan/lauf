@@ -4,8 +4,8 @@
 #include <lauf/frontend/text.h>
 
 #include <cstring>
-#include <lauf/bc/verify.hpp>
 #include <lauf/builder.h>
+#include <lauf/support/verify.hpp>
 #include <lauf/value.h>
 #include <lexy/action/parse.hpp>
 #include <lexy/callback.hpp>

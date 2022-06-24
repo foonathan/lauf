@@ -4,9 +4,9 @@
 #ifndef SRC_LAUF_BC_BYTECODE_HPP_INCLUDED
 #define SRC_LAUF_BC_BYTECODE_HPP_INCLUDED
 
-#include <lauf/bc/verify.hpp>
 #include <lauf/config.h>
 #include <lauf/module.h>
+#include <lauf/support/verify.hpp>
 
 union lauf_vm_instruction;
 
