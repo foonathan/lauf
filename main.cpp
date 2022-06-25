@@ -39,19 +39,16 @@ int main()
         module @mod;
 
         function @test(1 => 2) {
-            local %arg : $Value;
-
-            store_value %arg;
-            load_value %arg;
+            pick 0;
             sint 42;
+            sint 2;
+            $sadd;
             $scmp;
             jump_if cmp_eq %foo;
-            load_value %arg;
             sint 1;
             return;
 
-        label %foo:
-            load_value %arg;
+        label %foo(1):
             sint 2;
             return;
         }
@@ -91,8 +88,9 @@ int main()
 
     lauf::memory_stack    stack;
     lauf::stack_allocator alloc(stack);
-    auto                  ir = lauf::irgen(alloc, fn);
-    std::puts(lauf::irdump(ir).c_str());
+    auto                  ir    = lauf::irgen(alloc, fn);
+    auto                  assgn = lauf::register_allocation(alloc, {8, 8, 14}, ir);
+    std::puts(lauf::irdump(ir, &assgn).c_str());
 
 #if 0
     auto compiler = lauf_vm_jit_compiler(vm);

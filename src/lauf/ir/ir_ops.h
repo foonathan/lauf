@@ -17,7 +17,9 @@ LAUF_IR_OP(const_, ir_inst_value)
 LAUF_IR_OP(call_builtin, ir_inst_call_builtin)
 // Calls the specified function.
 LAUF_IR_OP(call, ir_inst_call)
-// Specifies a register or constant that is used as argument.
+// Specifies a register or constant that is used as argument to a call or jump.
+// They're in reverse order, i.e. the first instruction following the call is the one on top of the
+// value stack, or the rightmost parameter.
 LAUF_IR_OP(argument, ir_inst_argument)
 // Placeholder to reserve a register for the result.
 LAUF_IR_OP(call_result, ir_inst_none)

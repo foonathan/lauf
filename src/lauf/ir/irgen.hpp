@@ -10,6 +10,51 @@
 
 namespace lauf
 {
+struct ir_block_range
+{
+    // Just enough to be used in a range-based for loop.
+    struct iterator
+    {
+        std::uint16_t _value;
+
+        block_idx operator*() const noexcept
+        {
+            return block_idx(_value);
+        }
+
+        iterator& operator++()
+        {
+            ++_value;
+            return *this;
+        }
+
+        friend bool operator==(iterator lhs, iterator rhs)
+        {
+            return lhs._value == rhs._value;
+        }
+        friend bool operator!=(iterator lhs, iterator rhs)
+        {
+            return lhs._value != rhs._value;
+        }
+    };
+
+    std::size_t _block_count;
+
+    iterator begin() const noexcept
+    {
+        return {0};
+    }
+    iterator end() const noexcept
+    {
+        return {std::uint16_t(_block_count)};
+    }
+
+    std::size_t size() const noexcept
+    {
+        return _block_count;
+    }
+};
+
 struct ir_inst_range
 {
     const ir_inst *_begin, *_end;
@@ -21,6 +66,11 @@ struct ir_inst_range
     const ir_inst* end() const noexcept
     {
         return _end;
+    }
+
+    std::size_t size() const noexcept
+    {
+        return std::size_t(_end - _begin);
     }
 };
 
@@ -42,14 +92,19 @@ public:
         return {_instructions.data() + bb.begin, _instructions.data() + bb.end};
     }
 
-    std::size_t block_count() const noexcept
+    ir_block_range blocks() const noexcept
     {
-        return _blocks.size();
+        return {_blocks.size()};
     }
 
     ir_inst_range instructions() const noexcept
     {
         return {_instructions.begin(), _instructions.end()};
+    }
+
+    std::size_t index_of(const ir_inst& inst) const noexcept
+    {
+        return std::size_t(&inst - _instructions.data());
     }
 
 private:

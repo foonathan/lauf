@@ -13,13 +13,28 @@ std::string format(lauf::register_idx idx)
 {
     return "%" + std::to_string(std::size_t(idx));
 }
+std::string format(lauf::register_assignment assign)
+{
+    auto kind = [&] {
+        switch (assign.kind)
+        {
+        case lauf::register_assignment::argument_reg:
+            return "%a_";
+        case lauf::register_assignment::temporary_reg:
+            return "%t_";
+        case lauf::register_assignment::persistent_reg:
+            return "%p_";
+        }
+    }();
+    return kind + std::to_string(assign.index);
+}
 std::string format(lauf::block_idx idx)
 {
     return "%bb_" + std::to_string(std::size_t(idx));
 }
 } // namespace
 
-std::string lauf::irdump(const ir_function& fn)
+std::string lauf::irdump(const ir_function& fn, const register_assignments* assignments)
 {
     std::string result;
 
@@ -35,11 +50,20 @@ std::string lauf::irdump(const ir_function& fn)
     };
 
     auto print_result = [&](const ir_inst& inst) {
+        auto reg = register_idx(fn.index_of(inst));
+
         result += " => ";
         if (inst.tag.uses == 0)
             result += "_";
         else
-            result += format(register_idx(&inst - fn.instructions().begin()));
+            result += format(reg);
+
+        if (assignments != nullptr && (*assignments)[reg])
+        {
+            result += " (";
+            result += format((*assignments)[reg]);
+            result += ")";
+        }
     };
     auto print_call_results = [&](const ir_inst*& iter) {
         result += " => ";
@@ -52,10 +76,18 @@ std::string lauf::irdump(const ir_function& fn)
             else
                 result += ", ";
 
+            auto reg = register_idx(fn.index_of(iter[1]));
             if (iter[1].tag.uses == 0)
                 result += "_";
             else
-                result += format(register_idx(&iter[1] - fn.instructions().begin()));
+                result += format(reg);
+
+            if (assignments != nullptr && (*assignments)[reg])
+            {
+                result += " (";
+                result += format((*assignments)[reg]);
+                result += ")";
+            }
         }
     };
 
@@ -78,12 +110,12 @@ std::string lauf::irdump(const ir_function& fn)
         return iter + arg_count;
     };
 
-    for (auto i = 0u; i != fn.block_count(); ++i)
+    for (auto bb : fn.blocks())
     {
         //=== block heading ===//
         print_indent();
         result += "block ";
-        result += format(block_idx(i));
+        result += format(bb);
         result += '\n';
 
         print_indent();
@@ -91,7 +123,7 @@ std::string lauf::irdump(const ir_function& fn)
         ++cur_indent;
 
         //=== instructions ===//
-        auto range = fn.block(block_idx(i));
+        auto range = fn.block(bb);
         for (auto iter = range.begin(); iter != range.end(); ++iter)
         {
             auto& inst = *iter;

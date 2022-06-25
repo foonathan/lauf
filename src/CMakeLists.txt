@@ -42,6 +42,8 @@ set(src_additional_files
         lauf/ir/irgen.cpp
         lauf/ir/irgen.hpp
         lauf/ir/irgen.cpp
+        lauf/ir/register_allocator.hpp
+        lauf/ir/register_allocator.cpp
         lauf/support/align.hpp
         lauf/support/joined_allocation.hpp
         lauf/support/stack_allocator.hpp
