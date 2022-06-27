@@ -95,6 +95,12 @@ constexpr std::uint32_t encode(lsl l)
 
 namespace lauf::aarch64
 {
+struct code
+{
+    const std::uint32_t* ptr;
+    std::size_t          size_in_bytes;
+};
+
 class assembler
 {
 public:
@@ -105,12 +111,7 @@ public:
         _insts.push_back(*_alloc, inst);
     }
 
-    std::size_t size() const
-    {
-        return _insts.size();
-    }
-
-    std::uint32_t* finish()
+    code finish()
     {
         for (auto p : _patches)
         {
@@ -128,15 +129,16 @@ public:
                 break;
             }
 
-            auto lab    = (_insts[p.inst_idx] & mask) >> shift;
+            auto lab = (_insts[p.inst_idx] & mask) >> shift;
+            assert(_label_pos[lab] != std::uint32_t(-1));
             auto offset = std::int32_t(_label_pos[lab]) - std::int32_t(p.inst_idx);
 
-            _insts[p.inst_idx] &= ~mask;
-            _insts[p.inst_idx] |= (offset << shift) & mask;
+            _insts[p.inst_idx] &= ~(mask << shift);
+            _insts[p.inst_idx] |= (offset & mask) << shift;
         }
         _patches.resize(0);
 
-        return _insts.data();
+        return {_insts.data(), _insts.size() * sizeof(std::uint32_t)};
     }
 
     //=== label ===//
@@ -452,6 +454,15 @@ public:
     void movk(register_nr xd, immediate imm, lsl shift = lsl{0})
     {
         mov_impl(0b11, xd, imm, shift);
+    }
+
+    //=== mov (register) ===//
+    void mov(register_nr xd, register_nr xm)
+    {
+        auto inst = encode<21>(0b1'01'01010'00'0) | encode<5>(0b11111);
+        inst |= encode(xd) << 0;
+        inst |= encode(xm) << 16;
+        emit(inst);
     }
 
     //=== impl ===//

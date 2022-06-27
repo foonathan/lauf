@@ -5,10 +5,18 @@
 
 #include <algorithm>
 #include <cstdio> // TODO
-#include <lauf/aarch64/jit.hpp>
+#include <lauf/aarch64/assembler.hpp>
+#include <lauf/aarch64/register.hpp>
 #include <lauf/impl/module.hpp>
 #include <lauf/impl/vm.hpp>
+#include <lauf/ir/irgen.hpp>
+#include <lauf/ir/register_allocator.hpp>
 #include <map>
+
+struct lauf_jit_compiler_impl
+{
+    lauf::memory_stack stack;
+};
 
 //=== compiler functions ===//
 lauf_jit_compiler lauf_jit_compiler_create(void)
@@ -29,45 +37,169 @@ lauf_jit_compiler lauf_vm_jit_compiler(lauf_vm vm)
 //=== compile ===//
 namespace
 {
-using namespace lauf::aarch64;
+void emit_mov(lauf::aarch64::assembler& a, lauf::aarch64::register_nr xd, lauf_value value)
+{
+    auto bits = value.as_uint;
+    a.movz(xd, lauf::aarch64::immediate(bits & 0xFF'FF));
 
-void save_args(lauf_jit_compiler compiler)
-{
-    compiler->emitter.push_pair(r_ip, r_vstack_ptr);
-    compiler->emitter.push_pair(r_frame_ptr, r_process);
-}
-void restore_args(lauf_jit_compiler compiler)
-{
-    compiler->emitter.pop_pair(r_frame_ptr, r_process);
-    compiler->emitter.pop_pair(r_ip, r_vstack_ptr);
-}
-
-template <typename Call, typename Imm>
-void call_builtin(lauf_jit_compiler compiler, emitter::label lab_panic, const Call& call,
-                  lauf_builtin_function fn, Imm ip)
-{
-    if (lauf_try_jit_int(compiler, fn))
+    for (auto shift = std::uint8_t(16); true; shift += 16)
     {
-        compiler->emitter.cbz(register_::panic_result, lab_panic);
+        bits >>= 16;
+        if (bits == 0)
+            break;
+
+        a.movk(xd, lauf::aarch64::immediate(bits & 0xFF'FF), lauf::aarch64::lsl{shift});
     }
-    else
-    {
-        compiler->reg.push_inputs(compiler->emitter, r_vstack_ptr, call.input_count);
+}
 
-        save_args(compiler);
+lauf::aarch64::code compile(lauf::stack_allocator& alloc, const lauf::ir_function& fn,
+                            const lauf::register_assignments& regs)
+{
+    using lauf::aarch64::assembler;
+    assembler a(alloc);
+
+    lauf::temporary_array<assembler::label> labels(alloc, fn.blocks().size());
+    for (auto bb : fn.blocks())
+        labels.push_back(a.declare_label());
+
+    auto set_argument_regs = [&](const lauf::ir_inst*& ip, unsigned arg_count) {
+        for (auto i = 0u; i != arg_count; ++i)
         {
-            compiler->emitter.mov_imm(r_ip, ip);
-            compiler->emitter.call(fn);
-            compiler->emitter.mov(register_::panic_result, register_::result);
-        }
-        restore_args(compiler);
-        compiler->emitter.cbz(register_::panic_result, lab_panic);
+            // No -1 as ip points to the parent instruction.
+            auto arg = ip[arg_count - i].argument;
+            assert(arg.op == lauf::ir_op::argument);
 
-        compiler->reg.pop_outputs(call.output_count, call.stack_change());
+            auto dest_reg = lauf::aarch64::reg_argument(i);
+            if (arg.is_constant)
+                emit_mov(a, dest_reg, arg.constant);
+            else if (auto cur_reg = lauf::aarch64::reg_of(regs[arg.register_idx]);
+                     cur_reg != dest_reg)
+                a.mov(dest_reg, cur_reg);
+        }
+        ip += arg_count;
+    };
+
+    for (auto bb : fn.blocks())
+    {
+        a.place_label(labels[std::size_t(bb)]);
+
+        auto insts = fn.block(bb);
+        for (auto ip = insts.begin(); ip != insts.end(); ++ip)
+        {
+            auto& inst = *ip;
+            if (inst.tag.uses == 0)
+                continue;
+
+            auto virt_reg = lauf::register_idx(fn.index_of(inst));
+            switch (inst.tag.op)
+            {
+            case lauf::ir_op::return_: {
+                set_argument_regs(ip, inst.return_.argument_count);
+                a.ret();
+                break;
+            }
+
+            case lauf::ir_op::jump: {
+                set_argument_regs(ip, inst.jump.argument_count);
+                if (inst.jump.dest != lauf::block_idx(std::size_t(bb) + 1))
+                {
+                    auto dest = labels[std::size_t(inst.jump.dest)];
+                    a.b(dest);
+                }
+                break;
+            }
+            case lauf::ir_op::branch: {
+                set_argument_regs(ip, inst.branch.argument_count);
+
+                auto if_true  = labels[std::size_t(inst.branch.if_true)];
+                auto cond_reg = lauf::aarch64::reg_of(regs[inst.branch.reg]);
+                switch (inst.branch.cc)
+                {
+                case lauf::condition_code::is_zero:
+                    a.cbz(cond_reg, if_true);
+                    break;
+                case lauf::condition_code::is_nonzero:
+                    a.cbnz(cond_reg, if_true);
+                    break;
+
+                case lauf::condition_code::cmp_lt:
+                    a.cmp(cond_reg, cond_reg, lauf::aarch64::immediate(0));
+                    a.b(lauf::aarch64::condition_code::lt, if_true);
+                    break;
+                case lauf::condition_code::cmp_le:
+                    a.cmp(cond_reg, cond_reg, lauf::aarch64::immediate(0));
+                    a.b(lauf::aarch64::condition_code::le, if_true);
+                    break;
+                case lauf::condition_code::cmp_gt:
+                    a.cmp(cond_reg, cond_reg, lauf::aarch64::immediate(0));
+                    a.b(lauf::aarch64::condition_code::gt, if_true);
+                    break;
+                case lauf::condition_code::cmp_ge:
+                    a.cmp(cond_reg, cond_reg, lauf::aarch64::immediate(0));
+                    a.b(lauf::aarch64::condition_code::ge, if_true);
+                    break;
+                }
+
+                if (inst.branch.if_false != lauf::block_idx(std::size_t(bb) + 1))
+                {
+                    auto if_false = labels[std::size_t(inst.branch.if_false)];
+                    a.b(if_false);
+                }
+                break;
+            }
+
+            case lauf::ir_op::param: {
+                auto cur_reg  = lauf::aarch64::reg_argument(std::uint8_t(inst.param.index));
+                auto dest_reg = lauf::aarch64::reg_of(regs[virt_reg]);
+                if (cur_reg != dest_reg)
+                    a.mov(dest_reg, cur_reg);
+                break;
+            }
+            case lauf::ir_op::const_:
+                emit_mov(a, lauf::aarch64::reg_of(regs[virt_reg]), inst.const_.value);
+                break;
+
+            case lauf::ir_op::call_builtin:
+            case lauf::ir_op::call:
+            case lauf::ir_op::call_result:
+            case lauf::ir_op::store_value:
+            case lauf::ir_op::load_value:
+                assert(false); // TODO
+                break;
+
+            case lauf::ir_op::argument:
+                assert(!"should be handled by parent instruction");
+                break;
+            }
+        }
     }
+
+    return a.finish();
 }
 } // namespace
 
+lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
+{
+    compiler->stack.reset();
+    lauf::stack_allocator alloc(compiler->stack);
+
+    auto irfn = lauf::irgen(alloc, fn);
+    auto regs = lauf::register_allocation(alloc, lauf::aarch64::register_file, irfn);
+
+    auto code  = compile(alloc, irfn, regs);
+    auto jitfn = fn->mod->exe_alloc.allocate(code.ptr, code.size_in_bytes);
+
+    // TODO
+    {
+        auto file = std::fopen(fn->name, "w");
+        std::fwrite(code.ptr, 1, code.size_in_bytes, file);
+        std::fclose(file);
+    }
+
+    return fn->jit_fn = (lauf_builtin_function*)(jitfn);
+}
+
+#if 0
 lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
 {
     compiler->emitter.reset();
@@ -261,4 +393,5 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
 
     return fn->jit_fn = reinterpret_cast<lauf_builtin_function*>(jit_fn_addr);
 }
+#endif
 

@@ -63,7 +63,7 @@ public:
     }
 
     template <std::size_t Alignment = 1>
-    const void* allocate(void* data, std::size_t size)
+    const void* allocate(const void* data, std::size_t size)
     {
         auto ptr = allocate<Alignment>(size);
         lock_executable_memory(_memory);

@@ -40,20 +40,11 @@ int main()
 
         function @test(1 => 2) {
             pick 0;
-            sint 42;
-            sint 2;
-            $sadd;
-            $scmp;
-            jump_if cmp_eq %foo;
-            sint 1;
+            jump_if is_false %foo;
+            sint 13;
             return;
 
         label %foo(1):
-            sint 2;
-            return;
-        }
-
-        function @foo(0 => 1) {
             sint 11;
             return;
         }
@@ -92,10 +83,10 @@ int main()
     auto                  assgn = lauf::register_allocation(alloc, {8, 8, 14}, ir);
     std::puts(lauf::irdump(ir, &assgn).c_str());
 
-#if 0
     auto compiler = lauf_vm_jit_compiler(vm);
     lauf_jit_compile(compiler, fn);
 
+#if 0
     lauf_value input = {.as_sint = 35};
     lauf_value output;
     if (lauf_vm_execute(vm, program, &input, &output))

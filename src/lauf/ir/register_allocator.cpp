@@ -167,15 +167,29 @@ void promote_to_argument(register_assignments& result, const machine_register_fi
             arg_index = inst.call.signature.input_count;
             break;
 
-        case ir_op::argument:
+        case ir_op::argument: {
             --arg_index;
             if (inst.argument.is_constant || arg_index >= rf.argument_count)
                 break;
 
-            if (auto reg = inst.argument.register_idx;
-                result[reg].kind == register_assignment::temporary_reg)
-                result.assign(reg, {register_assignment::argument_reg, arg_index});
+            auto reg = inst.argument.register_idx;
+            if (result[reg].kind != register_assignment::temporary_reg)
+                // Not a temporary register, can't promote.
+                break;
+
+            if (auto reg_inst = fn.instruction(std::size_t(reg));
+                reg_inst.tag.op == ir_op::param && std::uint16_t(reg_inst.param.index) != arg_index)
+                // The instruction is a parameter that currently resides in a different argument.
+                // This means that we need to shuffle parameters around, which requires temporaries
+                // for the swap.
+                //
+                // OPTIMIZE: we don't need to put everything into a temporary, some can be
+                // moved directly.
+                break;
+
+            result.assign(reg, {register_assignment::argument_reg, arg_index});
             break;
+        }
 
         case ir_op::param:
         case ir_op::const_:

@@ -135,8 +135,7 @@ ir_function lauf::irgen(stack_allocator& alloc, lauf_function fn)
         // Create the parameter instructions for the new block.
         for (auto i = 0u; i != arg_count; ++i)
         {
-            // The last parameter is at the top of the stack.
-            auto reg = add_inst(LAUF_IR_INSTRUCTION(param, param_idx(arg_count - i - 1)));
+            auto reg = add_inst(LAUF_IR_INSTRUCTION(param, param_idx(i)));
             vstack.push(reg);
         }
     };

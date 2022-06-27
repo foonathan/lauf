@@ -102,6 +102,11 @@ public:
         return {_instructions.begin(), _instructions.end()};
     }
 
+    const ir_inst& instruction(std::size_t idx) const noexcept
+    {
+        return _instructions[idx];
+    }
+
     std::size_t index_of(const ir_inst& inst) const noexcept
     {
         return std::size_t(&inst - _instructions.data());
