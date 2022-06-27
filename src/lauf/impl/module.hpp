@@ -97,18 +97,16 @@ struct lauf_function_impl
 struct alignas(lauf_value) lauf_module_impl
 : lauf::joined_allocation<lauf_module_impl, lauf_function, lauf_value, lauf::vm_allocation>
 {
-    const char*          name;
-    const char*          path;
-    size_t               function_count, literal_count, allocation_count;
-    lauf::virtual_memory jit_memory;
-    size_t               cur_jit_offset = 0;
+    const char*                       name;
+    const char*                       path;
+    size_t                            function_count, literal_count, allocation_count;
+    lauf::executable_memory_allocator exe_alloc;
 
     lauf_module_impl() = default;
     ~lauf_module_impl()
     {
         for (auto fn = function_begin(); fn != function_end(); ++fn)
             lauf_function_impl::destroy(*fn);
-        lauf::free_executable_memory(jit_memory);
     }
 
     lauf_function* function_begin()

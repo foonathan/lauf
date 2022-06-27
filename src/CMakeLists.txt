@@ -75,7 +75,7 @@ target_sources(lauf_core PRIVATE ${src_additional_files})
 target_sources(lauf_core PRIVATE lauf.c ${src_files})
 
 if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-    target_sources(lauf_core PRIVATE jit_aarch64.cpp lib/int_aarch64.cpp)
+    target_sources(lauf_core PRIVATE jit_aarch64.cpp)
 else()
     message(STATUS "lauf: JIT compiler not available on this platform or it has been disabled")
     target_sources(lauf_core PRIVATE jit_null.cpp)

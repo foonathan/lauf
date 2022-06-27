@@ -5,7 +5,9 @@
 #define SRC_LAUF_SUPPORT_VIRTUAL_MEMORY_HPP_INCLUDED
 
 #include <cstddef>
+#include <cstring>
 #include <lauf/config.h>
+#include <lauf/support/align.hpp>
 
 namespace lauf
 {
@@ -15,16 +17,79 @@ struct virtual_memory
     std::size_t    size = 0;
 };
 
-virtual_memory allocate_executable_memory(std::size_t page_count);
+virtual_memory allocate_executable_memory(std::size_t size);
 void           free_executable_memory(virtual_memory memory);
 
 /// May change the address.
-virtual_memory resize_executable_memory(virtual_memory memory, std::size_t new_page_count);
+virtual_memory resize_executable_memory(virtual_memory memory, std::size_t size);
 
 /// Enables writing to the executable memory, but disables execution.
 void lock_executable_memory(virtual_memory memory);
 /// Disables writing to the executable, but enables execution again.
 void unlock_executable_memory(virtual_memory memory);
+} // namespace lauf
+
+namespace lauf
+{
+class executable_memory_allocator
+{
+public:
+    constexpr executable_memory_allocator() : _memory{}, _pos(0) {}
+
+    executable_memory_allocator(const executable_memory_allocator&) = delete;
+    executable_memory_allocator& operator=(const executable_memory_allocator&) = delete;
+
+    ~executable_memory_allocator() noexcept
+    {
+        free_executable_memory(_memory);
+    }
+
+    virtual_memory memory() const
+    {
+        return _memory;
+    }
+
+    template <std::size_t Alignment = 1>
+    const void* allocate(std::size_t size)
+    {
+        auto offset = Alignment == 1 ? 0 : align_offset(_pos, Alignment);
+        if (remaining_capacity() < offset + size)
+            grow(_memory.size + offset + size);
+
+        _pos += offset;
+        auto ptr = _memory.ptr + _pos;
+        _pos += size;
+        return ptr;
+    }
+
+    template <std::size_t Alignment = 1>
+    const void* allocate(void* data, std::size_t size)
+    {
+        auto ptr = allocate<Alignment>(size);
+        lock_executable_memory(_memory);
+        std::memcpy(const_cast<void*>(ptr), data, size);
+        unlock_executable_memory(_memory);
+        return ptr;
+    }
+
+private:
+    std::size_t remaining_capacity() const
+    {
+        return std::size_t(_memory.size - _pos);
+    }
+
+    void grow(std::size_t min_size_needed)
+    {
+        auto new_size = 2 * _memory.size;
+        if (new_size < min_size_needed)
+            new_size = min_size_needed;
+
+        _memory = resize_executable_memory(_memory, new_size);
+    }
+
+    virtual_memory _memory;
+    std::size_t    _pos;
+};
 } // namespace lauf
 
 #endif // SRC_LAUF_SUPPORT_VIRTUAL_MEMORY_HPP_INCLUDED

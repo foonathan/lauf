@@ -244,18 +244,13 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     compiler->emitter.ret();
 
     //=== finish ===//
-    auto jit_size = compiler->emitter.jit_size();
-    auto mod      = fn->mod;
-    if (mod->cur_jit_offset + jit_size > mod->jit_memory.size)
-    {
-        // TODO: adjust pointers, actual growth
-        mod->jit_memory = lauf::resize_executable_memory(mod->jit_memory, 1);
-    }
+    auto  jit_size = compiler->emitter.jit_size();
+    auto& alloc    = fn->mod->exe_alloc;
+    auto  jit_addr = alloc.allocate<alignof(std::uint32_t)>(jit_size);
 
-    lauf::lock_executable_memory(mod->jit_memory);
-    auto jit_addr    = mod->jit_memory.ptr + mod->cur_jit_offset;
-    auto jit_fn_addr = compiler->emitter.finish(jit_addr);
-    lauf::unlock_executable_memory(mod->jit_memory);
+    lauf::lock_executable_memory(alloc.memory());
+    auto jit_fn_addr = compiler->emitter.finish(const_cast<void*>(jit_addr));
+    lauf::unlock_executable_memory(alloc.memory());
 
     // TODO
     {

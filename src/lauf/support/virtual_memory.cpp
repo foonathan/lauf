@@ -11,14 +11,16 @@ namespace
 const auto page_size = ::sysconf(_SC_PAGE_SIZE);
 }
 
-lauf::virtual_memory lauf::allocate_executable_memory(std::size_t page_count)
+lauf::virtual_memory lauf::allocate_executable_memory(std::size_t size)
 {
-    auto pages = ::mmap(nullptr, page_count * page_size, PROT_READ | PROT_EXEC,
-                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (auto remainder = size % page_size)
+        size += page_size - remainder;
+
+    auto pages = ::mmap(nullptr, size, PROT_READ | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (pages == nullptr)
         return {nullptr, 0};
 
-    return {static_cast<unsigned char*>(pages), page_count * page_size};
+    return {static_cast<unsigned char*>(pages), size};
 }
 
 void lauf::free_executable_memory(virtual_memory memory)
@@ -27,17 +29,19 @@ void lauf::free_executable_memory(virtual_memory memory)
         ::munmap(memory.ptr, memory.size);
 }
 
-lauf::virtual_memory lauf::resize_executable_memory(virtual_memory memory,
-                                                    std::size_t    new_page_count)
+lauf::virtual_memory lauf::resize_executable_memory(virtual_memory memory, std::size_t new_size)
 {
     if (memory.ptr == nullptr)
-        return allocate_executable_memory(new_page_count);
+        return allocate_executable_memory(new_size);
 
-    auto pages = ::mremap(memory.ptr, memory.size, new_page_count * page_size, MREMAP_MAYMOVE);
+    if (auto remainder = new_size % page_size)
+        new_size += page_size - remainder;
+
+    auto pages = ::mremap(memory.ptr, memory.size, new_size, MREMAP_MAYMOVE);
     if (pages == nullptr)
         return {nullptr, 0};
 
-    return {static_cast<unsigned char*>(pages), new_page_count * page_size};
+    return {static_cast<unsigned char*>(pages), new_size};
 }
 
 void lauf::lock_executable_memory(virtual_memory memory)
