@@ -142,61 +142,96 @@ void classify_temporary_persistent(register_assignments& result, const ir_functi
 // so we can just look at the argument instructions.
 // They're also the only ones that can be promoted, as persistent ones have intermediate calls
 // which might clobber them.
-void promote_to_argument(register_assignments& result, const machine_register_file& rf,
-                         const ir_function& fn)
+//
+// We also keep the result of param in an argument register, unless that argument register is used
+// in the block; then we evict it back to a temporary.
+void promote_to_argument(register_assignments& result, stack_allocator& alloc,
+                         const machine_register_file& rf, const ir_function& fn)
 {
-    auto arg_index = std::uint16_t(0);
-    // We can directly iterate over all instructions as we do not need control flow information.
-    for (auto& inst : fn.instructions())
+    temporary_array<const ir_inst*> occupied_argument_registers(alloc, rf.argument_count);
+    occupied_argument_registers.resize(rf.argument_count, nullptr);
+
+    for (auto bb : fn.blocks())
     {
-        switch (inst.tag.op)
+        for (auto& inst : occupied_argument_registers)
+            inst = nullptr;
+
+        auto arg_index = std::uint16_t(0);
+        auto on_call   = [&](std::uint16_t argument_count) {
+            // Evict parameters that currently occupy the used argument registers.
+            for (auto i = 0u; i != argument_count && i < occupied_argument_registers.size(); ++i)
+                if (auto& ip = occupied_argument_registers[i])
+                {
+                    auto virt_reg = register_idx(fn.index_of(*ip));
+                    result.assign(virt_reg, {register_assignment::temporary_reg, 0});
+                    ip = nullptr;
+                }
+
+            arg_index = argument_count;
+        };
+
+        for (auto& inst : fn.block(bb))
         {
-        case ir_op::return_:
-            arg_index = inst.return_.argument_count;
-            break;
-        case ir_op::jump:
-            arg_index = inst.jump.argument_count;
-            break;
-        case ir_op::branch:
-            arg_index = inst.branch.argument_count;
-            break;
-        case ir_op::call_builtin:
-            arg_index = inst.call_builtin.signature.input_count;
-            break;
-        case ir_op::call:
-            arg_index = inst.call.signature.input_count;
-            break;
-
-        case ir_op::argument: {
-            --arg_index;
-            if (inst.argument.is_constant || arg_index >= rf.argument_count)
+            switch (inst.tag.op)
+            {
+            case ir_op::return_:
+                on_call(inst.return_.argument_count);
+                break;
+            case ir_op::jump:
+                on_call(inst.jump.argument_count);
+                break;
+            case ir_op::branch:
+                on_call(inst.branch.argument_count);
+                break;
+            case ir_op::call_builtin:
+                on_call(inst.call_builtin.signature.input_count);
+                break;
+            case ir_op::call:
+                on_call(inst.call.signature.input_count);
                 break;
 
-            auto reg = inst.argument.register_idx;
-            if (result[reg].kind != register_assignment::temporary_reg)
-                // Not a temporary register, can't promote.
+            case ir_op::argument: {
+                --arg_index;
+                if (inst.argument.is_constant || arg_index >= rf.argument_count)
+                    break;
+
+                auto reg = inst.argument.register_idx;
+                if (result[reg].kind != register_assignment::temporary_reg)
+                    // Not a temporary register, can't promote.
+                    break;
+
+                if (auto reg_inst = fn.instruction(std::size_t(reg));
+                    reg_inst.tag.op == ir_op::param
+                    && std::uint16_t(reg_inst.param.index) != arg_index)
+                    // The instruction is a parameter that currently resides in a different
+                    // argument. This means that we need to shuffle parameters around, which
+                    // requires temporaries for the swap.
+                    //
+                    // OPTIMIZE: we don't need to put everything into a temporary, some can be
+                    // moved directly.
+                    break;
+
+                result.assign(reg, {register_assignment::argument_reg, arg_index});
+                break;
+            }
+
+            case ir_op::param:
+                if (auto index = std::size_t(inst.param.index); index < rf.argument_count)
+                {
+                    // Keep it in an argument register for now, and have it evicted later.
+                    auto virt_reg = register_idx(fn.index_of(inst));
+                    result.assign(virt_reg,
+                                  {register_assignment::argument_reg, std::uint16_t(index)});
+                    occupied_argument_registers[index] = &inst;
+                }
                 break;
 
-            if (auto reg_inst = fn.instruction(std::size_t(reg));
-                reg_inst.tag.op == ir_op::param && std::uint16_t(reg_inst.param.index) != arg_index)
-                // The instruction is a parameter that currently resides in a different argument.
-                // This means that we need to shuffle parameters around, which requires temporaries
-                // for the swap.
-                //
-                // OPTIMIZE: we don't need to put everything into a temporary, some can be
-                // moved directly.
+            case ir_op::const_:
+            case ir_op::call_result:
+            case ir_op::store_value:
+            case ir_op::load_value:
                 break;
-
-            result.assign(reg, {register_assignment::argument_reg, arg_index});
-            break;
-        }
-
-        case ir_op::param:
-        case ir_op::const_:
-        case ir_op::call_result:
-        case ir_op::store_value:
-        case ir_op::load_value:
-            break;
+            }
         }
     }
 }
@@ -293,7 +328,7 @@ register_assignments lauf::register_allocation(stack_allocator&             allo
 {
     register_assignments result(alloc, fn.instructions().size());
     classify_temporary_persistent(result, fn);
-    promote_to_argument(result, rf, fn);
+    promote_to_argument(result, alloc, rf, fn);
     allocate_temporary_persistent(result, alloc, rf, fn);
     return result;
 }
