@@ -31,6 +31,8 @@ int main()
                                         lauf_sadd_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
     lauf_frontend_text_register_builtin(parser, "ssub",
                                         lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_WRAP));
+    lauf_frontend_text_register_builtin(parser, "checked_ssub",
+                                        lauf_ssub_builtin(LAUF_INTEGER_OVERFLOW_RETURN));
     lauf_frontend_text_register_builtin(parser, "usub",
                                         lauf_usub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
     lauf_frontend_text_register_builtin(parser, "scmp", lauf_scmp_builtin());
@@ -38,18 +40,10 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(1 => 2) {
-            local %arg : $Value;
-            store_value %arg;
-            load_value %arg;
-            jump_if is_false %foo;
-            load_value %arg;
-            sint 13;
-            return;
-
-        label %foo:
-            load_value %arg;
+        function @test(1 => 1) {
             sint 11;
+            $print;
+            $ssub;
             return;
         }
 
@@ -88,11 +82,13 @@ int main()
     std::puts(lauf::irdump(ir, &assgn).c_str());
 
     auto compiler = lauf_vm_jit_compiler(vm);
-    lauf_jit_compile(compiler, fn);
+    auto jitfn    = lauf_jit_compile(compiler, fn);
 
-#if 0
     lauf_value input = {.as_sint = 35};
     lauf_value output;
+    output = reinterpret_cast<lauf_value (*)(lauf_value)>(jitfn)(input);
+    std::printf("result: %ld\n", output.as_sint);
+#if 0
     if (lauf_vm_execute(vm, program, &input, &output))
         std::printf("result: %ld\n", output.as_sint);
 #endif

@@ -68,6 +68,8 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
     a.mov(register_nr::frame, register_nr::stack);
     stack_allocate(a, fn->local_stack_size);
 
+    // TODO: save persistent registers
+
     //=== main body ===//
     auto set_argument_regs = [&](const lauf::ir_inst*& ip, unsigned arg_count) {
         for (auto i = 0u; i != arg_count; ++i)
@@ -84,6 +86,49 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
         }
         ip += arg_count;
     };
+
+    auto push_argument_regs
+        = [&](const lauf::ir_inst*& ip, unsigned arg_count, unsigned vstack_offset) {
+              for (auto i = 0u; i != arg_count; ++i)
+              {
+                  // No -1 as ip points to the parent instruction.
+                  auto arg = ip[arg_count - i].argument;
+                  assert(arg.op == lauf::ir_op::argument);
+
+                  // First argument is at the bottom of the stack, so highest offset.
+                  auto stack_offset = immediate(vstack_offset + (arg_count - i - 1));
+                  if (arg.is_constant)
+                  {
+                      // We can use the argument register as a temporary; it's guaranteed to be
+                      // unused.
+                      auto tmp_reg = reg_argument(i);
+                      emit_mov(a, tmp_reg, arg.constant);
+                      a.str_imm(tmp_reg, register_nr::stack, stack_offset);
+                  }
+                  else
+                  {
+                      auto cur_reg = reg_of(regs[arg.register_idx]);
+                      a.str_imm(cur_reg, register_nr::stack, stack_offset);
+                  }
+              }
+              ip += arg_count;
+          };
+
+    auto pop_result_regs
+        = [&](const lauf::ir_inst*& ip, unsigned result_count, unsigned vstack_offset) {
+              for (auto i = 0u; i != result_count; ++i)
+              {
+                  // +1 as ip points to the last argument/call.
+                  auto& result   = ip[i + 1];
+                  auto  virt_reg = lauf::register_idx(irfn.index_of(result));
+
+                  // First result is at the bottom of the stack, so highest offset.
+                  auto stack_offset = immediate(vstack_offset + (result_count - i - 1));
+                  auto dest_reg     = reg_of(regs[virt_reg]);
+                  a.ldr_imm(dest_reg, register_nr::stack, stack_offset);
+              }
+              ip += result_count;
+          };
 
     for (auto bb : irfn.blocks())
     {
@@ -166,9 +211,43 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                 emit_mov(a, reg_of(regs[virt_reg]), inst.const_.value);
                 break;
 
-            case lauf::ir_op::call_builtin:
+            case lauf::ir_op::call_builtin: {
+                auto sig = inst.call_builtin.signature;
+
+                // We need to use a value stack that can fit all inputs and all outputs.
+                auto stack_size = std::max(sig.input_count, sig.output_count) * sizeof(lauf_value);
+                stack_allocate(a, stack_size);
+
+                // Push the arguments. If we have more input values, they start at the bottom.
+                // Otherwise, they start higher up.
+                auto arg_offset
+                    = sig.input_count >= sig.output_count ? 0u : sig.output_count - sig.input_count;
+                push_argument_regs(ip, sig.input_count, arg_offset);
+
+                // Set actual arguments.
+                a.movz(reg_argument(0), immediate(0)); // ip = nullptr
+                a.mov(reg_argument(1), register_nr::stack);
+                a.add(reg_argument(1), register_nr::stack,
+                      immediate(arg_offset));          // vstack_ptr = SP + arg_offset
+                a.movz(reg_argument(2), immediate(0)); // frame_ptr = nullptr
+                a.movz(reg_argument(3), immediate(0)); // process = nullptr
+                // And call the function.
+                emit_mov(a, reg_temporary(0),
+                         lauf_value{.as_native_ptr = (void*)inst.call_builtin.fn});
+                a.blr(reg_temporary(0));
+                // TODO: panic, if necessary
+
+                // Store results. If we have more outputs, they start at the bottom.
+                // Otherwise, they start higher up.
+                auto result_offset
+                    = sig.output_count >= sig.input_count ? 0u : sig.input_count - sig.output_count;
+                pop_result_regs(ip, sig.output_count, result_offset);
+
+                // Free the entire stack space.
+                stack_free(a, stack_size);
+                break;
+            }
             case lauf::ir_op::call:
-            case lauf::ir_op::call_result:
                 assert(false); // TODO
                 break;
 
@@ -184,6 +263,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
             }
 
             case lauf::ir_op::argument:
+            case lauf::ir_op::call_result:
                 assert(!"should be handled by parent instruction");
                 break;
             }

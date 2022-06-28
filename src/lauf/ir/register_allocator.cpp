@@ -80,8 +80,11 @@ void classify_temporary_persistent(register_assignments& result, const ir_functi
     for (auto bb : fn.blocks())
     {
         std::optional<std::size_t> last_call;
-        for (auto& inst : fn.block(bb))
+
+        auto block = fn.block(bb);
+        for (auto ip = block.begin(); ip != block.end(); ++ip)
         {
+            auto& inst = *ip;
             if (auto reg = result_register(fn, inst))
             {
                 // We optimistically assume it's a temporary.
@@ -99,15 +102,24 @@ void classify_temporary_persistent(register_assignments& result, const ir_functi
                 if (std::size_t(reg) < *last_call && *last_call < fn.index_of(use))
                     result.assign(reg, {register_assignment::persistent_reg, 0});
             };
+            auto downgrade_args = [&](const ir_inst*& ip, std::size_t arg_count) {
+                for (auto i = 0u; i != arg_count; ++i)
+                {
+                    if (!ip[i + 1].argument.is_constant)
+                        downgrade(inst, ip[i + 1].argument.register_idx);
+                }
+                ip += arg_count;
+            };
             switch (inst.tag.op)
             {
-                // For calls, we update the index.
-                // We add the number of arguments to it, as registers used there are still okay.
+                // For calls, we update the index after handling arguments.
             case ir_op::call_builtin:
-                last_call = fn.index_of(inst) + inst.call_builtin.signature.input_count;
+                downgrade_args(ip, inst.call_builtin.signature.input_count);
+                last_call = fn.index_of(inst);
                 break;
             case ir_op::call:
-                last_call = fn.index_of(inst) + inst.call.signature.input_count;
+                downgrade_args(ip, inst.call.signature.input_count);
+                last_call = fn.index_of(inst);
                 break;
 
                 // Instructions that read registers need to downgrade it if necessary.
@@ -218,8 +230,12 @@ void promote_to_argument(register_assignments& result, stack_allocator& alloc,
             case ir_op::param:
                 if (auto index = std::size_t(inst.param.index); index < rf.argument_count)
                 {
-                    // Keep it in an argument register for now, and have it evicted later.
                     auto virt_reg = register_idx(fn.index_of(inst));
+                    if (result[virt_reg].kind != register_assignment::temporary_reg)
+                        // Not actually a temporary that can be kept in argument.
+                        break;
+
+                    // Keep it in an argument register for now, and have it evicted later.
                     result.assign(virt_reg,
                                   {register_assignment::argument_reg, std::uint16_t(index)});
                     occupied_argument_registers[index] = &inst;
@@ -328,7 +344,7 @@ register_assignments lauf::register_allocation(stack_allocator&             allo
 {
     register_assignments result(alloc, fn.instructions().size());
     classify_temporary_persistent(result, fn);
-    promote_to_argument(result, alloc, rf, fn);
+    // promote_to_argument(result, alloc, rf, fn);
     allocate_temporary_persistent(result, alloc, rf, fn);
     return result;
 }

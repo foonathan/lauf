@@ -90,7 +90,7 @@ public:
 
     void drop(temporary_array<ir_inst>& inst, std::size_t n)
     {
-        for (auto idx = _stack.size() - n - 1; idx != _stack.size(); ++idx)
+        for (auto idx = _stack.size() - n; idx != _stack.size(); ++idx)
         {
             auto reg = _stack[idx];
             --inst[std::size_t(reg)].tag.uses;
