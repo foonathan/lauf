@@ -7,6 +7,7 @@
 #include <lauf/config.h>
 #include <lauf/ir/instruction.hpp>
 #include <lauf/support/temporary_array.hpp>
+#include <optional>
 
 namespace lauf
 {
@@ -90,6 +91,15 @@ public:
     {
         auto bb = _blocks[static_cast<std::size_t>(idx)];
         return {_instructions.data() + bb.begin, _instructions.data() + bb.end};
+    }
+
+    std::optional<block_idx> lexical_next_block(block_idx idx) const noexcept
+    {
+        auto value = std::size_t(idx);
+        if (value == _blocks.size() - 1)
+            return std::nullopt;
+        else
+            return block_idx(value + 1);
     }
 
     ir_block_range blocks() const noexcept

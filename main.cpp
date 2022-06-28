@@ -39,12 +39,16 @@ int main()
         module @mod;
 
         function @test(1 => 2) {
-            pick 0;
+            local %arg : $Value;
+            store_value %arg;
+            load_value %arg;
             jump_if is_false %foo;
+            load_value %arg;
             sint 13;
             return;
 
-        label %foo(1):
+        label %foo:
+            load_value %arg;
             sint 11;
             return;
         }

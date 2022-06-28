@@ -14,10 +14,15 @@ namespace lauf::aarch64
 template <std::size_t Width, typename T>
 constexpr T _mask(const char* context, T value)
 {
-    constexpr auto bits   = (T(1) << Width) - 1;
-    auto           result = value & bits;
-    LAUF_VERIFY(result == value, context, "encoding error");
-    return value & bits;
+    constexpr auto bits = (T(1) << Width) - 1;
+
+    auto result = value & bits;
+
+    // We must either cut off only zero or one bits.
+    auto other = (value & ~bits) >> Width;
+    LAUF_VERIFY(other == 0 || other == ~bits >> Width, context, "encoding error");
+
+    return std::make_unsigned_t<T>(value & bits);
 }
 } // namespace lauf::aarch64
 
@@ -33,7 +38,9 @@ constexpr std::uint32_t encode(std::uint32_t op)
 //=== register ===//
 enum class register_nr : std::uint8_t
 {
-    link = 30,
+    frame = 29,
+    link  = 30,
+    stack = 31,
 };
 
 constexpr std::uint32_t encode(register_nr nr)
@@ -42,14 +49,14 @@ constexpr std::uint32_t encode(register_nr nr)
 }
 
 //=== immediate ===//
-enum class immediate : std::uint32_t
+enum class immediate : std::int32_t
 {
 };
 
 template <std::size_t Width>
 constexpr std::uint32_t encode(immediate imm)
 {
-    return _mask<Width>("aarch64 immediate", static_cast<std::uint32_t>(imm));
+    return _mask<Width>("aarch64 immediate", static_cast<std::int32_t>(imm));
 }
 
 //=== condition code ===//
@@ -355,7 +362,7 @@ private:
     void lsp_impl(std::uint32_t opc, std::uint32_t v, std::uint32_t l, std::uint32_t op2,
                   register_nr rt1, register_nr rt2, register_nr rn, immediate imm)
     {
-        auto inst = encode<22>(0b00'101'0'001'0) | encode<30>(opc) | encode<26>(v) | encode<22>(l)
+        auto inst = encode<22>(0b00'101'0'000'0) | encode<30>(opc) | encode<26>(v) | encode<22>(l)
                     | encode<23>(op2);
         inst |= encode(rt1) << 0;
         inst |= encode(rt2) << 10;
@@ -374,11 +381,11 @@ public:
         lsp_impl(0b10, 0b0, 0b1, 0b001, xt1, xt2, xn, imm);
     }
 
-    void stp_imm(register_nr xt1, register_nr xt2, register_nr xn, immediate imm)
+    void stp(register_nr xt1, register_nr xt2, register_nr xn, immediate imm = immediate{0})
     {
         lsp_impl(0b10, 0b0, 0b0, 0b010, xt1, xt2, xn, imm);
     }
-    void ldp_imm(register_nr xt1, register_nr xt2, register_nr xn, immediate imm)
+    void ldp(register_nr xt1, register_nr xt2, register_nr xn, immediate imm = immediate{0})
     {
         lsp_impl(0b10, 0b0, 0b1, 0b010, xt1, xt2, xn, imm);
     }
@@ -459,10 +466,19 @@ public:
     //=== mov (register) ===//
     void mov(register_nr xd, register_nr xm)
     {
-        auto inst = encode<21>(0b1'01'01010'00'0) | encode<5>(0b11111);
-        inst |= encode(xd) << 0;
-        inst |= encode(xm) << 16;
-        emit(inst);
+        if (xd == register_nr::stack || xm == register_nr::stack)
+        {
+            // We don't want to use the zero register here.
+            add(xd, xm, immediate{0});
+        }
+        else
+        {
+            // TODO: replace with orr once that's added.
+            auto inst = encode<21>(0b1'01'01010'00'0) | encode<5>(0b11111);
+            inst |= encode(xd) << 0;
+            inst |= encode(xm) << 16;
+            emit(inst);
+        }
     }
 
     //=== impl ===//
@@ -482,6 +498,49 @@ private:
     temporary_array<patch>         _patches;
     temporary_array<std::uint32_t> _label_pos;
 };
+} // namespace lauf::aarch64
+
+namespace lauf::aarch64
+{
+inline void stack_push(assembler& a, register_nr reg)
+{
+    // -2 because we need the stack alignment.
+    a.str_pre_imm(reg, register_nr::stack, immediate(-2));
+}
+inline void stack_push(assembler& a, register_nr reg1, register_nr reg2)
+{
+    a.stp_pre_imm(reg1, reg2, register_nr::stack, immediate(-2));
+}
+
+inline void stack_allocate(assembler& a, std::uint16_t size)
+{
+    if (size == 0)
+        return;
+
+    if (auto remainder = size % 16)
+        size += 16 - remainder;
+    a.sub(register_nr::stack, register_nr::stack, immediate(size));
+}
+
+inline void stack_free(assembler& a, std::uint16_t size)
+{
+    if (size == 0)
+        return;
+
+    if (auto remainder = size % 16)
+        size += 16 - remainder;
+    a.add(register_nr::stack, register_nr::stack, immediate(size));
+}
+
+inline void stack_pop(assembler& a, register_nr reg)
+{
+    // 2 because we need the stack alignment.
+    a.ldr_post_imm(reg, register_nr::stack, immediate(2));
+}
+inline void stack_pop(assembler& a, register_nr reg1, register_nr reg2)
+{
+    a.ldp_post_imm(reg1, reg2, register_nr::stack, immediate(2));
+}
 } // namespace lauf::aarch64
 
 #endif // SRC_LAUF_AARCH64_ASSEMBLER_HPP_INCLUDED
