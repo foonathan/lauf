@@ -64,11 +64,28 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
         labels.push_back(a.declare_label());
 
     //=== prologue ===//
-    stack_push(a, register_nr::frame, register_nr::link);
+    register_nr save_registers[32]  = {register_nr::frame, register_nr::link};
+    auto        save_register_count = [&] {
+        auto count = 2u; // frame + link
+
+        // Add the persistent registers we're using.
+        for (auto i = 0u; i <= regs.max_persistent_reg(); ++i)
+            save_registers[count++] = reg_persistent(i);
+
+        // If odd, also save a dummy register so we can always use the pair version.
+        if (count % 2 == 1)
+            save_registers[count++] = reg_temporary(0);
+
+        return count;
+    }();
+
+    // Save all registers that need saving.
+    for (auto i = 0u; i != save_register_count; i += 2)
+        stack_push(a, save_registers[i], save_registers[i + 1]);
+
+    // Setup stack frame.
     a.mov(register_nr::frame, register_nr::stack);
     stack_allocate(a, fn->local_stack_size);
-
-    // TODO: save persistent registers
 
     //=== main body ===//
     auto set_argument_regs = [&](const lauf::ir_inst*& ip, unsigned arg_count) {
@@ -273,8 +290,14 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
     //=== epilogue ===//
     a.place_label(lab_return);
 
-    stack_free(a, fn->local_stack_size);
-    stack_pop(a, register_nr::frame, register_nr::link);
+    // Free stack frame.
+    a.mov(register_nr::stack, register_nr::frame);
+
+    // Restore registers we've saved.
+    for (auto i = 0u; i != save_register_count; i += 2)
+        stack_pop(a, save_registers[save_register_count - i - 2],
+                  save_registers[save_register_count - i - 1]);
+    // And return from the function.
     a.ret();
 
     return a.finish();

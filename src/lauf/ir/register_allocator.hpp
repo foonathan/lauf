@@ -45,7 +45,7 @@ class register_assignments
 {
 public:
     explicit register_assignments(stack_allocator& alloc, std::size_t virt_register_count)
-    : _assignments(alloc, virt_register_count)
+    : _assignments(alloc, virt_register_count), _max_persistent_reg(0)
     {
         _assignments.resize(virt_register_count);
     }
@@ -58,10 +58,18 @@ public:
     void assign(register_idx virt_register, register_assignment assgn)
     {
         _assignments[std::size_t(virt_register)] = assgn;
+        if (assgn.kind == register_assignment::persistent_reg && assgn.index > _max_persistent_reg)
+            _max_persistent_reg = assgn.index;
+    }
+
+    std::uint16_t max_persistent_reg() const
+    {
+        return _max_persistent_reg;
     }
 
 private:
     temporary_array<register_assignment> _assignments;
+    std::uint16_t                        _max_persistent_reg;
 };
 
 register_assignments register_allocation(stack_allocator& alloc, const machine_register_file& rf,
