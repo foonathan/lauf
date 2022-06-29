@@ -151,6 +151,18 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
     {
         a.place_label(labels[std::size_t(bb)]);
 
+        // When moving the stack pointer, we don't do it immediately, to avoid redundant add/sub
+        // instruction. Instead, we accumulate changes and flush them only when the stack pointer
+        // register is read (or at the end of the block).
+        auto pending_sp_offset = 0;
+        auto flush_sp          = [&] {
+            if (pending_sp_offset > 0)
+                stack_free(a, pending_sp_offset);
+            else if (pending_sp_offset < 0)
+                stack_allocate(a, -pending_sp_offset);
+            pending_sp_offset = 0;
+        };
+
         auto insts = irfn.block(bb);
         for (auto ip = insts.begin(); ip != insts.end(); ++ip)
         {
@@ -162,6 +174,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
             switch (inst.tag.op)
             {
             case lauf::ir_op::return_: {
+                flush_sp();
                 set_argument_regs(ip, inst.return_.argument_count);
                 if (irfn.lexical_next_block(bb))
                     a.b(lab_return);
@@ -169,6 +182,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
             }
 
             case lauf::ir_op::jump: {
+                flush_sp();
                 set_argument_regs(ip, inst.jump.argument_count);
                 if (inst.jump.dest != irfn.lexical_next_block(bb))
                 {
@@ -178,6 +192,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                 break;
             }
             case lauf::ir_op::branch: {
+                flush_sp();
                 set_argument_regs(ip, inst.branch.argument_count);
 
                 auto if_true  = labels[std::size_t(inst.branch.if_true)];
@@ -233,7 +248,8 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
 
                 // We need to use a value stack that can fit all inputs and all outputs.
                 auto stack_size = std::max(sig.input_count, sig.output_count) * sizeof(lauf_value);
-                stack_allocate(a, stack_size);
+                pending_sp_offset -= int(stack_size);
+                flush_sp();
 
                 // Push the arguments. If we have more input values, they start at the bottom.
                 // Otherwise, they start higher up.
@@ -243,7 +259,6 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
 
                 // Set actual arguments.
                 a.movz(reg_argument(0), immediate(0)); // ip = nullptr
-                a.mov(reg_argument(1), register_nr::stack);
                 a.add(reg_argument(1), register_nr::stack,
                       immediate(arg_offset));          // vstack_ptr = SP + arg_offset
                 a.movz(reg_argument(2), immediate(0)); // frame_ptr = nullptr
@@ -261,7 +276,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                 pop_result_regs(ip, sig.output_count, result_offset);
 
                 // Free the entire stack space.
-                stack_free(a, stack_size);
+                pending_sp_offset += int(stack_size);
                 break;
             }
             case lauf::ir_op::call:
