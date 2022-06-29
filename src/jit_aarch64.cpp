@@ -58,12 +58,15 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
     using namespace lauf::aarch64;
     assembler a(alloc);
 
+    auto                                    lab_entry  = a.declare_label();
     auto                                    lab_return = a.declare_label();
     lauf::temporary_array<assembler::label> labels(alloc, irfn.blocks().size());
     for (auto bb : irfn.blocks())
         labels.push_back(a.declare_label());
 
     //=== prologue ===//
+    a.place_label(lab_entry);
+
     register_nr save_registers[32]  = {register_nr::frame, register_nr::link};
     auto        save_register_count = [&] {
         auto count = 2u; // frame + link
@@ -84,8 +87,8 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
         stack_push(a, save_registers[i], save_registers[i + 1]);
 
     // Setup stack frame.
-    a.mov(register_nr::frame, register_nr::stack);
     stack_allocate(a, fn->local_stack_size);
+    a.mov(register_nr::frame, register_nr::stack);
 
     //=== main body ===//
     auto set_argument_regs = [&](const lauf::ir_inst*& ip, unsigned arg_count) {
@@ -102,6 +105,24 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                 a.mov(dest_reg, cur_reg);
         }
         ip += arg_count;
+    };
+    auto set_result_regs = [&](const lauf::ir_inst*& ip, unsigned result_count) {
+        for (auto i = 0u; i != result_count; ++i)
+        {
+            // +1 as ip points to the parent instruction.
+            auto virt_reg = lauf::register_idx(irfn.index_of(ip[i + 1]));
+            auto result   = ip[i + 1].call_result;
+            assert(result.op == lauf::ir_op::call_result);
+
+            if (result.uses > 0)
+            {
+                auto dest_reg = reg_of(regs[virt_reg]);
+                auto cur_reg  = reg_argument(i);
+                if (cur_reg != dest_reg)
+                    a.mov(dest_reg, cur_reg);
+            }
+        }
+        ip += result_count;
     };
 
     auto push_argument_regs
@@ -280,7 +301,11 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                 break;
             }
             case lauf::ir_op::call:
-                assert(false); // TODO
+                assert(inst.call.fn == fn); // TODO: allow non-recursive call
+                flush_sp();
+                set_argument_regs(ip, inst.call.signature.input_count);
+                a.bl(lab_entry);
+                set_result_regs(ip, inst.call.signature.output_count);
                 break;
 
             case lauf::ir_op::store_value: {
@@ -307,6 +332,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
 
     // Free stack frame.
     a.mov(register_nr::stack, register_nr::frame);
+    stack_free(a, fn->local_stack_size);
 
     // Restore registers we've saved.
     for (auto i = 0u; i != save_register_count; i += 2)

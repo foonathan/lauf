@@ -8,6 +8,7 @@
 #include <lauf/config.h>
 #include <lauf/support/temporary_array.hpp>
 #include <lauf/support/verify.hpp>
+#include <optional>
 
 namespace lauf::aarch64
 {
@@ -216,12 +217,18 @@ public:
 
     void b(label l)
     {
+        if (auto pos = label_offset(l))
+            return b(immediate(*pos));
+
         auto inst_idx = _insts.size();
         b(immediate(std::uint32_t(l)));
         _patches.push_back(*_alloc, {patch::unconditional, std::uint32_t(inst_idx)});
     }
     void bl(label l)
     {
+        if (auto pos = label_offset(l))
+            return bl(immediate(*pos));
+
         auto inst_idx = _insts.size();
         bl(immediate(std::uint32_t(l)));
         _patches.push_back(*_alloc, {patch::unconditional, std::uint32_t(inst_idx)});
@@ -238,6 +245,9 @@ public:
 
     void b(condition_code cc, label l)
     {
+        if (auto pos = label_offset(l))
+            return b(cc, immediate(*pos));
+
         auto inst_idx = _insts.size();
         b(cc, immediate(std::uint32_t(l)));
         _patches.push_back(*_alloc, {patch::conditional, std::uint32_t(inst_idx)});
@@ -265,12 +275,18 @@ public:
 
     void cbz(register_nr xt, label l)
     {
+        if (auto pos = label_offset(l))
+            return cbz(xt, immediate(*pos));
+
         auto inst_idx = _insts.size();
         cbz(xt, immediate(std::uint32_t(l)));
         _patches.push_back(*_alloc, {patch::conditional, std::uint32_t(inst_idx)});
     }
     void cbnz(register_nr xt, label l)
     {
+        if (auto pos = label_offset(l))
+            return cbnz(xt, immediate(*pos));
+
         auto inst_idx = _insts.size();
         cbnz(xt, immediate(std::uint32_t(l)));
         _patches.push_back(*_alloc, {patch::conditional, std::uint32_t(inst_idx)});
@@ -497,6 +513,14 @@ private:
         } kind : 1;
         std::uint32_t inst_idx : 31;
     };
+
+    std::optional<std::uint32_t> label_offset(label lab) const
+    {
+        auto pos = _label_pos[std::size_t(lab)];
+        if (pos == std::uint32_t(-1))
+            return std::nullopt;
+        return pos - std::uint32_t(_insts.size());
+    }
 
     stack_allocator*               _alloc;
     temporary_array<std::uint32_t> _insts;
