@@ -40,10 +40,11 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
-        function @test(1 => 1) {
-            sint 11;
+        function @test(1 => 2) {
             $print;
+            sint 11;
             $ssub;
+            sint 42;
             return;
         }
 
@@ -85,13 +86,9 @@ int main()
     auto jitfn    = lauf_jit_compile(compiler, fn);
 
     lauf_value input = {.as_sint = 35};
-    lauf_value output;
-    output = reinterpret_cast<lauf_value (*)(lauf_value)>(jitfn)(input);
-    std::printf("result: %ld\n", output.as_sint);
-#if 0
-    if (lauf_vm_execute(vm, program, &input, &output))
-        std::printf("result: %ld\n", output.as_sint);
-#endif
+    lauf_value output[2];
+    if (lauf_vm_execute(vm, program, &input, output))
+        std::printf("result: %ld %ld\n", output[0].as_sint, output[1].as_sint);
 
     lauf_program_destroy(program);
     lauf_module_destroy(mod);

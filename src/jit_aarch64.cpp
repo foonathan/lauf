@@ -317,6 +317,47 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
 
     return a.finish();
 }
+
+lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_function fn,
+                                       std::ptrdiff_t jitfn_offset)
+{
+    using namespace lauf::aarch64;
+    assembler a(alloc);
+
+    // Prepare vstack_ptr.
+    auto reg_vstack = reg_temporary(0);
+    if (fn->input_count > 1)
+    {
+        // tmp := vstack_ptr + (input_count - 1)
+        a.add(reg_vstack, reg_argument(1), immediate((fn->input_count - 1) * sizeof(lauf_value)));
+    }
+    else
+    {
+        // tmp := vstack_ptr
+        a.mov(reg_vstack, reg_argument(1));
+    }
+
+    // And save it, as well as link.
+    stack_push(a, reg_vstack, register_nr::link);
+
+    // Load argument registers from value stack.
+    for (auto i = 0u; i != fn->input_count; ++i)
+        a.ldr_post_imm(reg_argument(i), reg_vstack, immediate(sizeof(lauf_value)));
+
+    // Call the actual function.
+    a.bl(immediate(-(jitfn_offset + a.cur_label_pos())));
+
+    // Push results back into the value stack.
+    stack_pop(a, reg_temporary(0), register_nr::link);
+    for (auto i = 0u; i != fn->output_count; ++i)
+        a.str_post_imm(reg_argument(i), reg_vstack, immediate(-sizeof(lauf_value)));
+
+    // And return back to the vm with exit code true.
+    a.movz(reg_argument(0), immediate(1));
+    a.ret();
+
+    return a.finish();
+}
 } // namespace
 
 lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
@@ -330,14 +371,23 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     auto code  = compile(alloc, fn, irfn, regs);
     auto jitfn = fn->mod->exe_alloc.allocate(code.ptr, code.size_in_bytes);
 
+    auto jitfn_trampoline = fn->mod->exe_alloc.align();
+    auto trampoline       = compile_trampoline(alloc, fn,
+                                               static_cast<const std::uint32_t*>(jitfn_trampoline)
+                                                   - static_cast<const std::uint32_t*>(jitfn));
+    fn->mod->exe_alloc.place(trampoline.ptr, trampoline.size_in_bytes);
+
+    // TODO: breaks on virtual address change
+
     // TODO
     {
         auto file = std::fopen(fn->name, "w");
         std::fwrite(code.ptr, 1, code.size_in_bytes, file);
+        std::fwrite(trampoline.ptr, 1, trampoline.size_in_bytes, file);
         std::fclose(file);
     }
 
-    return fn->jit_fn = (lauf_builtin_function*)(jitfn);
+    return fn->jit_fn = (lauf_builtin_function*)(jitfn_trampoline);
 }
 
 #if 0

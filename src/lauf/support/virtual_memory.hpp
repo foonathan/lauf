@@ -50,6 +50,17 @@ public:
     }
 
     template <std::size_t Alignment = 1>
+    const void* align()
+    {
+        auto offset = Alignment == 1 ? 0 : align_offset(_pos, Alignment);
+        if (remaining_capacity() < offset)
+            grow(_memory.size + offset);
+
+        _pos += offset;
+        return _memory.ptr + _pos;
+    }
+
+    template <std::size_t Alignment = 1>
     const void* allocate(std::size_t size)
     {
         auto offset = Alignment == 1 ? 0 : align_offset(_pos, Alignment);
@@ -70,6 +81,18 @@ public:
         std::memcpy(const_cast<void*>(ptr), data, size);
         unlock_executable_memory(_memory);
         return ptr;
+    }
+
+    template <std::size_t Alignment = 1>
+    void place(const void* data, std::size_t size)
+    {
+        auto expected_ptr = _memory.ptr + _pos;
+        auto ptr          = allocate<Alignment>(size);
+        assert(ptr == expected_ptr);
+
+        lock_executable_memory(_memory);
+        std::memcpy(const_cast<void*>(ptr), data, size);
+        unlock_executable_memory(_memory);
     }
 
 private:

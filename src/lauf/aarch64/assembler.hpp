@@ -162,7 +162,12 @@ public:
 
     void place_label(label l)
     {
-        _label_pos[std::size_t(l)] = _insts.size();
+        _label_pos[std::size_t(l)] = cur_label_pos();
+    }
+
+    std::size_t cur_label_pos() const
+    {
+        return _insts.size();
     }
 
     //=== unconditional branch (register) ===//
@@ -504,12 +509,22 @@ namespace lauf::aarch64
 {
 inline void stack_push(assembler& a, register_nr reg)
 {
-    // -2 because we need the stack alignment.
-    a.str_pre_imm(reg, register_nr::stack, immediate(-2));
+    // -16 because we need the stack alignment.
+    a.str_pre_imm(reg, register_nr::stack, immediate(-16));
 }
 inline void stack_push(assembler& a, register_nr reg1, register_nr reg2)
 {
     a.stp_pre_imm(reg1, reg2, register_nr::stack, immediate(-2));
+}
+
+inline void stack_pop(assembler& a, register_nr reg)
+{
+    // 16 because we need the stack alignment.
+    a.ldr_post_imm(reg, register_nr::stack, immediate(16));
+}
+inline void stack_pop(assembler& a, register_nr reg1, register_nr reg2)
+{
+    a.ldp_post_imm(reg1, reg2, register_nr::stack, immediate(2));
 }
 
 inline void stack_allocate(assembler& a, std::uint16_t size)
@@ -532,15 +547,6 @@ inline void stack_free(assembler& a, std::uint16_t size)
     a.add(register_nr::stack, register_nr::stack, immediate(size));
 }
 
-inline void stack_pop(assembler& a, register_nr reg)
-{
-    // 2 because we need the stack alignment.
-    a.ldr_post_imm(reg, register_nr::stack, immediate(2));
-}
-inline void stack_pop(assembler& a, register_nr reg1, register_nr reg2)
-{
-    a.ldp_post_imm(reg1, reg2, register_nr::stack, immediate(2));
-}
 } // namespace lauf::aarch64
 
 #endif // SRC_LAUF_AARCH64_ASSEMBLER_HPP_INCLUDED

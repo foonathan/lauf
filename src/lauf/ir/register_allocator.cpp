@@ -344,7 +344,7 @@ register_assignments lauf::register_allocation(stack_allocator&             allo
 {
     register_assignments result(alloc, fn.instructions().size());
     classify_temporary_persistent(result, fn);
-    // promote_to_argument(result, alloc, rf, fn);
+    promote_to_argument(result, alloc, rf, fn);
     allocate_temporary_persistent(result, alloc, rf, fn);
     return result;
 }
