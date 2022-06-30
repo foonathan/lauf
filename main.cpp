@@ -77,7 +77,8 @@ int main()
     auto compiler = lauf_vm_jit_compiler(vm);
     lauf_jit_compile(compiler, fn);
 
-    lauf_value input = {.as_sint = 35};
+    lauf_value input;
+    input.as_sint = 35;
     lauf_value output[2];
     if (lauf_vm_execute(vm, program, &input, output))
         std::printf("result: %ld\n", output[0].as_sint);

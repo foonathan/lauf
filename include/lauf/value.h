@@ -14,7 +14,7 @@ const lauf_value_sint lauf_value_sint_min = INT64_MIN;
 const lauf_value_sint lauf_value_sint_max = INT64_MAX;
 
 typedef uint64_t      lauf_value_uint;
-const lauf_value_sint lauf_value_uint_max = UINT64_MAX;
+const lauf_value_uint lauf_value_uint_max = UINT64_MAX;
 
 //=== address ===//
 typedef const void* lauf_value_native_ptr;

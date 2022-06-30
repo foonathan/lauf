@@ -121,7 +121,7 @@ struct bc_inst_field_literal_idx
     bc_literal_idx literal_idx : 16;
 
     explicit bc_inst_field_literal_idx(bc_op op, size_t f, bc_literal_idx idx)
-    : op(op), field(f), literal_idx(idx)
+    : op(op), field(uint32_t(f)), literal_idx(idx)
     {
         LAUF_VERIFY(field == f, to_string(op), "encoding error");
         LAUF_VERIFY(literal_idx == idx, to_string(op), "encoding error");

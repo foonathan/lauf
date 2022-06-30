@@ -103,8 +103,11 @@ struct ir_inst_branch
 
     ir_inst_branch(ir_op op, std::size_t argument_count, register_idx reg, condition_code cc,
                    block_idx if_true, block_idx if_false)
-    : op(op), argument_count(argument_count), cc(cc), reg(reg), if_true(if_true), if_false(if_false)
-    {}
+    : op(op), argument_count(std::uint8_t(argument_count)), cc(cc), reg(reg), if_true(if_true),
+      if_false(if_false)
+    {
+        LAUF_VERIFY(this->argument_count == argument_count, to_string(op), "encoding error");
+    }
 };
 
 struct ir_inst_call_builtin

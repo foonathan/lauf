@@ -163,7 +163,7 @@ public:
         if (n <= _size)
         {
             // No need to free anything.
-            _size = n;
+            _size = std::uint32_t(n);
         }
         else
         {
