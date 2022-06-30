@@ -402,7 +402,7 @@ lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_functi
         a.ldr_post_imm(reg_argument(i), reg_vstack, immediate(sizeof(lauf_value)));
 
     // Call the actual function.
-    a.bl(immediate(-(jitfn_offset + a.cur_label_pos())));
+    a.bl(immediate(-(jitfn_offset / sizeof(std::uint32_t) + a.cur_label_pos())));
 
     // Push results back into the value stack.
     stack_pop(a, reg_temporary(0), register_nr::link);
@@ -417,7 +417,7 @@ lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_functi
 }
 } // namespace
 
-lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
+bool lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
 {
     compiler->stack.reset();
     lauf::stack_allocator alloc(compiler->stack);
@@ -429,12 +429,9 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
     auto jitfn = fn->mod->exe_alloc.allocate(code.ptr, code.size_in_bytes);
 
     auto jitfn_trampoline = fn->mod->exe_alloc.align();
-    auto trampoline       = compile_trampoline(alloc, fn,
-                                               static_cast<const std::uint32_t*>(jitfn_trampoline)
-                                                   - static_cast<const std::uint32_t*>(jitfn));
+    auto trampoline
+        = compile_trampoline(alloc, fn, std::ptrdiff_t(jitfn_trampoline) - std::ptrdiff_t(jitfn));
     fn->mod->exe_alloc.place(trampoline.ptr, trampoline.size_in_bytes);
-
-    // TODO: breaks on virtual address change
 
     // TODO
     {
@@ -444,6 +441,7 @@ lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_functio
         std::fclose(file);
     }
 
-    return fn->jit_fn = (lauf_builtin_function*)(jitfn_trampoline);
+    fn->jit_fn = jitfn_trampoline;
+    return true;
 }
 

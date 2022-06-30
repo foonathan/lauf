@@ -15,8 +15,8 @@ lauf_jit_compiler lauf_vm_jit_compiler(lauf_vm)
     return nullptr;
 }
 
-lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler, lauf_function)
+bool lauf_jit_compile(lauf_jit_compiler, lauf_function)
 {
-    return nullptr;
+    return false;
 }
 

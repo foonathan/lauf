@@ -109,11 +109,12 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
                     stack_frame{callee, ip + 1, marker, lauf_value_address_invalid, prev_frame}
                 + 1;
 
-    if (callee->jit_fn != nullptr)
+    if (callee->jit_fn != lauf::null_executable_memory)
     {
         ++ip;
         auto stack_change = int32_t(callee->input_count) - int32_t(callee->output_count);
-        LAUF_DISPATCH_BUILTIN(callee->jit_fn, stack_change);
+        LAUF_DISPATCH_BUILTIN(callee->mod->exe_alloc.deref<lauf_builtin_function>(callee->jit_fn),
+                              stack_change);
     }
     else
     {

@@ -21,8 +21,8 @@ void lauf_jit_compiler_destroy(lauf_jit_compiler compiler);
 lauf_jit_compiler lauf_vm_jit_compiler(lauf_vm vm);
 
 /// JIT compiles the given function, or returns a cached version of it.
-/// Returns NULL, if JIT not available.
-lauf_builtin_function* lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn);
+/// Returns false, if JIT not available.
+bool lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn);
 
 LAUF_HEADER_END
 

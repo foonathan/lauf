@@ -31,6 +31,13 @@ void unlock_executable_memory(virtual_memory memory);
 
 namespace lauf
 {
+enum class executable_memory_handle : std::size_t
+{
+};
+
+constexpr executable_memory_handle null_executable_memory
+    = executable_memory_handle(std::size_t(-1));
+
 class executable_memory_allocator
 {
 public:
@@ -49,36 +56,42 @@ public:
         return _memory;
     }
 
+    template <typename Fn>
+    Fn* deref(executable_memory_handle ptr) const
+    {
+        return reinterpret_cast<Fn*>(_memory.ptr + std::size_t(ptr));
+    }
+
     template <std::size_t Alignment = 1>
-    const void* align()
+    executable_memory_handle align()
     {
         auto offset = Alignment == 1 ? 0 : align_offset(_pos, Alignment);
         if (remaining_capacity() < offset)
             grow(_memory.size + offset);
 
         _pos += offset;
-        return _memory.ptr + _pos;
+        return executable_memory_handle(_pos);
     }
 
     template <std::size_t Alignment = 1>
-    const void* allocate(std::size_t size)
+    executable_memory_handle allocate(std::size_t size)
     {
         auto offset = Alignment == 1 ? 0 : align_offset(_pos, Alignment);
         if (remaining_capacity() < offset + size)
             grow(_memory.size + offset + size);
 
         _pos += offset;
-        auto ptr = _memory.ptr + _pos;
+        auto ptr = _pos;
         _pos += size;
-        return ptr;
+        return executable_memory_handle(ptr);
     }
 
     template <std::size_t Alignment = 1>
-    const void* allocate(const void* data, std::size_t size)
+    executable_memory_handle allocate(const void* data, std::size_t size)
     {
         auto ptr = allocate<Alignment>(size);
         lock_executable_memory(_memory);
-        std::memcpy(const_cast<void*>(ptr), data, size);
+        std::memcpy(deref<void>(ptr), data, size);
         unlock_executable_memory(_memory);
         return ptr;
     }
@@ -86,12 +99,12 @@ public:
     template <std::size_t Alignment = 1>
     void place(const void* data, std::size_t size)
     {
-        auto expected_ptr = _memory.ptr + _pos;
+        auto expected_ptr = _pos;
         auto ptr          = allocate<Alignment>(size);
-        assert(ptr == expected_ptr);
+        assert(std::size_t(ptr) == expected_ptr);
 
         lock_executable_memory(_memory);
-        std::memcpy(const_cast<void*>(ptr), data, size);
+        std::memcpy(deref<void>(ptr), data, size);
         unlock_executable_memory(_memory);
     }
 
