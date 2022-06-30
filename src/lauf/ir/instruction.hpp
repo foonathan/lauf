@@ -19,6 +19,18 @@ enum class ir_op : std::uint8_t
 #include "ir_ops.h"
 #undef LAUF_IR_OP
 };
+
+constexpr const char* to_string(ir_op op)
+{
+    switch (op)
+    {
+#define LAUF_IR_OP(Name, Type)                                                                     \
+case ir_op::Name:                                                                                  \
+    return #Name;
+#include "ir_ops.h"
+#undef LAUF_IR_OP
+    }
+}
 } // namespace lauf
 
 namespace lauf
@@ -149,6 +161,15 @@ struct ir_inst_load_value
     std::uint32_t local_addr;
 
     ir_inst_load_value(ir_op op, std::uint32_t local_addr) : op(op), local_addr(local_addr) {}
+};
+
+struct ir_inst_binary
+{
+    LAUF_IR_COMMON;
+    register_idx lhs;
+    register_idx rhs;
+
+    ir_inst_binary(ir_op op, register_idx lhs, register_idx rhs) : op(op), lhs(lhs), rhs(rhs) {}
 };
 
 union ir_inst

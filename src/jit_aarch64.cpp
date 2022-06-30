@@ -228,19 +228,19 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                     break;
 
                 case lauf::condition_code::cmp_lt:
-                    a.cmp(cond_reg, cond_reg, immediate(0));
+                    a.cmp(cond_reg, immediate(0));
                     a.b(condition_code::lt, if_true);
                     break;
                 case lauf::condition_code::cmp_le:
-                    a.cmp(cond_reg, cond_reg, immediate(0));
+                    a.cmp(cond_reg, immediate(0));
                     a.b(condition_code::le, if_true);
                     break;
                 case lauf::condition_code::cmp_gt:
-                    a.cmp(cond_reg, cond_reg, immediate(0));
+                    a.cmp(cond_reg, immediate(0));
                     a.b(condition_code::gt, if_true);
                     break;
                 case lauf::condition_code::cmp_ge:
-                    a.cmp(cond_reg, cond_reg, immediate(0));
+                    a.cmp(cond_reg, immediate(0));
                     a.b(condition_code::ge, if_true);
                     break;
                 }
@@ -316,6 +316,37 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
             case lauf::ir_op::load_value: {
                 auto dest_reg = reg_of(regs[virt_reg]);
                 a.ldr_imm(dest_reg, register_nr::frame, immediate(inst.load_value.local_addr));
+                break;
+            }
+
+            case lauf::ir_op::iadd:
+            case lauf::ir_op::isub:
+            case lauf::ir_op::scmp:
+            case lauf::ir_op::ucmp: {
+                auto dest_reg = reg_of(regs[virt_reg]);
+                auto lhs      = reg_of(regs[inst.iadd.lhs]);
+                auto rhs      = reg_of(regs[inst.iadd.rhs]);
+
+                if (inst.tag.op == lauf::ir_op::iadd)
+                    a.add(dest_reg, lhs, rhs);
+                else if (inst.tag.op == lauf::ir_op::isub)
+                    a.sub(dest_reg, lhs, rhs);
+                else if (inst.tag.op == lauf::ir_op::scmp)
+                {
+                    a.cmp(lhs, rhs);
+                    a.cset(lhs, condition_code::gt);
+                    a.cset(rhs, condition_code::lt);
+                    a.sub(dest_reg, lhs, rhs);
+                }
+                else if (inst.tag.op == lauf::ir_op::ucmp)
+                {
+                    a.cmp(lhs, rhs);
+                    a.cset(lhs, condition_code::hi);
+                    a.cset(rhs, condition_code::lo);
+                    a.sub(dest_reg, lhs, rhs);
+                }
+                else
+                    assert(false);
                 break;
             }
 

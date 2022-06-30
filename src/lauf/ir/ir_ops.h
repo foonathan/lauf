@@ -30,3 +30,13 @@ LAUF_IR_OP(store_value, ir_inst_store_value)
 // Loads the specified value.
 LAUF_IR_OP(load_value, ir_inst_load_value)
 
+//=== arithmetic ===//
+// Adds two signed/unsigned integers, wrapping on overflow.
+LAUF_IR_OP(iadd, ir_inst_binary)
+// Subtracts two signed/unsigned integers, wrapping on overflow.
+LAUF_IR_OP(isub, ir_inst_binary)
+// Compares two signed integers.
+LAUF_IR_OP(scmp, ir_inst_binary)
+// Compares two unsigned integers.
+LAUF_IR_OP(ucmp, ir_inst_binary)
+

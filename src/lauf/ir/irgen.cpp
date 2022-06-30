@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <lauf/impl/module.hpp>
+#include <lauf/ir/builtin.hpp>
 
 using namespace lauf;
 
@@ -70,6 +71,15 @@ public:
         auto reg = _stack.back();
         _stack.pop_back();
         return reg;
+    }
+
+    register_idx* get_top_n(std::size_t n)
+    {
+        return _stack.end() - n;
+    }
+    void pop_top_n(std::size_t n)
+    {
+        _stack.resize(_stack.size() - n);
     }
 
     ir_inst pop_argument(temporary_array<ir_inst>& inst)
@@ -172,6 +182,21 @@ ir_function lauf::irgen(stack_allocator& alloc, lauf_function fn)
             vstack.push(reg);
         }
     };
+    auto handle_builtin_call = [&](lauf_builtin_function callee, lauf_signature sig) {
+        auto args = vstack.get_top_n(sig.input_count);
+        if (auto inst = try_irgen_int(callee, args))
+        {
+            vstack.pop_top_n(sig.input_count);
+            auto reg = add_inst(*inst);
+            if (sig.output_count > 0)
+                vstack.push(reg);
+        }
+        else
+        {
+            add_inst(LAUF_IR_INSTRUCTION(call_builtin, sig, callee));
+            handle_call(sig);
+        }
+    };
 
     start_block(fn->bytecode(), fn->input_count);
     for (auto ip = fn->bytecode(); ip != fn->bytecode() + fn->instruction_count; ++ip)
@@ -232,9 +257,7 @@ ir_function lauf::irgen(stack_allocator& alloc, lauf_function fn)
 
             auto sig = lauf_signature{std::uint8_t(ip->call_builtin.input_count),
                                       std::uint8_t(ip->call_builtin.output_count)};
-
-            add_inst(LAUF_IR_INSTRUCTION(call_builtin, sig, callee));
-            handle_call(sig);
+            handle_builtin_call(callee, sig);
             break;
         }
         case bc_op::call_builtin_long: {
@@ -244,9 +267,7 @@ ir_function lauf::irgen(stack_allocator& alloc, lauf_function fn)
 
             auto sig = lauf_signature{std::uint8_t(ip->call_builtin_long.input_count),
                                       std::uint8_t(ip->call_builtin_long.output_count)};
-
-            add_inst(LAUF_IR_INSTRUCTION(call_builtin, sig, callee));
-            handle_call(sig);
+            handle_builtin_call(callee, sig);
             break;
         }
 

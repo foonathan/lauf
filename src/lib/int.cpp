@@ -4,6 +4,7 @@
 #include <lauf/lib/int.h>
 
 #include <lauf/impl/builtin.hpp>
+#include <lauf/ir/builtin.hpp>
 #include <new>
 
 //=== types ===//
@@ -168,4 +169,19 @@ LAUF_BUILTIN_BINARY_OPERATION(lauf_scmp_builtin, 1, {
 LAUF_BUILTIN_BINARY_OPERATION(lauf_ucmp_builtin, 1, {
     result->as_sint = (lhs.as_uint > rhs.as_uint) - (lhs.as_uint < rhs.as_uint);
 })
+
+//=== irgen ===//
+std::optional<lauf::ir_inst> lauf::try_irgen_int(lauf_builtin_function fn, register_idx* vstack)
+{
+    if (fn == &sadd_wrap_fn || fn == &uadd_wrap_fn)
+        return LAUF_IR_INSTRUCTION(iadd, vstack[0], vstack[1]);
+    else if (fn == &ssub_wrap_fn || fn == &usub_wrap_fn)
+        return LAUF_IR_INSTRUCTION(isub, vstack[0], vstack[1]);
+    else if (fn == &lauf_scmp_builtin_fn)
+        return LAUF_IR_INSTRUCTION(scmp, vstack[0], vstack[1]);
+    else if (fn == &lauf_ucmp_builtin_fn)
+        return LAUF_IR_INSTRUCTION(ucmp, vstack[0], vstack[1]);
+
+    return std::nullopt;
+}
 

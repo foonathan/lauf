@@ -18,6 +18,10 @@ std::optional<register_idx> result_register(const ir_function& fn, const ir_inst
     case ir_op::const_:
     case ir_op::call_result:
     case ir_op::load_value:
+    case ir_op::iadd:
+    case ir_op::isub:
+    case ir_op::scmp:
+    case ir_op::ucmp:
         return register_idx(fn.index_of(inst));
 
     case ir_op::return_:
@@ -133,6 +137,13 @@ void classify_temporary_persistent(register_assignments& result, const ir_functi
             case ir_op::store_value:
                 downgrade(inst, inst.store_value.register_idx);
                 break;
+            case ir_op::iadd:
+            case ir_op::isub:
+            case ir_op::scmp:
+            case ir_op::ucmp:
+                downgrade(inst, inst.iadd.lhs);
+                downgrade(inst, inst.iadd.rhs);
+                break;
 
                 // Other instructions don't affect anything.
             case ir_op::return_:
@@ -246,6 +257,10 @@ void promote_to_argument(register_assignments& result, stack_allocator& alloc,
             case ir_op::call_result:
             case ir_op::store_value:
             case ir_op::load_value:
+            case ir_op::iadd:
+            case ir_op::isub:
+            case ir_op::scmp:
+            case ir_op::ucmp:
                 break;
             }
         }
@@ -318,6 +333,13 @@ void allocate_temporary_persistent(register_assignments& result, stack_allocator
                 break;
             case ir_op::store_value:
                 free(inst.store_value.register_idx);
+                break;
+            case ir_op::iadd:
+            case ir_op::isub:
+            case ir_op::scmp:
+            case ir_op::ucmp:
+                free(inst.iadd.lhs);
+                free(inst.iadd.rhs);
                 break;
 
                 // Other instructions don't affect anything.

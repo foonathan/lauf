@@ -195,6 +195,18 @@ std::string lauf::irdump(const ir_function& fn, const register_assignments* assi
                 result += format(inst.store_value.register_idx);
                 break;
 
+            case ir_op::iadd:
+            case ir_op::isub:
+            case ir_op::scmp:
+            case ir_op::ucmp:
+                result += to_string(inst.iadd.op);
+                result += " ";
+                result += format(inst.iadd.lhs);
+                result += " ";
+                result += format(inst.iadd.rhs);
+                print_result(inst);
+                break;
+
             case ir_op::argument:
             case ir_op::call_result:
                 // Should be handled by owning instruction.

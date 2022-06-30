@@ -75,7 +75,7 @@ int main()
     std::puts(lauf::irdump(ir, &assgn).c_str());
 
     auto compiler = lauf_vm_jit_compiler(vm);
-    // lauf_jit_compile(compiler, fn);
+    lauf_jit_compile(compiler, fn);
 
     lauf_value input = {.as_sint = 35};
     lauf_value output[2];

@@ -36,6 +36,7 @@ set(src_additional_files
         lauf/impl/process.hpp
         lauf/impl/program.hpp
         lauf/impl/vm.hpp
+        lauf/ir/builtin.hpp
         lauf/ir/instruction.hpp
         lauf/ir/irdump.hpp
         lauf/ir/irdump.cpp

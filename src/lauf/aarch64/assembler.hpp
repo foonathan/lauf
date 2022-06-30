@@ -42,6 +42,7 @@ enum class register_nr : std::uint8_t
     frame = 29,
     link  = 30,
     stack = 31,
+    zero  = 31,
 };
 
 constexpr std::uint32_t encode(register_nr nr)
@@ -72,7 +73,7 @@ enum class condition_code : std::uint8_t
     vs,
     vc,
     hi,
-    ls,
+    lo,
     ge,
     lt,
     gt,
@@ -80,6 +81,11 @@ enum class condition_code : std::uint8_t
     al,
     nv
 };
+
+constexpr condition_code invert(condition_code cc)
+{
+    return condition_code(std::uint8_t(cc) ^ 0b1);
+}
 
 constexpr std::uint32_t encode(condition_code cc)
 {
@@ -450,13 +456,104 @@ public:
     {
         arithmetic_impl(0b11, xd, xn, imm, shift);
     }
-    void cmp(register_nr xd, register_nr xn, immediate imm, lsl shift = lsl{0})
+    void cmp(register_nr xn, immediate imm, lsl shift = lsl{0})
     {
-        arithmetic_impl(0b11, xd, xn, imm, shift);
+        arithmetic_impl(0b11, register_nr::zero, xn, imm, shift);
     }
-    void cmn(register_nr xd, register_nr xn, immediate imm, lsl shift = lsl{0})
+    void cmn(register_nr xn, immediate imm, lsl shift = lsl{0})
     {
-        arithmetic_impl(0b01, xd, xn, imm, shift);
+        arithmetic_impl(0b01, register_nr::zero, xn, imm, shift);
+    }
+
+    //=== arithmetic (shifted register) ===//
+private:
+    void arithmetic_impl(std::uint32_t op_s, register_nr xd, register_nr xn, register_nr xm,
+                         lsl shift)
+    {
+        auto inst = encode<22>(0b1'00'01011'00) | encode<29>(op_s);
+        inst |= encode(xd) << 0;
+        inst |= encode(xn) << 5;
+        inst |= encode<6, 1>(shift) << 10;
+        inst |= encode(xm) << 16;
+        emit(inst);
+    }
+
+public:
+    void add(register_nr xd, register_nr xn, register_nr xm, lsl shift = lsl{0})
+    {
+        arithmetic_impl(0b00, xd, xn, xm, shift);
+    }
+    void adds(register_nr xd, register_nr xn, register_nr xm, lsl shift = lsl{0})
+    {
+        arithmetic_impl(0b01, xd, xn, xm, shift);
+    }
+    void sub(register_nr xd, register_nr xn, register_nr xm, lsl shift = lsl{0})
+    {
+        arithmetic_impl(0b10, xd, xn, xm, shift);
+    }
+    void subs(register_nr xd, register_nr xn, register_nr xm, lsl shift = lsl{0})
+    {
+        arithmetic_impl(0b11, xd, xn, xm, shift);
+    }
+    void cmp(register_nr xn, register_nr xm, lsl shift = lsl{0})
+    {
+        arithmetic_impl(0b11, register_nr::zero, xn, xm, shift);
+    }
+    void cmpn(register_nr xn, register_nr xm, lsl shift = lsl{0})
+    {
+        arithmetic_impl(0b01, register_nr::zero, xn, xm, shift);
+    }
+
+    //=== conditional select ===//
+private:
+    void condsel_impl(std::uint32_t op_s, std::uint32_t op2, register_nr xd, register_nr xn,
+                      register_nr xm, condition_code cc)
+    {
+        auto inst = encode<21>(0b1'00'11010100) | encode<29>(op_s) | encode<10>(op2);
+        inst |= encode(xd) << 0;
+        inst |= encode(xn) << 5;
+        inst |= encode(xm) << 16;
+        inst |= encode(cc) << 12;
+        emit(inst);
+    }
+
+public:
+    void csel(register_nr xd, register_nr xn, register_nr xm, condition_code cc)
+    {
+        condsel_impl(0b00, 0b00, xd, xn, xm, cc);
+    }
+    void csinc(register_nr xd, register_nr xn, register_nr xm, condition_code cc)
+    {
+        condsel_impl(0b00, 0b01, xd, xn, xm, cc);
+    }
+    void csinv(register_nr xd, register_nr xn, register_nr xm, condition_code cc)
+    {
+        condsel_impl(0b10, 0b00, xd, xn, xm, cc);
+    }
+    void csneg(register_nr xd, register_nr xn, register_nr xm, condition_code cc)
+    {
+        condsel_impl(0b10, 0b01, xd, xn, xm, cc);
+    }
+
+    void cinc(register_nr xd, register_nr xn, condition_code cc)
+    {
+        csinc(xd, xn, xn, invert(cc));
+    }
+    void cset(register_nr xd, condition_code cc)
+    {
+        csinc(xd, register_nr::zero, register_nr::zero, invert(cc));
+    }
+    void cinv(register_nr xd, register_nr xn, condition_code cc)
+    {
+        csinv(xd, xn, xn, invert(cc));
+    }
+    void csetm(register_nr xd, condition_code cc)
+    {
+        csinv(xd, register_nr::zero, register_nr::zero, invert(cc));
+    }
+    void cneg(register_nr xd, register_nr xn, condition_code cc)
+    {
+        csneg(xd, xn, xn, invert(cc));
     }
 
     //=== move (wide immediate) ===//
