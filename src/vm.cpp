@@ -20,13 +20,10 @@
 
 namespace
 {
-struct alignas(void*) stack_frame
+struct vm_stack_frame : lauf::stack_frame_base
 {
-    lauf_function                 fn;
-    lauf_vm_instruction*          return_ip;
     lauf::stack_allocator::marker unwind;
     lauf_value_address            first_local_allocation;
-    stack_frame*                  prev;
 
     LAUF_INLINE void free_local_allocations(lauf_vm_process process)
     {
@@ -39,11 +36,12 @@ struct alignas(void*) stack_frame
         }
     }
 };
+
 } // namespace
 
 std::size_t lauf::frame_size_for(lauf_function fn)
 {
-    return sizeof(stack_frame) + fn->local_stack_size;
+    return sizeof(vm_stack_frame) + fn->local_stack_size;
 }
 
 //=== backtrace ===//
@@ -53,19 +51,19 @@ std::size_t lauf::frame_size_for(lauf_function fn)
 
 lauf_function lauf_backtrace_get_function(lauf_backtrace bt)
 {
-    auto frame = static_cast<stack_frame*>(bt);
+    auto frame = static_cast<lauf::stack_frame_base*>(bt);
     return frame->prev->fn;
 }
 
 lauf_debug_location lauf_backtrace_get_location(lauf_backtrace bt)
 {
-    auto frame = static_cast<stack_frame*>(bt);
+    auto frame = static_cast<lauf::stack_frame_base*>(bt);
     return lauf_function_get_location_of(frame->prev->fn, frame->return_ip - 1);
 }
 
 lauf_backtrace lauf_backtrace_parent(lauf_backtrace bt)
 {
-    auto frame = static_cast<stack_frame*>(bt);
+    auto frame = static_cast<lauf::stack_frame_base*>(bt);
     // We need to go to the parent.
     auto next_bt = frame->prev;
 
@@ -78,7 +76,7 @@ lauf_backtrace lauf_backtrace_parent(lauf_backtrace bt)
 //=== panic handler ===//
 struct lauf_panic_info_impl
 {
-    stack_frame fake_frame;
+    lauf::stack_frame_base fake_frame;
 };
 
 lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
@@ -89,8 +87,8 @@ lauf_backtrace lauf_panic_info_get_backtrace(lauf_panic_info info)
 LAUF_NOINLINE_IF_TAIL bool lauf::do_panic(lauf_vm_instruction* ip, lauf_value* vstack_ptr,
                                           void* frame_ptr, lauf_vm_process process)
 {
-    auto cur_frame = static_cast<stack_frame*>(frame_ptr) - 1;
-    auto info      = lauf_panic_info_impl{{nullptr, ip + 1, {}, lauf_value_address{}, cur_frame}};
+    auto cur_frame = static_cast<stack_frame_base*>(frame_ptr);
+    auto info      = lauf_panic_info_impl{{cur_frame, nullptr, ip + 1}};
     auto message   = static_cast<const char*>(vstack_ptr->as_native_ptr);
     process->vm()->panic_handler(&info, message);
     return false;
@@ -329,8 +327,8 @@ bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lau
         = {LAUF_VM_INSTRUCTION(call, lauf::bc_function_idx(prog.mod->find_function(prog.entry))),
            LAUF_VM_INSTRUCTION(exit)};
 
-    stack_frame frame{};
-    auto        result = lauf::dispatch(startup, vstack_ptr, &frame + 1, vm->process);
+    vm_stack_frame frame{};
+    auto           result = lauf::dispatch(startup, vstack_ptr, &frame, vm->process);
     if (result)
     {
         // TODO: is this really the correct output order?

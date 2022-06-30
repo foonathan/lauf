@@ -36,6 +36,13 @@ struct alignas(lauf_value) lauf_vm_impl
 
 namespace lauf
 {
+struct stack_frame_base
+{
+    stack_frame_base*    prev;
+    lauf_function        fn;
+    lauf_vm_instruction* return_ip;
+};
+
 size_t frame_size_for(lauf_function fn);
 
 bool dispatch(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,

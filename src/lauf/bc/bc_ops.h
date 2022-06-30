@@ -60,29 +60,25 @@ LAUF_BC_OP(exit, bc_inst_none, { return true; })
 
 // Return from current function.
 LAUF_BC_OP(return_, bc_inst_none, {
-    auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto frame  = static_cast<vm_stack_frame*>(frame_ptr);
     auto marker = frame->unwind;
 
     frame->free_local_allocations(process);
 
     auto prev_frame = frame->prev;
     ip              = frame->return_ip;
-    frame_ptr       = prev_frame + 1;
+    frame_ptr       = prev_frame;
     process->stack().unwind(marker);
 
     LAUF_DISPATCH;
 })
 LAUF_BC_OP(return_no_alloc, bc_inst_none, {
-    auto frame  = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto frame  = static_cast<vm_stack_frame*>(frame_ptr);
     auto marker = frame->unwind;
-
-    ip        = frame->return_ip;
-    frame_ptr = frame->prev + 1;
-    process->stack().unwind(marker);
 
     auto prev_frame = frame->prev;
     ip              = frame->return_ip;
-    frame_ptr       = prev_frame + 1;
+    frame_ptr       = prev_frame;
     process->stack().unwind(marker);
 
     LAUF_DISPATCH;
@@ -92,11 +88,11 @@ LAUF_BC_OP(return_no_alloc, bc_inst_none, {
 LAUF_BC_OP(call, bc_inst_function_idx, {
     auto callee     = process->get_function(ip->call.function_idx);
     auto marker     = process->stack().top();
-    auto prev_frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto prev_frame = static_cast<vm_stack_frame*>(frame_ptr);
 
     // As the local_stack_size is a multiple of max alignment, we don't need to worry about aligning
     // it; the builder takes care of it when computing the stack size.
-    auto memory = process->stack().try_allocate(sizeof(stack_frame) + callee->local_stack_size);
+    auto memory = process->stack().try_allocate(lauf::frame_size_for(callee));
     if (memory == nullptr)
         // Reserve a new stack block and try again.
         LAUF_TAIL_CALL return reserve_new_stack_block(ip, vstack_ptr, frame_ptr, process);
@@ -106,8 +102,7 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
         LAUF_DO_PANIC("value stack overflow");
 
     frame_ptr = new (memory)
-                    stack_frame{callee, ip + 1, marker, lauf_value_address_invalid, prev_frame}
-                + 1;
+        vm_stack_frame{prev_frame, callee, ip + 1, marker, lauf_value_address_invalid};
 
     if (callee->jit_fn != lauf::null_executable_memory)
     {
@@ -125,14 +120,14 @@ LAUF_BC_OP(call, bc_inst_function_idx, {
 
 // Creates the local allocations for the current function.
 LAUF_BC_OP(add_local_allocations, bc_inst_none, {
-    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto frame = static_cast<vm_stack_frame*>(frame_ptr);
     auto fn    = frame->fn;
 
     if (!process->has_capacity_for_allocations(fn->local_allocation_count))
         // Resize the list and try again.
         LAUF_TAIL_CALL return resize_allocation_list(ip, vstack_ptr, frame_ptr, process);
 
-    auto local_memory = reinterpret_cast<unsigned char*>(frame_ptr);
+    auto local_memory = reinterpret_cast<unsigned char*>(frame + 1);
     frame->first_local_allocation
         = process->add_local_allocations(local_memory, fn->local_allocations(),
                                          fn->local_allocation_count);
@@ -212,7 +207,7 @@ LAUF_BC_OP(push_addr, bc_inst_literal, {
 // Push local address, literal is offset from allocation index.
 // _ => (first_local_allocation + offset)
 LAUF_BC_OP(push_local_addr, bc_inst_literal, {
-    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
+    auto frame = static_cast<vm_stack_frame*>(frame_ptr);
     auto addr  = frame->first_local_allocation;
     addr.allocation += ip->push_addr.literal;
 
@@ -389,7 +384,8 @@ LAUF_BC_OP(store_field, bc_inst_field_literal_idx, {
 // Load a stack value from a local address.
 // _ => value
 LAUF_BC_OP(load_value, bc_inst_literal, {
-    auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->load_value.literal);
+    auto frame  = static_cast<vm_stack_frame*>(frame_ptr);
+    auto object = reinterpret_cast<unsigned char*>(frame + 1) + ptrdiff_t(ip->load_value.literal);
 
     --vstack_ptr;
     vstack_ptr[0] = *reinterpret_cast<lauf_value*>(object);
@@ -400,11 +396,11 @@ LAUF_BC_OP(load_value, bc_inst_literal, {
 // Load a stack value from a local array.
 // idx => value
 LAUF_BC_OP(load_array_value, bc_inst_literal, {
+    auto frame  = static_cast<vm_stack_frame*>(frame_ptr);
     auto offset = ptrdiff_t(ip->load_value.literal);
-    auto array  = static_cast<unsigned char*>(frame_ptr) + offset;
+    auto array  = reinterpret_cast<unsigned char*>(frame + 1) + offset;
     auto idx    = vstack_ptr[0].as_uint;
 
-    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
     if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
         LAUF_DO_PANIC("array index out of bounds");
 
@@ -417,7 +413,8 @@ LAUF_BC_OP(load_array_value, bc_inst_literal, {
 // Store a stack value to a local address.
 // value => _
 LAUF_BC_OP(store_value, bc_inst_literal, {
-    auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->store_value.literal);
+    auto frame  = static_cast<vm_stack_frame*>(frame_ptr);
+    auto object = reinterpret_cast<unsigned char*>(frame + 1) + ptrdiff_t(ip->store_value.literal);
 
     ::new (object) lauf_value(vstack_ptr[0]);
     ++vstack_ptr;
@@ -428,11 +425,11 @@ LAUF_BC_OP(store_value, bc_inst_literal, {
 // Store a stack value from a local array.
 // value idx => _
 LAUF_BC_OP(store_array_value, bc_inst_literal, {
+    auto frame  = static_cast<vm_stack_frame*>(frame_ptr);
     auto offset = ptrdiff_t(ip->load_value.literal);
-    auto array  = static_cast<unsigned char*>(frame_ptr) + offset;
+    auto array  = reinterpret_cast<unsigned char*>(frame + 1) + offset;
     auto idx    = vstack_ptr[0].as_uint;
 
-    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
     if (offset + (idx + 1) * sizeof(lauf_value) > frame->fn->local_stack_size)
         LAUF_DO_PANIC("array index out of bounds");
 
@@ -446,7 +443,8 @@ LAUF_BC_OP(store_array_value, bc_inst_literal, {
 // Save a stack value to a local address.
 // value => value
 LAUF_BC_OP(save_value, bc_inst_literal, {
-    auto object = static_cast<unsigned char*>(frame_ptr) + ptrdiff_t(ip->save_value.literal);
+    auto frame  = static_cast<vm_stack_frame*>(frame_ptr);
+    auto object = reinterpret_cast<unsigned char*>(frame + 1) + ptrdiff_t(ip->save_value.literal);
 
     ::new (object) lauf_value(vstack_ptr[0]);
 
