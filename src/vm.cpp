@@ -314,24 +314,6 @@ return true;
 
 #endif
 
-bool lauf::jit_finish(lauf_vm_instruction* ip, lauf_value* vstack_ptr, void* frame_ptr,
-                      lauf_vm_process process)
-{
-    auto frame = static_cast<stack_frame*>(frame_ptr) - 1;
-    frame->free_local_allocations(process);
-
-    ip              = frame->return_ip;
-    frame_ptr       = frame->prev + 1;
-    auto prev_frame = frame->prev;
-    process->stack().unwind(frame->unwind);
-
-    if (prev_frame->fn != nullptr && prev_frame->fn->jit_fn != nullptr)
-        // We're returning to a JIT function, actual return.
-        return true;
-    else
-        LAUF_TAIL_CALL return lauf_builtin_finish(ip, vstack_ptr, frame_ptr, process);
-}
-
 bool lauf_vm_execute(lauf_vm vm, lauf_program prog, const lauf_value* input, lauf_value* output)
 {
     vm->process->start(prog);
