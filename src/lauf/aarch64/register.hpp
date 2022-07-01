@@ -46,7 +46,11 @@ constexpr register_nr reg_of(register_assignment assgn)
     }
 }
 
-// Register that holds JIT state needed to execute VM instructions.
+// Register that holds state during JIT execution.
+//
+// For normal execution, this is the process pointer.
+// During panic propagation, it is null.
+//
 // We re-purpose X8, which is normally used to pass a pointer for bigger return values, but we don't
 // need that.
 constexpr auto reg_jit_state = register_nr{8};

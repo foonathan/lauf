@@ -114,20 +114,24 @@ struct ir_inst_call_builtin
 {
     LAUF_IR_COMMON;
     lauf_signature         signature;
+    std::uint16_t          bytecode_return_ip;
     lauf_builtin_function* fn;
 
-    ir_inst_call_builtin(ir_op op, lauf_signature signature, lauf_builtin_function fn)
-    : op(op), signature(signature), fn(fn)
+    ir_inst_call_builtin(ir_op op, lauf_signature signature, std::uint16_t bytecode_return_ip,
+                         lauf_builtin_function fn)
+    : op(op), signature(signature), bytecode_return_ip(bytecode_return_ip), fn(fn)
     {}
 };
 struct ir_inst_call
 {
     LAUF_IR_COMMON;
     lauf_signature signature;
+    std::uint16_t  bytecode_return_ip;
     lauf_function  fn;
 
-    ir_inst_call(ir_op op, lauf_signature signature, lauf_function fn)
-    : op(op), signature(signature), fn(fn)
+    ir_inst_call(ir_op op, lauf_signature signature, std::uint16_t bytecode_return_ip,
+                 lauf_function fn)
+    : op(op), signature(signature), bytecode_return_ip(bytecode_return_ip), fn(fn)
     {}
 };
 

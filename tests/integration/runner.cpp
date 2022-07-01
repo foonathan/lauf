@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
         else
             lauf_vm_set_panic_handler(vm, lauf_default_vm_options.panic_handler);
 
-        auto signature = lauf_function_get_signature(*fn);
+        [[maybe_unused]] auto signature = lauf_function_get_signature(*fn);
         assert(signature.input_count == 0 && signature.output_count == 0);
 
         auto program     = lauf_link_single_module(mod, *fn);

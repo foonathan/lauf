@@ -39,6 +39,9 @@ constexpr std::uint32_t encode(std::uint32_t op)
 //=== register ===//
 enum class register_nr : std::uint8_t
 {
+    ip0 = 16,
+    ip1 = 17,
+
     frame = 29,
     link  = 30,
     stack = 31,

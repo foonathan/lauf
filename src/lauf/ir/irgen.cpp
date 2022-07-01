@@ -182,21 +182,22 @@ ir_function lauf::irgen(stack_allocator& alloc, lauf_function fn)
             vstack.push(reg);
         }
     };
-    auto handle_builtin_call = [&](lauf_builtin_function callee, lauf_signature sig) {
-        auto args = vstack.get_top_n(sig.input_count);
-        if (auto inst = try_irgen_int(callee, args))
-        {
-            vstack.pop_top_n(sig.input_count);
-            auto reg = add_inst(*inst);
-            if (sig.output_count > 0)
-                vstack.push(reg);
-        }
-        else
-        {
-            add_inst(LAUF_IR_INSTRUCTION(call_builtin, sig, callee));
-            handle_call(sig);
-        }
-    };
+    auto handle_builtin_call
+        = [&](lauf_builtin_function callee, lauf_signature sig, std::uint16_t return_ip) {
+              auto args = vstack.get_top_n(sig.input_count);
+              if (auto inst = try_irgen_int(callee, args))
+              {
+                  vstack.pop_top_n(sig.input_count);
+                  auto reg = add_inst(*inst);
+                  if (sig.output_count > 0)
+                      vstack.push(reg);
+              }
+              else
+              {
+                  add_inst(LAUF_IR_INSTRUCTION(call_builtin, sig, return_ip, callee));
+                  handle_call(sig);
+              }
+          };
 
     start_block(fn->bytecode(), fn->input_count);
     for (auto ip = fn->bytecode(); ip != fn->bytecode() + fn->instruction_count; ++ip)
@@ -241,9 +242,10 @@ ir_function lauf::irgen(stack_allocator& alloc, lauf_function fn)
             break;
 
         case bc_op::call: {
-            auto callee = fn->mod->function_begin()[size_t(ip->call.function_idx)];
-            auto sig    = lauf_signature{callee->input_count, callee->output_count};
-            add_inst(LAUF_IR_INSTRUCTION(call, sig, callee));
+            auto callee    = fn->mod->function_begin()[size_t(ip->call.function_idx)];
+            auto sig       = lauf_signature{callee->input_count, callee->output_count};
+            auto return_ip = std::uint16_t((ip + 1) - fn->bytecode());
+            add_inst(LAUF_IR_INSTRUCTION(call, sig, return_ip, callee));
             handle_call(sig);
             break;
         }
@@ -255,9 +257,10 @@ ir_function lauf::irgen(stack_allocator& alloc, lauf_function fn)
             auto addr      = base_addr + ip->call_builtin.address * std::ptrdiff_t(16);
             auto callee    = reinterpret_cast<lauf_builtin_function*>(addr);
 
-            auto sig = lauf_signature{std::uint8_t(ip->call_builtin.input_count),
+            auto sig       = lauf_signature{std::uint8_t(ip->call_builtin.input_count),
                                       std::uint8_t(ip->call_builtin.output_count)};
-            handle_builtin_call(callee, sig);
+            auto return_ip = std::uint16_t((ip + 1) - fn->bytecode());
+            handle_builtin_call(callee, sig, return_ip);
             break;
         }
         case bc_op::call_builtin_long: {
@@ -265,9 +268,10 @@ ir_function lauf::irgen(stack_allocator& alloc, lauf_function fn)
                 = fn->mod->literal_data()[size_t(ip->call_builtin_long.address)].as_native_ptr;
             auto callee = (lauf_builtin_function*)addr;
 
-            auto sig = lauf_signature{std::uint8_t(ip->call_builtin_long.input_count),
+            auto sig       = lauf_signature{std::uint8_t(ip->call_builtin_long.input_count),
                                       std::uint8_t(ip->call_builtin_long.output_count)};
-            handle_builtin_call(callee, sig);
+            auto return_ip = std::uint16_t((ip + 1) - fn->bytecode());
+            handle_builtin_call(callee, sig, return_ip);
             break;
         }
 

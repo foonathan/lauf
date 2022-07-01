@@ -12,6 +12,7 @@
 #include <lauf/frontend/text.h>
 #include <lauf/jit.h>
 #include <lauf/lib/int.h>
+#include <lauf/lib/memory.h>
 #include <lauf/linker.h>
 #include <lauf/module.h>
 #include <lauf/vm.h>
@@ -36,6 +37,7 @@ int main()
     lauf_frontend_text_register_builtin(parser, "usub",
                                         lauf_usub_builtin(LAUF_INTEGER_OVERFLOW_PANIC));
     lauf_frontend_text_register_builtin(parser, "scmp", lauf_scmp_builtin());
+    lauf_frontend_text_register_builtin(parser, "heap_alloc", lauf_heap_alloc_builtin());
     lauf_frontend_text_register_type(parser, "Value", &lauf_value_type);
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;

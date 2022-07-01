@@ -60,6 +60,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
 
     auto                                    lab_entry  = a.declare_label();
     auto                                    lab_return = a.declare_label();
+    auto                                    lab_panic  = a.declare_label();
     lauf::temporary_array<assembler::label> labels(alloc, irfn.blocks().size());
     for (auto bb : irfn.blocks())
         labels.push_back(a.declare_label());
@@ -87,7 +88,19 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
         stack_push(a, save_registers[i], save_registers[i + 1]);
 
     // Setup stack frame.
-    stack_allocate(a, fn->local_stack_size);
+    constexpr auto locals_offset = 3;
+    stack_allocate(a, fn->local_stack_size + locals_offset * sizeof(lauf_value));
+    a.str_imm(register_nr::frame, register_nr::stack,
+              immediate(offsetof(lauf::stack_frame_base, prev) / sizeof(lauf_value)));
+    a.str_imm(register_nr::ip0, register_nr::stack,
+              immediate(offsetof(lauf::stack_frame_base, return_ip) / sizeof(lauf_value)));
+    emit_mov(a, reg_temporary(0), [&] {
+        lauf_value v;
+        v.as_native_ptr = reinterpret_cast<void*>(fn);
+        return v;
+    }());
+    a.str_imm(reg_temporary(0), register_nr::stack,
+              immediate(offsetof(lauf::stack_frame_base, fn) / sizeof(lauf_value)));
     a.mov(register_nr::frame, register_nr::stack);
 
     //=== main body ===//
@@ -279,16 +292,28 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                 push_argument_regs(ip, sig.input_count, arg_offset);
 
                 // Set actual arguments.
-                a.movz(reg_argument(0), immediate(0)); // ip = nullptr
+                emit_mov(a, reg_argument(0), [&] {
+                    lauf_value v;
+                    v.as_native_ptr = fn->bytecode() + inst.call_builtin.bytecode_return_ip;
+                    v.as_uint |= 1;
+                    return v;
+                }()); // ip = return_ip|1
                 a.add(reg_argument(1), register_nr::stack,
-                      immediate(arg_offset));          // vstack_ptr = SP + arg_offset
-                a.movz(reg_argument(2), immediate(0)); // frame_ptr = nullptr
-                a.movz(reg_argument(3), immediate(0)); // process = nullptr
+                      immediate(arg_offset));               // vstack_ptr = SP + arg_offset
+                a.mov(reg_argument(2), register_nr::frame); // frame_ptr = FP
+                a.mov(reg_argument(3), reg_jit_state);      // process = jit_state
+
                 // And call the function.
-                emit_mov(a, reg_temporary(0),
-                         lauf_value{.as_native_ptr = (void*)inst.call_builtin.fn});
+                emit_mov(a, reg_temporary(0), [&] {
+                    lauf_value v;
+                    v.as_native_ptr = reinterpret_cast<void*>(inst.call_builtin.fn);
+                    return v;
+                }());
                 a.blr(reg_temporary(0));
-                // TODO: panic, if necessary
+                a.cbz(reg_argument(0), lab_panic);
+
+                // Restore jit_state - it's kept in the third argument register.
+                a.mov(reg_jit_state, reg_argument(3));
 
                 // Store results. If we have more outputs, they start at the bottom.
                 // Otherwise, they start higher up.
@@ -304,18 +329,26 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                 assert(inst.call.fn == fn); // TODO: allow non-recursive call
                 flush_sp();
                 set_argument_regs(ip, inst.call.signature.input_count);
+                emit_mov(a, register_nr::ip0, [&] {
+                    lauf_value v;
+                    v.as_native_ptr = fn->bytecode() + inst.call.bytecode_return_ip;
+                    return v;
+                }());
                 a.bl(lab_entry);
+                a.cbz(reg_jit_state, lab_panic);
                 set_result_regs(ip, inst.call.signature.output_count);
                 break;
 
             case lauf::ir_op::store_value: {
                 auto value_reg = reg_of(regs[inst.store_value.register_idx]);
-                a.str_imm(value_reg, register_nr::frame, immediate(inst.store_value.local_addr));
+                a.str_imm(value_reg, register_nr::frame,
+                          immediate(inst.store_value.local_addr + locals_offset));
                 break;
             }
             case lauf::ir_op::load_value: {
                 auto dest_reg = reg_of(regs[virt_reg]);
-                a.ldr_imm(dest_reg, register_nr::frame, immediate(inst.load_value.local_addr));
+                a.ldr_imm(dest_reg, register_nr::frame,
+                          immediate(inst.load_value.local_addr + locals_offset));
                 break;
             }
 
@@ -363,7 +396,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
 
     // Free stack frame.
     a.mov(register_nr::stack, register_nr::frame);
-    stack_free(a, fn->local_stack_size);
+    stack_free(a, fn->local_stack_size + locals_offset * sizeof(lauf_value));
 
     // Restore registers we've saved.
     for (auto i = 0u; i != save_register_count; i += 2)
@@ -371,6 +404,11 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                   save_registers[save_register_count - i - 1]);
     // And return from the function.
     a.ret();
+
+    //=== panic propagation ===//
+    a.place_label(lab_panic);
+    a.movz(reg_jit_state, immediate(0));
+    a.b(lab_return);
 
     return a.finish();
 }
@@ -394,8 +432,16 @@ lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_functi
         a.mov(reg_vstack, reg_argument(1));
     }
 
-    // And save it, as well as link.
+    // And save it, as well as link and frame.
     stack_push(a, reg_vstack, register_nr::link);
+    stack_push(a, register_nr::frame);
+
+    // Save return ip in IP0.
+    a.mov(register_nr::ip0, reg_argument(0));
+    // Save frame pointer in FP.
+    a.mov(register_nr::frame, reg_argument(2));
+    // Save process pointer in jit state register.
+    a.mov(reg_jit_state, reg_argument(3));
 
     // Load argument registers from value stack.
     for (auto i = 0u; i != fn->input_count; ++i)
@@ -404,13 +450,16 @@ lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_functi
     // Call the actual function.
     a.bl(immediate(-(jitfn_offset / sizeof(std::uint32_t) + a.cur_label_pos())));
 
-    // Push results back into the value stack.
+    // Restore registers.
+    stack_pop(a, register_nr::frame);
     stack_pop(a, reg_temporary(0), register_nr::link);
+    // Push results back into the value stack.
     for (auto i = 0u; i != fn->output_count; ++i)
         a.str_post_imm(reg_argument(i), reg_vstack, immediate(-sizeof(lauf_value)));
 
-    // And return back to the vm with exit code true.
-    a.movz(reg_argument(0), immediate(1));
+    // And return back to the vm with exit code true/false depending on state register.
+    // (reg_jit_state has been set to null after a panic.)
+    a.mov(reg_argument(0), reg_jit_state);
     a.ret();
 
     return a.finish();
