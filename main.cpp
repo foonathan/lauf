@@ -68,19 +68,17 @@ int main()
     options.allocator = lauf_vm_malloc_allocator;
     auto vm           = lauf_vm_create(options);
 
-#if 0
     lauf::memory_stack    stack;
     lauf::stack_allocator alloc(stack);
     auto                  ir    = lauf::irgen(alloc, fn);
     auto                  assgn = lauf::register_allocation(alloc, {8, 8, 14}, ir);
     std::puts(lauf::irdump(ir, &assgn).c_str());
 
-     auto compiler = lauf_vm_jit_compiler(vm);
-      lauf_jit_compile(compiler, fn);
-#endif
+    auto compiler = lauf_vm_jit_compiler(vm);
+    lauf_jit_compile(compiler, fn);
 
     lauf_value input;
-    input.as_sint = 2;
+    input.as_sint = 35;
     lauf_value output[2];
     if (lauf_vm_execute(vm, program, &input, output))
         std::printf("result: %ld\n", output[0].as_sint);
