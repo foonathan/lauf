@@ -108,8 +108,9 @@ lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_functi
     return a.finish();
 }
 
-lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
-                            const lauf::ir_function& irfn, const lauf::register_assignments& regs)
+std::size_t compile(lauf::executable_memory_allocator& exe_alloc, lauf::stack_allocator& alloc,
+                    lauf_function fn, const lauf::ir_function& irfn,
+                    const lauf::register_assignments& regs)
 {
     using namespace lauf::aarch64;
     assembler a(alloc);
@@ -122,6 +123,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
         labels.push_back(a.declare_label());
 
     //=== prologue ===//
+    auto jit_pos = exe_alloc.align();
     a.place_label(lab_entry);
 
     register_nr save_registers[32]  = {register_nr::frame, register_nr::link};
@@ -384,19 +386,37 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                 break;
             }
             case lauf::ir_op::call:
-                assert(inst.call.fn == fn); // TODO: allow non-recursive call
-                flush_sp();
-                set_argument_regs(ip, inst.call.signature.input_count);
-                emit_mov(a, register_nr::ip0, [&] {
-                    lauf_value v;
-                    v.as_native_ptr = fn->bytecode() + inst.call.bytecode_return_ip;
-                    return v;
-                }());
-                a.bl(lab_entry);
-                if (!lab_panic)
-                    lab_panic = a.declare_label();
-                a.cbz(reg_jit_state, *lab_panic);
-                set_result_regs(ip, inst.call.signature.output_count);
+                if (inst.call.fn == fn || inst.call.fn->jit_fn != lauf::null_executable_memory)
+                {
+                    flush_sp();
+                    set_argument_regs(ip, inst.call.signature.input_count);
+
+                    emit_mov(a, register_nr::ip0, [&] {
+                        lauf_value v;
+                        v.as_native_ptr = fn->bytecode() + inst.call.bytecode_return_ip;
+                        return v;
+                    }());
+
+                    if (inst.call.fn == fn)
+                    {
+                        a.bl(lab_entry);
+                    }
+                    else
+                    {
+                        auto cur_pos  = exe_alloc.deref<std::uint32_t>(jit_pos) + a.cur_label_pos();
+                        auto dest_pos = exe_alloc.deref<std::uint32_t>(inst.call.fn->jit_fn)
+                                        + trampoline_size;
+                        a.bl(immediate(dest_pos - cur_pos));
+                    }
+
+                    if (!lab_panic)
+                        lab_panic = a.declare_label();
+                    a.cbz(reg_jit_state, *lab_panic);
+
+                    set_result_regs(ip, inst.call.signature.output_count);
+                }
+                else
+                    assert(!"implement VM call");
                 break;
 
             case lauf::ir_op::store_value: {
@@ -473,9 +493,11 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
         a.b(lab_return);
     }
 
-    return a.finish();
+    //=== place ===//
+    auto code = a.finish();
+    exe_alloc.place(code.ptr, code.size_in_bytes);
+    return code.size_in_bytes;
 }
-
 } // namespace
 
 bool lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
@@ -492,16 +514,13 @@ bool lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
     auto jitfn_trampoline = exe_alloc.allocate(trampoline.ptr, trampoline.size_in_bytes);
     exe_alloc.allocate(trampoline_size_in_bytes - trampoline.size_in_bytes);
 
-    auto code  = compile(alloc, fn, irfn, regs);
-    auto jitfn = exe_alloc.allocate(code.ptr, code.size_in_bytes);
-    assert(exe_alloc.deref<char>(jitfn) - exe_alloc.deref<char>(jitfn_trampoline)
-           == trampoline_size_in_bytes);
+    auto code_size = compile(exe_alloc, alloc, fn, irfn, regs);
 
     // TODO
     {
         auto file = std::fopen(fn->name, "w");
         std::fwrite(exe_alloc.deref<void>(jitfn_trampoline), 1,
-                    trampoline_size_in_bytes + code.size_in_bytes, file);
+                    trampoline_size_in_bytes + code_size, file);
         std::fclose(file);
     }
 

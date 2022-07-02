@@ -42,6 +42,11 @@ int main()
     auto mod     = lauf_frontend_text_cstr(parser, R"(
         module @mod;
 
+        function @add(2 => 1) {
+            $sadd;
+            return;
+        }
+
         function @fib_recursive(1 => 1) {
             local %arg : $Value;
             store_value %arg;
@@ -59,11 +64,11 @@ int main()
             load_value %arg; sint 2; $ssub;
             call @fib_recursive;
 
-            $sadd;
+            call @add;
             return;
         }
     )");
-    auto fn      = lauf_module_function_begin(mod)[0];
+    auto fn      = lauf_module_function_begin(mod)[1];
     auto program = lauf_link_single_module(mod, fn);
 
     auto options      = lauf_default_vm_options;
@@ -77,6 +82,7 @@ int main()
     std::puts(lauf::irdump(ir, &assgn).c_str());
 
     auto compiler = lauf_vm_jit_compiler(vm);
+    lauf_jit_compile(compiler, lauf_module_function_begin(mod)[0]);
     lauf_jit_compile(compiler, fn);
 
     lauf_value input;
