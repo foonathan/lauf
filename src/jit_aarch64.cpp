@@ -459,7 +459,8 @@ lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_functi
 
     // And return back to the vm with exit code true/false depending on state register.
     // (reg_jit_state has been set to null after a panic.)
-    a.mov(reg_argument(0), reg_jit_state);
+    a.cmp(reg_jit_state, immediate(0));
+    a.cset(reg_argument(0), condition_code::ne);
     a.ret();
 
     return a.finish();

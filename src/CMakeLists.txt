@@ -23,8 +23,6 @@ set(header_files
         ${include_dir}/lib/memory.h)
 set(src_additional_files
         lauf/aarch64/assembler.hpp
-        lauf/aarch64/emitter.hpp
-        lauf/aarch64/jit.hpp
         lauf/aarch64/register_allocator.hpp
         lauf/bc/bytecode.hpp
         lauf/bc/bytecode_builder.hpp
