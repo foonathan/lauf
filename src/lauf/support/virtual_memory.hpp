@@ -56,10 +56,10 @@ public:
         return _memory;
     }
 
-    template <typename Fn>
-    Fn* deref(executable_memory_handle ptr) const
+    template <typename T>
+    T* deref(executable_memory_handle ptr) const
     {
-        return reinterpret_cast<Fn*>(_memory.ptr + std::size_t(ptr));
+        return reinterpret_cast<T*>(_memory.ptr + std::size_t(ptr));
     }
 
     template <std::size_t Alignment = 1>

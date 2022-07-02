@@ -52,6 +52,62 @@ void emit_mov(lauf::aarch64::assembler& a, lauf::aarch64::register_nr xd, lauf_v
     }
 }
 
+// Doesn't need to be the exact size, just bigger.
+constexpr auto trampoline_size          = 16;
+constexpr auto trampoline_size_in_bytes = trampoline_size * sizeof(std::uint32_t);
+
+lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_function fn)
+{
+    using namespace lauf::aarch64;
+    assembler a(alloc);
+
+    // Prepare vstack_ptr.
+    auto reg_vstack = reg_temporary(0);
+    if (fn->input_count > 1)
+    {
+        // tmp := vstack_ptr + (input_count - 1)
+        a.add(reg_vstack, reg_argument(1), immediate((fn->input_count - 1) * sizeof(lauf_value)));
+    }
+    else
+    {
+        // tmp := vstack_ptr
+        a.mov(reg_vstack, reg_argument(1));
+    }
+
+    // And save it, as well as link and frame.
+    stack_push(a, reg_vstack, register_nr::link);
+    stack_push(a, register_nr::frame);
+
+    // Save return ip in IP0.
+    a.mov(register_nr::ip0, reg_argument(0));
+    // Save frame pointer in FP.
+    a.mov(register_nr::frame, reg_argument(2));
+    // Save process pointer in jit state register.
+    a.mov(reg_jit_state, reg_argument(3));
+
+    // Load argument registers from value stack.
+    for (auto i = 0u; i != fn->input_count; ++i)
+        a.ldr_post_imm(reg_argument(i), reg_vstack, immediate(sizeof(lauf_value)));
+
+    // Call the actual function.
+    a.bl(immediate(trampoline_size - a.cur_label_pos()));
+
+    // Restore registers.
+    stack_pop(a, register_nr::frame);
+    stack_pop(a, reg_temporary(0), register_nr::link);
+    // Push results back into the value stack.
+    for (auto i = 0u; i != fn->output_count; ++i)
+        a.str_post_imm(reg_argument(i), reg_vstack, immediate(-sizeof(lauf_value)));
+
+    // And return back to the vm with exit code true/false depending on state register.
+    // (reg_jit_state has been set to null after a panic.)
+    a.cmp(reg_jit_state, immediate(0));
+    a.cset(reg_argument(0), condition_code::ne);
+    a.ret();
+
+    return a.finish();
+}
+
 lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                             const lauf::ir_function& irfn, const lauf::register_assignments& regs)
 {
@@ -60,7 +116,7 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
 
     auto                                    lab_entry  = a.declare_label();
     auto                                    lab_return = a.declare_label();
-    auto                                    lab_panic  = a.declare_label();
+    std::optional<assembler::label>         lab_panic;
     lauf::temporary_array<assembler::label> labels(alloc, irfn.blocks().size());
     for (auto bb : irfn.blocks())
         labels.push_back(a.declare_label());
@@ -310,7 +366,9 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                     return v;
                 }());
                 a.blr(reg_temporary(0));
-                a.cbz(reg_argument(0), lab_panic);
+                if (!lab_panic)
+                    lab_panic = a.declare_label();
+                a.cbz(reg_argument(0), *lab_panic);
 
                 // Restore jit_state - it's kept in the third argument register.
                 a.mov(reg_jit_state, reg_argument(3));
@@ -335,7 +393,9 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
                     return v;
                 }());
                 a.bl(lab_entry);
-                a.cbz(reg_jit_state, lab_panic);
+                if (!lab_panic)
+                    lab_panic = a.declare_label();
+                a.cbz(reg_jit_state, *lab_panic);
                 set_result_regs(ip, inst.call.signature.output_count);
                 break;
 
@@ -406,88 +466,42 @@ lauf::aarch64::code compile(lauf::stack_allocator& alloc, lauf_function fn,
     a.ret();
 
     //=== panic propagation ===//
-    a.place_label(lab_panic);
-    a.movz(reg_jit_state, immediate(0));
-    a.b(lab_return);
+    if (lab_panic)
+    {
+        a.place_label(*lab_panic);
+        a.movz(reg_jit_state, immediate(0));
+        a.b(lab_return);
+    }
 
     return a.finish();
 }
 
-lauf::aarch64::code compile_trampoline(lauf::stack_allocator& alloc, lauf_function fn,
-                                       std::ptrdiff_t jitfn_offset)
-{
-    using namespace lauf::aarch64;
-    assembler a(alloc);
-
-    // Prepare vstack_ptr.
-    auto reg_vstack = reg_temporary(0);
-    if (fn->input_count > 1)
-    {
-        // tmp := vstack_ptr + (input_count - 1)
-        a.add(reg_vstack, reg_argument(1), immediate((fn->input_count - 1) * sizeof(lauf_value)));
-    }
-    else
-    {
-        // tmp := vstack_ptr
-        a.mov(reg_vstack, reg_argument(1));
-    }
-
-    // And save it, as well as link and frame.
-    stack_push(a, reg_vstack, register_nr::link);
-    stack_push(a, register_nr::frame);
-
-    // Save return ip in IP0.
-    a.mov(register_nr::ip0, reg_argument(0));
-    // Save frame pointer in FP.
-    a.mov(register_nr::frame, reg_argument(2));
-    // Save process pointer in jit state register.
-    a.mov(reg_jit_state, reg_argument(3));
-
-    // Load argument registers from value stack.
-    for (auto i = 0u; i != fn->input_count; ++i)
-        a.ldr_post_imm(reg_argument(i), reg_vstack, immediate(sizeof(lauf_value)));
-
-    // Call the actual function.
-    a.bl(immediate(-(jitfn_offset / sizeof(std::uint32_t) + a.cur_label_pos())));
-
-    // Restore registers.
-    stack_pop(a, register_nr::frame);
-    stack_pop(a, reg_temporary(0), register_nr::link);
-    // Push results back into the value stack.
-    for (auto i = 0u; i != fn->output_count; ++i)
-        a.str_post_imm(reg_argument(i), reg_vstack, immediate(-sizeof(lauf_value)));
-
-    // And return back to the vm with exit code true/false depending on state register.
-    // (reg_jit_state has been set to null after a panic.)
-    a.cmp(reg_jit_state, immediate(0));
-    a.cset(reg_argument(0), condition_code::ne);
-    a.ret();
-
-    return a.finish();
-}
 } // namespace
 
 bool lauf_jit_compile(lauf_jit_compiler compiler, lauf_function fn)
 {
     compiler->stack.reset();
     lauf::stack_allocator alloc(compiler->stack);
+    auto&                 exe_alloc = fn->mod->exe_alloc;
 
     auto irfn = lauf::irgen(alloc, fn);
     auto regs = lauf::register_allocation(alloc, lauf::aarch64::register_file, irfn);
 
-    auto code  = compile(alloc, fn, irfn, regs);
-    auto jitfn = fn->mod->exe_alloc.allocate(code.ptr, code.size_in_bytes);
+    auto trampoline = compile_trampoline(alloc, fn);
+    assert(trampoline.size_in_bytes <= trampoline_size_in_bytes);
+    auto jitfn_trampoline = exe_alloc.allocate(trampoline.ptr, trampoline.size_in_bytes);
+    exe_alloc.allocate(trampoline_size_in_bytes - trampoline.size_in_bytes);
 
-    auto jitfn_trampoline = fn->mod->exe_alloc.align();
-    auto trampoline
-        = compile_trampoline(alloc, fn, std::ptrdiff_t(jitfn_trampoline) - std::ptrdiff_t(jitfn));
-    fn->mod->exe_alloc.place(trampoline.ptr, trampoline.size_in_bytes);
+    auto code  = compile(alloc, fn, irfn, regs);
+    auto jitfn = exe_alloc.allocate(code.ptr, code.size_in_bytes);
+    assert(exe_alloc.deref<char>(jitfn) - exe_alloc.deref<char>(jitfn_trampoline)
+           == trampoline_size_in_bytes);
 
     // TODO
     {
         auto file = std::fopen(fn->name, "w");
-        std::fwrite(code.ptr, 1, code.size_in_bytes, file);
-        std::fwrite(trampoline.ptr, 1, trampoline.size_in_bytes, file);
+        std::fwrite(exe_alloc.deref<void>(jitfn_trampoline), 1,
+                    trampoline_size_in_bytes + code.size_in_bytes, file);
         std::fclose(file);
     }
 
