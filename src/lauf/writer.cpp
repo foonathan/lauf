@@ -4,7 +4,36 @@
 #include <lauf/writer.hpp>
 
 #include <cstdio>
+#include <cstring>
 #include <string>
+
+void lauf_writer::write(const char* str)
+{
+    write(str, std::strlen(str));
+}
+
+[[gnu::format(printf, 2, 3)]] void lauf_writer::format(const char* fmt, ...)
+{
+    constexpr auto small_buffer = 1024;
+    char           buffer[small_buffer + 1];
+
+    va_list args;
+    va_start(args, fmt);
+    va_list copy;
+    va_copy(copy, args);
+
+    auto count = std::size_t(std::vsnprintf(buffer, small_buffer + 1, fmt, args));
+    if (count > small_buffer)
+    {
+        std::string str(count + 1, '\0');
+        std::vsnprintf(str.data(), str.size(), fmt, copy);
+        write(str.data(), count);
+    }
+    else
+    {
+        write(buffer, count);
+    }
+}
 
 void lauf_destroy_writer(lauf_writer* writer)
 {

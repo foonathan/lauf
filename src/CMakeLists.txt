@@ -12,10 +12,19 @@ set(header_files
 
         ${include_dir}/backend/dump.h)
 set(impl_header_files
-        ${src_dir}/writer.hpp)
+        ${src_dir}/writer.hpp
+
+        ${src_dir}/asm/module.hpp)
 set(src_files
         ${src_dir}/config.cpp
-        ${src_dir}/writer.cpp)
+        ${src_dir}/writer.cpp
+
+        ${src_dir}/asm/module.cpp
+
+        ${src_dir}/backend/dump.cpp
+
+        ${src_dir}/support/align.hpp
+        ${src_dir}/support/arena.hpp)
 
 #=== Warnings ===#
 add_library(lauf_warnings INTERFACE)

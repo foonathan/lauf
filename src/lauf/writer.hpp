@@ -14,6 +14,10 @@ struct lauf_writer
     virtual ~lauf_writer()                     = default;
 
     virtual void write(const char* str, std::size_t size) = 0;
+
+    void write(const char* str);
+
+    [[gnu::format(printf, 2, 3)]] void format(const char* fmt, ...);
 };
 
 #endif // SRC_LAUF_WRITER_HPP_INCLUDED

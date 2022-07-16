@@ -16,7 +16,7 @@ std::string read_test_path()
     std::string result(1024, '\0');
 
     auto file = std::fopen(test_path, "rb");
-    auto size = std::fread(&result[0], sizeof(char), result.size(), file);
+    auto size = std::fread(result.data(), sizeof(char), result.size(), file);
     result.resize(size);
     std::fclose(file);
 
@@ -26,13 +26,26 @@ std::string read_test_path()
 
 TEST_CASE("backend: string writer")
 {
-    auto writer = lauf_create_string_writer();
-    writer->write("abcdef", 3);
-    writer->write("123", 3);
+    SUBCASE("basic")
+    {
+        auto writer = lauf_create_string_writer();
+        writer->write("abcdef", 3);
+        writer->write("123");
+        writer->format("%d", 42);
 
-    CHECK(lauf_writer_get_string(writer) == std::string("abc123"));
+        CHECK(lauf_writer_get_string(writer) == std::string("abc12342"));
 
-    lauf_destroy_writer(writer);
+        lauf_destroy_writer(writer);
+    }
+    SUBCASE("long format")
+    {
+        auto writer = lauf_create_string_writer();
+        writer->format("%*c", 1025, ' ');
+
+        CHECK(lauf_writer_get_string(writer) == std::string(1025, ' '));
+
+        lauf_destroy_writer(writer);
+    }
 }
 
 TEST_CASE("backend: file writer")
@@ -42,10 +55,11 @@ TEST_CASE("backend: file writer")
     {
         auto writer = lauf_create_file_writer(test_path);
         writer->write("abcdef", 3);
-        writer->write("123", 3);
+        writer->write("123");
+        writer->format("%d", 42);
         lauf_destroy_writer(writer);
     }
-    CHECK(read_test_path() == "abc123");
+    CHECK(read_test_path() == "abc12342");
 
     std::remove(test_path);
 }

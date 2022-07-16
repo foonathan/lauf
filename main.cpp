@@ -8,6 +8,14 @@
 lauf_asm_module* example_module()
 {
     auto mod = lauf_asm_create_module("test");
+
+    lauf_asm_add_global_zero_data(mod, 1024);
+    lauf_asm_add_global_const_data(mod, "hello", 6);
+    lauf_asm_add_global_mut_data(mod, "hello", 5);
+
+    lauf_asm_add_function(mod, "fn", {1, 1});
+    lauf_asm_add_function(mod, "fn2", {1, 1});
+
     return mod;
 }
 
