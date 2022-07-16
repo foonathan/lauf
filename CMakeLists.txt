@@ -16,6 +16,6 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     endif()
 endif()
 
-add_executable(lauf_prototype main.cpp)
+add_executable(lauf_prototype EXCLUDE_FROM_ALL main.cpp)
 target_link_libraries(lauf_prototype PRIVATE foonathan::lauf::core)
 

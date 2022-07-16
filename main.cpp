@@ -3,7 +3,7 @@
 
 #include <lauf/asm/module.h>
 #include <lauf/backend/dump.h>
-#include <lauf/backend/writer.h>
+#include <lauf/writer.h>
 
 lauf_asm_module* example_module()
 {
@@ -13,9 +13,9 @@ lauf_asm_module* example_module()
 
 void dump_module(lauf_asm_module* mod)
 {
-    auto writer = lauf_backend_create_stdout_writer();
+    auto writer = lauf_create_stdout_writer();
     lauf_backend_dump(writer, lauf_backend_default_dump_options, mod);
-    lauf_backend_destroy_writer(writer);
+    lauf_destroy_writer(writer);
 }
 
 int main()

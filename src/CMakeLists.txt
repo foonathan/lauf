@@ -2,16 +2,20 @@
 # SPDX-License-Identifier: BSL-1.0
 
 get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf ABSOLUTE)
+get_filename_component(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/lauf ABSOLUTE)
 set(header_files
         ${include_dir}/config.h
+        ${include_dir}/writer.h
 
         ${include_dir}/asm/builder.h
         ${include_dir}/asm/module.h
 
-        ${include_dir}/backend/dump.h
-        ${include_dir}/backend/writer.h)
+        ${include_dir}/backend/dump.h)
+set(impl_header_files
+        ${src_dir}/writer.hpp)
 set(src_files
-        config.cpp)
+        ${src_dir}/config.cpp
+        ${src_dir}/writer.cpp)
 
 #=== Warnings ===#
 add_library(lauf_warnings INTERFACE)
@@ -32,8 +36,8 @@ endif()
 add_library(lauf_core)
 add_library(foonathan::lauf::core ALIAS lauf_core)
 target_compile_features(lauf_core PRIVATE cxx_std_17)
-target_include_directories(lauf_core PUBLIC ../include)
+target_include_directories(lauf_core PUBLIC ../include .)
 target_link_libraries(lauf_core PRIVATE lauf_warnings)
 
-target_sources(lauf_core PRIVATE ${header_files} ${src_files})
+target_sources(lauf_core PRIVATE ${header_files} ${impl_header_files} ${src_files})
 
