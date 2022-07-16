@@ -37,5 +37,9 @@
 #    error "lauf currently requires GCC or GCC compatible compilers"
 #endif
 
+//=== basic types ===//
+typedef int64_t  lauf_sint;
+typedef uint64_t lauf_uint;
+
 #endif // LAUF_CONFIG_H_INCLUDED
 

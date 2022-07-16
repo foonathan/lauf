@@ -3,7 +3,13 @@
 
 get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf ABSOLUTE)
 set(header_files
-        ${include_dir}/config.h)
+        ${include_dir}/config.h
+
+        ${include_dir}/asm/builder.h
+        ${include_dir}/asm/module.h
+
+        ${include_dir}/backend/dump.h
+        ${include_dir}/backend/writer.h)
 set(src_files
         config.cpp)
 
