@@ -33,7 +33,21 @@
         if (result.Name.offset != offset)                                                          \
             b->error(context, "offset too big");                                                   \
         return result;                                                                             \
-    }(LAUF_BUILD_ASSERT_CONTEXT, Offset)
+    }(LAUF_BUILD_ASSERT_CONTEXT, static_cast<std::int64_t>(Offset))
+
+#define LAUF_BUILD_INST_STACK_IDX(Name, Idx)                                                       \
+    [&] {                                                                                          \
+        lauf::asm_inst result;                                                                     \
+        result.Name = {lauf::asm_op::Name, Idx};                                                   \
+        return result;                                                                             \
+    }()
+
+#define LAUF_BUILD_INST_VALUE(Name, Value)                                                         \
+    [&] {                                                                                          \
+        lauf::asm_inst result;                                                                     \
+        result.Name = {lauf::asm_op::Name, Value};                                                 \
+        return result;                                                                             \
+    }()
 
 void lauf_asm_builder::error(const char* context, const char* msg)
 {
@@ -73,6 +87,8 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
         {
             block.offset = std::ptrdiff_t(result);
 
+            result += block.insts.size();
+
             switch (block.terminator)
             {
             case lauf_asm_block::unterminated:
@@ -105,6 +121,9 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
     auto ip = insts;
     for (auto& block : b->blocks)
     {
+        std::memcpy(ip, block.insts.data(), block.insts.size() * sizeof(lauf::asm_inst));
+        ip += block.insts.size();
+
         auto cur_offset = ip - insts;
         switch (block.terminator)
         {
@@ -254,5 +273,91 @@ void lauf_asm_inst_panic(lauf_asm_builder* b)
 
     b->cur->terminator = lauf_asm_block::panic;
     b->cur             = nullptr;
+}
+
+void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    // We treat negative values as large positive values.
+    lauf_asm_inst_uint(b, lauf_uint(value));
+}
+
+void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    // For each bit pattern, the following is the minimal sequence of instructions to achieve it.
+    if ((value & lauf_uint(0xFFFF'FFFF'FF00'0000)) == 0)
+    {
+        // 0x0000'0000'00xx'xxxx: push
+        b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(push, std::uint32_t(value)));
+    }
+    else if ((value & lauf_uint(0xFFFF'0000'0000'0000)) == 0)
+    {
+        // 0x0000'yyyy'yyxx'xxxx: push + push2
+        b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(push, std::uint32_t(value)));
+        b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(push2, std::uint32_t(value >> 24)));
+    }
+    else if ((value & lauf_uint(0xFFFF'FFFF'FF00'0000)) == 0xFFFF'FFFF'FF00'0000)
+    {
+        // 0xFFFF'FFFF'FFxx'xxxx: pushn
+        b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(pushn, std::uint32_t(value)));
+    }
+    else if ((value & lauf_uint(0xFFFF'0000'0000'0000)) == 0xFFFF'0000'0000'0000)
+    {
+        // 0xFFFF'yyyy'yyxx'xxxx: pushn + push2
+        b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(pushn, std::uint32_t(value)));
+        b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(push2, std::uint32_t(value >> 24)));
+    }
+    else
+    {
+        // 0xzzzz'yyyy'yyxx'xxxx: push + push2 + push3
+        // Omit push2 if y = 0.
+        b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(push, std::uint32_t(value)));
+        if ((std::uint32_t(value >> 24) & 0xFF'FFFF) != 0)
+            b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(push2, std::uint32_t(value >> 24)));
+        b->cur->insts.push_back(LAUF_BUILD_INST_VALUE(push3, std::uint32_t(value >> 48)));
+    }
+
+    b->cur->vstack.push();
+}
+
+void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
+    b->cur->insts.push_back(LAUF_BUILD_INST_STACK_IDX(pop, stack_index));
+    b->cur->vstack.pop();
+}
+
+void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
+    b->cur->insts.push_back(LAUF_BUILD_INST_STACK_IDX(pick, stack_index));
+    b->cur->vstack.push();
+}
+
+void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
+    b->cur->insts.push_back(LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
+}
+
+void lauf_asm_inst_call(lauf_asm_builder* b, lauf_asm_function* callee)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee->sig.input_count), "missing input values for call");
+
+    auto offset = reinterpret_cast<void**>(callee) - reinterpret_cast<void**>(b->fn);
+    b->cur->insts.push_back(LAUF_BUILD_INST_OFFSET(call, offset));
+
+    b->cur->vstack.push(callee->sig.output_count);
 }
 

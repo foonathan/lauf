@@ -77,6 +77,36 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_as
         case lauf::asm_op::panic:
             writer->write("panic");
             break;
+
+        case lauf::asm_op::push:
+            writer->format("push 0x%X", ip->push.value);
+            break;
+        case lauf::asm_op::push2:
+            writer->format("push2 0x%X", ip->push2.value);
+            break;
+        case lauf::asm_op::push3:
+            writer->format("push3 0x%X", ip->push3.value);
+            break;
+        case lauf::asm_op::pushn:
+            writer->format("pushn 0x%X", ip->pushn.value);
+            break;
+
+        case lauf::asm_op::pop:
+            writer->format("pop %d", ip->pop.idx);
+            break;
+        case lauf::asm_op::pick:
+            writer->format("pick %d", ip->pick.idx);
+            break;
+        case lauf::asm_op::roll:
+            writer->format("roll %d", ip->roll.idx);
+            break;
+
+        case lauf::asm_op::call: {
+            auto offset = ip->call.offset;
+            auto callee = reinterpret_cast<lauf_asm_function*>((void**)(fn) + offset);
+            writer->format("call @'%s'", callee->name);
+            break;
+        }
         }
         writer->write(";\n");
     }

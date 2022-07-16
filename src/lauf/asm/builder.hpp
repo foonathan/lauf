@@ -6,6 +6,7 @@
 
 #include <deque>
 #include <lauf/asm/builder.h>
+#include <lauf/asm/instruction.hpp>
 #include <lauf/asm/module.h>
 #include <vector>
 
@@ -15,6 +16,11 @@ class vstack_size_checker
 {
 public:
     explicit vstack_size_checker(std::size_t input_count) : _cur(input_count), _max(input_count) {}
+
+    std::size_t size() const
+    {
+        return _cur;
+    }
 
     void push(std::size_t n = 1)
     {
@@ -53,7 +59,8 @@ struct lauf_asm_block
     lauf_asm_signature        sig;
     lauf::vstack_size_checker vstack;
 
-    std::ptrdiff_t offset;
+    std::ptrdiff_t              offset;
+    std::vector<lauf::asm_inst> insts;
 
     enum
     {

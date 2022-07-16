@@ -45,6 +45,18 @@ struct asm_inst_offset
     std::int32_t offset : 24;
 };
 
+struct asm_inst_value
+{
+    asm_op        op : 8;
+    std::uint32_t value : 24;
+};
+
+struct asm_inst_stack_idx
+{
+    asm_op        op;
+    std::uint16_t idx;
+};
+
 union asm_inst
 {
 #define LAUF_ASM_INST(Name, Type) Type Name;

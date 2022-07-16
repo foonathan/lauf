@@ -103,20 +103,22 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value);
 /// Pops the Nth value of the stack.
 ///
 /// Signature: x_N+1 x_N x_N-1 ... x_0 => x_N+1 x_N-1 ... x_0
-void lauf_asm_inst_pop(lauf_asm_builder* b, size_t stack_index);
+void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index);
 
 /// Duplicates the Nth value on top of the stack.
 ///
 /// Signature: x_N+1 x_N x_N-1 ... x_0 => x_N+1 x_N x_N-1 ... x_0 x_N
-void lauf_asm_inst_pick(lauf_asm_builder* b, size_t stack_index);
+void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index);
 
 /// Moves the Nth value on top of the stack.
 ///
 /// Signature: x_N+1 x_N x_N-1 ... x_0 => x_N+1 x_N-1 ... x_0 x_N
-void lauf_asm_inst_roll(lauf_asm_builder* b, size_t stack_index);
+void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
 
-//=== calls ===//
+//=== call instructions ===//
 /// Calls the specified function.
+///
+/// The function must be declared in the same module.
 ///
 /// Signature: in_N ... in_0 => out_M ... out_0
 void lauf_asm_inst_call(lauf_asm_builder* b, lauf_asm_function* callee);
