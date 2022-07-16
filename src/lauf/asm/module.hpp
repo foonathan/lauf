@@ -7,7 +7,7 @@
 #include <lauf/asm/module.h>
 #include <lauf/support/arena.hpp>
 
-struct lauf_asm_module : lauf::arena<lauf_asm_module>
+struct lauf_asm_module : lauf::arena_base<lauf_asm_module>
 {
     const char*        name;
     lauf_asm_global*   globals   = nullptr;

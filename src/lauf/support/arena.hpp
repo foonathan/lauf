@@ -14,9 +14,8 @@ namespace lauf
 {
 /// Adds arena allocation to an object.
 template <typename Derived>
-class arena
+class arena_base
 {
-    // This is also the maximum size that can be allocated in the arena.
     static constexpr auto block_size = std::size_t(16) * 1024 - sizeof(void*);
 
     struct block
@@ -44,6 +43,17 @@ class arena
         }
     };
 
+    struct extern_alloc
+    {
+        extern_alloc*    next;
+        void*            allocation;
+        std::align_val_t align;
+
+        explicit extern_alloc(extern_alloc* next, void* allocation, std::align_val_t align)
+        : next(next), allocation(allocation), align(align)
+        {}
+    };
+
 public:
     template <typename... Args>
     static Derived* create(Args&&... args)
@@ -59,19 +69,24 @@ public:
 
     static void destroy(Derived* derived)
     {
-        auto b = static_cast<arena*>(derived)->first_block();
+        auto b = static_cast<arena_base*>(derived)->first_block();
         derived->~Derived();
         block::deallocate(b);
     }
 
-    arena(const arena&)            = delete;
-    arena& operator=(const arena&) = delete;
+    arena_base(const arena_base&)            = delete;
+    arena_base& operator=(const arena_base&) = delete;
 
     //=== allocation ===//
     void* allocate(std::size_t size, std::size_t alignment)
     {
         if (size > block_size)
-            return nullptr;
+        {
+            auto memory = ::operator new(size, std::align_val_t(alignment));
+            _extern_allocs
+                = construct<extern_alloc>(_extern_allocs, memory, std::align_val_t(alignment));
+            return memory;
+        }
 
         auto offset    = align_offset(_cur_pos, alignment);
         auto remaining = std::size_t(_cur_block->end() - _cur_pos);
@@ -96,7 +111,6 @@ public:
     {
         return static_cast<T*>(allocate(sizeof(T), alignof(T)));
     }
-
     template <typename T, typename... Args>
     T* construct(Args&&... args)
     {
@@ -106,28 +120,27 @@ public:
     const unsigned char* memdup(const void* memory, std::size_t size, std::size_t alignment = 1)
     {
         auto ptr = static_cast<unsigned char*>(allocate(size, alignment));
-        assert(ptr);
         std::memcpy(ptr, memory, size);
         return ptr;
     }
     const char* strdup(const char* str)
     {
-        auto ptr = static_cast<char*>(allocate(std::strlen(str) + 1, 1));
-        assert(ptr);
-        std::strcpy(ptr, str);
-        return ptr;
+        return reinterpret_cast<const char*>(memdup(str, std::strlen(str) + 1));
     }
 
 protected:
-    arena() : _cur_block(first_block()), _cur_pos(&_cur_block->memory[0])
+    arena_base()
+    : _cur_block(first_block()), _cur_pos(&_cur_block->memory[0]), _extern_allocs(nullptr)
     {
         _cur_pos += sizeof(Derived);
     }
 
-    ~arena()
+    ~arena_base()
     {
-        auto cur = first_block()->next;
-        while (cur != nullptr)
+        for (auto cur = _extern_allocs; cur != nullptr; cur = cur->next)
+            ::operator delete(cur->allocation, cur->align);
+
+        for (auto cur = first_block()->next; cur != nullptr;)
             cur = block::deallocate(cur);
     }
 
@@ -140,6 +153,15 @@ private:
 
     block*         _cur_block;
     unsigned char* _cur_pos;
+    extern_alloc*  _extern_allocs;
+};
+
+class arena : public arena_base<arena>
+{
+private:
+    arena() = default;
+
+    friend arena_base<arena>;
 };
 } // namespace lauf
 
