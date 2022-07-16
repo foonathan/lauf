@@ -4,6 +4,7 @@
 #ifndef SRC_LAUF_ASM_MODULE_HPP_INCLUDED
 #define SRC_LAUF_ASM_MODULE_HPP_INCLUDED
 
+#include <lauf/asm/instruction.hpp>
 #include <lauf/asm/module.h>
 #include <lauf/support/arena.hpp>
 
@@ -54,6 +55,9 @@ struct lauf_asm_function
 
     const char*        name;
     lauf_asm_signature sig;
+
+    lauf::asm_inst* insts       = nullptr;
+    std::uint16_t   insts_count = 0;
 
     explicit lauf_asm_function(lauf_asm_module* mod, const char* name, lauf_asm_signature sig)
     : next(mod->functions), name(mod->strdup(name)), sig(sig)

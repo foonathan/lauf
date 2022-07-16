@@ -42,8 +42,46 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
 
 void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_function* fn)
 {
-    writer->format("function @'%s'(%d => %d);\n", fn->name, fn->sig.input_count,
-                   fn->sig.output_count);
+    writer->format("function @'%s'(%d => %d)", fn->name, fn->sig.input_count, fn->sig.output_count);
+    if (fn->insts == nullptr)
+    {
+        writer->write(";\n");
+        return;
+    }
+
+    writer->write("\n{\n");
+
+    for (auto ip = fn->insts; ip != fn->insts + fn->insts_count; ++ip)
+    {
+        writer->format("  <%04zx>: ", ip - fn->insts);
+        switch (ip->op())
+        {
+        case lauf::asm_op::nop:
+            writer->write("nop");
+            break;
+        case lauf::asm_op::return_:
+            writer->write("return");
+            break;
+        case lauf::asm_op::jump:
+            writer->format("jump <%04zx>", ip + ip->jump.offset - fn->insts);
+            break;
+        case lauf::asm_op::branch_false:
+            writer->format("branch.false <%04zx>", ip + ip->branch_false.offset - fn->insts);
+            break;
+        case lauf::asm_op::branch_eq:
+            writer->format("branch.eq <%04zx>", ip + ip->branch_eq.offset - fn->insts);
+            break;
+        case lauf::asm_op::branch_gt:
+            writer->format("branch.gt <%04zx>", ip + ip->branch_gt.offset - fn->insts);
+            break;
+        case lauf::asm_op::panic:
+            writer->write("panic");
+            break;
+        }
+        writer->write(";\n");
+    }
+
+    writer->write("}\n");
 }
 } // namespace
 

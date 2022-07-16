@@ -107,9 +107,9 @@ public:
     }
 
     template <typename T>
-    T* allocate()
+    T* allocate(std::size_t count = 1)
     {
-        return static_cast<T*>(allocate(sizeof(T), alignof(T)));
+        return static_cast<T*>(allocate(count * sizeof(T), alignof(T)));
     }
     template <typename T, typename... Args>
     T* construct(Args&&... args)

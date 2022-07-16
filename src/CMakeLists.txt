@@ -14,11 +14,13 @@ set(header_files
 set(impl_header_files
         ${src_dir}/writer.hpp
 
+        ${src_dir}/asm/builder.hpp
         ${src_dir}/asm/module.hpp)
 set(src_files
         ${src_dir}/config.cpp
         ${src_dir}/writer.cpp
 
+        ${src_dir}/asm/builder.cpp
         ${src_dir}/asm/module.cpp
 
         ${src_dir}/backend/dump.cpp

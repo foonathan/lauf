@@ -50,15 +50,13 @@ typedef struct lauf_asm_block lauf_asm_block;
 /// Declares a new basic block with the specified signature.
 ///
 /// It is only valid inside the current function.
+/// If it's the first block, it becomes the entry block.
 lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, lauf_asm_signature sig);
 
 /// Sets the insertion point of the builder to append instruction to the end of the block.
 ///
 /// Blocks don't need to be built at once; the builder can switch between them at will.
 void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block);
-
-/// Specifies the entry block of the function.
-void lauf_asm_entry_block(lauf_asm_builder* b, lauf_asm_block* block);
 
 //=== block terminator instructions ===//
 /// Terminator: return from function.
