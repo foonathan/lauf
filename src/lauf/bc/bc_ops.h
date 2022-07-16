@@ -70,7 +70,11 @@ LAUF_BC_OP(return_, bc_inst_none, {
     frame_ptr       = prev_frame;
     process->stack().unwind(marker);
 
-    LAUF_DISPATCH;
+    if ((reinterpret_cast<std::uintptr_t>(ip) & 0b1) != 0)
+        // Return to JIT code.
+        return true;
+    else
+        LAUF_DISPATCH;
 })
 LAUF_BC_OP(return_no_alloc, bc_inst_none, {
     auto frame  = static_cast<vm_stack_frame*>(frame_ptr);
@@ -81,13 +85,17 @@ LAUF_BC_OP(return_no_alloc, bc_inst_none, {
     frame_ptr       = prev_frame;
     process->stack().unwind(marker);
 
-    LAUF_DISPATCH;
+    if ((reinterpret_cast<std::uintptr_t>(ip) & 0b1) != 0)
+        // Return to JIT code.
+        return true;
+    else
+        LAUF_DISPATCH;
 })
 
 // Calls the specified function.
 LAUF_BC_OP(call, bc_inst_function_idx, {
     auto callee = process->get_function(ip->call.function_idx);
-    if (callee->jit_fn != lauf::null_executable_memory)
+    if (callee->has_real_jit)
     {
         ++ip;
         auto stack_change = int32_t(callee->input_count) - int32_t(callee->output_count);

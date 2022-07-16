@@ -31,12 +31,12 @@ void unlock_executable_memory(virtual_memory memory);
 
 namespace lauf
 {
-enum class executable_memory_handle : std::size_t
+enum class executable_memory_handle : std::uint32_t
 {
 };
 
 constexpr executable_memory_handle null_executable_memory
-    = executable_memory_handle(std::size_t(-1));
+    = executable_memory_handle(std::uint32_t(-1));
 
 class executable_memory_allocator
 {
@@ -97,12 +97,8 @@ public:
     }
 
     template <std::size_t Alignment = 1>
-    void place(const void* data, std::size_t size)
+    void place(executable_memory_handle ptr, const void* data, std::size_t size)
     {
-        auto expected_ptr = _pos;
-        auto ptr          = allocate<Alignment>(size);
-        assert(std::size_t(ptr) == expected_ptr);
-
         lock_executable_memory(_memory);
         std::memcpy(deref<void>(ptr), data, size);
         unlock_executable_memory(_memory);

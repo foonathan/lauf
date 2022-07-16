@@ -64,15 +64,18 @@ struct lauf_function_impl
 : lauf::joined_allocation<lauf_function_impl, lauf::vm_allocation, lauf_vm_instruction>
 {
     lauf::executable_memory_handle jit_fn = lauf::null_executable_memory;
-    lauf_module                    mod;
-    const char*                    name;
-    uint16_t                       max_vstack_size;
-    uint16_t                       local_stack_size;
-    uint16_t                       local_allocation_count;
-    uint16_t                       instruction_count;
-    uint8_t                        input_count;
-    uint8_t                        output_count;
-    lauf::debug_location_map       debug_locations;
+    // If true, jit_fn is a VM trampoline to a JIT function.
+    // If false, jit_fn is a JIT trampoline for a VM function.
+    bool                     has_real_jit = false;
+    lauf_module              mod;
+    const char*              name;
+    uint16_t                 max_vstack_size;
+    uint16_t                 local_stack_size;
+    uint16_t                 local_allocation_count;
+    uint16_t                 instruction_count;
+    uint8_t                  input_count;
+    uint8_t                  output_count;
+    lauf::debug_location_map debug_locations;
 
     lauf_function_impl() = default;
 

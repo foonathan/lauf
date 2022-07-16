@@ -7,6 +7,8 @@
 #include <lauf/aarch64/assembler.hpp>
 #include <lauf/ir/register_allocator.hpp>
 
+// NOTE: Changing register constants here requires updating them in the assembler file as well.
+
 namespace lauf::aarch64
 {
 constexpr auto register_file = machine_register_file{

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSL-1.0
 
 cmake_minimum_required(VERSION 3.11)
-project(lauf VERSION 0.0.0 LANGUAGES C CXX)
+project(lauf VERSION 0.0.0 LANGUAGES C CXX ASM)
 
 option(LAUF_ENABLE_JIT "whether or not the JIT compiler is enabled" ON)
 

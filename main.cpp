@@ -82,7 +82,7 @@ int main()
     std::puts(lauf::irdump(ir, &assgn).c_str());
 
     auto compiler = lauf_vm_jit_compiler(vm);
-    lauf_jit_compile(compiler, lauf_module_function_begin(mod)[0]);
+    // lauf_jit_compile(compiler, lauf_module_function_begin(mod)[0]);
     lauf_jit_compile(compiler, fn);
 
     lauf_value input;
