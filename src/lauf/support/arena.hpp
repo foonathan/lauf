@@ -12,9 +12,17 @@
 
 namespace lauf
 {
+class arena_key
+{
+    arena_key() = default;
+
+    template <typename Derived>
+    friend class intrinsic_arena;
+};
+
 /// Adds arena allocation to an object.
 template <typename Derived>
-class arena_base
+class intrinsic_arena
 {
     static constexpr auto block_size = std::size_t(16) * 1024 - sizeof(void*);
 
@@ -64,18 +72,18 @@ public:
         assert(b->memory == reinterpret_cast<unsigned char*>(b));
 
         // Construct ourself in its memory.
-        return ::new (b->memory) Derived(static_cast<Args&&>(args)...);
+        return ::new (b->memory) Derived(arena_key(), static_cast<Args&&>(args)...);
     }
 
     static void destroy(Derived* derived)
     {
-        auto b = static_cast<arena_base*>(derived)->first_block();
+        auto b = static_cast<intrinsic_arena*>(derived)->first_block();
         derived->~Derived();
         block::deallocate(b);
     }
 
-    arena_base(const arena_base&)            = delete;
-    arena_base& operator=(const arena_base&) = delete;
+    intrinsic_arena(const intrinsic_arena&)            = delete;
+    intrinsic_arena& operator=(const intrinsic_arena&) = delete;
 
     //=== allocation ===//
     void* allocate(std::size_t size, std::size_t alignment)
@@ -92,11 +100,11 @@ public:
         auto remaining = std::size_t(_cur_block->end() - _cur_pos);
         if (offset + size > remaining)
         {
-            auto next        = block::allocate();
-            _cur_block->next = next;
+            if (_cur_block->next == nullptr)
+                _cur_block->next = block::allocate();
 
-            _cur_block = next;
-            _cur_pos   = &next->memory[0];
+            _cur_block = _cur_block->next;
+            _cur_pos   = &_cur_block->memory[0];
             offset     = 0;
         }
 
@@ -128,14 +136,29 @@ public:
         return reinterpret_cast<const char*>(memdup(str, std::strlen(str) + 1));
     }
 
+    void clear()
+    {
+        // Deallocate all extern allocations.
+        for (auto cur = _extern_allocs; cur != nullptr; cur = cur->next)
+            ::operator delete(cur->allocation, cur->align);
+        _extern_allocs = nullptr;
+
+        // Reset the stack allocator to the beginning.
+        // We don't free the blocks themselves, as we could re-use them.
+        // We also don't touch the actual bytes of the derived object.
+        _cur_block = first_block();
+        _cur_pos   = &_cur_block->memory[0];
+        _cur_pos += sizeof(Derived);
+    }
+
 protected:
-    arena_base()
+    intrinsic_arena(arena_key)
     : _cur_block(first_block()), _cur_pos(&_cur_block->memory[0]), _extern_allocs(nullptr)
     {
         _cur_pos += sizeof(Derived);
     }
 
-    ~arena_base()
+    ~intrinsic_arena()
     {
         for (auto cur = _extern_allocs; cur != nullptr; cur = cur->next)
             ::operator delete(cur->allocation, cur->align);
@@ -156,12 +179,9 @@ private:
     extern_alloc*  _extern_allocs;
 };
 
-class arena : public arena_base<arena>
+struct arena : intrinsic_arena<arena>
 {
-private:
-    arena() = default;
-
-    friend arena_base<arena>;
+    arena(arena_key key) : intrinsic_arena<arena>(key) {}
 };
 } // namespace lauf
 

@@ -3,8 +3,9 @@
 
 set(tests
         writer.cpp
- 
-        support/arena.cpp)
+
+        support/arena.cpp
+        support/array_list.cpp)
 
 add_executable(lauf_test ${tests})
 target_link_libraries(lauf_test PRIVATE lauf_test_base)

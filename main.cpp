@@ -24,7 +24,7 @@ lauf_asm_module* example_module()
         auto entry = lauf_asm_declare_block(b, {0, 1});
 
         lauf_asm_build_block(b, entry);
-        lauf_asm_inst_uint(b, 1ull << 50);
+        lauf_asm_inst_uint(b, 42);
         lauf_asm_inst_call(b, fn2);
         lauf_asm_inst_return(b);
 

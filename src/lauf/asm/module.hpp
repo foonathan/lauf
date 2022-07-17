@@ -8,13 +8,15 @@
 #include <lauf/asm/module.h>
 #include <lauf/support/arena.hpp>
 
-struct lauf_asm_module : lauf::arena_base<lauf_asm_module>
+struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
 {
     const char*        name;
     lauf_asm_global*   globals   = nullptr;
     lauf_asm_function* functions = nullptr;
 
-    lauf_asm_module(const char* name) : name(this->strdup(name)) {}
+    lauf_asm_module(lauf::arena_key key, const char* name)
+    : lauf::intrinsic_arena<lauf_asm_module>(key), name(this->strdup(name))
+    {}
 };
 
 struct lauf_asm_global

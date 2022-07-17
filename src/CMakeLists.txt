@@ -26,6 +26,7 @@ set(src_files
         ${src_dir}/backend/dump.cpp
 
         ${src_dir}/support/align.hpp
+        ${src_dir}/support/array_list.hpp
         ${src_dir}/support/arena.hpp)
 
 #=== Warnings ===#

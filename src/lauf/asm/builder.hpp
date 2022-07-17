@@ -4,12 +4,13 @@
 #ifndef SRC_LAUF_ASM_BUILDER_HPP_INCLUDED
 #define SRC_LAUF_ASM_BUILDER_HPP_INCLUDED
 
-#include <deque>
 #include <lauf/asm/builder.h>
 #include <lauf/asm/instruction.hpp>
 #include <lauf/asm/module.h>
-#include <vector>
+#include <lauf/support/arena.hpp>
+#include <lauf/support/array_list.hpp>
 
+//=== vstack_size_checker ===//
 namespace lauf
 {
 class vstack_size_checker
@@ -54,13 +55,14 @@ private:
 };
 } // namespace lauf
 
+//=== types ===//
 struct lauf_asm_block
 {
     lauf_asm_signature        sig;
     lauf::vstack_size_checker vstack;
 
-    std::ptrdiff_t              offset;
-    std::vector<lauf::asm_inst> insts;
+    std::ptrdiff_t                   offset;
+    lauf::array_list<lauf::asm_inst> insts;
 
     enum
     {
@@ -78,18 +80,20 @@ struct lauf_asm_block
     {}
 };
 
-struct lauf_asm_builder
+struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 {
     lauf_asm_build_options options;
     lauf_asm_module*       mod = nullptr;
     lauf_asm_function*     fn  = nullptr;
 
-    std::deque<lauf_asm_block> blocks;
-    lauf_asm_block*            cur = nullptr;
+    lauf::array_list<lauf_asm_block> blocks;
+    lauf_asm_block*                  cur = nullptr;
 
     bool errored = false;
 
-    explicit lauf_asm_builder(lauf_asm_build_options options) : options(options) {}
+    explicit lauf_asm_builder(lauf::arena_key key, lauf_asm_build_options options)
+    : lauf::intrinsic_arena<lauf_asm_builder>(key), options(options)
+    {}
 
     void error(const char* context, const char* msg);
 
@@ -102,8 +106,54 @@ struct lauf_asm_builder
         cur = nullptr;
 
         errored = false;
+
+        this->clear();
     }
 };
+
+//=== assertions ===//
+// Get the function name after lauf_asm_XXX()
+#define LAUF_BUILD_ASSERT_CONTEXT (__func__ + 9)
+
+#define LAUF_BUILD_ASSERT(Cond, Msg)                                                               \
+    do                                                                                             \
+    {                                                                                              \
+        if (!(Cond))                                                                               \
+            b->error(LAUF_BUILD_ASSERT_CONTEXT, Msg);                                              \
+    } while (0)
+
+#define LAUF_BUILD_ASSERT_CUR LAUF_BUILD_ASSERT(b->cur != nullptr, "no current block to build")
+
+//=== instruction building ===//
+#define LAUF_BUILD_INST_NONE(Name)                                                                 \
+    [&] {                                                                                          \
+        lauf::asm_inst result;                                                                     \
+        result.Name = {lauf::asm_op::Name};                                                        \
+        return result;                                                                             \
+    }()
+
+#define LAUF_BUILD_INST_OFFSET(Name, Offset)                                                       \
+    [&](const char* context, std::ptrdiff_t offset) {                                              \
+        lauf::asm_inst result;                                                                     \
+        result.Name = {lauf::asm_op::Name, std::int32_t(offset)};                                  \
+        if (result.Name.offset != offset)                                                          \
+            b->error(context, "offset too big");                                                   \
+        return result;                                                                             \
+    }(LAUF_BUILD_ASSERT_CONTEXT, static_cast<std::int64_t>(Offset))
+
+#define LAUF_BUILD_INST_STACK_IDX(Name, Idx)                                                       \
+    [&] {                                                                                          \
+        lauf::asm_inst result;                                                                     \
+        result.Name = {lauf::asm_op::Name, Idx};                                                   \
+        return result;                                                                             \
+    }()
+
+#define LAUF_BUILD_INST_VALUE(Name, Value)                                                         \
+    [&] {                                                                                          \
+        lauf::asm_inst result;                                                                     \
+        result.Name = {lauf::asm_op::Name, Value};                                                 \
+        return result;                                                                             \
+    }()
 
 #endif // SRC_LAUF_ASM_BUILDER_HPP_INCLUDED
 
