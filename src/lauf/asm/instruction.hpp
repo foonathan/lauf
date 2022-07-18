@@ -6,6 +6,8 @@
 
 #include <lauf/config.h>
 
+#include <cassert>
+
 // The ASM instructions are also the bytecode for the VM.
 // As such, there are many specializations and optimizations.
 // It is also not designed to support edits; use the IR for that.
@@ -58,6 +60,13 @@ const DestType* uncompress_pointer_offset(const CurType* cur, std::ptrdiff_t off
     return reinterpret_cast<const DestType*>(reinterpret_cast<void* const*>(cur) + offset);
 }
 
+struct asm_inst_call
+{
+    asm_op        op : 8;
+    std::int8_t   vstack_change : 8;
+    std::uint16_t data : 16;
+};
+
 struct asm_inst_value
 {
     asm_op        op : 8;
@@ -86,6 +95,20 @@ union asm_inst
         return nop.op;
     }
 };
+
+constexpr std::uint64_t read_call_builtin_data(const asm_inst* ip)
+{
+    assert(ip[0].op() == asm_op::call_builtin);
+    assert(ip[1].op() == asm_op::data);
+    assert(ip[2].op() == asm_op::data);
+
+    std::uint64_t result = ip->call_builtin.data;
+    result <<= 16;
+    result |= ip[1].data.value;
+    result <<= 24;
+    result |= ip[2].data.value;
+    return result;
+}
 } // namespace lauf
 
 #endif // SRC_LAUF_ASM_INSTRUCTION_HPP_INCLUDED

@@ -7,6 +7,7 @@
 #include <cstdlib>
 
 #include <lauf/asm/module.hpp>
+#include <lauf/runtime/builtin.h>
 
 void lauf_asm_builder::error(const char* context, const char* msg)
 {
@@ -321,5 +322,23 @@ void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call, offset));
 
     b->cur->vstack.push(callee->sig.output_count);
+}
+
+void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee.input_count), "missing input values for call");
+
+    auto addr = reinterpret_cast<std::uint64_t>(callee.impl);
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin,
+                                                     callee.input_count - callee.output_count,
+                                                     std::uint16_t((addr >> 48) & 0xFFFF)));
+    b->cur->insts.push_back(*b,
+                            LAUF_BUILD_INST_VALUE(data, std::uint32_t((addr >> 24) & 0xFF'FFFF)));
+    b->cur->insts.push_back(*b,
+                            LAUF_BUILD_INST_VALUE(data, std::uint32_t((addr >> 0) & 0xFF'FFFF)));
+
+    b->cur->vstack.push(callee.output_count);
 }
 

@@ -6,6 +6,7 @@
 #include <lauf/asm/builder.h>
 #include <lauf/asm/module.h>
 #include <lauf/reader.hpp>
+#include <lauf/runtime/builtin.h>
 #include <lexy/action/parse.hpp>
 #include <lexy/callback.hpp>
 #include <lexy/dsl.hpp>
@@ -13,7 +14,7 @@
 #include <map>
 #include <string>
 
-const lauf_frontend_text_options lauf_frontend_default_text_options = {};
+const lauf_frontend_text_options lauf_frontend_default_text_options = {nullptr};
 
 namespace
 {
@@ -60,11 +61,20 @@ private:
 
 struct parse_state
 {
-    lauf_asm_builder*                        builder;
+    lauf_asm_builder*                                  builder;
+    symbol_table<const lauf_runtime_builtin_function*> builtins;
+
     mutable lauf_asm_module*                 mod;
     mutable symbol_table<lauf_asm_global*>   globals;
     mutable symbol_table<lauf_asm_function*> functions;
     mutable symbol_table<lauf_asm_block*>    blocks;
+
+    parse_state(lauf_frontend_text_options opts)
+    : builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr)
+    {
+        for (auto builtin = opts.builtins; builtin != nullptr; builtin = builtin->next)
+            builtins.insert(builtin->name, builtin);
+    }
 };
 } // namespace
 
@@ -82,10 +92,10 @@ constexpr auto callback(Fn... fn)
 struct identifier
 {
     static constexpr auto rule = [] {
-        auto unquoted
-            = dsl::identifier(dsl::ascii::alpha_underscore, dsl::ascii::alpha_digit_underscore);
+        auto unquoted = dsl::identifier(dsl::ascii::alpha_underscore / dsl::period,
+                                        dsl::ascii::alpha_digit_underscore / dsl::period);
 
-        auto quoted = dsl::quoted(dsl::unicode::print);
+        auto quoted = dsl::single_quoted(dsl::unicode::print);
 
         return unquoted | quoted;
     }();
@@ -93,6 +103,11 @@ struct identifier
     static constexpr auto value = lexy::as_string<std::string>;
 };
 
+struct builtin_identifier
+{
+    static constexpr auto rule  = dsl::dollar_sign >> dsl::p<identifier>;
+    static constexpr auto value = lexy::forward<std::string>;
+};
 struct global_identifier
 {
     static constexpr auto rule  = dsl::at_sign >> dsl::p<identifier>;
@@ -111,6 +126,14 @@ struct signature
     static constexpr auto value = lexy::construct<lauf_asm_signature>;
 };
 
+struct builtin_ref
+{
+    static constexpr auto rule  = dsl::p<builtin_identifier>;
+    static constexpr auto value = callback<lauf_runtime_builtin_function>(
+        [](const parse_state& state, const std::string& name) {
+            return *state.builtins.lookup(name);
+        });
+};
 struct global_ref
 {
     static constexpr auto rule = dsl::p<global_identifier>;
@@ -295,6 +318,11 @@ struct inst_call
     static constexpr auto rule  = LEXY_LIT("call") >> dsl::p<function_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_call);
 };
+struct inst_call_builtin
+{
+    static constexpr auto rule  = dsl::p<builtin_ref>;
+    static constexpr auto value = inst(&lauf_asm_inst_call_builtin);
+};
 
 struct instruction
 {
@@ -305,7 +333,7 @@ struct instruction
                       | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic> //
                       | dsl::p<inst_sint> | dsl::p<inst_uint> | dsl::p<inst_global_addr> //
                       | dsl::p<inst_pop> | dsl::p<inst_pick> | dsl::p<inst_roll>         //
-                      | dsl::p<inst_call>;
+                      | dsl::p<inst_call> | dsl::p<inst_call_builtin>;
 
         return nested | dsl::else_ >> single + dsl::semicolon;
     }();
@@ -400,9 +428,9 @@ struct module_decl
 };
 } // namespace lauf::text_grammar
 
-lauf_asm_module* lauf_frontend_text(lauf_reader* reader, lauf_frontend_text_options)
+lauf_asm_module* lauf_frontend_text(lauf_reader* reader, lauf_frontend_text_options opts)
 {
-    parse_state state{lauf_asm_create_builder(lauf_asm_default_build_options), nullptr, {}, {}, {}};
+    parse_state state(opts);
 
     auto result = lexy::parse<lauf::text_grammar::module_decl>(reader->buffer, state,
                                                                lexy_ext::report_error);

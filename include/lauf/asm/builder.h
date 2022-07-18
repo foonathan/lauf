@@ -8,10 +8,11 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_asm_module    lauf_asm_module;
-typedef struct lauf_asm_global    lauf_asm_global;
-typedef struct lauf_asm_function  lauf_asm_function;
-typedef struct lauf_asm_signature lauf_asm_signature;
+typedef struct lauf_asm_module               lauf_asm_module;
+typedef struct lauf_asm_global               lauf_asm_global;
+typedef struct lauf_asm_function             lauf_asm_function;
+typedef struct lauf_asm_signature            lauf_asm_signature;
+typedef struct lauf_runtime_builtin_function lauf_runtime_builtin_function;
 
 //=== builder ===//
 /// Build options.
@@ -129,6 +130,11 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
 ///
 /// Signature: in_N ... in_0 => out_M ... out_0
 void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee);
+
+/// Calls the specified builtin function.
+///
+/// Signature: in_N ... in_0 => out_M ... out_0
+void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
 
 LAUF_HEADER_END
 

@@ -5,9 +5,10 @@
 
 #include <cctype>
 #include <lauf/asm/module.hpp>
+#include <lauf/runtime/builtin.h>
 #include <lauf/writer.hpp>
 
-const lauf_backend_dump_options lauf_backend_default_dump_options = {};
+const lauf_backend_dump_options lauf_backend_default_dump_options = {nullptr};
 
 namespace
 {
@@ -41,7 +42,17 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
     writer->write(";\n");
 }
 
-void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_function* fn)
+const lauf_runtime_builtin_function* find_builtin(lauf_backend_dump_options          opts,
+                                                  lauf_runtime_builtin_function_impl impl)
+{
+    for (auto builtin = opts.builtins; builtin != nullptr; builtin = builtin->next)
+        if (builtin->impl == impl)
+            return builtin;
+
+    return nullptr;
+}
+
+void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const lauf_asm_function* fn)
 {
     writer->format("function @'%s'(%d => %d)", fn->name, fn->sig.input_count, fn->sig.output_count);
     if (fn->insts == nullptr)
@@ -57,6 +68,9 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_as
         writer->format("  <%04zx>: ", ip - fn->insts);
         switch (ip->op())
         {
+        case lauf::asm_op::data:
+            assert(false);
+            break;
         case lauf::asm_op::nop:
             writer->write("nop");
             break;
@@ -85,6 +99,16 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_as
         case lauf::asm_op::call: {
             auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(fn, ip->call.offset);
             writer->format("call @'%s'", callee->name);
+            break;
+        }
+        case lauf::asm_op::call_builtin: {
+            auto data   = lauf::read_call_builtin_data(ip);
+            auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(data); // NOLINT
+            if (auto builtin = find_builtin(opts, callee))
+                writer->format("$'%s'", builtin->name);
+            else
+                writer->format("$'%p'", reinterpret_cast<void*>(callee));
+            ip += 2;
             break;
         }
 

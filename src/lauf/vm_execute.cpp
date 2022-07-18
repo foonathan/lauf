@@ -5,10 +5,17 @@
 
 #include <cassert>
 #include <lauf/asm/module.hpp>
+#include <lauf/runtime/builtin.h>
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
     bool lauf::execute_##Name(const asm_inst* ip, lauf_runtime_value* vstack_ptr,                  \
                               stack_frame* frame_ptr, lauf_runtime_process* process)
+
+LAUF_VM_EXECUTE(data)
+{
+    assert(false);
+    LAUF_VM_DISPATCH;
+}
 
 //=== control flow ===//
 LAUF_VM_EXECUTE(nop)
@@ -101,6 +108,22 @@ LAUF_VM_EXECUTE(call)
 
     // And start executing the function.
     ip = callee->insts;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(call_builtin)
+{
+    auto value  = lauf::read_call_builtin_data(ip);
+    auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(value); // NOLINT
+
+    auto input    = vstack_ptr;
+    auto output   = vstack_ptr + ip->call_builtin.vstack_change;
+    auto no_panic = callee(process, input, output);
+    if (!no_panic)
+        return false;
+
+    vstack_ptr = output;
+    ip += 3;
     LAUF_VM_DISPATCH;
 }
 

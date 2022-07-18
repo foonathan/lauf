@@ -148,6 +148,15 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         return result;                                                                             \
     }()
 
+#define LAUF_BUILD_INST_CALL(Name, StackChange, Data)                                              \
+    [&](const char* context, int vstack_change) {                                                  \
+        lauf::asm_inst result;                                                                     \
+        result.Name = {lauf::asm_op::Name, std::int8_t(vstack_change), Data};                      \
+        if (result.Name.vstack_change != vstack_change)                                            \
+            b->error(context, "vstack change too big");                                            \
+        return result;                                                                             \
+    }(LAUF_BUILD_ASSERT_CONTEXT, StackChange)
+
 #define LAUF_BUILD_INST_VALUE(Name, Value)                                                         \
     [&] {                                                                                          \
         lauf::asm_inst result;                                                                     \

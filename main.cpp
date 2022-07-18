@@ -2,14 +2,28 @@
 // SPDX-License-Identifier: BSL-1.0
 
 #include <cstdio>
+#include <lauf/asm/builder.h>
 #include <lauf/asm/module.h>
 #include <lauf/asm/program.h>
 #include <lauf/backend/dump.h>
 #include <lauf/frontend/text.h>
 #include <lauf/reader.h>
+#include <lauf/runtime/builtin.h>
 #include <lauf/runtime/value.h>
 #include <lauf/vm.h>
 #include <lauf/writer.h>
+
+const lauf_runtime_builtin_function builtin_print
+    = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
+           std::printf("print: %lu\n", input->as_uint);
+           output[0] = input[0];
+           return true;
+       },
+       1,
+       1,
+       LAUF_RUNTIME_BUILTIN_DEFAULT,
+       "lauf.print",
+       nullptr};
 
 lauf_asm_module* example_module()
 {
@@ -20,8 +34,8 @@ lauf_asm_module* example_module()
 
         function @identity(1 => 1) {
             block %entry(1 => 1) {
-                global_addr @msg;
-                panic;
+                $lauf.print;
+                return;
             }
         }
 
@@ -39,7 +53,10 @@ lauf_asm_module* example_module()
 
     )");
 
-    auto result = lauf_frontend_text(reader, lauf_frontend_default_text_options);
+    auto opts     = lauf_frontend_default_text_options;
+    opts.builtins = &builtin_print;
+    auto result   = lauf_frontend_text(reader, opts);
+
     lauf_destroy_reader(reader);
     return result;
 }
@@ -47,7 +64,11 @@ lauf_asm_module* example_module()
 void dump_module(lauf_asm_module* mod)
 {
     auto writer = lauf_create_stdout_writer();
-    lauf_backend_dump(writer, lauf_backend_default_dump_options, mod);
+
+    auto opts     = lauf_backend_default_dump_options;
+    opts.builtins = &builtin_print;
+    lauf_backend_dump(writer, opts, mod);
+
     lauf_destroy_writer(writer);
 }
 
@@ -60,6 +81,8 @@ void execute(lauf_asm_program* program, Input... inputs)
     lauf_runtime_value output;
     if (lauf_vm_execute_oneshot(vm, program, input, &output))
         std::printf("result: %lu\n", output.as_sint);
+    else
+        std::puts("panic!\n");
 
     lauf_destroy_vm(vm);
 }

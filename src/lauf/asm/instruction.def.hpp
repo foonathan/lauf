@@ -1,3 +1,6 @@
+// Just stores data, no semantics.
+LAUF_ASM_INST(data, asm_inst_value)
+
 //=== control flow ===//
 // Does nothing.
 LAUF_ASM_INST(nop, asm_inst_none)
@@ -31,6 +34,10 @@ LAUF_ASM_INST(exit, asm_inst_none)
 // The offset is the difference between the address of the current function and the called function
 // divided by sizeof(void*).
 LAUF_ASM_INST(call, asm_inst_offset)
+
+// lauf_asm_inst_call_builtin()
+// Followed by two data instructions encoding the function pointer.
+LAUF_ASM_INST(call_builtin, asm_inst_call)
 
 //=== value ===//
 // lauf_asm_inst_Xint(): push 24 bit immediate, zero extended to 64 bit.
