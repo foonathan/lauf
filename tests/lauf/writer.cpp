@@ -24,7 +24,7 @@ std::string read_test_path()
 }
 } // namespace
 
-TEST_CASE("backend: string writer")
+TEST_CASE("string writer")
 {
     SUBCASE("basic")
     {
@@ -48,7 +48,7 @@ TEST_CASE("backend: string writer")
     }
 }
 
-TEST_CASE("backend: file writer")
+TEST_CASE("file writer")
 {
     std::remove(test_path);
 

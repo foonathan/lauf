@@ -13,10 +13,11 @@ namespace
 {
 void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_global* global)
 {
+    writer->write("global ");
     if (global->perms == lauf_asm_global::read_only)
         writer->write("const ");
     else
-        writer->write("data ");
+        writer->write("mut ");
 
     writer->format("@global_%u = ", global->allocation_idx);
 

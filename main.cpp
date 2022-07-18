@@ -2,51 +2,46 @@
 // SPDX-License-Identifier: BSL-1.0
 
 #include <cstdio>
-#include <lauf/asm/builder.h>
 #include <lauf/asm/module.h>
 #include <lauf/asm/program.h>
 #include <lauf/backend/dump.h>
+#include <lauf/frontend/text.h>
+#include <lauf/reader.h>
 #include <lauf/runtime/value.h>
 #include <lauf/vm.h>
 #include <lauf/writer.h>
 
 lauf_asm_module* example_module()
 {
-    auto b   = lauf_asm_create_builder(lauf_asm_default_build_options);
-    auto mod = lauf_asm_create_module("test");
+    auto reader = lauf_create_cstring_reader(R"(
+        module @test;
 
-    auto hello = lauf_asm_add_global_const_data(mod, "hello", 6);
+        global const @msg = "hello", 0;
 
-    auto identity = lauf_asm_add_function(mod, "identity", {1, 1});
-    {
-        lauf_asm_build(b, mod, identity);
+        function @identity(1 => 1) {
+            block %entry(1 => 1) {
+                global_addr @msg;
+                panic;
+            }
+        }
 
-        auto entry = lauf_asm_declare_block(b, {1, 1});
-        lauf_asm_build_block(b, entry);
-        lauf_asm_inst_pop(b, 0);
-        lauf_asm_inst_global_addr(b, hello);
-        lauf_asm_inst_panic(b);
-        // lauf_asm_inst_return(b);
+        function @main(1 => 1) {
+            block %entry(1 => 1) {
+                pop 0;
+                uint 42;
+                jump %exit(1 => 1);
+            }
+            block %exit(1 => 1) {
+                call @identity;
+                return;
+            }
+        }
 
-        lauf_asm_build_finish(b);
-    }
+    )");
 
-    auto main = lauf_asm_add_function(mod, "main", {1, 1});
-    {
-        lauf_asm_build(b, mod, main);
-
-        auto entry = lauf_asm_declare_block(b, {1, 1});
-        lauf_asm_build_block(b, entry);
-        lauf_asm_inst_uint(b, 42);
-        lauf_asm_inst_pop(b, 1);
-        lauf_asm_inst_call(b, identity);
-        lauf_asm_inst_return(b);
-
-        lauf_asm_build_finish(b);
-    }
-
-    lauf_asm_destroy_builder(b);
-    return mod;
+    auto result = lauf_frontend_text(reader, lauf_frontend_default_text_options);
+    lauf_destroy_reader(reader);
+    return result;
 }
 
 void dump_module(lauf_asm_module* mod)

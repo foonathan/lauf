@@ -3,49 +3,10 @@
 
 get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf ABSOLUTE)
 get_filename_component(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/lauf ABSOLUTE)
-set(header_files
-        ${include_dir}/config.h
-        ${include_dir}/vm.h
-        ${include_dir}/writer.h
 
-        ${include_dir}/asm/builder.h
-        ${include_dir}/asm/module.h
-        ${include_dir}/asm/program.h
-        ${include_dir}/asm/type.h
-
-        ${include_dir}/backend/dump.h
-
-        ${include_dir}/runtime/process.h
-        ${include_dir}/runtime/stacktrace.h
-        ${include_dir}/runtime/value.h)
-set(impl_header_files
-        ${src_dir}/vm.hpp
-        ${src_dir}/writer.hpp
-
-        ${src_dir}/asm/builder.hpp
-        ${src_dir}/asm/module.hpp
-        ${src_dir}/asm/program.hpp
-
-        ${src_dir}/runtime/process.hpp)
-set(src_files
-        ${src_dir}/config.cpp
-        ${src_dir}/vm.cpp
-        ${src_dir}/vm_execute.cpp
-        ${src_dir}/writer.cpp
-
-        ${src_dir}/asm/builder.cpp
-        ${src_dir}/asm/module.cpp
-        ${src_dir}/asm/program.cpp
-
-        ${src_dir}/backend/dump.cpp
-
-        ${src_dir}/runtime/process.cpp
-        ${src_dir}/runtime/stacktrace.cpp
-
-        ${src_dir}/support/align.hpp
-        ${src_dir}/support/array.hpp
-        ${src_dir}/support/array_list.hpp
-        ${src_dir}/support/arena.hpp)
+include(FetchContent)
+FetchContent_Declare(lexy URL https://github.com/foonathan/lexy/releases/download/v2022.05.1/lexy-src.zip)
+FetchContent_MakeAvailable(lexy)
 
 #=== Warnings ===#
 add_library(lauf_warnings INTERFACE)
@@ -68,7 +29,66 @@ add_library(foonathan::lauf::core ALIAS lauf_core)
 target_compile_features(lauf_core PRIVATE cxx_std_17)
 target_include_directories(lauf_core SYSTEM INTERFACE ../include)
 target_include_directories(lauf_core PRIVATE ../include .)
-target_link_libraries(lauf_core PRIVATE lauf_warnings)
+target_link_libraries(lauf_core PRIVATE lauf_warnings foonathan::lexy)
 
-target_sources(lauf_core PRIVATE ${header_files} ${impl_header_files} ${src_files})
+target_sources(lauf_core PUBLIC
+                ${include_dir}/config.h
+                ${include_dir}/reader.h
+                ${include_dir}/vm.h
+                ${include_dir}/writer.h
+
+                ${include_dir}/asm/builder.h
+                ${include_dir}/asm/module.h
+                ${include_dir}/asm/program.h
+                ${include_dir}/asm/type.h
+
+                ${include_dir}/backend/dump.h
+
+                ${include_dir}/runtime/process.h
+                ${include_dir}/runtime/stacktrace.h
+                ${include_dir}/runtime/value.h)
+target_sources(lauf_core PRIVATE
+                ${src_dir}/reader.hpp
+                ${src_dir}/vm.hpp
+                ${src_dir}/writer.hpp
+
+                ${src_dir}/asm/builder.hpp
+                ${src_dir}/asm/module.hpp
+                ${src_dir}/asm/program.hpp
+
+                ${src_dir}/runtime/process.hpp)
+target_sources(lauf_core PRIVATE
+                ${src_dir}/config.cpp
+                ${src_dir}/reader.cpp
+                ${src_dir}/vm.cpp
+                ${src_dir}/vm_execute.cpp
+                ${src_dir}/writer.cpp
+
+                ${src_dir}/asm/builder.cpp
+                ${src_dir}/asm/module.cpp
+                ${src_dir}/asm/program.cpp
+
+                ${src_dir}/backend/dump.cpp
+
+                ${src_dir}/runtime/process.cpp
+                ${src_dir}/runtime/stacktrace.cpp
+
+                ${src_dir}/support/align.hpp
+                ${src_dir}/support/array.hpp
+                ${src_dir}/support/array_list.hpp
+                ${src_dir}/support/arena.hpp)
+
+#=== Text frontend ===#
+add_library(lauf_text)
+add_library(foonathan::lauf::text ALIAS lauf_text)
+target_include_directories(lauf_text PRIVATE .)
+target_link_libraries(lauf_text PRIVATE lauf_warnings lauf_core foonathan::lexy)
+
+target_sources(lauf_text PUBLIC ${include_dir}/frontend/text.h)
+target_sources(lauf_text PRIVATE ${src_dir}/frontend/text.cpp)
+
+#=== Umbrella target ===#
+add_library(lauf_umbrella INTERFACE)
+add_library(foonathan::lauf ALIAS lauf_umbrella)
+target_link_libraries(lauf_umbrella INTERFACE lauf_core lauf_text)
 
