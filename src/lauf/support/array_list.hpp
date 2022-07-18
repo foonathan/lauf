@@ -119,7 +119,7 @@ public:
         }
 
         std::memcpy(out, _cur_block->array, _next_idx * sizeof(T));
-        out += _next_idx * sizeof(T);
+        out += _next_idx;
 
         return out;
     }

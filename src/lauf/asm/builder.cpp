@@ -260,13 +260,8 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
     else if ((value & lauf_uint(0xFFFF'FFFF'FF00'0000)) == 0xFFFF'FFFF'FF00'0000)
     {
         // 0xFFFF'FFFF'FFxx'xxxx: pushn
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(pushn, std::uint32_t(value)));
-    }
-    else if ((value & lauf_uint(0xFFFF'0000'0000'0000)) == 0xFFFF'0000'0000'0000)
-    {
-        // 0xFFFF'yyyy'yyxx'xxxx: pushn + push2
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(pushn, std::uint32_t(value)));
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push2, std::uint32_t(value >> 24)));
+        auto flipped = ~std::uint32_t(value) & 0xFF'FFFF;
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(pushn, flipped));
     }
     else
     {

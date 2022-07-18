@@ -5,25 +5,41 @@ get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf A
 get_filename_component(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/lauf ABSOLUTE)
 set(header_files
         ${include_dir}/config.h
+        ${include_dir}/vm.h
         ${include_dir}/writer.h
 
         ${include_dir}/asm/builder.h
         ${include_dir}/asm/module.h
+        ${include_dir}/asm/program.h
 
-        ${include_dir}/backend/dump.h)
+        ${include_dir}/backend/dump.h
+
+        ${include_dir}/runtime/process.h
+        ${include_dir}/runtime/stacktrace.h
+        ${include_dir}/runtime/value.h)
 set(impl_header_files
+        ${src_dir}/vm.hpp
         ${src_dir}/writer.hpp
 
         ${src_dir}/asm/builder.hpp
-        ${src_dir}/asm/module.hpp)
+        ${src_dir}/asm/module.hpp
+        ${src_dir}/asm/program.hpp
+
+        ${src_dir}/runtime/process.hpp)
 set(src_files
         ${src_dir}/config.cpp
+        ${src_dir}/vm.cpp
+        ${src_dir}/vm_execute.cpp
         ${src_dir}/writer.cpp
 
         ${src_dir}/asm/builder.cpp
         ${src_dir}/asm/module.cpp
+        ${src_dir}/asm/program.cpp
 
         ${src_dir}/backend/dump.cpp
+
+        ${src_dir}/runtime/process.cpp
+        ${src_dir}/runtime/stacktrace.cpp
 
         ${src_dir}/support/align.hpp
         ${src_dir}/support/array_list.hpp

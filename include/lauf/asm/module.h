@@ -30,12 +30,17 @@ typedef struct lauf_asm_signature
     uint8_t output_count;
 } lauf_asm_signature;
 
-//=== module creation ===//
+//=== module ===//
 /// Creates an empty module giving its name.
 lauf_asm_module* lauf_asm_create_module(const char* name);
 
 /// Destroys a module, and everything owned by it.
 void lauf_asm_destroy_module(lauf_asm_module* mod);
+
+/// Searches for a function by name.
+///
+/// This is not optimized.
+lauf_asm_function* lauf_asm_find_function_by_name(lauf_asm_module* mod, const char* name);
 
 //=== global memory ===//
 /// Adds zero-initialized, mutable global memory of the specified size to the module.

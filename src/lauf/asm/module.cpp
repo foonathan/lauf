@@ -3,6 +3,8 @@
 
 #include <lauf/asm/module.hpp>
 
+#include <string_view>
+
 lauf_asm_module* lauf_asm_create_module(const char* name)
 {
     return lauf_asm_module::create(name);
@@ -11,6 +13,16 @@ lauf_asm_module* lauf_asm_create_module(const char* name)
 void lauf_asm_destroy_module(lauf_asm_module* mod)
 {
     lauf_asm_module::destroy(mod);
+}
+
+lauf_asm_function* lauf_asm_find_function_by_name(lauf_asm_module* mod, const char* _name)
+{
+    auto name = std::string_view(_name);
+    for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
+        if (fn->name == name)
+            return fn;
+
+    return nullptr;
 }
 
 lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, size_t size_in_bytes)

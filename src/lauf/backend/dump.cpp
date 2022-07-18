@@ -77,6 +77,16 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_as
         case lauf::asm_op::panic:
             writer->write("panic");
             break;
+        case lauf::asm_op::exit:
+            writer->write("exit");
+            break;
+
+        case lauf::asm_op::call: {
+            auto offset = ip->call.offset;
+            auto callee = reinterpret_cast<lauf_asm_function*>((void**)(fn) + offset);
+            writer->format("call @'%s'", callee->name);
+            break;
+        }
 
         case lauf::asm_op::push:
             writer->format("push 0x%X", ip->push.value);
@@ -100,13 +110,6 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_as
         case lauf::asm_op::roll:
             writer->format("roll %d", ip->roll.idx);
             break;
-
-        case lauf::asm_op::call: {
-            auto offset = ip->call.offset;
-            auto callee = reinterpret_cast<lauf_asm_function*>((void**)(fn) + offset);
-            writer->format("call @'%s'", callee->name);
-            break;
-        }
         }
         writer->write(";\n");
     }
