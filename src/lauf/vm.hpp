@@ -6,6 +6,7 @@
 
 #include <lauf/vm.h>
 
+#include <lauf/asm/instruction.hpp>
 #include <lauf/runtime/process.hpp>
 #include <lauf/runtime/value.h>
 #include <lauf/support/arena.hpp>

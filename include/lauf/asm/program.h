@@ -23,6 +23,8 @@ lauf_asm_program* lauf_asm_create_program(lauf_asm_module* mod, lauf_asm_functio
 
 void lauf_asm_destroy_program(lauf_asm_program* program);
 
+lauf_asm_function* lauf_asm_entry_function(lauf_asm_program* program);
+
 LAUF_HEADER_END
 
 #endif // LAUF_ASM_PROGRAM_H_INCLUDED

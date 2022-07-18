@@ -6,13 +6,14 @@
 #include <cassert>
 #include <cstdio>
 #include <lauf/asm/module.h>
-#include <lauf/asm/program.hpp>
+#include <lauf/asm/program.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/stacktrace.h>
 
 const lauf_vm_options lauf_default_vm_options
     = {512 * 1024ull, 16 * 1024ull, [](lauf_runtime_process* process, const char* msg) {
-           std::fprintf(stderr, "[lauf] panic: %s\n", msg ? msg : "(invalid message pointer)");
+           std::fprintf(stderr, "[lauf] panic: %s\n",
+                        msg == nullptr ? "(invalid message pointer)" : msg);
 
            auto index = 0;
            for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
@@ -40,7 +41,7 @@ void lauf_destroy_vm(lauf_vm* vm)
 bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
                      lauf_runtime_value* output)
 {
-    auto fn  = program->entry;
+    auto fn  = lauf_asm_entry_function(program);
     auto sig = lauf_asm_function_signature(fn);
 
     // Setup a new process.

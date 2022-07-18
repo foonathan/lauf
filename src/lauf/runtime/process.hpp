@@ -6,12 +6,13 @@
 
 #include <lauf/runtime/process.h>
 
-#include <lauf/asm/instruction.hpp>
-#include <lauf/runtime/stacktrace.h>
-#include <lauf/vm.h>
+typedef struct lauf_asm_function lauf_asm_function;
+typedef struct lauf_vm           lauf_vm;
 
 namespace lauf
 {
+union asm_inst;
+
 struct stack_frame
 {
     // The current function.

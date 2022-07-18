@@ -3,6 +3,7 @@
 
 #include <lauf/runtime/stacktrace.h>
 
+#include <lauf/asm/instruction.hpp>
 #include <lauf/runtime/process.hpp>
 
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p)

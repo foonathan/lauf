@@ -13,3 +13,8 @@ void lauf_asm_destroy_program(lauf_asm_program* program)
     delete program;
 }
 
+lauf_asm_function* lauf_asm_entry_function(lauf_asm_program* program)
+{
+    return program->entry;
+}
+
