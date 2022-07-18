@@ -19,8 +19,8 @@ typedef enum lauf_runtime_builtin_flags
     LAUF_RUNTIME_BUILTIN_NO_PANIC = 1 << 0,
 
     /// The builtin does not need the process.
-    /// Implies no panic.
-    LAUF_RUNTIME_BUILTIN_NO_PROCESS = 1 << 1 | LAUF_RUNTIME_BUILTIN_NO_PANIC,
+    /// Logically mplies no panic.
+    LAUF_RUNTIME_BUILTIN_NO_PROCESS = 1 << 1,
 } lauf_runtime_builtin_flags;
 
 /// The signature of the implementation of a builtin.

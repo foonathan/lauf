@@ -101,7 +101,9 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("call @'%s'", callee->name);
             break;
         }
-        case lauf::asm_op::call_builtin: {
+        case lauf::asm_op::call_builtin:
+        case lauf::asm_op::call_builtin_no_panic:
+        case lauf::asm_op::call_builtin_no_process: {
             auto data   = lauf::read_call_builtin_data(ip);
             auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(data); // NOLINT
             if (auto builtin = find_builtin(opts, callee))

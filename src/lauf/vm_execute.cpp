@@ -132,6 +132,41 @@ LAUF_VM_EXECUTE(call_builtin)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(call_builtin_no_panic)
+{
+    auto value  = lauf::read_call_builtin_data(ip);
+    auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(value); // NOLINT
+
+    // We need to +1 as the stacktrace blindly does -1;
+    // it has nothing to do with the data instructions we're skipping.
+    lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
+    process->frame_ptr = &dummy_frame;
+
+    auto input    = vstack_ptr;
+    auto output   = vstack_ptr + ip->call_builtin.vstack_change;
+    auto no_panic = callee(process, input, output);
+    assert(no_panic == true);
+
+    vstack_ptr = output;
+    ip += 3;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(call_builtin_no_process)
+{
+    auto value  = lauf::read_call_builtin_data(ip);
+    auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(value); // NOLINT
+
+    auto input    = vstack_ptr;
+    auto output   = vstack_ptr + ip->call_builtin.vstack_change;
+    auto no_panic = callee(nullptr, input, output);
+    assert(no_panic == true);
+
+    vstack_ptr = output;
+    ip += 3;
+    LAUF_VM_DISPATCH;
+}
+
 //=== value instructions ===//
 LAUF_VM_EXECUTE(push)
 {

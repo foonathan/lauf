@@ -15,15 +15,14 @@
 #include <lauf/writer.h>
 
 const lauf_runtime_builtin_function builtin_print
-    = {[](lauf_runtime_process* p, const lauf_runtime_value* input, lauf_runtime_value* output) {
+    = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
            std::printf("print: %lu\n", input->as_uint);
            output[0] = input[0];
-
-           return lauf_runtime_panic(p, "test");
+           return true;
        },
        1,
        1,
-       LAUF_RUNTIME_BUILTIN_DEFAULT,
+       LAUF_RUNTIME_BUILTIN_NO_PROCESS,
        "lauf.print",
        nullptr};
 

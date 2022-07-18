@@ -330,14 +330,24 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee.input_count), "missing input values for call");
 
-    auto addr = reinterpret_cast<std::uint64_t>(callee.impl);
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin,
-                                                     callee.input_count - callee.output_count,
-                                                     std::uint16_t((addr >> 48) & 0xFFFF)));
-    b->cur->insts.push_back(*b,
-                            LAUF_BUILD_INST_VALUE(data, std::uint32_t((addr >> 24) & 0xFF'FFFF)));
-    b->cur->insts.push_back(*b,
-                            LAUF_BUILD_INST_VALUE(data, std::uint32_t((addr >> 0) & 0xFF'FFFF)));
+    auto addr  = reinterpret_cast<std::uint64_t>(callee.impl);
+    auto top16 = std::uint16_t((addr >> 48) & 0xFFFF);
+    auto mid24 = std::uint32_t((addr >> 24) & 0xFF'FFFF);
+    auto low24 = std::uint32_t((addr >> 0) & 0xFF'FFFF);
+
+    auto vstack_change = callee.input_count - callee.output_count;
+
+    if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0)
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin_no_process, vstack_change,
+                                                         top16));
+    else if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PANIC) != 0)
+        b->cur->insts.push_back(*b,
+                                LAUF_BUILD_INST_CALL(call_builtin_no_panic, vstack_change, top16));
+    else
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin, vstack_change, top16));
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(data, mid24));
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(data, low24));
 
     b->cur->vstack.push(callee.output_count);
 }

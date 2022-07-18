@@ -38,6 +38,8 @@ LAUF_ASM_INST(call, asm_inst_offset)
 // lauf_asm_inst_call_builtin()
 // Followed by two data instructions encoding the function pointer.
 LAUF_ASM_INST(call_builtin, asm_inst_call)
+LAUF_ASM_INST(call_builtin_no_panic, asm_inst_call)
+LAUF_ASM_INST(call_builtin_no_process, asm_inst_call)
 
 //=== value ===//
 // lauf_asm_inst_Xint(): push 24 bit immediate, zero extended to 64 bit.

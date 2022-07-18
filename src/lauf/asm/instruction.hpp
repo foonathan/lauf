@@ -98,7 +98,6 @@ union asm_inst
 
 constexpr std::uint64_t read_call_builtin_data(const asm_inst* ip)
 {
-    assert(ip[0].op() == asm_op::call_builtin);
     assert(ip[1].op() == asm_op::data);
     assert(ip[2].op() == asm_op::data);
 
