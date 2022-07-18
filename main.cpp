@@ -9,15 +9,17 @@
 #include <lauf/frontend/text.h>
 #include <lauf/reader.h>
 #include <lauf/runtime/builtin.h>
+#include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
 #include <lauf/vm.h>
 #include <lauf/writer.h>
 
 const lauf_runtime_builtin_function builtin_print
-    = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
+    = {[](lauf_runtime_process* p, const lauf_runtime_value* input, lauf_runtime_value* output) {
            std::printf("print: %lu\n", input->as_uint);
            output[0] = input[0];
-           return true;
+
+           return lauf_runtime_panic(p, "test");
        },
        1,
        1,

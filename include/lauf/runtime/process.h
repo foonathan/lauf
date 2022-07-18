@@ -12,12 +12,19 @@ typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
 typedef struct lauf_runtime_address    lauf_runtime_address;
 typedef struct lauf_asm_layout         lauf_asm_layout;
 
-//=== process ===//
 /// Represents a currently running lauf program.
 typedef struct lauf_runtime_process lauf_runtime_process;
 
 /// Returns the current stacktrace of the process.
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p);
+
+/// Triggers a panic.
+///
+/// It invokes the panic handler, but does not abort or anything.
+/// The builtin needs to do that by returning false.
+///
+/// The function always returns false for convenience.
+bool lauf_runtime_panic(lauf_runtime_process* p, const char* msg);
 
 //=== address ===//
 /// Converts an address to a pointer if the address is readable for the layout.

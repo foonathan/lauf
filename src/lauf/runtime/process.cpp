@@ -6,8 +6,15 @@
 #include <lauf/asm/module.hpp>
 #include <lauf/asm/type.h>
 #include <lauf/runtime/value.h>
+#include <lauf/vm.hpp>
 
 // lauf_runtime_get_stacktrace() implemented in stacktrace.cpp
+
+bool lauf_runtime_panic(lauf_runtime_process* p, const char* msg)
+{
+    p->vm->panic_handler(p, msg);
+    return false;
+}
 
 namespace
 {
