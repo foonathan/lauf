@@ -25,7 +25,8 @@ lauf_asm_module* example_module()
 
         auto entry = lauf_asm_declare_block(b, {1, 1});
         lauf_asm_build_block(b, entry);
-        lauf_asm_inst_return(b);
+        lauf_asm_inst_panic(b);
+        // lauf_asm_inst_return(b);
 
         lauf_asm_build_finish(b);
     }

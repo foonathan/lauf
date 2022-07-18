@@ -59,6 +59,15 @@ lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* 
 lauf_asm_function* lauf_asm_add_function(lauf_asm_module* mod, const char* name,
                                          lauf_asm_signature sig);
 
+const char*        lauf_asm_function_name(lauf_asm_function* fn);
+lauf_asm_signature lauf_asm_function_signature(lauf_asm_function* fn);
+
+/// Returns the index corresponding to the address of an instruction.
+///
+/// This can be used to translate e.g. the result of `lauf_runtime_stacktrace_address()` into a
+/// persistent value.
+size_t lauf_asm_get_instruction_index(lauf_asm_function* fn, const void* addr);
+
 LAUF_HEADER_END
 
 #endif // LAUF_ASM_MODULE_H_INCLUDED

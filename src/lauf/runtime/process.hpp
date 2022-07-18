@@ -20,6 +20,16 @@ struct stack_frame
     asm_inst* return_ip;
     // The previous stack frame.
     stack_frame* prev;
+
+    bool is_trampoline_frame() const
+    {
+        return prev == nullptr;
+    }
+
+    bool is_root_frame() const
+    {
+        return prev->is_trampoline_frame();
+    }
 };
 } // namespace lauf
 

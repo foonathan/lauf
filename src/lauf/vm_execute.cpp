@@ -73,10 +73,10 @@ LAUF_VM_EXECUTE(panic)
     // TODO: message
     ++vstack_ptr;
 
-    lauf::stack_frame dummy_frame{nullptr, ip, frame_ptr};
+    lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
     process->frame_ptr = &dummy_frame;
 
-    process->vm->panic_handler(process, "panic");
+    process->vm->panic_handler(process, nullptr);
     return false;
 }
 

@@ -14,7 +14,7 @@ typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
 typedef struct lauf_runtime_process lauf_runtime_process;
 
 /// Returns the current stacktrace of the process.
-lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process p);
+lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p);
 
 LAUF_HEADER_END
 
