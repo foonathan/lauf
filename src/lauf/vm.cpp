@@ -7,6 +7,8 @@
 #include <cstdio>
 #include <lauf/asm/module.hpp>
 #include <lauf/asm/program.hpp>
+#include <lauf/lib/debug.h>
+#include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/stacktrace.h>
 
@@ -14,18 +16,7 @@ const lauf_vm_options lauf_default_vm_options
     = {512 * 1024ull, 16 * 1024ull, [](lauf_runtime_process* process, const char* msg) {
            std::fprintf(stderr, "[lauf] panic: %s\n",
                         msg == nullptr ? "(invalid message pointer)" : msg);
-
-           auto index = 0;
-           for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
-                st      = lauf_runtime_stacktrace_parent(st))
-           {
-               auto fn   = lauf_runtime_stacktrace_function(st);
-               auto addr = lauf_asm_get_instruction_index(fn, lauf_runtime_stacktrace_address(st));
-
-               std::fprintf(stderr, " %4d. %s\n", index, lauf_asm_function_name(fn));
-               std::fprintf(stderr, "       at <%04lx>\n", addr);
-               ++index;
-           }
+           lauf_lib_debug_print_cstack.impl(process, nullptr, nullptr);
        }};
 
 lauf_vm* lauf_create_vm(lauf_vm_options options)

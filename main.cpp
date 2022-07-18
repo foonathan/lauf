@@ -7,6 +7,7 @@
 #include <lauf/asm/program.h>
 #include <lauf/backend/dump.h>
 #include <lauf/frontend/text.h>
+#include <lauf/lib/debug.h>
 #include <lauf/reader.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
@@ -35,19 +36,18 @@ lauf_asm_module* example_module()
 
         function @identity(1 => 1) {
             block %entry(1 => 1) {
-                $lauf.print;
+                $lauf.debug.print_vstack;
+                $lauf.debug.print_cstack;
+                $lauf.debug.break;
                 return;
             }
         }
 
         function @main(1 => 1) {
             block %entry(1 => 1) {
-                pop 0;
-                uint 42;
-                jump %exit(1 => 1);
-            }
-            block %exit(1 => 1) {
+                uint 0;
                 call @identity;
+                pop 0;
                 return;
             }
         }
@@ -55,7 +55,7 @@ lauf_asm_module* example_module()
     )");
 
     auto opts     = lauf_frontend_default_text_options;
-    opts.builtins = &builtin_print;
+    opts.builtins = lauf_lib_debug;
     auto result   = lauf_frontend_text(reader, opts);
 
     lauf_destroy_reader(reader);
@@ -67,7 +67,7 @@ void dump_module(lauf_asm_module* mod)
     auto writer = lauf_create_stdout_writer();
 
     auto opts     = lauf_backend_default_dump_options;
-    opts.builtins = &builtin_print;
+    opts.builtins = lauf_lib_debug;
     lauf_backend_dump(writer, opts, mod);
 
     lauf_destroy_writer(writer);

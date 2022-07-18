@@ -17,10 +17,12 @@ typedef enum lauf_runtime_builtin_flags
 
     /// The builtin will never panic.
     LAUF_RUNTIME_BUILTIN_NO_PANIC = 1 << 0,
-
     /// The builtin does not need the process.
     /// Logically mplies no panic.
     LAUF_RUNTIME_BUILTIN_NO_PROCESS = 1 << 1,
+
+    /// The builtin can only be used with the VM and not in other backends.
+    LAUF_RUNTIME_BUILTIN_VM_ONLY = 1 << 2,
 } lauf_runtime_builtin_flags;
 
 /// The signature of the implementation of a builtin.
@@ -43,7 +45,7 @@ typedef struct lauf_runtime_builtin_function
     lauf_runtime_builtin_function_impl*  impl;
     uint8_t                              input_count;
     uint8_t                              output_count;
-    lauf_runtime_builtin_flags           flags;
+    int                                  flags;
     const char*                          name;
     const lauf_runtime_builtin_function* next;
 } lauf_runtime_builtin_function;
