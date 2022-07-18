@@ -15,9 +15,7 @@ lauf_asm_module* example_module()
     auto b   = lauf_asm_create_builder(lauf_asm_default_build_options);
     auto mod = lauf_asm_create_module("test");
 
-    lauf_asm_add_global_zero_data(mod, 1024);
-    lauf_asm_add_global_const_data(mod, "hello", 6);
-    lauf_asm_add_global_mut_data(mod, "hello", 5);
+    auto hello = lauf_asm_add_global_const_data(mod, "hello", 6);
 
     auto identity = lauf_asm_add_function(mod, "identity", {1, 1});
     {
@@ -25,6 +23,8 @@ lauf_asm_module* example_module()
 
         auto entry = lauf_asm_declare_block(b, {1, 1});
         lauf_asm_build_block(b, entry);
+        lauf_asm_inst_pop(b, 0);
+        lauf_asm_inst_global_addr(b, hello);
         lauf_asm_inst_panic(b);
         // lauf_asm_inst_return(b);
 

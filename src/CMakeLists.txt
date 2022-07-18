@@ -11,6 +11,7 @@ set(header_files
         ${include_dir}/asm/builder.h
         ${include_dir}/asm/module.h
         ${include_dir}/asm/program.h
+        ${include_dir}/asm/type.h
 
         ${include_dir}/backend/dump.h
 

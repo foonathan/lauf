@@ -276,6 +276,15 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
     b->cur->vstack.push();
 }
 
+void lauf_asm_inst_global_addr(lauf_asm_builder* b, lauf_asm_global* global)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    auto offset = lauf::compress_pointer_offset(b->fn, global);
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(global_addr, offset));
+    b->cur->vstack.push();
+}
+
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
 {
     LAUF_BUILD_ASSERT_CUR;
@@ -308,7 +317,7 @@ void lauf_asm_inst_call(lauf_asm_builder* b, lauf_asm_function* callee)
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee->sig.input_count), "missing input values for call");
 
-    auto offset = reinterpret_cast<void**>(callee) - reinterpret_cast<void**>(b->fn);
+    auto offset = lauf::compress_pointer_offset(b->fn, callee);
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call, offset));
 
     b->cur->vstack.push(callee->sig.output_count);

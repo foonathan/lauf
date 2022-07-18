@@ -48,17 +48,17 @@ lauf_asm_function* lauf_asm_add_function(lauf_asm_module* mod, const char* name,
     return mod->construct<lauf_asm_function>(mod, name, sig);
 }
 
-const char* lauf_asm_function_name(lauf_asm_function* fn)
+const char* lauf_asm_function_name(const lauf_asm_function* fn)
 {
     return fn->name;
 }
 
-lauf_asm_signature lauf_asm_function_signature(lauf_asm_function* fn)
+lauf_asm_signature lauf_asm_function_signature(const lauf_asm_function* fn)
 {
     return fn->sig;
 }
 
-size_t lauf_asm_get_instruction_index(lauf_asm_function* fn, const void* addr)
+size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const void* addr)
 {
     auto ip = static_cast<const lauf::asm_inst*>(addr);
     assert(ip >= fn->insts && ip < fn->insts + fn->insts_count);

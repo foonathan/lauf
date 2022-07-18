@@ -125,7 +125,7 @@ public:
         return ::new (allocate<T>()) T(static_cast<Args&&>(args)...);
     }
 
-    const unsigned char* memdup(const void* memory, std::size_t size, std::size_t alignment = 1)
+    unsigned char* memdup(const void* memory, std::size_t size, std::size_t alignment = 1)
     {
         auto ptr = static_cast<unsigned char*>(allocate(size, alignment));
         std::memcpy(ptr, memory, size);

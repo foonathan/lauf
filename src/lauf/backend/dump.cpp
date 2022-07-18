@@ -82,8 +82,7 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_as
             break;
 
         case lauf::asm_op::call: {
-            auto offset = ip->call.offset;
-            auto callee = reinterpret_cast<lauf_asm_function*>((void**)(fn) + offset);
+            auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(fn, ip->call.offset);
             writer->format("call @'%s'", callee->name);
             break;
         }
@@ -100,6 +99,12 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_as
         case lauf::asm_op::pushn:
             writer->format("pushn 0x%X", ip->pushn.value);
             break;
+        case lauf::asm_op::global_addr: {
+            auto global
+                = lauf::uncompress_pointer_offset<lauf_asm_global>(fn, ip->global_addr.offset);
+            writer->format("global_addr @'%p'", static_cast<const void*>(global));
+            break;
+        }
 
         case lauf::asm_op::pop:
             writer->format("pop %d", ip->pop.idx);

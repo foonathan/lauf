@@ -13,7 +13,7 @@ lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p)
     return reinterpret_cast<lauf_runtime_stacktrace*>(p->frame_ptr);
 }
 
-lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt)
+const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt)
 {
     // The function is always one level back.
     return reinterpret_cast<lauf::stack_frame*>(bt)->prev->function;

@@ -18,7 +18,7 @@ typedef struct lauf_asm_function lauf_asm_function;
 typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
 
 /// Returns the function of the current stacktrace entry.
-lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt);
+const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt);
 
 /// Returns the address of the instruction of the current stacktrace entry.
 const void* lauf_runtime_stacktrace_address(lauf_runtime_stacktrace* bt);

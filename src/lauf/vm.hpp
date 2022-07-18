@@ -30,22 +30,32 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
       cstack_size(options.cstack_size_in_bytes), vstack_size(options.vstack_size_in_elements)
     {
-        cstack_base = static_cast<unsigned char*>(this->allocate(cstack_size, alignof(void*)));
+        // We allocate the stacks using new, as unlike the arena, their memory should not be freed
+        // between executions.
+        cstack_base = static_cast<unsigned char*>(::operator new(cstack_size));
 
         // It grows down, so the base is at the end.
-        vstack_base = this->allocate<lauf_runtime_value>(vstack_size) + vstack_size;
+        vstack_base = static_cast<lauf_runtime_value*>(
+                          ::operator new(vstack_size * sizeof(lauf_runtime_value)))
+                      + vstack_size;
+    }
+
+    ~lauf_vm()
+    {
+        ::operator delete(cstack_base);
+        ::operator delete(vstack_base - vstack_size);
     }
 };
 
 //=== execute ===//
 namespace lauf
 {
-using dispatch_fn = bool (*)(asm_inst* ip, lauf_runtime_value* vstack_ptr, stack_frame* frame_ptr,
-                             lauf_runtime_process* process);
+using dispatch_fn = bool (*)(const asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                             stack_frame* frame_ptr, lauf_runtime_process* process);
 
 #define LAUF_ASM_INST(Name, Type)                                                                  \
-    bool execute_##Name(asm_inst* ip, lauf_runtime_value* vstack_ptr, stack_frame* frame_ptr,      \
-                        lauf_runtime_process* process);
+    bool execute_##Name(const asm_inst* ip, lauf_runtime_value* vstack_ptr,                        \
+                        stack_frame* frame_ptr, lauf_runtime_process* process);
 #include <lauf/asm/instruction.def.hpp>
 #undef LAUF_ASM_INST
 
@@ -58,7 +68,7 @@ constexpr dispatch_fn dispatch[] = {
 #define LAUF_VM_DISPATCH                                                                           \
     [[clang::musttail]] return dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr, process)
 
-inline bool execute(asm_inst* ip, lauf_runtime_value* vstack_ptr, stack_frame* frame_ptr,
+inline bool execute(const asm_inst* ip, lauf_runtime_value* vstack_ptr, stack_frame* frame_ptr,
                     lauf_runtime_process* process)
 {
     LAUF_VM_DISPATCH;

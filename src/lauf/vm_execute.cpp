@@ -7,7 +7,7 @@
 #include <lauf/asm/module.hpp>
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
-    bool lauf::execute_##Name(asm_inst* ip, lauf_runtime_value* vstack_ptr,                        \
+    bool lauf::execute_##Name(const asm_inst* ip, lauf_runtime_value* vstack_ptr,                  \
                               stack_frame* frame_ptr, lauf_runtime_process* process)
 
 //=== control flow ===//
@@ -70,13 +70,13 @@ LAUF_VM_EXECUTE(branch_gt)
 
 LAUF_VM_EXECUTE(panic)
 {
-    // TODO: message
+    auto msg = lauf_runtime_get_cstr(process, vstack_ptr[0].as_address);
     ++vstack_ptr;
 
     lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
     process->frame_ptr = &dummy_frame;
 
-    process->vm->panic_handler(process, nullptr);
+    process->vm->panic_handler(process, msg);
     return false;
 }
 
@@ -93,8 +93,8 @@ LAUF_VM_EXECUTE(exit)
 //=== calls ===//
 LAUF_VM_EXECUTE(call)
 {
-    auto callee = reinterpret_cast<lauf_asm_function*>(reinterpret_cast<void**>(frame_ptr->function)
-                                                       + ip->call.offset);
+    auto callee
+        = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
 
     // Create a new stack frame.
     frame_ptr = ::new (frame_ptr + 1) lauf::stack_frame{callee, ip + 1, frame_ptr};
@@ -134,6 +134,20 @@ LAUF_VM_EXECUTE(push2)
 LAUF_VM_EXECUTE(push3)
 {
     vstack_ptr[0].as_uint |= lauf_uint(ip->push2.value) << 48;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(global_addr)
+{
+    auto global = lauf::uncompress_pointer_offset<lauf_asm_global>(frame_ptr->function,
+                                                                   ip->global_addr.offset);
+
+    --vstack_ptr;
+    vstack_ptr[0].as_address.allocation = global->allocation_idx;
+    vstack_ptr[0].as_address.offset     = 0;
+    vstack_ptr[0].as_address.generation = 0; // Always true for globals.
 
     ++ip;
     LAUF_VM_DISPATCH;

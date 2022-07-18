@@ -9,6 +9,7 @@
 LAUF_HEADER_START
 
 typedef struct lauf_asm_module    lauf_asm_module;
+typedef struct lauf_asm_global    lauf_asm_global;
 typedef struct lauf_asm_function  lauf_asm_function;
 typedef struct lauf_asm_signature lauf_asm_signature;
 
@@ -98,6 +99,11 @@ void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value);
 ///
 /// Signature: _ => value:uint
 void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value);
+
+/// Pushes the address of a global variable onto the stack.
+///
+/// Signature: _ => global:address
+void lauf_asm_inst_global_addr(lauf_asm_builder* b, lauf_asm_global* global);
 
 //=== stack manipulation instructions ===//
 /// Pops the Nth value of the stack.

@@ -47,6 +47,10 @@ LAUF_ASM_INST(push2, asm_inst_value)
 // Invariant: preceded by push2, pushn or push.
 LAUF_ASM_INST(push3, asm_inst_value)
 
+// lauf_asm_inst_global(), offset is difference between the address of the current function and the
+// global divied by sizeof(void*).
+LAUF_ASM_INST(global_addr, asm_inst_offset)
+
 //=== stack manipulation ===//
 // lauf_asm_inst_pop()
 LAUF_ASM_INST(pop, asm_inst_stack_idx)

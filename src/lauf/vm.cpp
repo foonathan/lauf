@@ -5,8 +5,8 @@
 
 #include <cassert>
 #include <cstdio>
-#include <lauf/asm/module.h>
-#include <lauf/asm/program.h>
+#include <lauf/asm/module.hpp>
+#include <lauf/asm/program.hpp>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/stacktrace.h>
 
@@ -47,6 +47,10 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     // Setup a new process.
     assert(vm->process.vm == nullptr);
     vm->process.vm = vm;
+
+    vm->process.allocations.clear();
+    for (auto global = program->mod->globals; global != nullptr; global = global->next)
+        vm->process.allocations.push_back(lauf::allocation::allocate_global(vm, *global));
 
     // Create the initial stack frame.
     auto frame_ptr = ::new (vm->cstack_base) lauf::stack_frame{fn, nullptr, nullptr};

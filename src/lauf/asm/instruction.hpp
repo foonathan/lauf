@@ -45,6 +45,19 @@ struct asm_inst_offset
     std::int32_t offset : 24;
 };
 
+template <typename CurType, typename DestType>
+std::ptrdiff_t compress_pointer_offset(const CurType* cur, const DestType* dest)
+{
+    static_assert(alignof(CurType) >= alignof(void*) && alignof(DestType) >= alignof(void*));
+    return reinterpret_cast<void* const*>(dest) - reinterpret_cast<void* const*>(cur);
+}
+
+template <typename DestType, typename CurType>
+const DestType* uncompress_pointer_offset(const CurType* cur, std::ptrdiff_t offset)
+{
+    return reinterpret_cast<const DestType*>(reinterpret_cast<void* const*>(cur) + offset);
+}
+
 struct asm_inst_value
 {
     asm_op        op : 8;

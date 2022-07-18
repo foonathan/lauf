@@ -11,8 +11,9 @@
 struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
 {
     const char*        name;
-    lauf_asm_global*   globals   = nullptr;
-    lauf_asm_function* functions = nullptr;
+    lauf_asm_global*   globals       = nullptr;
+    std::uint32_t      globals_count = 0;
+    lauf_asm_function* functions     = nullptr;
 
     lauf_asm_module(lauf::arena_key key, const char* name)
     : lauf::intrinsic_arena<lauf_asm_module>(key), name(this->strdup(name))
@@ -24,30 +25,36 @@ struct lauf_asm_global
     lauf_asm_global* next;
 
     const unsigned char* memory;
-    std::uint64_t        size : 63;
+    std::uint64_t        size : 64;
+
+    std::uint32_t allocation_idx;
     enum permissions
     {
         read_only,
         read_write,
-    } perms : 1;
+    } perms;
 
     explicit lauf_asm_global(lauf_asm_module* mod)
-    : next(mod->globals), memory(nullptr), size(0), perms(read_only)
+    : next(mod->globals), memory(nullptr), size(0), allocation_idx(mod->globals_count),
+      perms(read_only)
     {
         mod->globals = this;
+        ++mod->globals_count;
     }
 
-    explicit lauf_asm_global(lauf_asm_module* mod, std::size_t size)
-    : next(mod->globals), memory(nullptr), size(size), perms(read_write)
+    explicit lauf_asm_global(lauf_asm_module* mod, std::size_t size) : lauf_asm_global(mod)
     {
-        mod->globals = this;
+        this->size  = size;
+        this->perms = read_write;
     }
 
     explicit lauf_asm_global(lauf_asm_module* mod, const void* memory, std::size_t size,
                              permissions p)
-    : next(mod->globals), memory(mod->memdup(memory, size)), size(size), perms(p)
+    : lauf_asm_global(mod)
     {
-        mod->globals = this;
+        this->memory = mod->memdup(memory, size);
+        this->size   = size;
+        this->perms  = p;
     }
 };
 
