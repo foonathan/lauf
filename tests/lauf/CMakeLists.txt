@@ -5,6 +5,7 @@ set(tests
         writer.cpp
 
         support/arena.cpp
+        support/array.cpp
         support/array_list.cpp)
 
 add_executable(lauf_test ${tests})

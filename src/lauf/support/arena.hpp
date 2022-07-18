@@ -114,6 +114,21 @@ public:
         return result;
     }
 
+    bool try_expand(void* ptr, std::size_t cur_size, std::size_t new_size)
+    {
+        auto end = static_cast<unsigned char*>(ptr) + cur_size;
+        if (end != _cur_pos)
+            return false;
+
+        auto increase  = new_size - cur_size;
+        auto remaining = std::size_t(_cur_block->end() - _cur_pos);
+        if (remaining < new_size - cur_size)
+            return false;
+
+        _cur_pos += increase;
+        return true;
+    }
+
     template <typename T>
     T* allocate(std::size_t count = 1)
     {

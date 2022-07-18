@@ -64,6 +64,17 @@ TEST_CASE("arena")
             REQUIRE(static_cast<char*>(b2)[i] == 'B');
         }
     }
+    SUBCASE("try_expand")
+    {
+        auto ptr = arena->allocate(10 * 1024ull, 1);
+        CHECK(arena->try_expand(ptr, 10 * 1024ull, 14 * 1024ull));
+        CHECK(!arena->try_expand(ptr, 14 * 1024ull, 20 * 1024ull));
+
+        std::memset(ptr, 'a', 14 * 1024ull);
+
+        for (auto i = 0u; i != 14 * 1024ull; ++i)
+            REQUIRE(static_cast<char*>(ptr)[i] == 'a');
+    }
 
     lauf::arena::destroy(arena);
 }

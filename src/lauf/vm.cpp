@@ -38,6 +38,35 @@ void lauf_destroy_vm(lauf_vm* vm)
     lauf_vm::destroy(vm);
 }
 
+namespace
+{
+lauf::allocation allocate_global(lauf_vm* vm, lauf_asm_global global)
+{
+    lauf::allocation result;
+
+    if (global.memory != nullptr)
+    {
+        result.ptr = vm->memdup(global.memory, global.size);
+    }
+    else
+    {
+        result.ptr = vm->allocate(global.size, alignof(void*));
+        std::memset(result.ptr, 0, global.size);
+    }
+
+    // If bigger than 32bit, only the lower parts are addressable.
+    result.size = std::uint32_t(global.size);
+
+    result.source     = global.perms == lauf_asm_global::read_write
+                            ? lauf::allocation_source::static_mut_memory
+                            : lauf::allocation_source::static_const_memory;
+    result.status     = lauf::allocation_status::allocated;
+    result.generation = 0;
+
+    return result;
+}
+} // namespace
+
 bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
                      lauf_runtime_value* output)
 {
@@ -46,14 +75,19 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
 
     // Setup a new process.
     assert(vm->process.vm == nullptr);
+    vm->clear();
     vm->process.vm = vm;
 
     vm->process.allocations.clear();
     for (auto global = program->mod->globals; global != nullptr; global = global->next)
-        vm->process.allocations.push_back(lauf::allocation::allocate_global(vm, *global));
+    {
+        assert(vm->process.allocations.size() == global->allocation_idx);
+        vm->process.allocations.push_back(*vm, allocate_global(vm, *global));
+    }
 
     // Create the initial stack frame.
     auto frame_ptr = ::new (vm->cstack_base) lauf::stack_frame{fn, nullptr, nullptr};
+    assert(frame_ptr->is_trampoline_frame());
 
     // Push input values onto the value stack.
     auto vstack_ptr = vm->vstack_base;

@@ -6,7 +6,7 @@
 
 #include <lauf/runtime/process.h>
 
-#include <vector>
+#include <lauf/support/array.hpp>
 
 typedef struct lauf_asm_function lauf_asm_function;
 typedef struct lauf_asm_global   lauf_asm_global;
@@ -83,8 +83,6 @@ struct allocation
     allocation_status status;
     std::uint8_t      generation;
 
-    static allocation allocate_global(lauf_vm* vm, lauf_asm_global global);
-
     constexpr void* unchecked_offset(std::uint32_t offset) const
     {
         return static_cast<unsigned char*>(ptr) + offset;
@@ -104,7 +102,7 @@ struct lauf_runtime_process
     lauf::stack_frame* frame_ptr = nullptr;
 
     // The allocations of the process.
-    std::vector<lauf::allocation> allocations;
+    lauf::array<lauf::allocation> allocations;
 
     lauf::allocation* get_allocation(std::uint32_t index)
     {
