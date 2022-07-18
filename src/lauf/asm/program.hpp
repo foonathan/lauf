@@ -8,8 +8,8 @@
 
 struct lauf_asm_program
 {
-    lauf_asm_module*   mod;
-    lauf_asm_function* entry;
+    const lauf_asm_module*   mod;
+    const lauf_asm_function* entry;
 };
 
 #endif // SRC_LAUF_ASM_PROGRAM_HPP_INCLUDED

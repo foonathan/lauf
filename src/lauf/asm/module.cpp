@@ -15,7 +15,8 @@ void lauf_asm_destroy_module(lauf_asm_module* mod)
     lauf_asm_module::destroy(mod);
 }
 
-lauf_asm_function* lauf_asm_find_function_by_name(lauf_asm_module* mod, const char* _name)
+const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* mod,
+                                                        const char*            _name)
 {
     auto name = std::string_view(_name);
     for (auto fn = mod->functions; fn != nullptr; fn = fn->next)

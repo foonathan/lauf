@@ -64,14 +64,15 @@ void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block);
 void lauf_asm_inst_return(lauf_asm_builder* b);
 
 /// Terminator: unconditional jump.
-void lauf_asm_inst_jump(lauf_asm_builder* b, lauf_asm_block* dest);
+void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest);
 
 /// Terminator: two-way jump.
 ///
 /// If the top value is non-zero, jumps to `if_true`, otherwise, jumps to `if_false`.
 ///
 /// Signature: condition:uint => _
-void lauf_asm_inst_branch2(lauf_asm_builder* b, lauf_asm_block* if_true, lauf_asm_block* if_false);
+void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
+                           const lauf_asm_block* if_false);
 
 /// Terminator: three-way jump.
 ///
@@ -79,8 +80,8 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, lauf_asm_block* if_true, lauf_as
 /// jumps to `if_gt`.
 ///
 /// Signature: condition:sint => _
-void lauf_asm_inst_branch3(lauf_asm_builder* b, lauf_asm_block* if_lt, lauf_asm_block* if_eq,
-                           lauf_asm_block* if_false);
+void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
+                           const lauf_asm_block* if_eq, const lauf_asm_block* if_false);
 
 /// Terminator: panic.
 ///
@@ -103,7 +104,7 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value);
 /// Pushes the address of a global variable onto the stack.
 ///
 /// Signature: _ => global:address
-void lauf_asm_inst_global_addr(lauf_asm_builder* b, lauf_asm_global* global);
+void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* global);
 
 //=== stack manipulation instructions ===//
 /// Pops the Nth value of the stack.
@@ -127,7 +128,7 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
 /// The function must be declared in the same module.
 ///
 /// Signature: in_N ... in_0 => out_M ... out_0
-void lauf_asm_inst_call(lauf_asm_builder* b, lauf_asm_function* callee);
+void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee);
 
 LAUF_HEADER_END
 

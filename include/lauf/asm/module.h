@@ -40,7 +40,8 @@ void lauf_asm_destroy_module(lauf_asm_module* mod);
 /// Searches for a function by name.
 ///
 /// This is not optimized.
-lauf_asm_function* lauf_asm_find_function_by_name(lauf_asm_module* mod, const char* name);
+const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* mod,
+                                                        const char*            name);
 
 //=== global memory ===//
 /// Adds zero-initialized, mutable global memory of the specified size to the module.

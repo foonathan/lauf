@@ -73,7 +73,7 @@ struct lauf_asm_block
         branch3,
         panic,
     } terminator;
-    lauf_asm_block* next[3];
+    const lauf_asm_block* next[3];
 
     explicit lauf_asm_block(lauf_asm_signature sig)
     : sig(sig), vstack(sig.input_count), terminator(unterminated), next{}

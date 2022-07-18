@@ -164,7 +164,7 @@ void lauf_asm_inst_return(lauf_asm_builder* b)
     b->cur             = nullptr;
 }
 
-void lauf_asm_inst_jump(lauf_asm_builder* b, lauf_asm_block* dest)
+void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest)
 {
     LAUF_BUILD_ASSERT_CUR;
 
@@ -178,7 +178,8 @@ void lauf_asm_inst_jump(lauf_asm_builder* b, lauf_asm_block* dest)
     b->cur             = nullptr;
 }
 
-void lauf_asm_inst_branch2(lauf_asm_builder* b, lauf_asm_block* if_true, lauf_asm_block* if_false)
+void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
+                           const lauf_asm_block* if_false)
 {
     LAUF_BUILD_ASSERT_CUR;
 
@@ -198,8 +199,8 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, lauf_asm_block* if_true, lauf_as
     b->cur             = nullptr;
 }
 
-void lauf_asm_inst_branch3(lauf_asm_builder* b, lauf_asm_block* if_lt, lauf_asm_block* if_eq,
-                           lauf_asm_block* if_false)
+void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
+                           const lauf_asm_block* if_eq, const lauf_asm_block* if_false)
 {
     LAUF_BUILD_ASSERT_CUR;
 
@@ -276,7 +277,7 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
     b->cur->vstack.push();
 }
 
-void lauf_asm_inst_global_addr(lauf_asm_builder* b, lauf_asm_global* global)
+void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* global)
 {
     LAUF_BUILD_ASSERT_CUR;
 
@@ -311,7 +312,7 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
 }
 
-void lauf_asm_inst_call(lauf_asm_builder* b, lauf_asm_function* callee)
+void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
 {
     LAUF_BUILD_ASSERT_CUR;
 
