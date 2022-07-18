@@ -18,7 +18,7 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
     else
         writer->write("data ");
 
-    writer->format("@'%p' = ", static_cast<const void*>(global));
+    writer->format("@global_%u = ", global->allocation_idx);
 
     if (global->memory == nullptr)
     {
@@ -100,9 +100,7 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options, const lauf_as
             writer->format("pushn 0x%X", ip->pushn.value);
             break;
         case lauf::asm_op::global_addr: {
-            auto global
-                = lauf::uncompress_pointer_offset<lauf_asm_global>(fn, ip->global_addr.offset);
-            writer->format("global_addr @'%p'", static_cast<const void*>(global));
+            writer->format("global_addr @global_%u", ip->global_addr.value);
             break;
         }
 

@@ -141,11 +141,8 @@ LAUF_VM_EXECUTE(push3)
 
 LAUF_VM_EXECUTE(global_addr)
 {
-    auto global = lauf::uncompress_pointer_offset<lauf_asm_global>(frame_ptr->function,
-                                                                   ip->global_addr.offset);
-
     --vstack_ptr;
-    vstack_ptr[0].as_address.allocation = global->allocation_idx;
+    vstack_ptr[0].as_address.allocation = ip->global_addr.value;
     vstack_ptr[0].as_address.offset     = 0;
     vstack_ptr[0].as_address.generation = 0; // Always true for globals.
 

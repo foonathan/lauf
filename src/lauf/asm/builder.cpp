@@ -281,8 +281,7 @@ void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* globa
 {
     LAUF_BUILD_ASSERT_CUR;
 
-    auto offset = lauf::compress_pointer_offset(b->fn, global);
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(global_addr, offset));
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(global_addr, global->allocation_idx));
     b->cur->vstack.push();
 }
 
