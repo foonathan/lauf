@@ -14,7 +14,7 @@
 #include <map>
 #include <string>
 
-const lauf_frontend_text_options lauf_frontend_default_text_options = {nullptr};
+const lauf_frontend_text_options lauf_frontend_default_text_options = {nullptr, 0};
 
 namespace
 {
@@ -72,8 +72,9 @@ struct parse_state
     parse_state(lauf_frontend_text_options opts)
     : builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr)
     {
-        for (auto builtin = opts.builtins; builtin != nullptr; builtin = builtin->next)
-            builtins.insert(builtin->name, builtin);
+        for (auto i = 0u; i != opts.builtin_libs_count; ++i)
+            for (auto builtin = opts.builtin_libs[i]; builtin != nullptr; builtin = builtin->next)
+                builtins.insert(builtin->name, builtin);
     }
 };
 } // namespace

@@ -24,8 +24,11 @@ const lauf_runtime_builtin_function builtin_print
        1,
        1,
        LAUF_RUNTIME_BUILTIN_NO_PROCESS,
-       "lauf.print",
+       "my.print",
        nullptr};
+
+const lauf_runtime_builtin_library builtins[]         = {lauf_lib_debug, &builtin_print};
+constexpr size_t                   builtin_libs_count = 2;
 
 lauf_asm_module* example_module()
 {
@@ -38,7 +41,7 @@ lauf_asm_module* example_module()
             block %entry(1 => 1) {
                 $lauf.debug.print_vstack;
                 $lauf.debug.print_cstack;
-                $lauf.debug.break;
+                $my.print;
                 return;
             }
         }
@@ -54,9 +57,10 @@ lauf_asm_module* example_module()
 
     )");
 
-    auto opts     = lauf_frontend_default_text_options;
-    opts.builtins = lauf_lib_debug;
-    auto result   = lauf_frontend_text(reader, opts);
+    auto opts               = lauf_frontend_default_text_options;
+    opts.builtin_libs       = builtins;
+    opts.builtin_libs_count = builtin_libs_count;
+    auto result             = lauf_frontend_text(reader, opts);
 
     lauf_destroy_reader(reader);
     return result;
@@ -66,8 +70,9 @@ void dump_module(lauf_asm_module* mod)
 {
     auto writer = lauf_create_stdout_writer();
 
-    auto opts     = lauf_backend_default_dump_options;
-    opts.builtins = lauf_lib_debug;
+    auto opts               = lauf_backend_default_dump_options;
+    opts.builtin_libs       = builtins;
+    opts.builtin_libs_count = builtin_libs_count;
     lauf_backend_dump(writer, opts, mod);
 
     lauf_destroy_writer(writer);

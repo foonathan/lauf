@@ -40,15 +40,25 @@ typedef bool lauf_runtime_builtin_function_impl(lauf_runtime_process*     proces
                                                 const lauf_runtime_value* input,
                                                 lauf_runtime_value*       output);
 
+/// A builtin function.
 typedef struct lauf_runtime_builtin_function
 {
-    lauf_runtime_builtin_function_impl*  impl;
-    uint8_t                              input_count;
-    uint8_t                              output_count;
-    int                                  flags;
-    const char*                          name;
+    /// The actual implementation.
+    lauf_runtime_builtin_function_impl* impl;
+    /// The signature.
+    uint8_t input_count;
+    uint8_t output_count;
+    /// Any flags.
+    int flags;
+    /// The name, used for debugging and some frontends/backends.
+    const char* name;
+    /// A next pointer so a linked list of all builtins in a builtin library can be formed.
     const lauf_runtime_builtin_function* next;
 } lauf_runtime_builtin_function;
+
+/// A builtin library, which is just the pointer to the first element in the intrusively linked
+/// list.
+typedef const lauf_runtime_builtin_function* lauf_runtime_builtin_library;
 
 LAUF_HEADER_END
 

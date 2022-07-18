@@ -11,11 +11,13 @@ LAUF_HEADER_START
 typedef struct lauf_asm_module               lauf_asm_module;
 typedef struct lauf_writer                   lauf_writer;
 typedef struct lauf_runtime_builtin_function lauf_runtime_builtin_function;
+typedef const lauf_runtime_builtin_function* lauf_runtime_builtin_library;
 
 /// Options for the dump backend.
 typedef struct lauf_backend_dump_options
 {
-    const lauf_runtime_builtin_function* builtins;
+    const lauf_runtime_builtin_library* builtin_libs;
+    size_t                              builtin_libs_count;
 } lauf_backend_dump_options;
 
 /// The default dump options.

@@ -8,7 +8,7 @@
 #include <lauf/runtime/builtin.h>
 #include <lauf/writer.hpp>
 
-const lauf_backend_dump_options lauf_backend_default_dump_options = {nullptr};
+const lauf_backend_dump_options lauf_backend_default_dump_options = {nullptr, 0};
 
 namespace
 {
@@ -45,9 +45,10 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
 const lauf_runtime_builtin_function* find_builtin(lauf_backend_dump_options          opts,
                                                   lauf_runtime_builtin_function_impl impl)
 {
-    for (auto builtin = opts.builtins; builtin != nullptr; builtin = builtin->next)
-        if (builtin->impl == impl)
-            return builtin;
+    for (auto i = 0u; i != opts.builtin_libs_count; ++i)
+        for (auto builtin = opts.builtin_libs[i]; builtin != nullptr; builtin = builtin->next)
+            if (builtin->impl == impl)
+                return builtin;
 
     return nullptr;
 }
