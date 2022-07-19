@@ -45,6 +45,7 @@ target_sources(lauf_core PUBLIC
                 ${include_dir}/backend/dump.h
 
                 ${include_dir}/lib/debug.h
+                ${include_dir}/lib.h
 
                 ${include_dir}/runtime/process.h
                 ${include_dir}/runtime/stacktrace.h

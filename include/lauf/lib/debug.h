@@ -32,6 +32,11 @@ extern const lauf_runtime_builtin_function lauf_lib_debug_print_cstack;
 /// Signature: _ => _
 extern const lauf_runtime_builtin_function lauf_lib_debug_break;
 
+/// Reads hex bytes from stdin and pushes them on top of the stack.
+///
+/// Signature: _ => v
+extern const lauf_runtime_builtin_function lauf_lib_debug_read;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_DEBUG_H_INCLUDED

@@ -122,9 +122,16 @@ struct local_identifier
 
 struct signature
 {
-    static constexpr auto rule  = dsl::parenthesized(dsl::integer<std::uint8_t> + LEXY_LIT("=>")
-                                                     + dsl::integer<std::uint8_t>);
-    static constexpr auto value = lexy::construct<lauf_asm_signature>;
+    static constexpr auto rule = [] {
+        auto spec = dsl::integer<std::uint8_t> >> LEXY_LIT("=>") + dsl::integer<std::uint8_t>;
+        return dsl::parenthesized.opt(spec);
+    }();
+
+    static constexpr auto value
+        = lexy::callback<lauf_asm_signature>(lexy::construct<lauf_asm_signature>,
+                                             [](lexy::nullopt) {
+                                                 return lauf_asm_signature{0, 0};
+                                             });
 };
 
 struct builtin_ref
@@ -436,7 +443,7 @@ lauf_asm_module* lauf_frontend_text(lauf_reader* reader, lauf_frontend_text_opti
                                                                lexy_ext::report_error);
     if (!result)
     {
-        if (state.mod == nullptr)
+        if (state.mod != nullptr)
             lauf_asm_destroy_module(state.mod);
         state.mod = nullptr;
     }

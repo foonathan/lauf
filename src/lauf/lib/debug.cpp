@@ -82,7 +82,16 @@ const lauf_runtime_builtin_function lauf_lib_debug_break
            return true;
        },
        //
-       0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC, "lauf.debug.break", &lauf_lib_debug_print_cstack};
+       0, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "lauf.debug.break", &lauf_lib_debug_print_cstack};
 
-extern const lauf_runtime_builtin_function* lauf_lib_debug = &lauf_lib_debug_break;
+const lauf_runtime_builtin_function lauf_lib_debug_read
+    = {[](lauf_runtime_process*, const lauf_runtime_value*, lauf_runtime_value* output) {
+           std::printf("[lauf] debug read: 0x");
+           std::scanf("%" SCNx64, &output[0].as_uint);
+           return true;
+       },
+       //
+       0, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "lauf.debug.read", &lauf_lib_debug_break};
+
+extern const lauf_runtime_builtin_function* lauf_lib_debug = &lauf_lib_debug_read;
 

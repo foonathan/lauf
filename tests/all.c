@@ -3,6 +3,7 @@
 
 // C header including everything to check that it compiles as C.
 #include <lauf/config.h>
+#include <lauf/lib.h>
 #include <lauf/reader.h>
 #include <lauf/vm.h>
 #include <lauf/writer.h>
