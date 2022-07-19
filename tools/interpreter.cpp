@@ -51,6 +51,11 @@ int main(int argc, char* argv[])
         std::fprintf(stderr, "main function not found\n");
         return 3;
     }
+    if (auto sig = lauf_asm_function_signature(main); sig.input_count != 0 || sig.output_count != 0)
+    {
+        std::fprintf(stderr, "invalid signature of main function\n");
+        return 3;
+    }
 
     auto vm = lauf_create_vm(lauf_default_vm_options);
     LAUF_DEFER_EXPR(lauf_destroy_vm(vm));
