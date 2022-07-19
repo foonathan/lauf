@@ -254,11 +254,21 @@ constexpr auto inst(Fn fn)
 {
     return callback([fn](const parse_state& state, auto... args) { fn(state.builder, args...); });
 }
+constexpr auto inst()
+{
+    return callback([](const parse_state& state, auto fn, auto... args) //
+                    { fn(state.builder, args...); });
+}
 
 struct inst_return
 {
     static constexpr auto rule  = LEXY_LIT("return");
     static constexpr auto value = inst(&lauf_asm_inst_return);
+};
+struct inst_panic
+{
+    static constexpr auto rule  = LEXY_LIT("panic");
+    static constexpr auto value = inst(&lauf_asm_inst_panic);
 };
 struct inst_jump
 {
@@ -275,11 +285,6 @@ struct inst_branch3
     static constexpr auto rule
         = LEXY_LIT("branch3") >> dsl::p<block_ref> + dsl::p<block_ref> + dsl::p<block_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_branch3);
-};
-struct inst_panic
-{
-    static constexpr auto rule  = LEXY_LIT("panic");
-    static constexpr auto value = inst(&lauf_asm_inst_panic);
 };
 
 struct inst_sint
@@ -298,20 +303,15 @@ struct inst_global_addr
     static constexpr auto value = inst(&lauf_asm_inst_global_addr);
 };
 
-struct inst_pop
+struct inst_stack_op
 {
-    static constexpr auto rule  = LEXY_LIT("pop") >> dsl::integer<std::uint16_t>;
-    static constexpr auto value = inst(&lauf_asm_inst_pop);
-};
-struct inst_pick
-{
-    static constexpr auto rule  = LEXY_LIT("pick") >> dsl::integer<std::uint16_t>;
-    static constexpr auto value = inst(&lauf_asm_inst_pick);
-};
-struct inst_roll
-{
-    static constexpr auto rule  = LEXY_LIT("roll") >> dsl::integer<std::uint16_t>;
-    static constexpr auto value = inst(&lauf_asm_inst_roll);
+    static constexpr auto insts = lexy::symbol_table<void(*)(lauf_asm_builder*, std::uint16_t)>
+        .map(LEXY_LIT("pop"), &lauf_asm_inst_pop)
+        .map(LEXY_LIT("pick"), &lauf_asm_inst_pick)
+        .map(LEXY_LIT("roll"), &lauf_asm_inst_roll);
+
+    static constexpr auto rule  = dsl::symbol<insts> >> dsl::integer<std::uint16_t>;
+    static constexpr auto value = inst();
 };
 
 struct inst_call
@@ -333,8 +333,7 @@ struct instruction
         auto single = dsl::p<inst_return> | dsl::p<inst_jump>                            //
                       | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic> //
                       | dsl::p<inst_sint> | dsl::p<inst_uint> | dsl::p<inst_global_addr> //
-                      | dsl::p<inst_pop> | dsl::p<inst_pick> | dsl::p<inst_roll>         //
-                      | dsl::p<inst_call> | dsl::p<inst_call_builtin>;
+                      | dsl::p<inst_stack_op> | dsl::p<inst_call> | dsl::p<inst_call_builtin>;
 
         return nested | dsl::else_ >> single + dsl::semicolon;
     }();
