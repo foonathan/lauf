@@ -10,6 +10,11 @@
 
 // lauf_runtime_get_stacktrace() implemented in stacktrace.cpp
 
+lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p)
+{
+    return p->vm->vstack_base;
+}
+
 bool lauf_runtime_panic(lauf_runtime_process* p, const char* msg)
 {
     p->vm->panic_handler(p, msg);

@@ -11,7 +11,6 @@
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/stacktrace.h>
 #include <lauf/runtime/value.h>
-#include <lauf/vm.hpp>
 
 namespace
 {
@@ -42,7 +41,7 @@ const lauf_runtime_builtin_function lauf_lib_debug_print_vstack
            std::fprintf(stderr, "[lauf] value stack:\n");
 
            auto index = 0;
-           for (auto cur = input; cur != process->vm->vstack_base; ++cur)
+           for (auto cur = input; cur != lauf_runtime_get_vstack_base(process); ++cur)
            {
                std::fprintf(stderr, " %4d. ", index);
                debug_print(process, *cur);

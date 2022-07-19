@@ -10,10 +10,14 @@ LAUF_HEADER_START
 
 typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
 typedef struct lauf_runtime_address    lauf_runtime_address;
+typedef union lauf_runtime_value       lauf_runtime_value;
 typedef struct lauf_asm_layout         lauf_asm_layout;
 
 /// Represents a currently running lauf program.
 typedef struct lauf_runtime_process lauf_runtime_process;
+
+/// Returns the base of the vstack (highest address as it grows down).
+lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p);
 
 /// Returns the current stacktrace of the process.
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p);
