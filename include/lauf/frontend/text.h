@@ -11,7 +11,7 @@ LAUF_HEADER_START
 typedef struct lauf_reader                   lauf_reader;
 typedef struct lauf_asm_module               lauf_asm_module;
 typedef struct lauf_runtime_builtin_function lauf_runtime_builtin_function;
-typedef const lauf_runtime_builtin_function* lauf_runtime_builtin_library;
+typedef struct lauf_runtime_builtin_library  lauf_runtime_builtin_library;
 
 /// Options for the text frontend.
 typedef struct lauf_frontend_text_options

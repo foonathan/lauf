@@ -24,10 +24,11 @@ const lauf_runtime_builtin_function builtin_print
        1,
        1,
        LAUF_RUNTIME_BUILTIN_NO_PROCESS,
-       "my.print",
+       "print",
        nullptr};
+const lauf_runtime_builtin_library my_lib = {"my", &builtin_print};
 
-const lauf_runtime_builtin_library builtins[]         = {lauf_lib_debug, &builtin_print};
+const lauf_runtime_builtin_library builtins[]         = {lauf_lib_debug, my_lib};
 constexpr size_t                   builtin_libs_count = 2;
 
 lauf_asm_module* example_module()

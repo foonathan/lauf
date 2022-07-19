@@ -56,9 +56,14 @@ typedef struct lauf_runtime_builtin_function
     const lauf_runtime_builtin_function* next;
 } lauf_runtime_builtin_function;
 
-/// A builtin library, which is just the pointer to the first element in the intrusively linked
-/// list.
-typedef const lauf_runtime_builtin_function* lauf_runtime_builtin_library;
+/// A builtin library.
+typedef struct lauf_runtime_builtin_library
+{
+    /// A prefix that will be added to all functions in the library (separated by `.`).
+    const char* prefix;
+    /// The first builtin function of the library.
+    const lauf_runtime_builtin_function* functions;
+} lauf_runtime_builtin_library;
 
 LAUF_HEADER_END
 

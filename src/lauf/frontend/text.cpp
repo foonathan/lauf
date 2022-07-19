@@ -73,8 +73,10 @@ struct parse_state
     : builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr)
     {
         for (auto i = 0u; i != opts.builtin_libs_count; ++i)
-            for (auto builtin = opts.builtin_libs[i]; builtin != nullptr; builtin = builtin->next)
-                builtins.insert(builtin->name, builtin);
+            for (auto builtin = opts.builtin_libs[i].functions; builtin != nullptr;
+                 builtin      = builtin->next)
+                builtins.insert(opts.builtin_libs[i].prefix + std::string(".") + builtin->name,
+                                     builtin);
     }
 };
 } // namespace

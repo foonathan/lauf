@@ -35,7 +35,7 @@ const lauf_runtime_builtin_function lauf_lib_debug_print
            return true;
        },
        //
-       1, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "lauf.debug.print", nullptr};
+       1, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "print", nullptr};
 
 const lauf_runtime_builtin_function lauf_lib_debug_print_vstack
     = {[](lauf_runtime_process* process, const lauf_runtime_value* input, lauf_runtime_value*) {
@@ -53,8 +53,8 @@ const lauf_runtime_builtin_function lauf_lib_debug_print_vstack
            return true;
        },
        //
-       0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC | LAUF_RUNTIME_BUILTIN_VM_ONLY,
-       "lauf.debug.print_vstack", &lauf_lib_debug_print};
+       0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC | LAUF_RUNTIME_BUILTIN_VM_ONLY, "print_vstack",
+       &lauf_lib_debug_print};
 
 const lauf_runtime_builtin_function lauf_lib_debug_print_cstack
     = {[](lauf_runtime_process* process, const lauf_runtime_value*, lauf_runtime_value*) {
@@ -73,8 +73,7 @@ const lauf_runtime_builtin_function lauf_lib_debug_print_cstack
            return true;
        },
        //
-       0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC, "lauf.debug.print_cstack",
-       &lauf_lib_debug_print_vstack};
+       0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC, "print_cstack", &lauf_lib_debug_print_vstack};
 
 const lauf_runtime_builtin_function lauf_lib_debug_break
     = {[](lauf_runtime_process*, const lauf_runtime_value*, lauf_runtime_value*) {
@@ -82,7 +81,7 @@ const lauf_runtime_builtin_function lauf_lib_debug_break
            return true;
        },
        //
-       0, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "lauf.debug.break", &lauf_lib_debug_print_cstack};
+       0, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "break", &lauf_lib_debug_print_cstack};
 
 const lauf_runtime_builtin_function lauf_lib_debug_read
     = {[](lauf_runtime_process*, const lauf_runtime_value*, lauf_runtime_value* output) {
@@ -91,7 +90,7 @@ const lauf_runtime_builtin_function lauf_lib_debug_read
            return true;
        },
        //
-       0, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "lauf.debug.read", &lauf_lib_debug_break};
+       0, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "read", &lauf_lib_debug_break};
 
-extern const lauf_runtime_builtin_function* lauf_lib_debug = &lauf_lib_debug_read;
+const lauf_runtime_builtin_library lauf_lib_debug = {"lauf.debug", &lauf_lib_debug_read};
 

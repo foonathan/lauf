@@ -9,8 +9,9 @@
 LAUF_HEADER_START
 
 typedef struct lauf_runtime_builtin_function lauf_runtime_builtin_function;
+typedef struct lauf_runtime_builtin_library  lauf_runtime_builtin_library;
 
-extern const lauf_runtime_builtin_function* lauf_lib_debug;
+extern const lauf_runtime_builtin_library lauf_lib_debug;
 
 /// Prints the top value of the stack for debugging purposes.
 ///

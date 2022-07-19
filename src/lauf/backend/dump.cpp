@@ -7,6 +7,7 @@
 #include <lauf/asm/module.hpp>
 #include <lauf/runtime/builtin.h>
 #include <lauf/writer.hpp>
+#include <string>
 
 const lauf_backend_dump_options lauf_backend_default_dump_options = {nullptr, 0};
 
@@ -42,15 +43,16 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
     writer->write(";\n");
 }
 
-const lauf_runtime_builtin_function* find_builtin(lauf_backend_dump_options          opts,
-                                                  lauf_runtime_builtin_function_impl impl)
+std::string find_builtin_name(lauf_backend_dump_options          opts,
+                              lauf_runtime_builtin_function_impl impl)
 {
     for (auto i = 0u; i != opts.builtin_libs_count; ++i)
-        for (auto builtin = opts.builtin_libs[i]; builtin != nullptr; builtin = builtin->next)
+        for (auto builtin = opts.builtin_libs[i].functions; builtin != nullptr;
+             builtin      = builtin->next)
             if (builtin->impl == impl)
-                return builtin;
+                return opts.builtin_libs[i].prefix + std::string(".") + builtin->name;
 
-    return nullptr;
+    return "";
 }
 
 void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const lauf_asm_function* fn)
@@ -107,8 +109,8 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::call_builtin_no_process: {
             auto data   = lauf::read_call_builtin_data(ip);
             auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(data); // NOLINT
-            if (auto builtin = find_builtin(opts, callee))
-                writer->format("$'%s'", builtin->name);
+            if (auto name = find_builtin_name(opts, callee); !name.empty())
+                writer->format("$'%s'", name.c_str());
             else
                 writer->format("$'%p'", reinterpret_cast<void*>(callee));
             ip += 2;

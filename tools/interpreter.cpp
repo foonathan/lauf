@@ -7,6 +7,7 @@
 #include <lauf/frontend/text.h>
 #include <lauf/lib.h>
 #include <lauf/reader.h>
+#include <lauf/runtime/builtin.h>
 #include <lauf/vm.h>
 
 #include "defer.hpp"
