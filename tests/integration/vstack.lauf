@@ -1,0 +1,138 @@
+module @vstack;
+
+function @pop0() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    pop 0;
+
+    uint 1; $lauf.test.assert_eq;
+    uint 0; $lauf.test.assert_eq;
+
+    return;
+}
+function @pop1() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    pop 1;
+
+    uint 2; $lauf.test.assert_eq;
+    uint 0; $lauf.test.assert_eq;
+
+    return;
+}
+function @pop2() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    pop 2;
+
+    uint 2; $lauf.test.assert_eq;
+    uint 1; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @pick0() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    pick 0;
+
+    uint 2; $lauf.test.assert_eq;
+    uint 2; $lauf.test.assert_eq;
+    uint 1; $lauf.test.assert_eq;
+    uint 0; $lauf.test.assert_eq;
+
+    return;
+}
+function @pick1() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    pick 1;
+
+    uint 1; $lauf.test.assert_eq;
+    uint 2; $lauf.test.assert_eq;
+    uint 1; $lauf.test.assert_eq;
+    uint 0; $lauf.test.assert_eq;
+
+    return;
+}
+function @pick2() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    pick 2;
+
+    uint 0; $lauf.test.assert_eq;
+    uint 2; $lauf.test.assert_eq;
+    uint 1; $lauf.test.assert_eq;
+    uint 0; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @roll0() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    roll 0;
+
+    uint 2; $lauf.test.assert_eq;
+    uint 1; $lauf.test.assert_eq;
+    uint 0; $lauf.test.assert_eq;
+
+    return;
+}
+function @roll1() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    roll 1;
+
+    uint 1; $lauf.test.assert_eq;
+    uint 2; $lauf.test.assert_eq;
+    uint 0; $lauf.test.assert_eq;
+
+    return;
+}
+function @roll2() {
+    uint 0;
+    uint 1;
+    uint 2;
+
+    roll 2;
+
+    uint 0; $lauf.test.assert_eq;
+    uint 2; $lauf.test.assert_eq;
+    uint 1; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @main() {
+    call @pop0;
+    call @pop1;
+    call @pop2;
+
+    call @pick0;
+    call @pick1;
+    call @pick2;
+
+    call @roll0;
+    call @roll1;
+    call @roll2;
+
+    return;
+}
+

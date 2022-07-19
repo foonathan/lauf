@@ -52,7 +52,7 @@ LAUF_VM_EXECUTE(branch_false)
 
 LAUF_VM_EXECUTE(branch_eq)
 {
-    auto condition = vstack_ptr[0].as_uint;
+    auto condition = vstack_ptr[0].as_sint;
 
     if (condition == 0)
         ip += ip->branch_eq.offset;
@@ -64,7 +64,7 @@ LAUF_VM_EXECUTE(branch_eq)
 
 LAUF_VM_EXECUTE(branch_gt)
 {
-    auto condition = vstack_ptr[0].as_uint;
+    auto condition = vstack_ptr[0].as_sint;
     ++vstack_ptr;
 
     if (condition > 0)

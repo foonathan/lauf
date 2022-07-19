@@ -20,4 +20,5 @@ target_link_libraries(lauf_interface_check PRIVATE lauf_warnings)
 
 #=== tests ===#
 add_subdirectory(lauf)
+add_subdirectory(integration)
 

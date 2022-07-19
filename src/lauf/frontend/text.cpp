@@ -65,6 +65,7 @@ struct parse_state
     symbol_table<const lauf_runtime_builtin_function*> builtins;
 
     mutable lauf_asm_module*                 mod;
+    mutable lauf_asm_function*               fn;
     mutable symbol_table<lauf_asm_global*>   globals;
     mutable symbol_table<lauf_asm_function*> functions;
     mutable symbol_table<lauf_asm_block*>    blocks;
@@ -298,7 +299,13 @@ struct inst_branch3
 
 struct inst_sint
 {
-    static constexpr auto rule  = LEXY_LIT("sint") >> dsl::integer<lauf_sint>;
+    struct integer
+    {
+        static constexpr auto rule  = dsl::sign + dsl::integer<lauf_sint>;
+        static constexpr auto value = lexy::as_integer<lauf_sint>;
+    };
+
+    static constexpr auto rule  = LEXY_LIT("sint") >> dsl::p<integer>;
     static constexpr auto value = inst(&lauf_asm_inst_sint);
 };
 struct inst_uint
@@ -386,25 +393,43 @@ struct function_decl
 
         static constexpr auto value = callback(
             [](const parse_state& state, const std::string& name, lauf_asm_signature sig) {
-                lauf_asm_function* fn;
                 if (auto f = state.functions.try_lookup(name))
                 {
-                    fn = *f;
+                    state.fn = *f;
                 }
                 else
                 {
-                    fn = lauf_asm_add_function(state.mod, name.c_str(), sig);
-                    state.functions.insert(name, fn);
+                    state.fn = lauf_asm_add_function(state.mod, name.c_str(), sig);
+                    state.functions.insert(name, state.fn);
                 }
 
-                lauf_asm_build(state.builder, state.mod, fn);
+                lauf_asm_build(state.builder, state.mod, state.fn);
                 state.blocks.clear();
             });
     };
 
+    struct entry_block
+    {
+        static constexpr auto rule  = LEXY_LIT("");
+        static constexpr auto value = callback([](const parse_state& state) {
+            // Create an entry block.
+            auto block
+                = lauf_asm_declare_block(state.builder, lauf_asm_function_signature(state.fn));
+            lauf_asm_build_block(state.builder, block);
+            state.blocks.insert("", block);
+        });
+    };
+
     struct body
     {
-        static constexpr auto rule = dsl::curly_bracketed.list(dsl::p<block>);
+        static constexpr auto rule = [] {
+            auto block_list = dsl::peek(LEXY_LIT("block"))
+                              >> dsl::curly_bracketed.as_terminator().list(dsl::p<block>);
+            auto inst_list = dsl::p<entry_block> //
+                             + dsl::curly_bracketed.as_terminator().list(dsl::p<instruction>);
+
+            return dsl::curly_bracketed.open() >> (block_list | dsl::else_ >> inst_list);
+        }();
 
         static constexpr auto value = lexy::noop >> callback([](const parse_state& state) {
                                           lauf_asm_build_finish(state.builder);

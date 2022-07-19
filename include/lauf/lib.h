@@ -5,6 +5,7 @@
 #define LAUF_LIB_H_INCLUDED
 
 #include <lauf/lib/debug.h>
+#include <lauf/lib/test.h>
 
 #endif // LAUF_LIB_H_INCLUDED
 

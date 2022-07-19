@@ -11,7 +11,11 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     option(LAUF_BUILD_TOOLS "whether or not the tools should be built" ON)
     option(LAUF_BUILD_TESTS "whether or not tests should be built" ON)
 
-    if(LAUF_BUILD_TOOLS)
+    if(LAUF_BUILD_TESTS AND NOT LAUF_BUILD_TOOLS)
+        message(WARNING "integration tests require tools")
+    endif()
+
+    if(LAUF_BUILD_TOOLS OR LAUF_BUILD_TESTS)
         add_subdirectory(tools)
     endif()
     if(LAUF_BUILD_TESTS)

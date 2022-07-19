@@ -45,6 +45,7 @@ target_sources(lauf_core PUBLIC
                 ${include_dir}/backend/dump.h
 
                 ${include_dir}/lib/debug.h
+                ${include_dir}/lib/test.h
                 ${include_dir}/lib.h
 
                 ${include_dir}/runtime/process.h
@@ -77,6 +78,7 @@ target_sources(lauf_core PRIVATE
                 ${src_dir}/runtime/stacktrace.cpp
 
                 ${src_dir}/lib/debug.cpp
+                ${src_dir}/lib/test.cpp
 
                 ${src_dir}/support/align.hpp
                 ${src_dir}/support/array.hpp

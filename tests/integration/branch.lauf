@@ -1,0 +1,121 @@
+module @branch;
+
+function @jumps() {
+block %entry(0 => 1) {
+    uint 0;
+    jump %one(1 => 2);
+}
+block %one(1 => 2) {
+    uint 1;
+    jump %two(2 => 3);
+}
+block %two(2 => 3) {
+    uint 2;
+    jump %three(3 => 2);
+}
+block %three(3 => 2) {
+    uint 2; $lauf.test.assert_eq;
+    jump %four(2 => 1);
+}
+block %four(2 => 1) {
+    uint 1; $lauf.test.assert_eq;
+    jump %five(1 => 0);
+}
+block %five(1 => 0) {
+    uint 0; $lauf.test.assert_eq;
+    return;
+}
+}
+
+function @branch2_true() {
+block %entry() {
+    uint 11;
+    branch2 %okay() %error();
+}
+block %okay() {
+    return;
+}
+block %error() {
+    $lauf.test.unreachable;
+    return;
+}
+}
+function @branch2_false() {
+block %entry() {
+    uint 1;
+    branch2 %okay() %error();
+}
+block %okay() {
+    return;
+}
+block %error() {
+    $lauf.test.unreachable;
+    return;
+}
+}
+
+function @branch3_lt() {
+block %entry() {
+    sint -11;
+    branch3 %okay() %error1() %error2();
+}
+block %okay() {
+    return;
+}
+block %error1() {
+    $lauf.test.unreachable;
+    return;
+}
+block %error2() {
+    $lauf.test.unreachable;
+    return;
+}
+}
+function @branch3_eq() {
+block %entry() {
+    sint 0;
+    branch3 %error1() %okay() %error2();
+}
+block %okay() {
+    return;
+}
+block %error1() {
+    $lauf.test.unreachable;
+    return;
+}
+block %error2() {
+    $lauf.test.unreachable;
+    return;
+}
+}
+function @branch3_gt() {
+block %entry() {
+    sint 11;
+    branch3 %error1() %error2() %okay();
+}
+block %okay() {
+    return;
+}
+block %error1() {
+    $lauf.test.unreachable;
+    return;
+}
+block %error2() {
+    $lauf.test.unreachable;
+    return;
+}
+}
+
+function @main() {
+    call @jumps();
+
+    call @branch2_true();
+    call @branch2_false();
+
+    call @branch3_lt();
+    call @branch3_eq();
+    call @branch3_gt();
+
+    return;
+}
+
