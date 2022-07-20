@@ -49,8 +49,9 @@ lauf_asm_module* example_module()
 
         function @main(1 => 1) {
             block %entry(1 => 1) {
-                uint 0;
-                call @identity;
+                function_addr @identity;
+                pick 0;
+                call_ptr (1 => 1);
                 pop 0;
                 return;
             }

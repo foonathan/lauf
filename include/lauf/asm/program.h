@@ -19,7 +19,8 @@ typedef struct lauf_asm_function lauf_asm_function;
 typedef struct lauf_asm_program lauf_asm_program;
 
 /// Creates a program that consists of a single module only.
-lauf_asm_program* lauf_asm_create_program(const lauf_asm_module* mod, const lauf_asm_function* fn);
+lauf_asm_program* lauf_asm_create_program(const lauf_asm_module*   mod,
+                                          const lauf_asm_function* entry);
 
 void lauf_asm_destroy_program(lauf_asm_program* program);
 

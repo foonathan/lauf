@@ -41,6 +41,10 @@ LAUF_ASM_INST(call_builtin, asm_inst_call)
 LAUF_ASM_INST(call_builtin_no_panic, asm_inst_call)
 LAUF_ASM_INST(call_builtin_no_process, asm_inst_call)
 
+// lauf_asm_inst_call_indirect()
+// data is function index
+LAUF_ASM_INST(call_indirect, asm_inst_call)
+
 //=== value ===//
 // lauf_asm_inst_Xint(): push 24 bit immediate, zero extended to 64 bit.
 LAUF_ASM_INST(push, asm_inst_value)
@@ -56,8 +60,12 @@ LAUF_ASM_INST(push2, asm_inst_value)
 // Invariant: preceded by push2, pushn or push.
 LAUF_ASM_INST(push3, asm_inst_value)
 
-// lauf_asm_inst_global(), value is allocation index.
+// lauf_asm_inst_global_addr(), value is allocation index.
 LAUF_ASM_INST(global_addr, asm_inst_value)
+
+// lauf_asm_inst_function_addr()
+// data is function index
+LAUF_ASM_INST(function_addr, asm_inst_call)
 
 //=== stack manipulation ===//
 // lauf_asm_inst_pop()

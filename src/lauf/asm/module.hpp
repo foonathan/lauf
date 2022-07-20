@@ -11,9 +11,10 @@
 struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
 {
     const char*        name;
-    lauf_asm_global*   globals       = nullptr;
-    std::uint32_t      globals_count = 0;
-    lauf_asm_function* functions     = nullptr;
+    lauf_asm_global*   globals         = nullptr;
+    lauf_asm_function* functions       = nullptr;
+    std::uint32_t      globals_count   = 0;
+    std::uint32_t      functions_count = 0;
 
     lauf_asm_module(lauf::arena_key key, const char* name)
     : lauf::intrinsic_arena<lauf_asm_module>(key), name(this->strdup(name))
@@ -67,11 +68,14 @@ struct lauf_asm_function
 
     lauf::asm_inst* insts       = nullptr;
     std::uint16_t   insts_count = 0;
+    std::uint16_t   function_idx;
 
     explicit lauf_asm_function(lauf_asm_module* mod, const char* name, lauf_asm_signature sig)
-    : next(mod->functions), name(mod->strdup(name)), sig(sig)
+    : next(mod->functions), name(mod->strdup(name)), sig(sig),
+      function_idx(std::uint16_t(mod->functions_count))
     {
         mod->functions = this;
+        ++mod->functions_count;
     }
 };
 

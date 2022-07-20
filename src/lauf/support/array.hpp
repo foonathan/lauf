@@ -90,7 +90,7 @@ public:
     template <typename Arena>
     void push_back(Arena& arena, const T& obj)
     {
-        ensure_space(arena);
+        ensure_space(arena, _size + 1);
 
         _ptr[_size] = obj;
         ++_size;
@@ -99,27 +99,45 @@ public:
     template <typename Arena, typename... Args>
     void emplace_back(Arena& arena, Args&&... args)
     {
-        ensure_space(arena);
+        ensure_space(arena, _size + 1);
 
         ::new (&_ptr[_size]) T(static_cast<Args&&>(args)...);
         ++_size;
     }
 
+    template <typename Arena>
+    void resize_uninitialized(Arena& arena, std::size_t new_size)
+    {
+        if (new_size < _size)
+        {
+            _size = new_size;
+        }
+        else
+        {
+            ensure_space(arena, new_size);
+            _size = new_size;
+        }
+    }
+
 private:
     template <typename Arena>
-    void ensure_space(Arena& arena)
+    void ensure_space(Arena& arena, std::size_t new_size)
     {
-        if (_size < _capacity)
+        if (new_size < _capacity)
             return;
 
-        if (_capacity == 0)
+        constexpr auto initial_capacity = 64;
+        if (_capacity == 0 && new_size <= initial_capacity)
         {
-            _ptr      = arena.template allocate<T>(64);
-            _capacity = 64;
+            _ptr      = arena.template allocate<T>(initial_capacity);
+            _capacity = initial_capacity;
             return;
         }
 
         auto new_capacity = 2 * _capacity;
+        if (new_capacity < new_size)
+            new_capacity = new_size;
+
         if (arena.try_expand(_ptr, _capacity, new_capacity))
         {
             _capacity = new_capacity;

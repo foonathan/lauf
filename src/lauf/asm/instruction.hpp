@@ -63,7 +63,8 @@ const DestType* uncompress_pointer_offset(const CurType* cur, std::ptrdiff_t off
 struct asm_inst_call
 {
     asm_op        op : 8;
-    std::int8_t   vstack_change : 8;
+    std::uint8_t  input_count : 4;
+    std::uint8_t  output_count : 4;
     std::uint16_t data : 16;
 };
 

@@ -67,7 +67,8 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     // Setup a new process.
     assert(vm->process.vm == nullptr);
     vm->clear();
-    vm->process.vm = vm;
+    vm->process.vm      = vm;
+    vm->process.program = program;
 
     vm->process.allocations.clear();
     for (auto global = program->mod->globals; global != nullptr; global = global->next)

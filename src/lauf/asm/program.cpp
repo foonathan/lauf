@@ -3,18 +3,29 @@
 
 #include <lauf/asm/program.hpp>
 
-lauf_asm_program* lauf_asm_create_program(const lauf_asm_module* mod, const lauf_asm_function* fn)
+#include <lauf/asm/module.hpp>
+
+lauf_asm_program* lauf_asm_create_program(const lauf_asm_module*   mod,
+                                          const lauf_asm_function* entry)
 {
-    return new lauf_asm_program{mod, fn};
+    auto program = lauf_asm_program::create();
+
+    program->mod = mod;
+    program->functions.resize_uninitialized(*program, mod->functions_count);
+    for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
+        program->functions[fn->function_idx] = fn;
+    program->entry = entry->function_idx;
+
+    return program;
 }
 
 void lauf_asm_destroy_program(lauf_asm_program* program)
 {
-    delete program;
+    lauf_asm_program::destroy(program);
 }
 
 const lauf_asm_function* lauf_asm_entry_function(const lauf_asm_program* program)
 {
-    return program->entry;
+    return program->functions[program->entry];
 }
 

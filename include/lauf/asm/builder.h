@@ -107,6 +107,13 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value);
 /// Signature: _ => global:address
 void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* global);
 
+/// Pushes the address of a function onto the stack.
+///
+/// The function must be declared in the same module.
+///
+/// Signature: _ => function:function_address
+void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* function);
+
 //=== stack manipulation instructions ===//
 /// Pops the Nth value of the stack.
 ///
@@ -135,6 +142,11 @@ void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee);
 ///
 /// Signature: in_N ... in_0 => out_M ... out_0
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
+
+/// Calls the function specified via its address on the vstack.
+///
+/// Signature: in_N ... in_0 f => out_M ... out_0
+void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
 
 LAUF_HEADER_END
 

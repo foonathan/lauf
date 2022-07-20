@@ -95,6 +95,8 @@ struct lauf_runtime_process
 {
     // The VM that is executing the process.
     lauf_vm* vm = nullptr;
+    // The program that is running.
+    lauf_asm_program* program = nullptr;
 
     // The current frame pointer -- this is only lazily updated.
     // Whenever the process is exposed, it needs to point to a dummy stack frame

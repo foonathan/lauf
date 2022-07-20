@@ -55,7 +55,17 @@ std::string find_builtin_name(lauf_backend_dump_options          opts,
     return "";
 }
 
-void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const lauf_asm_function* fn)
+const char* find_function_name(const lauf_asm_module* mod, std::uint16_t index)
+{
+    for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
+        if (fn->function_idx == index)
+            return fn->name;
+
+    return "<invalid>";
+}
+
+void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const lauf_asm_module* mod,
+                   const lauf_asm_function* fn)
 {
     writer->format("function @'%s'(%d => %d)", fn->name, fn->sig.input_count, fn->sig.output_count);
     if (fn->insts == nullptr)
@@ -116,6 +126,10 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             ip += 2;
             break;
         }
+        case lauf::asm_op::call_indirect: {
+            writer->write("call_indirect");
+            break;
+        }
 
         case lauf::asm_op::push:
             writer->format("push 0x%X", ip->push.value);
@@ -131,6 +145,10 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             break;
         case lauf::asm_op::global_addr: {
             writer->format("global_addr @global_%u", ip->global_addr.value);
+            break;
+        }
+        case lauf::asm_op::function_addr: {
+            writer->format("function_addr @'%s'", find_function_name(mod, ip->function_addr.data));
             break;
         }
 
@@ -163,7 +181,7 @@ void lauf_backend_dump(lauf_writer* writer, lauf_backend_dump_options options,
 
     for (auto function = mod->functions; function != nullptr; function = function->next)
     {
-        dump_function(writer, options, function);
+        dump_function(writer, options, mod, function);
         writer->write("\n");
     }
 }

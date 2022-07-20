@@ -286,6 +286,16 @@ void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* globa
     b->cur->vstack.push();
 }
 
+void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* function)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(function_addr, function->sig.input_count,
+                                                     function->sig.output_count,
+                                                     function->function_idx));
+    b->cur->vstack.push();
+}
+
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
 {
     LAUF_BUILD_ASSERT_CUR;
@@ -335,20 +345,33 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     auto mid24 = std::uint32_t((addr >> 24) & 0xFF'FFFF);
     auto low24 = std::uint32_t((addr >> 0) & 0xFF'FFFF);
 
-    auto vstack_change = callee.input_count - callee.output_count;
-
     if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0)
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin_no_process, vstack_change,
-                                                         top16));
-    else if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PANIC) != 0)
         b->cur->insts.push_back(*b,
-                                LAUF_BUILD_INST_CALL(call_builtin_no_panic, vstack_change, top16));
+                                LAUF_BUILD_INST_CALL(call_builtin_no_process, callee.input_count,
+                                                     callee.output_count, top16));
+    else if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PANIC) != 0)
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin_no_panic, callee.input_count,
+                                                         callee.output_count, top16));
     else
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin, vstack_change, top16));
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin, callee.input_count,
+                                                         callee.output_count, top16));
 
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(data, mid24));
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(data, low24));
 
     b->cur->vstack.push(callee.output_count);
+}
+
+void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values for call");
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing function address");
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_indirect, sig.input_count,
+                                                     sig.output_count, 0));
+
+    b->cur->vstack.push(sig.output_count);
 }
 

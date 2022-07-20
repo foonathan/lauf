@@ -19,11 +19,19 @@ typedef struct lauf_runtime_address
     uint64_t offset : 32;
 } lauf_runtime_address;
 
+typedef struct lauf_runtime_function_address
+{
+    uint16_t index;
+    uint8_t  input_count;
+    uint8_t  output_count;
+} lauf_runtime_function_address;
+
 typedef union lauf_runtime_value
 {
-    lauf_uint            as_uint;
-    lauf_sint            as_sint;
-    lauf_runtime_address as_address;
+    lauf_uint                     as_uint;
+    lauf_sint                     as_sint;
+    lauf_runtime_address          as_address;
+    lauf_runtime_function_address as_function_address;
 } lauf_runtime_value;
 
 LAUF_HEADER_END

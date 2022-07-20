@@ -318,6 +318,11 @@ struct inst_global_addr
     static constexpr auto rule  = LEXY_LIT("global_addr") >> dsl::p<global_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_global_addr);
 };
+struct inst_function_addr
+{
+    static constexpr auto rule  = LEXY_LIT("function_addr") >> dsl::p<function_ref>;
+    static constexpr auto value = inst(&lauf_asm_inst_function_addr);
+};
 
 struct inst_stack_op
 {
@@ -340,6 +345,11 @@ struct inst_call_builtin
     static constexpr auto rule  = dsl::p<builtin_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_call_builtin);
 };
+struct inst_call_indirect
+{
+    static constexpr auto rule  = LEXY_LIT("call_indirect") >> dsl::p<signature>;
+    static constexpr auto value = inst(&lauf_asm_inst_call_indirect);
+};
 
 struct instruction
 {
@@ -348,8 +358,10 @@ struct instruction
 
         auto single = dsl::p<inst_return> | dsl::p<inst_jump>                            //
                       | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic> //
-                      | dsl::p<inst_sint> | dsl::p<inst_uint> | dsl::p<inst_global_addr> //
-                      | dsl::p<inst_stack_op> | dsl::p<inst_call> | dsl::p<inst_call_builtin>;
+                      | dsl::p<inst_sint> | dsl::p<inst_uint>                            //
+                      | dsl::p<inst_global_addr> | dsl::p<inst_function_addr>            //
+                      | dsl::p<inst_stack_op>                                            //
+                      | dsl::p<inst_call_indirect> | dsl::p<inst_call> | dsl::p<inst_call_builtin>;
 
         return nested | dsl::else_ >> single + dsl::semicolon;
     }();
