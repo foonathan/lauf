@@ -7,6 +7,7 @@
 #include <lauf/config.h>
 
 #include <cassert>
+#include <type_traits>
 
 // The ASM instructions are also the bytecode for the VM.
 // As such, there are many specializations and optimizations.
@@ -48,24 +49,23 @@ struct asm_inst_offset
 };
 
 template <typename CurType, typename DestType>
-std::ptrdiff_t compress_pointer_offset(const CurType* cur, const DestType* dest)
+std::ptrdiff_t compress_pointer_offset(CurType* cur, DestType* dest)
 {
-    static_assert(alignof(CurType) >= alignof(void*) && alignof(DestType) >= alignof(void*));
     return reinterpret_cast<void* const*>(dest) - reinterpret_cast<void* const*>(cur);
 }
 
 template <typename DestType, typename CurType>
-const DestType* uncompress_pointer_offset(const CurType* cur, std::ptrdiff_t offset)
+const DestType* uncompress_pointer_offset(CurType* cur, std::ptrdiff_t offset)
 {
-    return reinterpret_cast<const DestType*>(reinterpret_cast<void* const*>(cur) + offset);
+    return (const DestType*)(reinterpret_cast<void* const*>(cur) + offset);
 }
 
-struct asm_inst_call
+struct asm_inst_function_addr
 {
-    asm_op        op : 8;
+    asm_op        op;
     std::uint8_t  input_count : 4;
     std::uint8_t  output_count : 4;
-    std::uint16_t data : 16;
+    std::uint16_t data;
 };
 
 struct asm_inst_value
@@ -97,22 +97,6 @@ union lauf_asm_inst
         return nop.op;
     }
 };
-
-namespace lauf
-{
-constexpr std::uint64_t read_call_builtin_data(const lauf_asm_inst* ip)
-{
-    assert(ip[1].op() == asm_op::data);
-    assert(ip[2].op() == asm_op::data);
-
-    std::uint64_t result = ip->call_builtin.data;
-    result <<= 16;
-    result |= ip[1].data.value;
-    result <<= 24;
-    result |= ip[2].data.value;
-    return result;
-}
-} // namespace lauf
 
 #endif // SRC_LAUF_ASM_INSTRUCTION_HPP_INCLUDED
 

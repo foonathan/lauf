@@ -483,35 +483,9 @@ TEST_CASE("lauf_asm_inst_call_builtin")
     auto normal = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         lauf_asm_inst_call_builtin(b, lauf_lib_test_assert);
     });
-    REQUIRE(normal.size() == 3);
+    REQUIRE(normal.size() == 1);
     CHECK(normal[0].op() == lauf::asm_op::call_builtin);
-    CHECK(normal[0].call_builtin.input_count == 1);
-    CHECK(normal[0].call_builtin.output_count == 0);
-    CHECK(normal[1].op() == lauf::asm_op::data);
-    CHECK(normal[2].op() == lauf::asm_op::data);
-    // cannot check data values
-
-    auto no_panic = build({1, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        lauf_asm_inst_call_builtin(b, lauf_lib_debug_print);
-    });
-    REQUIRE(no_panic.size() == 3);
-    CHECK(no_panic[0].op() == lauf::asm_op::call_builtin_no_panic);
-    CHECK(no_panic[0].call_builtin_no_panic.input_count == 1);
-    CHECK(no_panic[0].call_builtin_no_panic.output_count == 1);
-    CHECK(no_panic[1].op() == lauf::asm_op::data);
-    CHECK(no_panic[2].op() == lauf::asm_op::data);
-    // cannot check data values
-
-    auto no_process = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        lauf_asm_inst_call_builtin(b, lauf_lib_debug_break);
-    });
-    REQUIRE(no_process.size() == 3);
-    CHECK(no_process[0].op() == lauf::asm_op::call_builtin_no_process);
-    CHECK(no_process[0].call_builtin_no_process.input_count == 0);
-    CHECK(no_process[0].call_builtin_no_process.output_count == 0);
-    CHECK(no_process[1].op() == lauf::asm_op::data);
-    CHECK(no_process[2].op() == lauf::asm_op::data);
-    // cannot check data values
+    // cannot check offset
 }
 
 TEST_CASE("lauf_asm_inst_call_indirect")

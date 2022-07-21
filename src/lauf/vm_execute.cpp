@@ -24,12 +24,6 @@ bool do_panic(const lauf_asm_inst* ip, lauf_runtime_stack_frame* frame_ptr,
     bool lauf::execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,             \
                               lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
 
-LAUF_VM_EXECUTE(data)
-{
-    assert(false);
-    LAUF_VM_DISPATCH;
-}
-
 //=== control flow ===//
 LAUF_VM_EXECUTE(nop)
 {
@@ -126,29 +120,12 @@ LAUF_VM_EXECUTE(call)
 
 LAUF_VM_EXECUTE(call_builtin)
 {
-    auto value  = lauf::read_call_builtin_data(ip);
-    auto callee = reinterpret_cast<lauf_runtime_builtin_impl*>(value); // NOLINT
+    auto callee
+        = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl>(&lauf_runtime_builtin_dispatch,
+                                                                     ip->call_builtin.offset);
 
     process->frame_ptr = frame_ptr;
-    [[clang::musttail]] return callee(ip + 3, vstack_ptr, frame_ptr, process);
-}
-
-LAUF_VM_EXECUTE(call_builtin_no_panic)
-{
-    auto value  = lauf::read_call_builtin_data(ip);
-    auto callee = reinterpret_cast<lauf_runtime_builtin_impl*>(value); // NOLINT
-
-    process->frame_ptr = frame_ptr;
-    [[clang::musttail]] return callee(ip + 3, vstack_ptr, frame_ptr, process);
-}
-
-LAUF_VM_EXECUTE(call_builtin_no_process)
-{
-    auto value  = lauf::read_call_builtin_data(ip);
-    auto callee = reinterpret_cast<lauf_runtime_builtin_impl*>(value); // NOLINT
-
-    process->frame_ptr = frame_ptr;
-    [[clang::musttail]] return callee(ip + 3, vstack_ptr, frame_ptr, process);
+    [[clang::musttail]] return callee(ip + 1, vstack_ptr, frame_ptr, process);
 }
 
 LAUF_VM_EXECUTE(call_indirect)

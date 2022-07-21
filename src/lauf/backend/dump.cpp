@@ -80,9 +80,6 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         writer->format("  <%04zx>: ", ip - fn->insts);
         switch (ip->op())
         {
-        case lauf::asm_op::data:
-            assert(false);
-            break;
         case lauf::asm_op::nop:
             writer->write("nop");
             break;
@@ -113,16 +110,13 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("call @'%s'", callee->name);
             break;
         }
-        case lauf::asm_op::call_builtin:
-        case lauf::asm_op::call_builtin_no_panic:
-        case lauf::asm_op::call_builtin_no_process: {
-            auto data   = lauf::read_call_builtin_data(ip);
-            auto callee = reinterpret_cast<lauf_runtime_builtin_impl*>(data); // NOLINT
+        case lauf::asm_op::call_builtin: {
+            auto callee = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl> //
+                (&lauf_runtime_builtin_dispatch, ip->call_builtin.offset);
             if (auto name = find_builtin_name(opts, callee); !name.empty())
                 writer->format("$'%s'", name.c_str());
             else
                 writer->format("$'%p'", reinterpret_cast<void*>(callee));
-            ip += 2;
             break;
         }
         case lauf::asm_op::call_indirect: {

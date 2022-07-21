@@ -380,24 +380,8 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee.input_count), "missing input values for call");
 
-    auto addr  = reinterpret_cast<std::uint64_t>(callee.impl);
-    auto top16 = std::uint16_t((addr >> 48) & 0xFFFF);
-    auto mid24 = std::uint32_t((addr >> 24) & 0xFF'FFFF);
-    auto low24 = std::uint32_t((addr >> 0) & 0xFF'FFFF);
-
-    if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0)
-        b->cur->insts.push_back(*b,
-                                LAUF_BUILD_INST_CALL(call_builtin_no_process, callee.input_count,
-                                                     callee.output_count, top16));
-    else if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PANIC) != 0)
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin_no_panic, callee.input_count,
-                                                         callee.output_count, top16));
-    else
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_builtin, callee.input_count,
-                                                         callee.output_count, top16));
-
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(data, mid24));
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(data, low24));
+    auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
 
     b->cur->vstack.push(callee.output_count);
 }
