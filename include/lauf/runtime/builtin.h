@@ -33,16 +33,15 @@ bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* 
                                    lauf_runtime_process*     process);
 
 /// The signature of the implementation of a builtin.
-typedef bool lauf_runtime_builtin_function_impl(const lauf_asm_inst*      ip,
-                                                lauf_runtime_value*       vstack_ptr,
-                                                lauf_runtime_stack_frame* frame_ptr,
-                                                lauf_runtime_process*     process);
+typedef bool lauf_runtime_builtin_impl(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                       lauf_runtime_stack_frame* frame_ptr,
+                                       lauf_runtime_process*     process);
 
 /// A builtin function.
-typedef struct lauf_runtime_builtin_function
+typedef struct lauf_runtime_builtin
 {
     /// The actual implementation.
-    lauf_runtime_builtin_function_impl* impl;
+    lauf_runtime_builtin_impl* impl;
     /// The signature.
     uint8_t input_count;
     uint8_t output_count;
@@ -51,14 +50,14 @@ typedef struct lauf_runtime_builtin_function
     /// The name, used for debugging and some frontends/backends.
     const char* name;
     /// A next pointer so a linked list of all builtins in a builtin library can be formed.
-    const lauf_runtime_builtin_function* next;
-} lauf_runtime_builtin_function;
+    const lauf_runtime_builtin* next;
+} lauf_runtime_builtin;
 
 #define LAUF_RUNTIME_BUILTIN(ConstantName, InputCount, OutputCount, Flags, Name, Next, ...)        \
     static bool ConstantName##_impl(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,       \
                                     lauf_runtime_stack_frame* frame_ptr,                           \
                                     lauf_runtime_process*     process);                                \
-    const lauf_runtime_builtin_function ConstantName                                               \
+    const lauf_runtime_builtin ConstantName                                                        \
         = {&ConstantName##_impl, InputCount, OutputCount, Flags, Name, Next};                      \
     static bool ConstantName##_impl(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,       \
                                     lauf_runtime_stack_frame* frame_ptr,                           \
@@ -73,7 +72,7 @@ typedef struct lauf_runtime_builtin_library
     /// A prefix that will be added to all functions in the library (separated by `.`).
     const char* prefix;
     /// The first builtin function of the library.
-    const lauf_runtime_builtin_function* functions;
+    const lauf_runtime_builtin* functions;
 } lauf_runtime_builtin_library;
 
 LAUF_HEADER_END

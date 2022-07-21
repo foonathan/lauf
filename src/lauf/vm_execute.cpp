@@ -127,7 +127,7 @@ LAUF_VM_EXECUTE(call)
 LAUF_VM_EXECUTE(call_builtin)
 {
     auto value  = lauf::read_call_builtin_data(ip);
-    auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(value); // NOLINT
+    auto callee = reinterpret_cast<lauf_runtime_builtin_impl*>(value); // NOLINT
 
     process->frame_ptr = frame_ptr;
     [[clang::musttail]] return callee(ip + 3, vstack_ptr, frame_ptr, process);
@@ -136,7 +136,7 @@ LAUF_VM_EXECUTE(call_builtin)
 LAUF_VM_EXECUTE(call_builtin_no_panic)
 {
     auto value  = lauf::read_call_builtin_data(ip);
-    auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(value); // NOLINT
+    auto callee = reinterpret_cast<lauf_runtime_builtin_impl*>(value); // NOLINT
 
     process->frame_ptr = frame_ptr;
     [[clang::musttail]] return callee(ip + 3, vstack_ptr, frame_ptr, process);
@@ -145,7 +145,7 @@ LAUF_VM_EXECUTE(call_builtin_no_panic)
 LAUF_VM_EXECUTE(call_builtin_no_process)
 {
     auto value  = lauf::read_call_builtin_data(ip);
-    auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(value); // NOLINT
+    auto callee = reinterpret_cast<lauf_runtime_builtin_impl*>(value); // NOLINT
 
     process->frame_ptr = frame_ptr;
     [[clang::musttail]] return callee(ip + 3, vstack_ptr, frame_ptr, process);

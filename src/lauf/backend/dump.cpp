@@ -43,8 +43,7 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
     writer->write(";\n");
 }
 
-std::string find_builtin_name(lauf_backend_dump_options          opts,
-                              lauf_runtime_builtin_function_impl impl)
+std::string find_builtin_name(lauf_backend_dump_options opts, lauf_runtime_builtin_impl impl)
 {
     for (auto i = 0u; i != opts.builtin_libs_count; ++i)
         for (auto builtin = opts.builtin_libs[i].functions; builtin != nullptr;
@@ -118,7 +117,7 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::call_builtin_no_panic:
         case lauf::asm_op::call_builtin_no_process: {
             auto data   = lauf::read_call_builtin_data(ip);
-            auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(data); // NOLINT
+            auto callee = reinterpret_cast<lauf_runtime_builtin_impl*>(data); // NOLINT
             if (auto name = find_builtin_name(opts, callee); !name.empty())
                 writer->format("$'%s'", name.c_str());
             else

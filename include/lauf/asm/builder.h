@@ -8,11 +8,11 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_asm_module               lauf_asm_module;
-typedef struct lauf_asm_global               lauf_asm_global;
-typedef struct lauf_asm_function             lauf_asm_function;
-typedef struct lauf_asm_signature            lauf_asm_signature;
-typedef struct lauf_runtime_builtin_function lauf_runtime_builtin_function;
+typedef struct lauf_asm_module      lauf_asm_module;
+typedef struct lauf_asm_global      lauf_asm_global;
+typedef struct lauf_asm_function    lauf_asm_function;
+typedef struct lauf_asm_signature   lauf_asm_signature;
+typedef struct lauf_runtime_builtin lauf_runtime_builtin_function;
 
 //=== builder ===//
 /// Build options.

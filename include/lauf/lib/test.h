@@ -8,8 +8,8 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_runtime_builtin_function lauf_runtime_builtin_function;
-typedef struct lauf_runtime_builtin_library  lauf_runtime_builtin_library;
+typedef struct lauf_runtime_builtin         lauf_runtime_builtin_function;
+typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 
 /// A collection of functions especially designed for writing tests for lauf in lauf.
 extern const lauf_runtime_builtin_library lauf_lib_test;
