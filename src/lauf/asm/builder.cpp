@@ -194,10 +194,20 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
     LAUF_BUILD_ASSERT(
         b->cur->sig.output_count == if_false->sig.input_count,
         "branch target's input count not compatible with current block's output count");
-    b->cur->terminator = lauf_asm_block::branch2;
-    b->cur->next[0]    = if_true;
-    b->cur->next[1]    = if_false;
-    b->cur             = nullptr;
+
+    if (if_true == if_false)
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        b->cur->terminator = lauf_asm_block::jump;
+        b->cur->next[0]    = if_true;
+    }
+    else
+    {
+        b->cur->terminator = lauf_asm_block::branch2;
+        b->cur->next[0]    = if_true;
+        b->cur->next[1]    = if_false;
+    }
+    b->cur = nullptr;
 }
 
 void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
@@ -218,11 +228,21 @@ void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
     LAUF_BUILD_ASSERT(
         b->cur->sig.output_count == if_false->sig.input_count,
         "branch target's input count not compatible with current block's output count");
-    b->cur->terminator = lauf_asm_block::branch3;
-    b->cur->next[0]    = if_lt;
-    b->cur->next[1]    = if_eq;
-    b->cur->next[2]    = if_false;
-    b->cur             = nullptr;
+
+    if (if_lt == if_eq && if_lt == if_false)
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        b->cur->terminator = lauf_asm_block::jump;
+        b->cur->next[0]    = if_lt;
+    }
+    else
+    {
+        b->cur->terminator = lauf_asm_block::branch3;
+        b->cur->next[0]    = if_lt;
+        b->cur->next[1]    = if_eq;
+        b->cur->next[2]    = if_false;
+    }
+    b->cur = nullptr;
 }
 
 void lauf_asm_inst_panic(lauf_asm_builder* b)

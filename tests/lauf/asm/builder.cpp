@@ -161,8 +161,8 @@ TEST_CASE("lauf_asm_inst_branch2")
         lauf_asm_build_block(b, block);
     });
     REQUIRE(same.size() >= 2);
-    CHECK(same[0].op() == lauf::asm_op::branch_false);
-    CHECK(same[0].branch_false.offset == 2);
+    CHECK(same[0].op() == lauf::asm_op::pop_top);
+    CHECK(same[0].pop_top.idx == 0);
     CHECK(same[1].op() == lauf::asm_op::nop);
 }
 
@@ -234,12 +234,10 @@ TEST_CASE("lauf_asm_inst_branch3")
 
         lauf_asm_build_block(b, block);
     });
-    REQUIRE(all_same.size() >= 3);
-    CHECK(all_same[0].op() == lauf::asm_op::branch_eq);
-    CHECK(all_same[0].branch_eq.offset == 3);
-    CHECK(all_same[1].op() == lauf::asm_op::branch_gt);
-    CHECK(all_same[1].branch_gt.offset == 2);
-    CHECK(all_same[2].op() == lauf::asm_op::nop);
+    REQUIRE(all_same.size() >= 2);
+    CHECK(all_same[0].op() == lauf::asm_op::pop_top);
+    CHECK(all_same[0].pop_top.idx == 0);
+    CHECK(all_same[1].op() == lauf::asm_op::nop);
 }
 
 TEST_CASE("lauf_asm_inst_panic")
