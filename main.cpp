@@ -15,18 +15,37 @@
 #include <lauf/vm.h>
 #include <lauf/writer.h>
 
-const lauf_runtime_builtin_function builtin_print
+const lauf_runtime_builtin_function builtin_add
     = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
-           std::printf("print: %lu\n", input->as_uint);
-           output[0] = input[0];
+           output[0].as_sint = input[1].as_sint + input[0].as_sint;
            return true;
        },
-       1,
+       2,
        1,
        LAUF_RUNTIME_BUILTIN_NO_PROCESS,
-       "print",
+       "add",
        nullptr};
-const lauf_runtime_builtin_library my_lib = {"my", &builtin_print};
+const lauf_runtime_builtin_function builtin_sub
+    = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
+           output[0].as_sint = input[1].as_sint - input[0].as_sint;
+           return true;
+       },
+       2,
+       1,
+       LAUF_RUNTIME_BUILTIN_NO_PROCESS,
+       "sub",
+       &builtin_add};
+const lauf_runtime_builtin_function builtin_mul
+    = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
+           output[0].as_sint = input[1].as_sint * input[0].as_sint;
+           return true;
+       },
+       2,
+       1,
+       LAUF_RUNTIME_BUILTIN_NO_PROCESS,
+       "mul",
+       &builtin_sub};
+const lauf_runtime_builtin_library my_lib = {"my", &builtin_mul};
 
 const lauf_runtime_builtin_library builtins[]         = {lauf_lib_debug, my_lib};
 constexpr size_t                   builtin_libs_count = 2;
@@ -36,14 +55,39 @@ lauf_asm_module* example_module()
     auto reader = lauf_create_cstring_reader(R"(
         module @test;
 
-        function @main() {
-            block %entry() {
-                uint 42;
-                branch3 %exit() %exit() %exit();
+        function @fac(1 => 1) {
+            block %entry(1 => 1) {
+                pick 0;
+                branch2 %recurse(1 => 1) %simple(1 => 1);
             }
-            block %exit() { return; }
+            block %simple(1 => 1) {
+                pop 0;
+                sint 1;
+                return;
+            }
+            block %recurse(1 => 1) {
+                pick 0;
+                sint 1; $my.sub; call @fac;
+                $my.mul;
+                return;
+            }
         }
 
+        function @fib(1 => 1) {
+            block %entry(1 => 1) {
+                pick 0; sint 2; $my.sub;
+                branch3 %base(1 => 1) %recurse(1 => 1) %recurse(1 => 1);
+            }
+            block %base(1 => 1) {
+                return;
+            }
+            block %recurse(1 => 1) {
+                pick 0; sint 1; $my.sub; call @fib;
+                roll 1; sint 2; $my.sub; call @fib;
+                $my.add;
+                return;
+            }
+        }
     )");
 
     auto opts               = lauf_frontend_default_text_options;
@@ -87,8 +131,8 @@ int main()
     auto mod = example_module();
     dump_module(mod);
 
-    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "main"));
-    execute(program, lauf_uint(11));
+    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib"));
+    execute(program, lauf_uint(35));
 
     lauf_asm_destroy_module(mod);
 }

@@ -69,7 +69,10 @@ LAUF_VM_EXECUTE(branch_eq)
     auto condition = vstack_ptr[0].as_sint;
 
     if (condition == 0)
+    {
         ip += ip->branch_eq.offset;
+        ++vstack_ptr;
+    }
     else
         ++ip;
 
@@ -100,6 +103,7 @@ LAUF_VM_EXECUTE(panic)
 LAUF_VM_EXECUTE(exit)
 {
     (void)ip;
+    (void)frame_ptr;
     (void)vstack_ptr;
     (void)process;
 
@@ -158,7 +162,7 @@ LAUF_VM_EXECUTE(call_builtin_no_panic)
     auto output         = vstack_ptr + ip->call_builtin.input_count - ip->call_builtin.output_count;
     process->vstack_ptr = output;
 
-    auto no_panic = callee(process, input, output);
+    [[maybe_unused]] auto no_panic = callee(process, input, output);
     assert(no_panic == true);
 
     vstack_ptr = output;
@@ -174,7 +178,7 @@ LAUF_VM_EXECUTE(call_builtin_no_process)
     auto input  = vstack_ptr;
     auto output = vstack_ptr + ip->call_builtin.input_count - ip->call_builtin.output_count;
 
-    auto no_panic = callee(nullptr, input, output);
+    [[maybe_unused]] auto no_panic = callee(nullptr, input, output);
     assert(no_panic == true);
 
     vstack_ptr = output;
