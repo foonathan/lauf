@@ -70,10 +70,12 @@ LAUF_ASM_INST(function_addr, asm_inst_call)
 //=== stack manipulation ===//
 // lauf_asm_inst_pop()
 LAUF_ASM_INST(pop, asm_inst_stack_idx)
+LAUF_ASM_INST(pop_top, asm_inst_stack_idx)
 
 // lauf_asm_inst_pick()
 LAUF_ASM_INST(pick, asm_inst_stack_idx)
 
 // lauf_asm_inst_roll()
 LAUF_ASM_INST(roll, asm_inst_stack_idx)
+LAUF_ASM_INST(swap, asm_inst_stack_idx)
 

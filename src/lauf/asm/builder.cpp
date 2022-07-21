@@ -310,7 +310,12 @@ void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
     LAUF_BUILD_ASSERT_CUR;
 
     LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop, stack_index));
+
+    if (stack_index == 0)
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, stack_index));
+    else
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop, stack_index));
+
     b->cur->vstack.pop();
 }
 
@@ -328,7 +333,13 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
     LAUF_BUILD_ASSERT_CUR;
 
     LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
+
+    if (stack_index == 0)
+        /* nothing needs to be done */;
+    else if (stack_index == 1)
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(swap, stack_index));
+    else
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
 }
 
 void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)

@@ -428,11 +428,17 @@ TEST_CASE("lauf_asm_inst_function_addr")
 
 TEST_CASE("lauf_asm_inst_pop")
 {
+    auto pop0
+        = build({3, 2}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_pop(b, 0); });
+    REQUIRE(pop0.size() == 1);
+    CHECK(pop0[0].op() == lauf::asm_op::pop_top);
+    CHECK(pop0[0].pop.idx == 0);
+
     auto pop2
         = build({3, 2}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_pop(b, 2); });
     REQUIRE(pop2.size() == 1);
-    REQUIRE(pop2[0].op() == lauf::asm_op::pop);
-    REQUIRE(pop2[0].pop.idx == 2);
+    CHECK(pop2[0].op() == lauf::asm_op::pop);
+    CHECK(pop2[0].pop.idx == 2);
 }
 
 TEST_CASE("lauf_asm_inst_pick")
@@ -440,17 +446,27 @@ TEST_CASE("lauf_asm_inst_pick")
     auto pick2
         = build({3, 4}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_pick(b, 2); });
     REQUIRE(pick2.size() == 1);
-    REQUIRE(pick2[0].op() == lauf::asm_op::pick);
-    REQUIRE(pick2[0].pick.idx == 2);
+    CHECK(pick2[0].op() == lauf::asm_op::pick);
+    CHECK(pick2[0].pick.idx == 2);
 }
 
 TEST_CASE("lauf_asm_inst_roll")
 {
+    auto roll0
+        = build({3, 3}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_roll(b, 0); });
+    REQUIRE(roll0.empty());
+
+    auto roll1
+        = build({3, 3}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_roll(b, 1); });
+    REQUIRE(roll1.size() == 1);
+    CHECK(roll1[0].op() == lauf::asm_op::swap);
+    CHECK(roll1[0].roll.idx == 1);
+
     auto roll2
         = build({3, 3}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_roll(b, 2); });
     REQUIRE(roll2.size() == 1);
-    REQUIRE(roll2[0].op() == lauf::asm_op::roll);
-    REQUIRE(roll2[0].roll.idx == 2);
+    CHECK(roll2[0].op() == lauf::asm_op::roll);
+    CHECK(roll2[0].roll.idx == 2);
 }
 
 TEST_CASE("lauf_asm_inst_call")

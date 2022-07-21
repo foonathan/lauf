@@ -153,12 +153,14 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         }
 
         case lauf::asm_op::pop:
+        case lauf::asm_op::pop_top:
             writer->format("pop %d", ip->pop.idx);
             break;
         case lauf::asm_op::pick:
             writer->format("pick %d", ip->pick.idx);
             break;
         case lauf::asm_op::roll:
+        case lauf::asm_op::swap:
             writer->format("roll %d", ip->roll.idx);
             break;
         }

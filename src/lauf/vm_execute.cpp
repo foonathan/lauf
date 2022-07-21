@@ -270,6 +270,15 @@ LAUF_VM_EXECUTE(pop)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(pop_top)
+{
+    assert(ip->pop_top.idx == 0);
+    ++vstack_ptr;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
 LAUF_VM_EXECUTE(pick)
 {
     auto value = vstack_ptr[ip->pick.idx];
@@ -288,6 +297,17 @@ LAUF_VM_EXECUTE(roll)
     std::memmove(vstack_ptr + 1, vstack_ptr, ip->pop.idx * sizeof(lauf_runtime_value));
     // Replace the now duplicate top value.
     vstack_ptr[0] = value;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(swap)
+{
+    assert(ip->swap.idx == 1);
+    auto tmp      = vstack_ptr[0];
+    vstack_ptr[0] = vstack_ptr[1];
+    vstack_ptr[1] = tmp;
 
     ++ip;
     LAUF_VM_DISPATCH;
