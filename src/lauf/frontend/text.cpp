@@ -313,6 +313,11 @@ struct inst_uint
     static constexpr auto rule  = LEXY_LIT("uint") >> dsl::integer<lauf_uint>;
     static constexpr auto value = inst(&lauf_asm_inst_uint);
 };
+struct inst_null
+{
+    static constexpr auto rule  = LEXY_LIT("null");
+    static constexpr auto value = inst(&lauf_asm_inst_null);
+};
 struct inst_global_addr
 {
     static constexpr auto rule  = LEXY_LIT("global_addr") >> dsl::p<global_ref>;
@@ -356,11 +361,11 @@ struct instruction
     static constexpr auto rule = [] {
         auto nested = dsl::square_bracketed.list(dsl::recurse<instruction>);
 
-        auto single = dsl::p<inst_return> | dsl::p<inst_jump>                            //
-                      | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic> //
-                      | dsl::p<inst_sint> | dsl::p<inst_uint>                            //
-                      | dsl::p<inst_global_addr> | dsl::p<inst_function_addr>            //
-                      | dsl::p<inst_stack_op>                                            //
+        auto single = dsl::p<inst_return> | dsl::p<inst_jump>                                     //
+                      | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic>          //
+                      | dsl::p<inst_sint> | dsl::p<inst_uint>                                     //
+                      | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_function_addr> //
+                      | dsl::p<inst_stack_op>                                                     //
                       | dsl::p<inst_call_indirect> | dsl::p<inst_call> | dsl::p<inst_call_builtin>;
 
         return nested | dsl::else_ >> single + dsl::semicolon;

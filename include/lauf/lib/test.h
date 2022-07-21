@@ -32,6 +32,14 @@ extern const lauf_runtime_builtin_function lauf_lib_test_assert;
 /// Signature: a b => _
 extern const lauf_runtime_builtin_function lauf_lib_test_assert_eq;
 
+/// Asserts that a function does panic with the specified message.
+///
+/// It expects a function address on the vstack with signature 0 => 0, calls it,
+/// and panics if it does not panic with the specified message.
+///
+/// Signature: fn msg => _
+extern const lauf_runtime_builtin_function lauf_lib_test_assert_panic;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_TEST_H_INCLUDED

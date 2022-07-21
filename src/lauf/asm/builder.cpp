@@ -278,6 +278,15 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
     b->cur->vstack.push();
 }
 
+void lauf_asm_inst_null(lauf_asm_builder* b)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    // NULL has all bits set.
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(pushn, 0));
+    b->cur->vstack.push();
+}
+
 void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* global)
 {
     LAUF_BUILD_ASSERT_CUR;

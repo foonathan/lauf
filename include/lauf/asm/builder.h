@@ -102,6 +102,13 @@ void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value);
 /// Signature: _ => value:uint
 void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value);
 
+/// Pushes the null address onto the stack.
+///
+/// It works for both regular and function addresses.
+///
+/// Signature: _ => null
+void lauf_asm_inst_null(lauf_asm_builder* b);
+
 /// Pushes the address of a global variable onto the stack.
 ///
 /// Signature: _ => global:address

@@ -9,11 +9,12 @@
 
 namespace
 {
-bool do_panic(const lauf::asm_inst* ip, lauf::stack_frame* frame_ptr, lauf_runtime_process* process,
-              const char* msg)
+bool do_panic(const lauf::asm_inst* ip, lauf_runtime_value* vstack_ptr,
+              lauf::stack_frame* frame_ptr, lauf_runtime_process* process, const char* msg)
 {
     lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
-    process->frame_ptr = &dummy_frame;
+    process->frame_ptr  = &dummy_frame;
+    process->vstack_ptr = vstack_ptr;
 
     process->vm->panic_handler(process, msg);
     return false;
@@ -93,7 +94,7 @@ LAUF_VM_EXECUTE(panic)
     auto msg = lauf_runtime_get_cstr(process, vstack_ptr[0].as_address);
     ++vstack_ptr;
 
-    return do_panic(ip, frame_ptr, process, msg);
+    return do_panic(ip, vstack_ptr, frame_ptr, process, msg);
 }
 
 LAUF_VM_EXECUTE(exit)
@@ -130,8 +131,10 @@ LAUF_VM_EXECUTE(call_builtin)
     lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
     process->frame_ptr = &dummy_frame;
 
-    auto input    = vstack_ptr;
-    auto output   = vstack_ptr + ip->call_builtin.input_count - ip->call_builtin.output_count;
+    auto input          = vstack_ptr;
+    auto output         = vstack_ptr + ip->call_builtin.input_count - ip->call_builtin.output_count;
+    process->vstack_ptr = output;
+
     auto no_panic = callee(process, input, output);
     if (!no_panic)
         return false;
@@ -151,8 +154,10 @@ LAUF_VM_EXECUTE(call_builtin_no_panic)
     lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
     process->frame_ptr = &dummy_frame;
 
-    auto input    = vstack_ptr;
-    auto output   = vstack_ptr + ip->call_builtin.input_count - ip->call_builtin.output_count;
+    auto input          = vstack_ptr;
+    auto output         = vstack_ptr + ip->call_builtin.input_count - ip->call_builtin.output_count;
+    process->vstack_ptr = output;
+
     auto no_panic = callee(process, input, output);
     assert(no_panic == true);
 
@@ -166,8 +171,9 @@ LAUF_VM_EXECUTE(call_builtin_no_process)
     auto value  = lauf::read_call_builtin_data(ip);
     auto callee = reinterpret_cast<lauf_runtime_builtin_function_impl*>(value); // NOLINT
 
-    auto input    = vstack_ptr;
-    auto output   = vstack_ptr + ip->call_builtin.input_count - ip->call_builtin.output_count;
+    auto input  = vstack_ptr;
+    auto output = vstack_ptr + ip->call_builtin.input_count - ip->call_builtin.output_count;
+
     auto no_panic = callee(nullptr, input, output);
     assert(no_panic == true);
 
@@ -185,7 +191,7 @@ LAUF_VM_EXECUTE(call_indirect)
                                                 {ip->call_indirect.input_count,
                                                  ip->call_indirect.output_count});
     if (callee == nullptr)
-        return do_panic(ip, frame_ptr, process, "invalid function address");
+        return do_panic(ip, vstack_ptr, frame_ptr, process, "invalid function address");
 
     // Create a new stack frame.
     frame_ptr = ::new (frame_ptr + 1) lauf::stack_frame{callee, ip + 1, frame_ptr};

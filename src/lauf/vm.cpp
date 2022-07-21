@@ -31,17 +31,17 @@ void lauf_destroy_vm(lauf_vm* vm)
 
 namespace
 {
-lauf::allocation allocate_global(lauf_vm* vm, lauf_asm_global global)
+lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm_global global)
 {
     lauf::allocation result;
 
     if (global.memory != nullptr)
     {
-        result.ptr = vm->memdup(global.memory, global.size);
+        result.ptr = arena->memdup(global.memory, global.size);
     }
     else
     {
-        result.ptr = vm->allocate(global.size, alignof(void*));
+        result.ptr = arena->allocate(global.size, alignof(void*));
         std::memset(result.ptr, 0, global.size);
     }
 
@@ -56,33 +56,38 @@ lauf::allocation allocate_global(lauf_vm* vm, lauf_asm_global global)
 
     return result;
 }
-} // namespace
 
-bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
-                     lauf_runtime_value* output)
+void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program,
+                   lauf_runtime_process* parent_process = nullptr)
 {
-    auto fn  = lauf_asm_entry_function(program);
+    process->vm      = vm;
+    process->program = program;
+
+    if (parent_process == nullptr)
+    {
+        process->allocations.resize_uninitialized(*vm, program->mod->globals_count);
+        for (auto global = program->mod->globals; global != nullptr; global = global->next)
+            process->allocations[global->allocation_idx] = allocate_global(vm, *global);
+    }
+    else
+    {
+        process->allocations.clear();
+        for (auto alloc : parent_process->allocations)
+            process->allocations.push_back(*vm, alloc);
+    }
+}
+
+bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, void* cstack_base,
+               const lauf_asm_function* fn, const lauf_runtime_value* input,
+               lauf_runtime_value* output)
+{
     auto sig = lauf_asm_function_signature(fn);
 
-    // Setup a new process.
-    assert(vm->process.vm == nullptr);
-    vm->clear();
-    vm->process.vm      = vm;
-    vm->process.program = program;
-
-    vm->process.allocations.clear();
-    for (auto global = program->mod->globals; global != nullptr; global = global->next)
-    {
-        assert(vm->process.allocations.size() == global->allocation_idx);
-        vm->process.allocations.push_back(*vm, allocate_global(vm, *global));
-    }
-
     // Create the initial stack frame.
-    auto frame_ptr = ::new (vm->cstack_base) lauf::stack_frame{fn, nullptr, nullptr};
+    auto frame_ptr = ::new (cstack_base) lauf::stack_frame{fn, nullptr, nullptr};
     assert(frame_ptr->is_trampoline_frame());
 
     // Push input values onto the value stack.
-    auto vstack_ptr = vm->vstack_base;
     for (auto i = 0u; i != sig.input_count; ++i)
     {
         --vstack_ptr;
@@ -92,20 +97,16 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     // Create the trampoline.
     lauf::asm_inst trampoline[2];
     trampoline[0].call.op = lauf::asm_op::call;
-    trampoline[0].call.offset
-        = 0; // The current function of the stack frame is the one we want to call.
-    trampoline[1].exit.op = lauf::asm_op::exit;
+    // The current function of the stack frame is the one we want to call.
+    trampoline[0].call.offset = 0;
+    trampoline[1].exit.op     = lauf::asm_op::exit;
 
     // Execute the trampoline.
-    if (!lauf::execute(trampoline, vstack_ptr, frame_ptr, &vm->process))
-    {
-        // It paniced.
-        vm->process.vm = nullptr;
+    if (!lauf::execute(trampoline, vstack_ptr, frame_ptr, process))
         return false;
-    }
 
     // Pop output values from the value stack.
-    vstack_ptr = vm->vstack_base - sig.output_count;
+    vstack_ptr = process->vm->vstack_base - sig.output_count;
     for (auto i = 0u; i != sig.output_count; ++i)
     {
         output[sig.output_count - i - 1] = vstack_ptr[0];
@@ -113,6 +114,26 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     }
 
     return true;
+}
+} // namespace
+
+bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
+                       const lauf_runtime_value* input, lauf_runtime_value* output)
+{
+    lauf_runtime_process sub_process;
+    start_process(&sub_process, process->vm, process->program, process);
+    return root_call(&sub_process, process->vstack_ptr, process->frame_ptr->prev + 1, fn, input,
+                     output);
+}
+
+bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
+                     lauf_runtime_value* output)
+{
+    auto fn = lauf_asm_entry_function(program);
+
+    lauf_runtime_process process;
+    start_process(&process, vm, program);
+    return root_call(&process, vm->vstack_base, vm->cstack_base, fn, input, output);
 }
 
 bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program* program,

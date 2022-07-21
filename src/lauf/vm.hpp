@@ -15,9 +15,6 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 {
     lauf_vm_panic_handler panic_handler;
 
-    // If process.vm == nullptr, no current process.
-    lauf_runtime_process process;
-
     // Grows up.
     unsigned char* cstack_base;
     std::size_t    cstack_size;

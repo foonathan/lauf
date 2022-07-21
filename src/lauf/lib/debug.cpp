@@ -21,9 +21,13 @@ void debug_print(lauf_runtime_process* process, lauf_runtime_value value)
 
     if (auto ptr = lauf_runtime_get_const_ptr(process, value.as_address, {0, 1}))
         std::fprintf(stderr, ", address = %p", ptr);
+    else if (value.as_uint == lauf_uint(-1))
+        std::fprintf(stderr, ", address = NULL");
 
     if (auto fn = lauf_runtime_get_function_ptr_any(process, value.as_function_address))
         std::fprintf(stderr, ", function = @'%s'", lauf_asm_function_name(fn));
+    else if (value.as_uint == lauf_uint(-1))
+        std::fprintf(stderr, ", function = NULL");
 
     std::fprintf(stderr, ")");
 }

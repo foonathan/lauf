@@ -1,0 +1,29 @@
+module @panic;
+
+global const @error = "error", 0;
+global const @missing_null = "error";
+
+function @panic() {
+    global_addr @error;
+    panic;
+}
+
+function @invalid_addr() {
+    uint 42;
+    panic;
+}
+
+function @not_null_terminated() {
+    global_addr @missing_null;
+    panic;
+}
+
+function @main() {
+    function_addr @panic; global_addr @error; $lauf.test.assert_panic;
+
+    function_addr @invalid_addr; null; $lauf.test.assert_panic;
+    function_addr @not_null_terminated; null; $lauf.test.assert_panic;
+
+    return;
+}
+

@@ -96,12 +96,14 @@ struct lauf_runtime_process
     // The VM that is executing the process.
     lauf_vm* vm = nullptr;
     // The program that is running.
-    lauf_asm_program* program = nullptr;
+    const lauf_asm_program* program = nullptr;
 
     // The current frame pointer -- this is only lazily updated.
     // Whenever the process is exposed, it needs to point to a dummy stack frame
     // whoese return_ip is the current ip and prev points to the actual stack frame.
     lauf::stack_frame* frame_ptr = nullptr;
+    // The current vstack pointer -- this is also only lazily updated.
+    lauf_runtime_value* vstack_ptr = nullptr;
 
     // The allocations of the process.
     lauf::array<lauf::allocation> allocations;

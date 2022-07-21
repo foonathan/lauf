@@ -20,14 +20,23 @@ typedef union lauf_runtime_value             lauf_runtime_value;
 /// Represents a currently running lauf program.
 typedef struct lauf_runtime_process lauf_runtime_process;
 
+//=== queries ===//
 /// The program that is running.
-lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p);
+const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p);
 
 /// Returns the base of the vstack (highest address as it grows down).
-lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p);
+const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p);
 
 /// Returns the current stacktrace of the process.
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p);
+
+//=== actions ===//
+/// Calls the given function.
+///
+/// It behaves like `lauf_vm_execute()` but re-uses the existing VM of the process.
+/// The function must be part of the program.
+bool lauf_runtime_call(lauf_runtime_process* p, const lauf_asm_function* fn,
+                       const lauf_runtime_value* input, lauf_runtime_value* output);
 
 /// Triggers a panic.
 ///
