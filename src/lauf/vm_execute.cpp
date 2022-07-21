@@ -9,8 +9,8 @@
 
 namespace
 {
-bool do_panic(const lauf::asm_inst* ip, lauf_runtime_value* vstack_ptr,
-              lauf::stack_frame* frame_ptr, lauf_runtime_process* process, const char* msg)
+bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr, lauf::stack_frame* frame_ptr,
+              lauf_runtime_process* process, const char* msg)
 {
     lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
     process->frame_ptr  = &dummy_frame;
@@ -22,7 +22,7 @@ bool do_panic(const lauf::asm_inst* ip, lauf_runtime_value* vstack_ptr,
 } // namespace
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
-    bool lauf::execute_##Name(const asm_inst* ip, lauf_runtime_value* vstack_ptr,                  \
+    bool lauf::execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,             \
                               stack_frame* frame_ptr, lauf_runtime_process* process)
 
 LAUF_VM_EXECUTE(data)

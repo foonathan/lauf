@@ -19,7 +19,7 @@ const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrac
     return reinterpret_cast<lauf::stack_frame*>(bt)->prev->function;
 }
 
-const void* lauf_runtime_stacktrace_address(lauf_runtime_stacktrace* bt)
+const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace* bt)
 {
     // The return ip is at the current level, it points inside the previous function.
     // (Since it's the return ip, we subtract one to get the call ip).

@@ -69,8 +69,9 @@ const lauf_runtime_builtin_function lauf_lib_debug_print_cstack
            for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
                 st      = lauf_runtime_stacktrace_parent(st))
            {
-               auto fn   = lauf_runtime_stacktrace_function(st);
-               auto addr = lauf_asm_get_instruction_index(fn, lauf_runtime_stacktrace_address(st));
+               auto fn = lauf_runtime_stacktrace_function(st);
+               auto addr
+                   = lauf_asm_get_instruction_index(fn, lauf_runtime_stacktrace_instruction(st));
 
                std::fprintf(stderr, " %4d. %s\n", index, lauf_asm_function_name(fn));
                std::fprintf(stderr, "       at <%04lx>\n", addr);

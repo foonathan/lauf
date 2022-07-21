@@ -9,6 +9,7 @@
 LAUF_HEADER_START
 
 typedef struct lauf_asm_function lauf_asm_function;
+typedef union lauf_asm_inst      lauf_asm_inst;
 
 /// A stacktrace that is built when a panic occurs.
 ///
@@ -21,7 +22,7 @@ typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
 const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt);
 
 /// Returns the address of the instruction of the current stacktrace entry.
-const void* lauf_runtime_stacktrace_address(lauf_runtime_stacktrace* bt);
+const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace* bt);
 
 /// Returns the parent call of the current stacktrace entry, or NULL if no parent exists.
 lauf_runtime_stacktrace* lauf_runtime_stacktrace_parent(lauf_runtime_stacktrace* bt);

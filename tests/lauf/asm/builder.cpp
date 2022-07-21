@@ -16,7 +16,7 @@
 namespace
 {
 template <typename BuilderFn>
-std::vector<lauf::asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
+std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 {
     auto mod = lauf_asm_create_module("test");
     auto fn  = lauf_asm_add_function(mod, "test", {0, 0});
@@ -52,7 +52,7 @@ std::vector<lauf::asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
     // MESSAGE(lauf_writer_get_string(str));
     lauf_destroy_writer(str);
 
-    std::vector<lauf::asm_inst> result;
+    std::vector<lauf_asm_inst> result;
     for (auto i = sig.input_count; i != fn->insts_count - 1 - sig.output_count; ++i)
         result.push_back(fn->insts[i]);
 

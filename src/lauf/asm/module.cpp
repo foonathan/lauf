@@ -59,9 +59,8 @@ lauf_asm_signature lauf_asm_function_signature(const lauf_asm_function* fn)
     return fn->sig;
 }
 
-size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const void* addr)
+size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const lauf_asm_inst* ip)
 {
-    auto ip = static_cast<const lauf::asm_inst*>(addr);
     assert(ip >= fn->insts && ip < fn->insts + fn->insts_count);
     return size_t(ip - fn->insts);
 }

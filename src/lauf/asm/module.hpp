@@ -66,9 +66,9 @@ struct lauf_asm_function
     const char*        name;
     lauf_asm_signature sig;
 
-    lauf::asm_inst* insts       = nullptr;
-    std::uint16_t   insts_count = 0;
-    std::uint16_t   function_idx;
+    lauf_asm_inst* insts       = nullptr;
+    std::uint16_t  insts_count = 0;
+    std::uint16_t  function_idx;
 
     explicit lauf_asm_function(lauf_asm_module* mod, const char* name, lauf_asm_signature sig)
     : next(mod->functions), name(mod->strdup(name)), sig(sig),

@@ -23,6 +23,11 @@ typedef struct lauf_asm_global lauf_asm_global;
 /// It may or may not have a body associated with it.
 typedef struct lauf_asm_function lauf_asm_function;
 
+/// An instruction within a function.
+///
+/// The exact type is not exposed.
+typedef union lauf_asm_inst lauf_asm_inst;
+
 /// The signature of a function.
 typedef struct lauf_asm_signature
 {
@@ -67,7 +72,7 @@ lauf_asm_signature lauf_asm_function_signature(const lauf_asm_function* fn);
 ///
 /// This can be used to translate e.g. the result of `lauf_runtime_stacktrace_address()` into a
 /// persistent value.
-size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const void* addr);
+size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const lauf_asm_inst* ip);
 
 LAUF_HEADER_END
 

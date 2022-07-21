@@ -85,7 +85,7 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
     }
 
     // Create the trampoline.
-    lauf::asm_inst trampoline[2];
+    lauf_asm_inst trampoline[2];
     trampoline[0].call.op = lauf::asm_op::call;
     // The current function of the stack frame is the one we want to call.
     trampoline[0].call.offset = 0;

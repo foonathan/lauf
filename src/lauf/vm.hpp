@@ -47,11 +47,11 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 //=== execute ===//
 namespace lauf
 {
-using dispatch_fn = bool (*)(const asm_inst* ip, lauf_runtime_value* vstack_ptr,
+using dispatch_fn = bool (*)(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
                              stack_frame* frame_ptr, lauf_runtime_process* process);
 
 #define LAUF_ASM_INST(Name, Type)                                                                  \
-    bool execute_##Name(const asm_inst* ip, lauf_runtime_value* vstack_ptr,                        \
+    bool execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,                   \
                         stack_frame* frame_ptr, lauf_runtime_process* process);
 #include <lauf/asm/instruction.def.hpp>
 #undef LAUF_ASM_INST
@@ -65,7 +65,7 @@ constexpr dispatch_fn dispatch[] = {
 #define LAUF_VM_DISPATCH                                                                           \
     [[clang::musttail]] return dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr, process)
 
-inline bool execute(const asm_inst* ip, lauf_runtime_value* vstack_ptr, stack_frame* frame_ptr,
+inline bool execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr, stack_frame* frame_ptr,
                     lauf_runtime_process* process)
 {
     LAUF_VM_DISPATCH;

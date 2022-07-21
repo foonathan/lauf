@@ -61,8 +61,8 @@ struct lauf_asm_block
     lauf_asm_signature        sig;
     lauf::vstack_size_checker vstack;
 
-    std::ptrdiff_t                   offset;
-    lauf::array_list<lauf::asm_inst> insts;
+    std::ptrdiff_t                  offset;
+    lauf::array_list<lauf_asm_inst> insts;
 
     enum
     {
@@ -127,14 +127,14 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 //=== instruction building ===//
 #define LAUF_BUILD_INST_NONE(Name)                                                                 \
     [&] {                                                                                          \
-        lauf::asm_inst result;                                                                     \
+        lauf_asm_inst result;                                                                      \
         result.Name = {lauf::asm_op::Name};                                                        \
         return result;                                                                             \
     }()
 
 #define LAUF_BUILD_INST_OFFSET(Name, Offset)                                                       \
     [&](const char* context, std::ptrdiff_t offset) {                                              \
-        lauf::asm_inst result;                                                                     \
+        lauf_asm_inst result;                                                                      \
         result.Name = {lauf::asm_op::Name, std::int32_t(offset)};                                  \
         if (result.Name.offset != offset)                                                          \
             b->error(context, "offset too big");                                                   \
@@ -143,14 +143,14 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
 #define LAUF_BUILD_INST_STACK_IDX(Name, Idx)                                                       \
     [&] {                                                                                          \
-        lauf::asm_inst result;                                                                     \
+        lauf_asm_inst result;                                                                      \
         result.Name = {lauf::asm_op::Name, Idx};                                                   \
         return result;                                                                             \
     }()
 
 #define LAUF_BUILD_INST_CALL(Name, InputCount, OutputCount, Data)                                  \
     [&](const char* context) {                                                                     \
-        lauf::asm_inst result;                                                                     \
+        lauf_asm_inst result;                                                                      \
         result.Name = {lauf::asm_op::Name, InputCount, OutputCount, Data};                         \
         if (result.Name.input_count != (InputCount))                                               \
             b->error(context, "input count too big");                                              \
@@ -161,7 +161,7 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
 #define LAUF_BUILD_INST_VALUE(Name, Value)                                                         \
     [&] {                                                                                          \
-        lauf::asm_inst result;                                                                     \
+        lauf_asm_inst result;                                                                      \
         result.Name = {lauf::asm_op::Name, Value};                                                 \
         return result;                                                                             \
     }()

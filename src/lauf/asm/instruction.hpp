@@ -79,25 +79,28 @@ struct asm_inst_stack_idx
     asm_op        op;
     std::uint16_t idx;
 };
+} // namespace lauf
 
-union asm_inst
+union lauf_asm_inst
 {
-#define LAUF_ASM_INST(Name, Type) Type Name;
+#define LAUF_ASM_INST(Name, Type) lauf::Type Name;
 #include "instruction.def.hpp"
 #undef LAUF_ASM_INST
 
-    constexpr asm_inst() : nop{asm_op::nop}
+    constexpr lauf_asm_inst() : nop{lauf::asm_op::nop}
     {
-        static_assert(sizeof(asm_inst) == sizeof(std::uint32_t));
+        static_assert(sizeof(lauf_asm_inst) == sizeof(std::uint32_t));
     }
 
-    constexpr asm_op op() const
+    constexpr lauf::asm_op op() const
     {
         return nop.op;
     }
 };
 
-constexpr std::uint64_t read_call_builtin_data(const asm_inst* ip)
+namespace lauf
+{
+constexpr std::uint64_t read_call_builtin_data(const lauf_asm_inst* ip)
 {
     assert(ip[1].op() == asm_op::data);
     assert(ip[2].op() == asm_op::data);

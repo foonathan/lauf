@@ -9,20 +9,19 @@
 #include <lauf/support/array.hpp>
 
 typedef struct lauf_asm_function lauf_asm_function;
+typedef union lauf_asm_inst      lauf_asm_inst;
 typedef struct lauf_asm_global   lauf_asm_global;
 typedef struct lauf_vm           lauf_vm;
 
 //=== stack frame ===//
 namespace lauf
 {
-union asm_inst;
-
 struct stack_frame
 {
     // The current function.
     const lauf_asm_function* function;
     // The return address to jump to when the call finishes.
-    const asm_inst* return_ip;
+    const lauf_asm_inst* return_ip;
     // The previous stack frame.
     stack_frame* prev;
 

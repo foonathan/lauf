@@ -76,7 +76,7 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
         return result;
     }();
 
-    auto insts = b->mod->allocate<lauf::asm_inst>(insts_count);
+    auto insts = b->mod->allocate<lauf_asm_inst>(insts_count);
 
     auto ip = insts;
     for (auto& block : b->blocks)
