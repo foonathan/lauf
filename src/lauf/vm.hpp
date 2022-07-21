@@ -63,7 +63,8 @@ constexpr dispatch_fn dispatch[] = {
 };
 
 #define LAUF_VM_DISPATCH                                                                           \
-    [[clang::musttail]] return dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr, process)
+    [[clang::musttail]] return lauf::dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr,    \
+                                                                     process)
 
 inline bool execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
                     lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)

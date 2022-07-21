@@ -33,71 +33,62 @@ void debug_print(lauf_runtime_process* process, lauf_runtime_value value)
 }
 } // namespace
 
-const lauf_runtime_builtin_function lauf_lib_debug_print
-    = {[](lauf_runtime_process* process, const lauf_runtime_value* input, lauf_runtime_value*) {
-           std::fprintf(stderr, "[lauf] debug print: ");
-           debug_print(process, input[0]);
-           std::fprintf(stderr, "\n");
-           return true;
-       },
-       //
-       1, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "print", nullptr};
+LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print,                //
+                     1, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, //
+                     "print", nullptr,                    //
+                     {
+                         std::fprintf(stderr, "[lauf] debug print: ");
+                         debug_print(process, input[0]);
+                         std::fprintf(stderr, "\n");
+                     })
 
-const lauf_runtime_builtin_function lauf_lib_debug_print_vstack
-    = {[](lauf_runtime_process* process, const lauf_runtime_value* input, lauf_runtime_value*) {
-           std::fprintf(stderr, "[lauf] value stack:\n");
+LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_vstack,                                        //
+                     0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC | LAUF_RUNTIME_BUILTIN_VM_ONLY, //
+                     "print_vstack", &lauf_lib_debug_print,                              //
+                     {
+                         std::fprintf(stderr, "[lauf] value stack:\n");
 
-           auto index = 0;
-           for (auto cur = input; cur != lauf_runtime_get_vstack_base(process); ++cur)
-           {
-               std::fprintf(stderr, " %4d. ", index);
-               debug_print(process, *cur);
-               std::fprintf(stderr, "\n");
-               ++index;
-           }
+                         auto index = 0;
+                         for (auto cur = input; cur != lauf_runtime_get_vstack_base(process); ++cur)
+                         {
+                             std::fprintf(stderr, " %4d. ", index);
+                             debug_print(process, *cur);
+                             std::fprintf(stderr, "\n");
+                             ++index;
+                         }
+                     })
 
-           return true;
-       },
-       //
-       0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC | LAUF_RUNTIME_BUILTIN_VM_ONLY, "print_vstack",
-       &lauf_lib_debug_print};
+LAUF_RUNTIME_BUILTIN(
+    lauf_lib_debug_print_cstack,                  //
+    0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC,          //
+    "print_cstack", &lauf_lib_debug_print_vstack, //
+    {
+        std::fprintf(stderr, "[lauf] call stack\n");
+        auto index = 0;
+        for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
+             st      = lauf_runtime_stacktrace_parent(st))
+        {
+            auto fn   = lauf_runtime_stacktrace_function(st);
+            auto addr = lauf_asm_get_instruction_index(fn, lauf_runtime_stacktrace_instruction(st));
 
-const lauf_runtime_builtin_function lauf_lib_debug_print_cstack
-    = {[](lauf_runtime_process* process, const lauf_runtime_value*, lauf_runtime_value*) {
-           std::fprintf(stderr, "[lauf] call stack\n");
-           auto index = 0;
-           for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
-                st      = lauf_runtime_stacktrace_parent(st))
-           {
-               auto fn = lauf_runtime_stacktrace_function(st);
-               auto addr
-                   = lauf_asm_get_instruction_index(fn, lauf_runtime_stacktrace_instruction(st));
+            std::fprintf(stderr, " %4d. %s\n", index, lauf_asm_function_name(fn));
+            std::fprintf(stderr, "       at <%04lx>\n", addr);
+            ++index;
+        }
+    })
 
-               std::fprintf(stderr, " %4d. %s\n", index, lauf_asm_function_name(fn));
-               std::fprintf(stderr, "       at <%04lx>\n", addr);
-               ++index;
-           }
-           return true;
-       },
-       //
-       0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC, "print_cstack", &lauf_lib_debug_print_vstack};
+LAUF_RUNTIME_BUILTIN(lauf_lib_debug_break,                  //
+                     0, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS, //
+                     "break", &lauf_lib_debug_print_cstack, //
+                     { __builtin_debugtrap(); })
 
-const lauf_runtime_builtin_function lauf_lib_debug_break
-    = {[](lauf_runtime_process*, const lauf_runtime_value*, lauf_runtime_value*) {
-           __builtin_debugtrap();
-           return true;
-       },
-       //
-       0, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "break", &lauf_lib_debug_print_cstack};
-
-const lauf_runtime_builtin_function lauf_lib_debug_read
-    = {[](lauf_runtime_process*, const lauf_runtime_value*, lauf_runtime_value* output) {
-           std::printf("[lauf] debug read: 0x");
-           std::scanf("%" SCNx64, &output[0].as_uint);
-           return true;
-       },
-       //
-       0, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "read", &lauf_lib_debug_break};
+LAUF_RUNTIME_BUILTIN(lauf_lib_debug_read,                   //
+                     0, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, //
+                     "read", &lauf_lib_debug_break,         //
+                     {
+                         std::printf("[lauf] debug read: 0x");
+                         std::scanf("%" SCNx64, &output[0].as_uint);
+                     })
 
 const lauf_runtime_builtin_library lauf_lib_debug = {"lauf.debug", &lauf_lib_debug_read};
 

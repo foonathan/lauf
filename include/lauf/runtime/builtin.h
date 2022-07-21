@@ -8,8 +8,10 @@
 
 LAUF_HEADER_START
 
-typedef union lauf_runtime_value    lauf_runtime_value;
-typedef struct lauf_runtime_process lauf_runtime_process;
+typedef union lauf_asm_inst             lauf_asm_inst;
+typedef union lauf_runtime_value        lauf_runtime_value;
+typedef struct lauf_runtime_process     lauf_runtime_process;
+typedef struct lauf_runtime_stack_frame lauf_runtime_stack_frame;
 
 typedef enum lauf_runtime_builtin_flags
 {
@@ -25,20 +27,16 @@ typedef enum lauf_runtime_builtin_flags
     LAUF_RUNTIME_BUILTIN_VM_ONLY = 1 << 2,
 } lauf_runtime_builtin_flags;
 
+/// Must be tail-called when a buitlin finishes succesfully.
+bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                   lauf_runtime_stack_frame* frame_ptr,
+                                   lauf_runtime_process*     process);
+
 /// The signature of the implementation of a builtin.
-///
-/// `input` will point to the first argument in the vstack, which is the one that was pushed first:
-/// `input[input_count - 1]` is the left most argument, `input[0]` the rightmost argument.
-///
-/// `output` will point to the location where the first output value should be pushed to:
-/// `output[output_count - 1]` is the first return value, `output[0]` the last one which will be on
-/// top of the stack.
-///
-/// `input` and `output` can (and do) alias, so you need to read all inputs before writing any
-/// outputs.
-typedef bool lauf_runtime_builtin_function_impl(lauf_runtime_process*     process,
-                                                const lauf_runtime_value* input,
-                                                lauf_runtime_value*       output);
+typedef bool lauf_runtime_builtin_function_impl(const lauf_asm_inst*      ip,
+                                                lauf_runtime_value*       vstack_ptr,
+                                                lauf_runtime_stack_frame* frame_ptr,
+                                                lauf_runtime_process*     process);
 
 /// A builtin function.
 typedef struct lauf_runtime_builtin_function
@@ -55,6 +53,22 @@ typedef struct lauf_runtime_builtin_function
     /// A next pointer so a linked list of all builtins in a builtin library can be formed.
     const lauf_runtime_builtin_function* next;
 } lauf_runtime_builtin_function;
+
+#define LAUF_RUNTIME_BUILTIN(ConstantName, InputCount, OutputCount, Flags, Name, Next, ...)        \
+    static bool ConstantName##_impl(const lauf_asm_inst* _ip, lauf_runtime_value* _vstack_ptr,     \
+                                    lauf_runtime_stack_frame* _frame_ptr,                          \
+                                    lauf_runtime_process*     process)                             \
+    {                                                                                              \
+        lauf_runtime_value* input  = _vstack_ptr;                                                  \
+        lauf_runtime_value* output = _vstack_ptr + (InputCount) - (OutputCount);                   \
+        (void)input;                                                                               \
+        (void)output;                                                                              \
+        __VA_ARGS__                                                                                \
+        __attribute__((musttail)) return lauf_runtime_builtin_dispatch(_ip, output, _frame_ptr,    \
+                                                                       process);                   \
+    }                                                                                              \
+    const lauf_runtime_builtin_function ConstantName                                               \
+        = {&ConstantName##_impl, InputCount, OutputCount, Flags, Name, Next};
 
 /// A builtin library.
 typedef struct lauf_runtime_builtin_library

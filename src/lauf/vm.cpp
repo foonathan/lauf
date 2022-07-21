@@ -16,7 +16,7 @@ const lauf_vm_options lauf_default_vm_options
     = {512 * 1024ull, 16 * 1024ull, [](lauf_runtime_process* process, const char* msg) {
            std::fprintf(stderr, "[lauf] panic: %s\n",
                         msg == nullptr ? "(invalid message pointer)" : msg);
-           lauf_lib_debug_print_cstack.impl(process, nullptr, nullptr);
+           lauf_lib_debug_print_cstack.impl(nullptr, nullptr, process->frame_ptr, process);
        }};
 
 lauf_vm* lauf_create_vm(lauf_vm_options options)
@@ -68,21 +68,11 @@ void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_pr
 }
 
 bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, void* cstack_base,
-               const lauf_asm_function* fn, const lauf_runtime_value* input,
-               lauf_runtime_value* output)
+               const lauf_asm_function* fn)
 {
-    auto sig = lauf_asm_function_signature(fn);
-
     // Create the initial stack frame.
     auto frame_ptr = ::new (cstack_base) lauf_runtime_stack_frame{fn, nullptr, nullptr};
     assert(frame_ptr->is_trampoline_frame());
-
-    // Push input values onto the value stack.
-    for (auto i = 0u; i != sig.input_count; ++i)
-    {
-        --vstack_ptr;
-        vstack_ptr[0] = input[i];
-    }
 
     // Create the trampoline.
     lauf_asm_inst trampoline[2];
@@ -92,11 +82,49 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
     trampoline[1].exit.op     = lauf::asm_op::exit;
 
     // Execute the trampoline.
-    if (!lauf::execute(trampoline, vstack_ptr, frame_ptr, process))
+    return lauf::execute(trampoline, vstack_ptr, frame_ptr, process);
+}
+} // namespace
+
+bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                   lauf_runtime_stack_frame* frame_ptr,
+                                   lauf_runtime_process*     process)
+{
+    LAUF_VM_DISPATCH;
+}
+
+bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
+                       lauf_runtime_value* vstack_ptr)
+{
+    auto frame_ptr     = process->frame_ptr;
+    auto result        = root_call(process, vstack_ptr, frame_ptr + 1, fn);
+    process->frame_ptr = frame_ptr;
+    return result;
+}
+
+bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
+                     lauf_runtime_value* output)
+{
+    auto fn  = lauf_asm_entry_function(program);
+    auto sig = lauf_asm_function_signature(fn);
+
+    lauf_runtime_process process;
+    start_process(&process, vm, program);
+
+    // Push input values onto the value stack.
+    auto vstack_ptr = vm->vstack_base;
+    for (auto i = 0u; i != sig.input_count; ++i)
+    {
+        --vstack_ptr;
+        vstack_ptr[0] = input[i];
+    }
+
+    auto success = root_call(&process, vstack_ptr, vm->cstack_base, fn);
+    if (!success)
         return false;
 
     // Pop output values from the value stack.
-    vstack_ptr = process->vm->vstack_base - sig.output_count;
+    vstack_ptr = vm->vstack_base - sig.output_count;
     for (auto i = 0u; i != sig.output_count; ++i)
     {
         output[sig.output_count - i - 1] = vstack_ptr[0];
@@ -104,28 +132,6 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
     }
 
     return true;
-}
-} // namespace
-
-bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
-                       const lauf_runtime_value* input, lauf_runtime_value* output)
-{
-    auto frame_ptr      = process->frame_ptr;
-    auto vstack_ptr     = process->vstack_ptr;
-    auto result         = root_call(process, vstack_ptr, frame_ptr->prev + 1, fn, input, output);
-    process->frame_ptr  = frame_ptr;
-    process->vstack_ptr = vstack_ptr;
-    return result;
-}
-
-bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
-                     lauf_runtime_value* output)
-{
-    auto fn = lauf_asm_entry_function(program);
-
-    lauf_runtime_process process;
-    start_process(&process, vm, program);
-    return root_call(&process, vm->vstack_base, vm->cstack_base, fn, input, output);
 }
 
 bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program* program,

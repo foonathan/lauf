@@ -15,36 +15,12 @@
 #include <lauf/vm.h>
 #include <lauf/writer.h>
 
-const lauf_runtime_builtin_function builtin_add
-    = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
-           output[0].as_sint = input[1].as_sint + input[0].as_sint;
-           return true;
-       },
-       2,
-       1,
-       LAUF_RUNTIME_BUILTIN_NO_PROCESS,
-       "add",
-       nullptr};
-const lauf_runtime_builtin_function builtin_sub
-    = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
-           output[0].as_sint = input[1].as_sint - input[0].as_sint;
-           return true;
-       },
-       2,
-       1,
-       LAUF_RUNTIME_BUILTIN_NO_PROCESS,
-       "sub",
-       &builtin_add};
-const lauf_runtime_builtin_function builtin_mul
-    = {[](lauf_runtime_process*, const lauf_runtime_value* input, lauf_runtime_value* output) {
-           output[0].as_sint = input[1].as_sint * input[0].as_sint;
-           return true;
-       },
-       2,
-       1,
-       LAUF_RUNTIME_BUILTIN_NO_PROCESS,
-       "mul",
-       &builtin_sub};
+LAUF_RUNTIME_BUILTIN(builtin_add, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "add", nullptr,
+                     { output[0].as_sint = input[1].as_sint + input[0].as_sint; })
+LAUF_RUNTIME_BUILTIN(builtin_sub, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "sub", &builtin_add,
+                     { output[0].as_sint = input[1].as_sint - input[0].as_sint; })
+LAUF_RUNTIME_BUILTIN(builtin_mul, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "mul", &builtin_sub,
+                     { output[0].as_sint = input[1].as_sint * input[0].as_sint; })
 const lauf_runtime_builtin_library my_lib = {"my", &builtin_mul};
 
 const lauf_runtime_builtin_library builtins[]         = {lauf_lib_debug, my_lib};
