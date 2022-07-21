@@ -57,24 +57,14 @@ lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm
     return result;
 }
 
-void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program,
-                   lauf_runtime_process* parent_process = nullptr)
+void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program)
 {
     process->vm      = vm;
     process->program = program;
 
-    if (parent_process == nullptr)
-    {
-        process->allocations.resize_uninitialized(*vm, program->mod->globals_count);
-        for (auto global = program->mod->globals; global != nullptr; global = global->next)
-            process->allocations[global->allocation_idx] = allocate_global(vm, *global);
-    }
-    else
-    {
-        process->allocations.clear();
-        for (auto alloc : parent_process->allocations)
-            process->allocations.push_back(*vm, alloc);
-    }
+    process->allocations.resize_uninitialized(*vm, program->mod->globals_count);
+    for (auto global = program->mod->globals; global != nullptr; global = global->next)
+        process->allocations[global->allocation_idx] = allocate_global(vm, *global);
 }
 
 bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, void* cstack_base,
@@ -120,10 +110,12 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        const lauf_runtime_value* input, lauf_runtime_value* output)
 {
-    lauf_runtime_process sub_process;
-    start_process(&sub_process, process->vm, process->program, process);
-    return root_call(&sub_process, process->vstack_ptr, process->frame_ptr->prev + 1, fn, input,
-                     output);
+    auto frame_ptr      = process->frame_ptr;
+    auto vstack_ptr     = process->vstack_ptr;
+    auto result         = root_call(process, vstack_ptr, frame_ptr->prev + 1, fn, input, output);
+    process->frame_ptr  = frame_ptr;
+    process->vstack_ptr = vstack_ptr;
+    return result;
 }
 
 bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
