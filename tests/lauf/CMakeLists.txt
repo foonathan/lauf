@@ -5,6 +5,8 @@ set(tests
         reader.cpp
         writer.cpp
 
+        asm/builder.cpp
+
         support/arena.cpp
         support/array.cpp
         support/array_list.cpp)

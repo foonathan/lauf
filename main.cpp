@@ -36,25 +36,12 @@ lauf_asm_module* example_module()
     auto reader = lauf_create_cstring_reader(R"(
         module @test;
 
-        global const @msg = "hello", 0;
-
-        function @identity(1 => 1) {
-            block %entry(1 => 1) {
-                $lauf.debug.print_vstack;
-                $lauf.debug.print_cstack;
-                $my.print;
-                return;
+        function @main() {
+            block %entry() {
+                uint 42;
+                branch3 %exit() %exit() %exit();
             }
-        }
-
-        function @main(1 => 1) {
-            block %entry(1 => 1) {
-                function_addr @identity;
-                pick 0;
-                call_ptr (1 => 1);
-                pop 0;
-                return;
-            }
+            block %exit() { return; }
         }
 
     )");
