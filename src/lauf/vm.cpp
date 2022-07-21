@@ -74,7 +74,7 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
     auto sig = lauf_asm_function_signature(fn);
 
     // Create the initial stack frame.
-    auto frame_ptr = ::new (cstack_base) lauf::stack_frame{fn, nullptr, nullptr};
+    auto frame_ptr = ::new (cstack_base) lauf_runtime_stack_frame{fn, nullptr, nullptr};
     assert(frame_ptr->is_trampoline_frame());
 
     // Push input values onto the value stack.

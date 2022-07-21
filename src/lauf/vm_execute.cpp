@@ -9,10 +9,10 @@
 
 namespace
 {
-bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr, lauf::stack_frame* frame_ptr,
-              lauf_runtime_process* process, const char* msg)
+bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+              lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process, const char* msg)
 {
-    lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
+    lauf_runtime_stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
     process->frame_ptr  = &dummy_frame;
     process->vstack_ptr = vstack_ptr;
 
@@ -23,7 +23,7 @@ bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr, lauf::sta
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
     bool lauf::execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,             \
-                              stack_frame* frame_ptr, lauf_runtime_process* process)
+                              lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
 
 LAUF_VM_EXECUTE(data)
 {
@@ -118,7 +118,7 @@ LAUF_VM_EXECUTE(call)
         = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
 
     // Create a new stack frame.
-    frame_ptr = ::new (frame_ptr + 1) lauf::stack_frame{callee, ip + 1, frame_ptr};
+    frame_ptr = ::new (frame_ptr + 1) lauf_runtime_stack_frame{callee, ip + 1, frame_ptr};
 
     // And start executing the function.
     ip = callee->insts;
@@ -132,7 +132,7 @@ LAUF_VM_EXECUTE(call_builtin)
 
     // We need to +1 as the stacktrace blindly does -1;
     // it has nothing to do with the data instructions we're skipping.
-    lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
+    lauf_runtime_stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
     process->frame_ptr = &dummy_frame;
 
     auto input          = vstack_ptr;
@@ -155,7 +155,7 @@ LAUF_VM_EXECUTE(call_builtin_no_panic)
 
     // We need to +1 as the stacktrace blindly does -1;
     // it has nothing to do with the data instructions we're skipping.
-    lauf::stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
+    lauf_runtime_stack_frame dummy_frame{nullptr, ip + 1, frame_ptr};
     process->frame_ptr = &dummy_frame;
 
     auto input          = vstack_ptr;
@@ -198,7 +198,7 @@ LAUF_VM_EXECUTE(call_indirect)
         return do_panic(ip, vstack_ptr, frame_ptr, process, "invalid function address");
 
     // Create a new stack frame.
-    frame_ptr = ::new (frame_ptr + 1) lauf::stack_frame{callee, ip + 1, frame_ptr};
+    frame_ptr = ::new (frame_ptr + 1) lauf_runtime_stack_frame{callee, ip + 1, frame_ptr};
 
     // And start executing the function.
     ip = callee->insts;

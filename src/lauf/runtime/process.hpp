@@ -14,16 +14,14 @@ typedef struct lauf_asm_global   lauf_asm_global;
 typedef struct lauf_vm           lauf_vm;
 
 //=== stack frame ===//
-namespace lauf
-{
-struct stack_frame
+struct lauf_runtime_stack_frame
 {
     // The current function.
     const lauf_asm_function* function;
     // The return address to jump to when the call finishes.
     const lauf_asm_inst* return_ip;
     // The previous stack frame.
-    stack_frame* prev;
+    lauf_runtime_stack_frame* prev;
 
     bool is_trampoline_frame() const
     {
@@ -35,7 +33,6 @@ struct stack_frame
         return prev->is_trampoline_frame();
     }
 };
-} // namespace lauf
 
 //=== allocation ===//
 namespace lauf
@@ -100,7 +97,7 @@ struct lauf_runtime_process
     // The current frame pointer -- this is only lazily updated.
     // Whenever the process is exposed, it needs to point to a dummy stack frame
     // whoese return_ip is the current ip and prev points to the actual stack frame.
-    lauf::stack_frame* frame_ptr = nullptr;
+    lauf_runtime_stack_frame* frame_ptr = nullptr;
     // The current vstack pointer -- this is also only lazily updated.
     lauf_runtime_value* vstack_ptr = nullptr;
 

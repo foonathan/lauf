@@ -20,6 +20,9 @@ typedef union lauf_runtime_value             lauf_runtime_value;
 /// Represents a currently running lauf program.
 typedef struct lauf_runtime_process lauf_runtime_process;
 
+/// A stack frame of the process.
+typedef struct lauf_runtime_stack_frame lauf_runtime_stack_frame;
+
 //=== queries ===//
 /// The program that is running.
 const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p);
