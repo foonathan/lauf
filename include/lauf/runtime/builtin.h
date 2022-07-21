@@ -55,20 +55,17 @@ typedef struct lauf_runtime_builtin_function
 } lauf_runtime_builtin_function;
 
 #define LAUF_RUNTIME_BUILTIN(ConstantName, InputCount, OutputCount, Flags, Name, Next, ...)        \
-    static bool ConstantName##_impl(const lauf_asm_inst* _ip, lauf_runtime_value* _vstack_ptr,     \
-                                    lauf_runtime_stack_frame* _frame_ptr,                          \
-                                    lauf_runtime_process*     process)                             \
-    {                                                                                              \
-        lauf_runtime_value* input  = _vstack_ptr;                                                  \
-        lauf_runtime_value* output = _vstack_ptr + (InputCount) - (OutputCount);                   \
-        (void)input;                                                                               \
-        (void)output;                                                                              \
-        __VA_ARGS__                                                                                \
-        __attribute__((musttail)) return lauf_runtime_builtin_dispatch(_ip, output, _frame_ptr,    \
-                                                                       process);                   \
-    }                                                                                              \
+    static bool ConstantName##_impl(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,       \
+                                    lauf_runtime_stack_frame* frame_ptr,                           \
+                                    lauf_runtime_process*     process);                                \
     const lauf_runtime_builtin_function ConstantName                                               \
-        = {&ConstantName##_impl, InputCount, OutputCount, Flags, Name, Next};
+        = {&ConstantName##_impl, InputCount, OutputCount, Flags, Name, Next};                      \
+    static bool ConstantName##_impl(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,       \
+                                    lauf_runtime_stack_frame* frame_ptr,                           \
+                                    lauf_runtime_process*     process)
+
+#define LAUF_RUNTIME_BUILTIN_DISPATCH                                                              \
+    [[clang::musttail]] return lauf_runtime_builtin_dispatch(ip, vstack_ptr, frame_ptr, process)
 
 /// A builtin library.
 typedef struct lauf_runtime_builtin_library
