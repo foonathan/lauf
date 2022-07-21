@@ -441,6 +441,12 @@ TEST_CASE("lauf_asm_inst_pop")
 
 TEST_CASE("lauf_asm_inst_pick")
 {
+    auto pick0
+        = build({3, 4}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_pick(b, 0); });
+    REQUIRE(pick0.size() == 1);
+    CHECK(pick0[0].op() == lauf::asm_op::dup);
+    CHECK(pick0[0].pick.idx == 0);
+
     auto pick2
         = build({3, 4}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_pick(b, 2); });
     REQUIRE(pick2.size() == 1);

@@ -344,7 +344,12 @@ void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index)
     LAUF_BUILD_ASSERT_CUR;
 
     LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pick, stack_index));
+
+    if (stack_index == 0)
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(dup, stack_index));
+    else
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pick, stack_index));
+
     b->cur->vstack.push();
 }
 

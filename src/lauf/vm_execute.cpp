@@ -235,6 +235,16 @@ LAUF_VM_EXECUTE(pick)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(dup)
+{
+    assert(ip->dup.idx == 0);
+    --vstack_ptr;
+    vstack_ptr[0] = vstack_ptr[1];
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
 LAUF_VM_EXECUTE(roll)
 {
     // Remember the value as we're about to overwrite it.

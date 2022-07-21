@@ -150,6 +150,7 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("pop %d", ip->pop.idx);
             break;
         case lauf::asm_op::pick:
+        case lauf::asm_op::dup:
             writer->format("pick %d", ip->pick.idx);
             break;
         case lauf::asm_op::roll:

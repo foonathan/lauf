@@ -70,6 +70,7 @@ LAUF_ASM_INST(pop_top, asm_inst_stack_idx)
 
 // lauf_asm_inst_pick()
 LAUF_ASM_INST(pick, asm_inst_stack_idx)
+LAUF_ASM_INST(dup, asm_inst_stack_idx)
 
 // lauf_asm_inst_roll()
 LAUF_ASM_INST(roll, asm_inst_stack_idx)
