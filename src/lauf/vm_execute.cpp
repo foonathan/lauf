@@ -7,6 +7,20 @@
 #include <lauf/asm/module.hpp>
 #include <lauf/runtime/builtin.h>
 
+namespace
+{
+bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+              lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
+{
+    auto msg = reinterpret_cast<const char*>(vstack_ptr);
+
+    process->frame_ptr = frame_ptr;
+    return lauf_runtime_panic(process, ip, msg);
+}
+#define LAUF_DO_PANIC(Msg)                                                                         \
+    [[clang::musttail]] return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
+} // namespace
+
 #define LAUF_VM_EXECUTE(Name)                                                                      \
     bool lauf::execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,             \
                               lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
@@ -77,8 +91,7 @@ LAUF_VM_EXECUTE(panic)
     auto msg = lauf_runtime_get_cstr(process, vstack_ptr[0].as_address);
     ++vstack_ptr;
 
-    process->frame_ptr = frame_ptr;
-    return lauf_runtime_panic(process, ip, msg);
+    LAUF_DO_PANIC(msg);
 }
 
 LAUF_VM_EXECUTE(exit)
@@ -110,11 +123,11 @@ LAUF_VM_EXECUTE(call)
 
     // Check that we have enough space left on the vstack.
     if (auto remaining = vstack_ptr - process->vstack_end; remaining < callee->max_vstack_size)
-        return lauf_runtime_panic(process, ip, "vstack overflow");
+        LAUF_DO_PANIC("vstack overflow");
 
     // Check that we have enough space left on the cstack.
     if (reinterpret_cast<unsigned char*>(frame_ptr + 1) >= process->cstack_end)
-        return lauf_runtime_panic(process, ip, "cstack overflow");
+        LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
     frame_ptr = ::new (frame_ptr + 1) lauf_runtime_stack_frame{callee, ip + 1, frame_ptr};
@@ -133,15 +146,15 @@ LAUF_VM_EXECUTE(call_indirect)
                                                 {ip->call_indirect.input_count,
                                                  ip->call_indirect.output_count});
     if (callee == nullptr)
-        return lauf_runtime_panic(process, ip, "invalid function address");
+        LAUF_DO_PANIC("invalid function address");
 
     // Check that we have enough space left on the vstack.
     if (auto remaining = vstack_ptr - process->vstack_end; remaining < callee->max_vstack_size)
-        return lauf_runtime_panic(process, ip, "vstack overflow");
+        LAUF_DO_PANIC("vstack overflow");
 
     // Check that we have enough space left on the cstack.
     if (reinterpret_cast<unsigned char*>(frame_ptr + 1) >= process->cstack_end)
-        return lauf_runtime_panic(process, ip, "cstack overflow");
+        LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
     frame_ptr = ::new (frame_ptr + 1) lauf_runtime_stack_frame{callee, ip + 1, frame_ptr};
