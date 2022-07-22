@@ -19,6 +19,7 @@ bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
 }
 #define LAUF_DO_PANIC(Msg)                                                                         \
     [[clang::musttail]] return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
+
 } // namespace
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
@@ -137,6 +138,23 @@ LAUF_VM_EXECUTE(call)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(tail_call)
+{
+    auto callee
+        = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
+
+    // Check that we have enough space left on the vstack.
+    if (auto remaining = vstack_ptr - process->vstack_end; remaining < callee->max_vstack_size)
+        LAUF_DO_PANIC("vstack overflow");
+
+    // Overwrite the current function, return_ip stays unchanged.
+    frame_ptr->function = callee;
+
+    // And start executing the function.
+    ip = callee->insts;
+    LAUF_VM_DISPATCH;
+}
+
 LAUF_VM_EXECUTE(call_indirect)
 {
     auto ptr = vstack_ptr[0].as_function_address;
@@ -158,6 +176,28 @@ LAUF_VM_EXECUTE(call_indirect)
 
     // Create a new stack frame.
     frame_ptr = ::new (frame_ptr + 1) lauf_runtime_stack_frame{callee, ip + 1, frame_ptr};
+
+    // And start executing the function.
+    ip = callee->insts;
+    LAUF_VM_DISPATCH;
+}
+LAUF_VM_EXECUTE(tail_call_indirect)
+{
+    auto ptr = vstack_ptr[0].as_function_address;
+    ++vstack_ptr;
+
+    auto callee = lauf_runtime_get_function_ptr(process, ptr,
+                                                {ip->call_indirect.input_count,
+                                                 ip->call_indirect.output_count});
+    if (callee == nullptr)
+        LAUF_DO_PANIC("invalid function address");
+
+    // Check that we have enough space left on the vstack.
+    if (auto remaining = vstack_ptr - process->vstack_end; remaining < callee->max_vstack_size)
+        LAUF_DO_PANIC("vstack overflow");
+
+    // Overwrite the current function, return_ip stays unchanged.
+    frame_ptr->function = callee;
 
     // And start executing the function.
     ip = callee->insts;

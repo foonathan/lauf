@@ -110,6 +110,19 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("call @'%s'", callee->name);
             break;
         }
+        case lauf::asm_op::tail_call: {
+            auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(fn, ip->call.offset);
+            writer->format("tail_call @'%s'", callee->name);
+            break;
+        }
+        case lauf::asm_op::call_indirect: {
+            writer->write("call_indirect");
+            break;
+        }
+        case lauf::asm_op::tail_call_indirect: {
+            writer->write("tail_call_indirect");
+            break;
+        }
         case lauf::asm_op::call_builtin: {
             auto callee = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl> //
                 (&lauf_runtime_builtin_dispatch, ip->call_builtin.offset);
@@ -117,10 +130,6 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
                 writer->format("$'%s'", name.c_str());
             else
                 writer->format("$'%p'", reinterpret_cast<void*>(callee));
-            break;
-        }
-        case lauf::asm_op::call_indirect: {
-            writer->write("call_indirect");
             break;
         }
 

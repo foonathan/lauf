@@ -46,6 +46,7 @@ function @vstack_overflow() {
 }
 function @cstack_overflow() {
     call @cstack_overflow;
+    uint 0; pop 0; # We need something to prevent a tail call.
     return;
 }
 

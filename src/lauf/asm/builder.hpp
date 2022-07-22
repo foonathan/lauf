@@ -71,6 +71,7 @@ struct lauf_asm_block
     enum
     {
         unterminated,
+        tail_call,
         return_,
         jump,
         branch2,

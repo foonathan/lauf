@@ -55,6 +55,10 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
                 b->error(context, "unterminated block");
                 break;
 
+            case lauf_asm_block::tail_call:
+                // Don't need terminator, previous instruction is the tail call which terminates.
+                break;
+
             case lauf_asm_block::return_:
             case lauf_asm_block::jump:
             case lauf_asm_block::panic:
@@ -87,6 +91,7 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
         switch (block.terminator)
         {
         case lauf_asm_block::unterminated:
+        case lauf_asm_block::tail_call:
             break;
 
         case lauf_asm_block::return_:
@@ -171,11 +176,25 @@ void lauf_asm_inst_return(lauf_asm_builder* b)
 
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
                       "block's output count does not match vstack size on exit");
-
     LAUF_BUILD_ASSERT(b->cur->sig.output_count == b->fn->sig.output_count,
                       "requested exit block has different output count from function");
-    b->cur->terminator = lauf_asm_block::return_;
-    b->cur             = nullptr;
+
+    if (!b->cur->insts.empty() && b->cur->insts.back().op() == lauf::asm_op::call)
+    {
+        b->cur->insts.back().call.op = lauf::asm_op::tail_call;
+        b->cur->terminator           = lauf_asm_block::tail_call;
+    }
+    else if (!b->cur->insts.empty() && b->cur->insts.back().op() == lauf::asm_op::call_indirect)
+    {
+        b->cur->insts.back().call.op = lauf::asm_op::tail_call_indirect;
+        b->cur->terminator           = lauf_asm_block::tail_call;
+    }
+    else
+    {
+        b->cur->terminator = lauf_asm_block::return_;
+    }
+
+    b->cur = nullptr;
 }
 
 void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest)

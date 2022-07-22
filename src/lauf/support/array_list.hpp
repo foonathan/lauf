@@ -124,6 +124,15 @@ public:
         return out;
     }
 
+    T& back()
+    {
+        return _cur_block->array[_next_idx - 1];
+    }
+    const T& back() const
+    {
+        return _cur_block->array[_next_idx - 1];
+    }
+
     //=== modifiers ===//
     template <typename Arena>
     T& push_back(Arena& arena, const T& obj)

@@ -145,15 +145,15 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
 /// Signature: in_N ... in_0 => out_M ... out_0
 void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee);
 
-/// Calls the specified builtin function.
-///
-/// Signature: in_N ... in_0 => out_M ... out_0
-void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
-
 /// Calls the function specified via its address on the vstack.
 ///
 /// Signature: in_N ... in_0 f => out_M ... out_0
 void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
+
+/// Calls the specified builtin function.
+///
+/// Signature: in_N ... in_0 => out_M ... out_0
+void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
 
 LAUF_HEADER_END
 
