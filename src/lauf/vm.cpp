@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <lauf/asm/module.hpp>
 #include <lauf/asm/program.hpp>
-#include <lauf/lib/debug.h>
+#include <lauf/lib/debug.hpp>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/stacktrace.h>
@@ -16,11 +16,7 @@ const lauf_vm_options lauf_default_vm_options
     = {512 * 1024ull, 16 * 1024ull, [](lauf_runtime_process* process, const char* msg) {
            std::fprintf(stderr, "[lauf] panic: %s\n",
                         msg == nullptr ? "(invalid message pointer)" : msg);
-
-           // TODO: make more convenient.
-           lauf_asm_inst trampoline[2];
-           trampoline[1].exit.op = lauf::asm_op::exit;
-           lauf_lib_debug_print_cstack.impl(trampoline, nullptr, process->frame_ptr, process);
+           lauf::debug_print_cstack(process);
        }};
 
 lauf_vm* lauf_create_vm(lauf_vm_options options)

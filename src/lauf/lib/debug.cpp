@@ -1,7 +1,7 @@
 // Copyright (C) 2022 Jonathan Müller and null contributors
 // SPDX-License-Identifier: BSL-1.0
 
-#include <lauf/lib/debug.h>
+#include <lauf/lib/debug.hpp>
 
 #include <cinttypes>
 #include <cstdio>
@@ -12,9 +12,7 @@
 #include <lauf/runtime/stacktrace.h>
 #include <lauf/runtime/value.h>
 
-namespace
-{
-void debug_print(lauf_runtime_process* process, lauf_runtime_value value)
+void lauf::debug_print(lauf_runtime_process* process, lauf_runtime_value value)
 {
     std::fprintf(stderr, "0x%" PRIX64, value.as_uint);
     std::fprintf(stderr, " (uint = %" PRIu64 ", sint = %" PRId64, value.as_uint, value.as_sint);
@@ -31,12 +29,26 @@ void debug_print(lauf_runtime_process* process, lauf_runtime_value value)
 
     std::fprintf(stderr, ")");
 }
-} // namespace
+
+void lauf::debug_print_cstack(lauf_runtime_process* process)
+{
+    auto index = 0;
+    for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
+         st      = lauf_runtime_stacktrace_parent(st))
+    {
+        auto fn   = lauf_runtime_stacktrace_function(st);
+        auto addr = lauf_asm_get_instruction_index(fn, lauf_runtime_stacktrace_instruction(st));
+
+        std::fprintf(stderr, " %4d. %s\n", index, lauf_asm_function_name(fn));
+        std::fprintf(stderr, "       at <%04lx>\n", addr);
+        ++index;
+    }
+}
 
 LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print, 1, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "print", nullptr)
 {
     std::fprintf(stderr, "[lauf] debug print: ");
-    debug_print(process, vstack_ptr[0]);
+    lauf::debug_print(process, vstack_ptr[0]);
     std::fprintf(stderr, "\n");
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
@@ -52,7 +64,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_vstack, 0, 0,
     for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(process); ++cur)
     {
         std::fprintf(stderr, " %4d. ", index);
-        debug_print(process, *cur);
+        lauf::debug_print(process, *cur);
         std::fprintf(stderr, "\n");
         ++index;
     }
@@ -64,18 +76,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_cstack, 0, 0, LAUF_RUNTIME_BUILTIN_NO_
                      "print_cstack", &lauf_lib_debug_print_vstack)
 {
     std::fprintf(stderr, "[lauf] call stack\n");
-    auto index = 0;
-    for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
-         st      = lauf_runtime_stacktrace_parent(st))
-    {
-        auto fn   = lauf_runtime_stacktrace_function(st);
-        auto addr = lauf_asm_get_instruction_index(fn, lauf_runtime_stacktrace_instruction(st));
-
-        std::fprintf(stderr, " %4d. %s\n", index, lauf_asm_function_name(fn));
-        std::fprintf(stderr, "       at <%04lx>\n", addr);
-        ++index;
-    }
-
+    lauf::debug_print_cstack(process);
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 

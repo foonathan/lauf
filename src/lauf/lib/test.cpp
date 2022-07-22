@@ -4,7 +4,6 @@
 #include <lauf/lib/test.h>
 
 #include <lauf/asm/module.h>
-#include <lauf/lib/debug.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>

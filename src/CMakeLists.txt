@@ -60,6 +60,8 @@ target_sources(lauf_core PRIVATE
                 ${src_dir}/asm/module.hpp
                 ${src_dir}/asm/program.hpp
 
+                ${src_dir}/lib/debug.hpp
+
                 ${src_dir}/runtime/process.hpp)
 target_sources(lauf_core PRIVATE
                 ${src_dir}/config.cpp
