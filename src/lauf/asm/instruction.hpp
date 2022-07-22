@@ -60,12 +60,11 @@ const DestType* uncompress_pointer_offset(CurType* cur, std::ptrdiff_t offset)
     return (const DestType*)(reinterpret_cast<void* const*>(cur) + offset);
 }
 
-struct asm_inst_function_addr
+struct asm_inst_signature
 {
-    asm_op        op;
-    std::uint8_t  input_count : 4;
-    std::uint8_t  output_count : 4;
-    std::uint16_t data;
+    asm_op       op;
+    std::uint8_t input_count;
+    std::uint8_t output_count;
 };
 
 struct asm_inst_value

@@ -420,9 +420,7 @@ TEST_CASE("lauf_asm_inst_function_addr")
     });
     REQUIRE(result.size() == 1);
     CHECK(result[0].op() == lauf::asm_op::function_addr);
-    CHECK(result[0].function_addr.data == 1);
-    CHECK(result[0].function_addr.input_count == 11);
-    CHECK(result[0].function_addr.output_count == 5);
+    // Cannot check offset.
 }
 
 TEST_CASE("lauf_asm_inst_pop")
@@ -505,7 +503,6 @@ TEST_CASE("lauf_asm_inst_call_indirect")
     CHECK(regular[0].op() == lauf::asm_op::call_indirect);
     CHECK(regular[0].call_indirect.input_count == 3);
     CHECK(regular[0].call_indirect.output_count == 5);
-    CHECK(regular[0].call_indirect.data == 0);
 
     auto tail = build(
         {2, 0},
@@ -517,7 +514,6 @@ TEST_CASE("lauf_asm_inst_call_indirect")
     CHECK(tail[0].op() == lauf::asm_op::tail_call_indirect);
     CHECK(tail[0].tail_call_indirect.input_count == 1);
     CHECK(tail[0].tail_call_indirect.output_count == 0);
-    CHECK(tail[0].tail_call_indirect.data == 0);
 }
 
 TEST_CASE("lauf_asm_inst_call_builtin")

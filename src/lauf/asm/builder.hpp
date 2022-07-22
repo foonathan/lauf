@@ -153,16 +153,12 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         return result;                                                                             \
     }()
 
-#define LAUF_BUILD_INST_CALL(Name, InputCount, OutputCount, Data)                                  \
-    [&](const char* context) {                                                                     \
+#define LAUF_BUILD_INST_SIGNATURE(Name, InputCount, OutputCount)                                   \
+    [&] {                                                                                          \
         lauf_asm_inst result;                                                                      \
-        result.Name = {lauf::asm_op::Name, InputCount, OutputCount, Data};                         \
-        if (result.Name.input_count != (InputCount))                                               \
-            b->error(context, "input count too big");                                              \
-        if (result.Name.output_count != (OutputCount))                                             \
-            b->error(context, "output count too big");                                             \
+        result.Name = {lauf::asm_op::Name, InputCount, OutputCount};                               \
         return result;                                                                             \
-    }(LAUF_BUILD_ASSERT_CONTEXT)
+    }()
 
 #define LAUF_BUILD_INST_VALUE(Name, Value)                                                         \
     [&] {                                                                                          \

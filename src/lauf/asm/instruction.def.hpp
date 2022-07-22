@@ -35,8 +35,8 @@ LAUF_ASM_INST(tail_call, asm_inst_offset)
 
 // lauf_asm_inst_call_indirect()
 // data is function index
-LAUF_ASM_INST(call_indirect, asm_inst_function_addr)
-LAUF_ASM_INST(tail_call_indirect, asm_inst_function_addr)
+LAUF_ASM_INST(call_indirect, asm_inst_signature)
+LAUF_ASM_INST(tail_call_indirect, asm_inst_signature)
 
 // lauf_asm_inst_call_builtin()
 // The offset is the difference between the address of the lauf_runtime_builtin_dispatch() and the
@@ -62,8 +62,9 @@ LAUF_ASM_INST(push3, asm_inst_value)
 LAUF_ASM_INST(global_addr, asm_inst_value)
 
 // lauf_asm_inst_function_addr()
-// data is function index
-LAUF_ASM_INST(function_addr, asm_inst_function_addr)
+// The offset is the difference between the address of the current function and the called function
+// divided by sizeof(void*).
+LAUF_ASM_INST(function_addr, asm_inst_offset)
 
 //=== stack manipulation ===//
 // lauf_asm_inst_pop()

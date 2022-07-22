@@ -252,10 +252,13 @@ LAUF_VM_EXECUTE(global_addr)
 
 LAUF_VM_EXECUTE(function_addr)
 {
+    auto fn = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function,
+                                                                 ip->function_addr.offset);
+
     --vstack_ptr;
-    vstack_ptr[0].as_function_address.index        = ip->function_addr.data;
-    vstack_ptr[0].as_function_address.input_count  = ip->function_addr.input_count;
-    vstack_ptr[0].as_function_address.output_count = ip->function_addr.output_count;
+    vstack_ptr[0].as_function_address.index        = fn->function_idx;
+    vstack_ptr[0].as_function_address.input_count  = fn->sig.input_count;
+    vstack_ptr[0].as_function_address.output_count = fn->sig.output_count;
 
     ++ip;
     LAUF_VM_DISPATCH;

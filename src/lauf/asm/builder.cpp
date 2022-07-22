@@ -351,9 +351,8 @@ void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* f
 {
     LAUF_BUILD_ASSERT_CUR;
 
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(function_addr, function->sig.input_count,
-                                                     function->sig.output_count,
-                                                     function->function_idx));
+    auto offset = lauf::compress_pointer_offset(b->fn, function);
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(function_addr, offset));
     b->cur->vstack.push();
 }
 
@@ -430,8 +429,8 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values for call");
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing function address");
 
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_CALL(call_indirect, sig.input_count,
-                                                     sig.output_count, 0));
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_indirect, sig.input_count,
+                                                          sig.output_count));
 
     b->cur->vstack.push(sig.output_count);
 }
