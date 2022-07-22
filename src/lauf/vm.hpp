@@ -42,6 +42,18 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
         ::operator delete(cstack_base);
         ::operator delete(vstack_base - vstack_size);
     }
+
+    lauf_runtime_value* vstack_end() const
+    {
+        // We keep a buffer of UINT8_MAX.
+        // This ensures that we can always call a builtin, which can push at most that many values.
+        return vstack_base - vstack_size + UINT8_MAX;
+    }
+
+    unsigned char* cstack_end() const
+    {
+        return cstack_base + cstack_size;
+    }
 };
 
 //=== execute ===//

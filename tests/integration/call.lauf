@@ -30,6 +30,28 @@ function @consume_and_produce_values(1 => 2) {
     return;
 }
 
+function @vstack_overflow() {
+    null; null; null; null;
+    null; null; null; null;
+    null; null; null; null;
+    null; null; null; null;
+
+    call @vstack_overflow;
+
+    pop 0; pop 0; pop 0; pop 0;
+    pop 0; pop 0; pop 0; pop 0;
+    pop 0; pop 0; pop 0; pop 0;
+    pop 0; pop 0; pop 0; pop 0;
+    return;
+}
+function @cstack_overflow() {
+    call @cstack_overflow;
+    return;
+}
+
+global const @msg_vstack_overflow = "vstack overflow", 0;
+global const @msg_cstack_overflow = "cstack overflow", 0;
+
 function @main() {
     [
         call @produce_value;
@@ -67,7 +89,11 @@ function @main() {
         uint 11; $lauf.test.assert_eq;
     ]
 
+    [
+        function_addr @vstack_overflow; global_addr @msg_vstack_overflow; $lauf.test.assert_panic;
+        function_addr @cstack_overflow; global_addr @msg_cstack_overflow; $lauf.test.assert_panic;
+    ]
+
     return;
 }
-
 

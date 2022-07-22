@@ -22,6 +22,10 @@ public:
     {
         return _cur;
     }
+    std::size_t max_size() const
+    {
+        return _max;
+    }
 
     void push(std::size_t n = 1)
     {

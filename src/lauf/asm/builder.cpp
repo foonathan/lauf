@@ -132,6 +132,19 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
     b->fn->insts       = insts;
     b->fn->insts_count = std::uint16_t(insts_count);
 
+    b->fn->max_vstack_size = [&] {
+        auto result = std::size_t(0);
+
+        for (auto& block : b->blocks)
+            if (block.vstack.max_size() > result)
+                result = block.vstack.max_size();
+
+        if (result > UINT16_MAX)
+            b->error(context, "per-function vstack size limit exceeded");
+
+        return std::uint16_t(result);
+    }();
+
     return !b->errored;
 }
 

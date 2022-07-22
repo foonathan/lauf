@@ -39,6 +39,27 @@ function @call_wrong_signature(0 => 0) {
     return;
 }
 
+function @vstack_overflow() {
+    null; null; null; null;
+    null; null; null; null;
+    null; null; null; null;
+    null; null; null; null;
+
+    function_addr @vstack_overflow; call_indirect ();
+
+    pop 0; pop 0; pop 0; pop 0;
+    pop 0; pop 0; pop 0; pop 0;
+    pop 0; pop 0; pop 0; pop 0;
+    pop 0; pop 0; pop 0; pop 0;
+    return;
+}
+function @cstack_overflow() {
+    function_addr @cstack_overflow; call_indirect ();
+    return;
+}
+
+global const @msg_vstack_overflow = "vstack overflow", 0;
+global const @msg_cstack_overflow = "cstack overflow", 0;
 global const @msg_invalid_addr = "invalid function address", 0;
 
 function @main() {
@@ -81,6 +102,9 @@ function @main() {
     [
         function_addr @call_invalid_addr; global_addr @msg_invalid_addr; $lauf.test.assert_panic;
         function_addr @call_wrong_signature; global_addr @msg_invalid_addr; $lauf.test.assert_panic;
+
+        function_addr @vstack_overflow; global_addr @msg_vstack_overflow; $lauf.test.assert_panic;
+        function_addr @cstack_overflow; global_addr @msg_cstack_overflow; $lauf.test.assert_panic;
     ]
 
     return;
