@@ -16,7 +16,11 @@ const lauf_vm_options lauf_default_vm_options
     = {512 * 1024ull, 16 * 1024ull, [](lauf_runtime_process* process, const char* msg) {
            std::fprintf(stderr, "[lauf] panic: %s\n",
                         msg == nullptr ? "(invalid message pointer)" : msg);
-           lauf_lib_debug_print_cstack.impl(nullptr, nullptr, process->frame_ptr, process);
+
+           // TODO: make more convenient.
+           lauf_asm_inst trampoline[2];
+           trampoline[1].exit.op = lauf::asm_op::exit;
+           lauf_lib_debug_print_cstack.impl(trampoline, nullptr, process->frame_ptr, process);
        }};
 
 lauf_vm* lauf_create_vm(lauf_vm_options options)

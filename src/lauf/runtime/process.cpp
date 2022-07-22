@@ -31,7 +31,7 @@ const void* checked_offset(lauf::allocation alloc, lauf_runtime_address addr,
     if (!lauf::is_usable(alloc.status) || (alloc.generation & 0b11) != addr.generation)
         return nullptr;
 
-    if (addr.offset + layout.size >= alloc.size)
+    if (addr.offset + layout.size > alloc.size)
         return nullptr;
 
     auto ptr = alloc.unchecked_offset(addr.offset);

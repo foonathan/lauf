@@ -7,6 +7,7 @@
 #include <cstdlib>
 
 #include <lauf/asm/module.hpp>
+#include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
 
 void lauf_asm_builder::error(const char* context, const char* msg)
@@ -433,5 +434,37 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
                                                           sig.output_count));
 
     b->cur->vstack.push(sig.output_count);
+}
+
+void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_const, type.layout));
+
+    LAUF_BUILD_ASSERT(field_index < type.field_count, "invalid field index");
+    lauf_asm_inst_uint(b, field_index);
+
+    lauf_runtime_builtin_function builtin{};
+    builtin.impl         = type.load_fn;
+    builtin.input_count  = 2;
+    builtin.output_count = 1;
+    lauf_asm_inst_call_builtin(b, builtin);
+}
+
+void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_mut, type.layout));
+
+    LAUF_BUILD_ASSERT(field_index < type.field_count, "invalid field index");
+    lauf_asm_inst_uint(b, field_index);
+
+    lauf_runtime_builtin_function builtin{};
+    builtin.impl         = type.store_fn;
+    builtin.input_count  = 3;
+    builtin.output_count = 0;
+    lauf_asm_inst_call_builtin(b, builtin);
 }
 

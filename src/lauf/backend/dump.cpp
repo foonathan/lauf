@@ -5,11 +5,13 @@
 
 #include <cctype>
 #include <lauf/asm/module.hpp>
+#include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/writer.hpp>
 #include <string>
 
-const lauf_backend_dump_options lauf_backend_default_dump_options = {nullptr, 0};
+const lauf_backend_dump_options lauf_backend_default_dump_options
+    = {nullptr, 0, &lauf_asm_type_value, 1};
 
 namespace
 {
@@ -43,8 +45,14 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
     writer->write(";\n");
 }
 
-std::string find_builtin_name(lauf_backend_dump_options opts, lauf_runtime_builtin_impl impl)
+std::string find_builtin_name(lauf_backend_dump_options opts, lauf_runtime_builtin_impl* impl)
 {
+    for (auto i = 0u; i != opts.type_count; ++i)
+        if (opts.types[i].load_fn == impl)
+            return opts.types[i].name + std::string(".load");
+        else if (opts.types[i].store_fn == impl)
+            return opts.types[i].name + std::string(".store");
+
     for (auto i = 0u; i != opts.builtin_libs_count; ++i)
         for (auto builtin = opts.builtin_libs[i].functions; builtin != nullptr;
              builtin      = builtin->next)
@@ -156,6 +164,13 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::roll:
         case lauf::asm_op::swap:
             writer->format("roll %d", ip->roll.idx);
+            break;
+
+        case lauf::asm_op::deref_const:
+            writer->format("deref_const (%d, %d)", ip->deref_const.size, ip->deref_const.alignment);
+            break;
+        case lauf::asm_op::deref_mut:
+            writer->format("deref_mut (%d, %d)", ip->deref_mut.size, ip->deref_mut.alignment);
             break;
         }
         writer->write(";\n");

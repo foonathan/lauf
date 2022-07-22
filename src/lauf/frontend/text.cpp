@@ -5,6 +5,7 @@
 
 #include <lauf/asm/builder.h>
 #include <lauf/asm/module.h>
+#include <lauf/asm/type.h>
 #include <lauf/reader.hpp>
 #include <lauf/runtime/builtin.h>
 #include <lexy/action/parse.hpp>
@@ -14,7 +15,8 @@
 #include <map>
 #include <string>
 
-const lauf_frontend_text_options lauf_frontend_default_text_options = {nullptr, 0};
+const lauf_frontend_text_options lauf_frontend_default_text_options
+    = {nullptr, 0, &lauf_asm_type_value, 1};
 
 namespace
 {
@@ -63,6 +65,7 @@ struct parse_state
 {
     lauf_asm_builder*                                  builder;
     symbol_table<const lauf_runtime_builtin_function*> builtins;
+    symbol_table<const lauf_asm_type*>                 types;
 
     mutable lauf_asm_module*                 mod;
     mutable lauf_asm_function*               fn;
@@ -73,6 +76,9 @@ struct parse_state
     parse_state(lauf_frontend_text_options opts)
     : builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr)
     {
+        for (auto i = 0u; i != opts.type_count; ++i)
+            types.insert(opts.types[i].name, &opts.types[i]);
+
         for (auto i = 0u; i != opts.builtin_libs_count; ++i)
             for (auto builtin = opts.builtin_libs[i].functions; builtin != nullptr;
                  builtin      = builtin->next)
@@ -144,6 +150,14 @@ struct builtin_ref
         [](const parse_state& state, const std::string& name) {
             return *state.builtins.lookup(name);
         });
+};
+struct type_ref
+{
+    static constexpr auto rule = dsl::p<builtin_identifier>;
+    static constexpr auto value
+        = callback<lauf_asm_type>([](const parse_state& state, const std::string& name) {
+              return *state.types.lookup(name);
+          });
 };
 struct global_ref
 {
@@ -356,17 +370,32 @@ struct inst_call_indirect
     static constexpr auto value = inst(&lauf_asm_inst_call_indirect);
 };
 
+struct inst_load_field
+{
+    static constexpr auto rule
+        = LEXY_LIT("load_field") >> dsl::p<type_ref> + dsl::integer<std::size_t>;
+    static constexpr auto value = inst(&lauf_asm_inst_load_field);
+};
+struct inst_store_field
+{
+    static constexpr auto rule
+        = LEXY_LIT("store_field") >> dsl::p<type_ref> + dsl::integer<std::size_t>;
+    static constexpr auto value = inst(&lauf_asm_inst_store_field);
+};
+
 struct instruction
 {
     static constexpr auto rule = [] {
         auto nested = dsl::square_bracketed.list(dsl::recurse<instruction>);
 
-        auto single = dsl::p<inst_return> | dsl::p<inst_jump>                                     //
-                      | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic>          //
-                      | dsl::p<inst_sint> | dsl::p<inst_uint>                                     //
-                      | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_function_addr> //
-                      | dsl::p<inst_stack_op>                                                     //
-                      | dsl::p<inst_call_indirect> | dsl::p<inst_call> | dsl::p<inst_call_builtin>;
+        auto single
+            = dsl::p<inst_return> | dsl::p<inst_jump>                                      //
+              | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic>           //
+              | dsl::p<inst_sint> | dsl::p<inst_uint>                                      //
+              | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_function_addr>  //
+              | dsl::p<inst_stack_op>                                                      //
+              | dsl::p<inst_call_indirect> | dsl::p<inst_call> | dsl::p<inst_call_builtin> //
+              | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
 
         return nested | dsl::else_ >> single + dsl::semicolon;
     }();

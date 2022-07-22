@@ -30,6 +30,7 @@ typedef union lauf_runtime_value
 {
     lauf_uint                     as_uint;
     lauf_sint                     as_sint;
+    void*                         as_native_ptr;
     lauf_runtime_address          as_address;
     lauf_runtime_function_address as_function_address;
 } lauf_runtime_value;

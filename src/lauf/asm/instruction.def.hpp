@@ -79,3 +79,9 @@ LAUF_ASM_INST(dup, asm_inst_stack_idx)
 LAUF_ASM_INST(roll, asm_inst_stack_idx)
 LAUF_ASM_INST(swap, asm_inst_stack_idx)
 
+//=== load/store ===//
+// Used by lauf_asm_inst_load/store_field()
+// Signature: address => native_ptr
+LAUF_ASM_INST(deref_const, asm_inst_layout)
+LAUF_ASM_INST(deref_mut, asm_inst_layout)
+

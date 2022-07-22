@@ -67,6 +67,13 @@ struct asm_inst_signature
     std::uint8_t output_count;
 };
 
+struct asm_inst_layout
+{
+    asm_op        op;
+    std::uint8_t  alignment;
+    std::uint16_t size;
+};
+
 struct asm_inst_value
 {
     asm_op        op : 8;

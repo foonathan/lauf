@@ -12,6 +12,7 @@ typedef struct lauf_asm_module      lauf_asm_module;
 typedef struct lauf_asm_global      lauf_asm_global;
 typedef struct lauf_asm_function    lauf_asm_function;
 typedef struct lauf_asm_signature   lauf_asm_signature;
+typedef struct lauf_asm_type        lauf_asm_type;
 typedef struct lauf_runtime_builtin lauf_runtime_builtin_function;
 
 //=== builder ===//
@@ -154,6 +155,17 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
 ///
 /// Signature: in_N ... in_0 => out_M ... out_0
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
+
+//=== load/store ===//
+/// Loads a field from a type and pushes it value.
+///
+/// Signature: ptr:address => value
+void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index);
+
+/// Stores a value into a field of a type.
+///
+/// Signature: value ptr:address => _
+void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index);
 
 LAUF_HEADER_END
 

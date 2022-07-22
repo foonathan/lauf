@@ -160,6 +160,18 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         return result;                                                                             \
     }()
 
+#define LAUF_BUILD_INST_LAYOUT(Name, Layout)                                                       \
+    [&](const char* context, lauf_asm_layout layout) {                                             \
+        lauf_asm_inst result;                                                                      \
+        result.Name                                                                                \
+            = {lauf::asm_op::Name, std::uint8_t(layout.alignment), std::uint16_t(layout.size)};    \
+        if (result.Name.alignment != layout.alignment)                                             \
+            b->error(context, "alignment too big");                                                \
+        if (result.Name.size != layout.size)                                                       \
+            b->error(context, "size too big");                                                     \
+        return result;                                                                             \
+    }(LAUF_BUILD_ASSERT_CONTEXT, Layout)
+
 #define LAUF_BUILD_INST_VALUE(Name, Value)                                                         \
     [&] {                                                                                          \
         lauf_asm_inst result;                                                                      \

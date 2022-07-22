@@ -77,6 +77,21 @@ lauf_asm_module* example_module()
                 return;
             }
         }
+
+        global @foo = zero * 8;
+
+        function @test() {
+            uint 42;
+            global_addr @foo;
+            store_field $lauf.Value 0;
+
+            global_addr @foo;
+            load_field $lauf.Value 0;
+            $lauf.debug.print;
+            pop 0;
+
+            return;
+        }
     )");
 
     auto opts               = lauf_frontend_default_text_options;
@@ -120,7 +135,7 @@ int main()
     auto mod = example_module();
     dump_module(mod);
 
-    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib"));
+    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "test"));
     execute(program, lauf_uint(35));
 
     lauf_asm_destroy_module(mod);

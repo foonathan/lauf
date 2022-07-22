@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <lauf/asm/module.hpp>
+#include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
 
 namespace
@@ -101,8 +102,6 @@ LAUF_VM_EXECUTE(exit)
     (void)frame_ptr;
     (void)vstack_ptr;
     (void)process;
-
-    assert(frame_ptr->prev == nullptr && frame_ptr->return_ip == nullptr);
     return true;
 }
 
@@ -324,6 +323,37 @@ LAUF_VM_EXECUTE(swap)
     auto tmp      = vstack_ptr[0];
     vstack_ptr[0] = vstack_ptr[1];
     vstack_ptr[1] = tmp;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+//=== load/store ===//
+LAUF_VM_EXECUTE(deref_const)
+{
+    auto address = vstack_ptr[0].as_address;
+
+    auto ptr = lauf_runtime_get_const_ptr(process, address,
+                                          {ip->deref_const.size, ip->deref_const.alignment});
+    if (ptr == nullptr)
+        LAUF_DO_PANIC("invalid address");
+
+    vstack_ptr[0].as_native_ptr = const_cast<void*>(ptr);
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(deref_mut)
+{
+    auto address = vstack_ptr[0].as_address;
+
+    auto ptr
+        = lauf_runtime_get_mut_ptr(process, address, {ip->deref_mut.size, ip->deref_mut.alignment});
+    if (ptr == nullptr)
+        LAUF_DO_PANIC("invalid address");
+
+    vstack_ptr[0].as_native_ptr = ptr;
 
     ++ip;
     LAUF_VM_DISPATCH;

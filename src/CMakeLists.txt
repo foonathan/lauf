@@ -71,6 +71,7 @@ target_sources(lauf_core PRIVATE
                 ${src_dir}/asm/builder.cpp
                 ${src_dir}/asm/module.cpp
                 ${src_dir}/asm/program.cpp
+                ${src_dir}/asm/type.cpp
 
                 ${src_dir}/backend/dump.cpp
 
