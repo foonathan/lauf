@@ -90,6 +90,7 @@ bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* 
                                    lauf_runtime_stack_frame* frame_ptr,
                                    lauf_runtime_process*     process)
 {
+    ++ip;
     LAUF_VM_DISPATCH;
 }
 
@@ -100,6 +101,16 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     auto result        = root_call(process, vstack_ptr, frame_ptr + 1, fn);
     process->frame_ptr = frame_ptr;
     return result;
+}
+
+bool lauf_runtime_panic(lauf_runtime_process* p, const lauf_asm_inst* ip, const char* msg)
+{
+    // Return address is always +1.
+    lauf_runtime_stack_frame dummy_frame{nullptr, ip + 1, p->frame_ptr};
+    p->frame_ptr = &dummy_frame;
+
+    p->vm->panic_handler(p, msg);
+    return false;
 }
 
 bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,

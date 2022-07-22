@@ -7,7 +7,7 @@
 #include <lauf/asm/program.h>
 #include <lauf/backend/dump.h>
 #include <lauf/frontend/text.h>
-#include <lauf/lib/debug.h>
+#include <lauf/lib.h>
 #include <lauf/reader.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
@@ -36,8 +36,8 @@ LAUF_RUNTIME_BUILTIN(builtin_mul, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "mul", 
 
 const lauf_runtime_builtin_library my_lib = {"my", &builtin_mul};
 
-const lauf_runtime_builtin_library builtins[]         = {lauf_lib_debug, my_lib};
-constexpr size_t                   builtin_libs_count = 2;
+const lauf_runtime_builtin_library builtins[]         = {lauf_lib_debug, lauf_lib_test, my_lib};
+constexpr size_t                   builtin_libs_count = 3;
 
 lauf_asm_module* example_module()
 {
