@@ -37,11 +37,11 @@ lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm
 
     if (global.memory != nullptr)
     {
-        result.ptr = arena->memdup(global.memory, global.size);
+        result.ptr = arena->memdup(global.memory, global.size, global.alignment);
     }
     else
     {
-        result.ptr = arena->allocate(global.size, alignof(void*));
+        result.ptr = arena->allocate(global.size, global.alignment);
         std::memset(result.ptr, 0, global.size);
     }
 

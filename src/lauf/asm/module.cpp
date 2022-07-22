@@ -26,21 +26,24 @@ const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* m
     return nullptr;
 }
 
-lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, size_t size_in_bytes)
+lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, size_t size_in_bytes,
+                                               size_t alignment)
 {
-    return mod->construct<lauf_asm_global>(mod, size_in_bytes);
+    return mod->construct<lauf_asm_global>(mod, size_in_bytes, alignment);
 }
 
 lauf_asm_global* lauf_asm_add_global_const_data(lauf_asm_module* mod, const void* data,
-                                                size_t size_in_bytes)
+                                                size_t size_in_bytes, size_t alignment)
 {
-    return mod->construct<lauf_asm_global>(mod, data, size_in_bytes, lauf_asm_global::read_only);
+    return mod->construct<lauf_asm_global>(mod, data, size_in_bytes, alignment,
+                                           lauf_asm_global::read_only);
 }
 
 lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* data,
-                                              size_t size_in_bytes)
+                                              size_t size_in_bytes, size_t alignment)
 {
-    return mod->construct<lauf_asm_global>(mod, data, size_in_bytes, lauf_asm_global::read_write);
+    return mod->construct<lauf_asm_global>(mod, data, size_in_bytes, alignment,
+                                           lauf_asm_global::read_write);
 }
 
 lauf_asm_function* lauf_asm_add_function(lauf_asm_module* mod, const char* name,

@@ -394,7 +394,7 @@ TEST_CASE("lauf_asm_inst_null")
 TEST_CASE("lauf_asm_inst_global_addr")
 {
     auto single = build({0, 1}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
-        auto glob = lauf_asm_add_global_zero_data(mod, 42);
+        auto glob = lauf_asm_add_global_zero_data(mod, 42, 1);
         lauf_asm_inst_global_addr(b, glob);
     });
     REQUIRE(single.size() == 1);
@@ -402,9 +402,9 @@ TEST_CASE("lauf_asm_inst_global_addr")
     CHECK(single[0].global_addr.value == 0);
 
     auto multiple = build({0, 1}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
-        lauf_asm_add_global_zero_data(mod, 11);
-        auto glob = lauf_asm_add_global_zero_data(mod, 42);
-        lauf_asm_add_global_zero_data(mod, 66);
+        lauf_asm_add_global_zero_data(mod, 11, 1);
+        auto glob = lauf_asm_add_global_zero_data(mod, 42, 1);
+        lauf_asm_add_global_zero_data(mod, 66, 1);
         lauf_asm_inst_global_addr(b, glob);
     });
     REQUIRE(multiple.size() == 1);

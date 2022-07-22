@@ -78,7 +78,7 @@ lauf_asm_module* example_module()
             }
         }
 
-        global @foo = zero * 8;
+        global @foo align 8 = zero * 8;
 
         function @test() {
             uint 42;

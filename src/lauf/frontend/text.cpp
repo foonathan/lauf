@@ -235,16 +235,25 @@ struct data_expr
 
 struct global_decl
 {
+    struct alignment
+    {
+        static constexpr auto rule = dsl::opt(LEXY_LIT("align") >> dsl::integer<std::size_t>);
+        static constexpr auto value
+            = lexy::bind(lexy::forward<std::size_t>, lexy::_1 or alignof(lauf_uint));
+    };
+
     struct const_global
     {
         static constexpr auto rule
-            = LEXY_LIT("const") >> dsl::p<global_identifier> + dsl::equal_sign + dsl::p<data_expr>;
+            = LEXY_LIT("const") >> dsl::p<global_identifier> + dsl::p<alignment> + dsl::equal_sign
+                                       + dsl::p<data_expr>;
 
-        static constexpr auto value = callback(
-            [](const parse_state& state, const std::string& name, const std::string& data) {
-                auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(), data.size());
-                state.globals.insert(name, g);
-            });
+        static constexpr auto value = callback([](const parse_state& state, const std::string& name,
+                                                  std::size_t alignment, const std::string& data) {
+            auto g
+                = lauf_asm_add_global_const_data(state.mod, data.c_str(), data.size(), alignment);
+            state.globals.insert(name, g);
+        });
     };
 
     struct mut_global
@@ -253,16 +262,20 @@ struct global_decl
             auto zero_expr = LEXY_LIT("zero") >> dsl::lit_c<'*'> + dsl::integer<std::size_t>;
             auto expr      = zero_expr | dsl::else_ >> dsl::p<data_expr>;
 
-            return dsl::else_ >> dsl::p<global_identifier> + dsl::equal_sign + expr;
+            return dsl::else_
+                   >> dsl::p<global_identifier> + dsl::p<alignment> + dsl::equal_sign + expr;
         }();
 
         static constexpr auto value = callback(
-            [](const parse_state& state, const std::string& name, const std::string& data) {
-                auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(), data.size());
+            [](const parse_state& state, const std::string& name, std::size_t alignment,
+               const std::string& data) {
+                auto g
+                    = lauf_asm_add_global_mut_data(state.mod, data.c_str(), data.size(), alignment);
                 state.globals.insert(name, g);
             },
-            [](const parse_state& state, const std::string& name, std::size_t size) {
-                auto g = lauf_asm_add_global_zero_data(state.mod, size);
+            [](const parse_state& state, const std::string& name, std::size_t alignment,
+               std::size_t size) {
+                auto g = lauf_asm_add_global_zero_data(state.mod, size, alignment);
                 state.globals.insert(name, g);
             });
     };
