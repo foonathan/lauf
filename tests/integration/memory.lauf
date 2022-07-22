@@ -1,0 +1,47 @@
+module @memory;
+
+global @value align 8 = zero * 8;
+
+function @load_store_field() {
+    uint 42; global_addr @value; store_field $lauf.Value 0;
+    uint 11; global_addr @value; store_field $lauf.Value 0;
+
+    global_addr @value; load_field $lauf.Value 0;
+    uint 11; $lauf.test.assert_eq;
+
+    return;
+}
+
+# Order matters to ensure that the misaligned ends up misaligned.
+# (Globals happen to be allocated in reverse order)
+global @misaligned align 4 = zero * 8;
+global @small align 8 = zero * 4;
+global const @value_const align 8 = 0, 0, 0, 0, 0, 0, 0, 0;
+
+function @store_const() {
+    uint 42; global_addr @value_const; store_field $lauf.Value 0;
+    return;
+}
+function @store_small() {
+    uint 42; global_addr @small; store_field $lauf.Value 0;
+    return;
+}
+function @store_misaligned() {
+    uint 42; global_addr @misaligned; store_field $lauf.Value 0;
+    return;
+}
+
+global const @msg_invalid_address = "invalid address", 0;
+
+function @main() {
+    call @load_store_field();
+
+    [
+        function_addr @store_const; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+        function_addr @store_small; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+        function_addr @store_misaligned; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+    ]
+
+    return;
+}
+
