@@ -90,7 +90,10 @@ static_assert(sizeof(allocation) == 2 * sizeof(void*));
 struct lauf_runtime_process
 {
     // The VM that is executing the process.
-    lauf_vm* vm = nullptr;
+    lauf_vm*            vm         = nullptr;
+    lauf_runtime_value* vstack_end = nullptr;
+    unsigned char*      cstack_end = nullptr;
+
     // The program that is running.
     const lauf_asm_program* program = nullptr;
 
