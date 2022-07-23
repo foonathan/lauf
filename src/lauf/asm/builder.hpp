@@ -6,7 +6,7 @@
 
 #include <lauf/asm/builder.h>
 #include <lauf/asm/instruction.hpp>
-#include <lauf/asm/module.h>
+#include <lauf/asm/module.hpp>
 #include <lauf/support/arena.hpp>
 #include <lauf/support/array_list.hpp>
 
@@ -65,13 +65,13 @@ struct lauf_asm_block
     lauf_asm_signature        sig;
     lauf::vstack_size_checker vstack;
 
-    std::ptrdiff_t                  offset;
+    std::ptrdiff_t                  offset = 0;
     lauf::array_list<lauf_asm_inst> insts;
 
     enum
     {
         unterminated,
-        tail_call,
+        fallthrough,
         return_,
         jump,
         branch2,
@@ -92,9 +92,11 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
     lauf_asm_function*     fn  = nullptr;
 
     lauf::array_list<lauf_asm_block> blocks;
-    lauf_asm_block*                  cur = nullptr;
+    lauf_asm_block*                  prologue = nullptr;
+    lauf_asm_block*                  cur      = nullptr;
 
-    bool errored = false;
+    std::uint32_t local_allocation_count = 0;
+    bool          errored                = false;
 
     explicit lauf_asm_builder(lauf::arena_key key, lauf_asm_build_options options)
     : lauf::intrinsic_arena<lauf_asm_builder>(key), options(options)
@@ -110,9 +112,14 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         blocks.clear();
         cur = nullptr;
 
-        errored = false;
+        local_allocation_count = 0;
+        errored                = false;
 
         this->clear();
+
+        prologue             = &blocks.emplace_back(*this, lauf_asm_signature{fn->sig.input_count,
+                                                                  fn->sig.input_count});
+        prologue->terminator = lauf_asm_block::fallthrough;
     }
 };
 

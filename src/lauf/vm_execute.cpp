@@ -130,7 +130,8 @@ LAUF_VM_EXECUTE(call)
         LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
-    frame_ptr = ::new (frame_ptr + 1) lauf_runtime_stack_frame{callee, ip + 1, frame_ptr};
+    frame_ptr = ::new (frame_ptr->next_frame()) auto(
+        lauf_runtime_stack_frame::make_call_frame(callee, process, ip, frame_ptr));
 
     // And start executing the function.
     ip = callee->insts;
@@ -174,7 +175,8 @@ LAUF_VM_EXECUTE(call_indirect)
         LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
-    frame_ptr = ::new (frame_ptr + 1) lauf_runtime_stack_frame{callee, ip + 1, frame_ptr};
+    frame_ptr = ::new (frame_ptr->next_frame()) auto(
+        lauf_runtime_stack_frame::make_call_frame(callee, process, ip, frame_ptr));
 
     // And start executing the function.
     ip = callee->insts;
@@ -328,7 +330,38 @@ LAUF_VM_EXECUTE(swap)
     LAUF_VM_DISPATCH;
 }
 
-//=== load/store ===//
+//=== memory ===//
+LAUF_VM_EXECUTE(local_alloc)
+{
+    // The builder has taken care of ensuring alignment.
+    assert(ip->local_alloc.alignment == alignof(void*));
+    assert(lauf::is_aligned(frame_ptr->next_frame(), alignof(void*)));
+
+    auto memory = frame_ptr->next_frame();
+    frame_ptr->next_offset += ip->local_alloc.size;
+
+    lauf::allocation alloc;
+    alloc.ptr        = memory;
+    alloc.size       = ip->local_alloc.size;
+    alloc.source     = allocation_source::local_memory;
+    alloc.status     = allocation_status::allocated;
+    alloc.generation = process->alloc_generation;
+    process->allocations.push_back(*process->vm, alloc);
+
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(local_free)
+{
+    for (auto i = 0u; i != ip->local_free.value; ++i)
+    {
+        auto index                         = frame_ptr->first_local_alloc + i;
+        process->allocations[index].status = allocation_status::freed;
+    }
+
+    LAUF_VM_DISPATCH;
+}
+
 LAUF_VM_EXECUTE(deref_const)
 {
     auto address = vstack_ptr[0].as_address;

@@ -6,6 +6,7 @@
 
 #include <lauf/runtime/process.h>
 
+#include <lauf/asm/instruction.hpp>
 #include <lauf/support/array.hpp>
 
 typedef struct lauf_asm_function lauf_asm_function;
@@ -20,8 +21,26 @@ struct lauf_runtime_stack_frame
     const lauf_asm_function* function;
     // The return address to jump to when the call finishes.
     const lauf_asm_inst* return_ip;
+    // The allocation of the first local_alloc (only meaningful if the function has any)
+    uint32_t first_local_alloc;
+    // The offset from this where the next frame can be put, i.e. after the local allocs.
+    uint32_t next_offset;
     // The previous stack frame.
     lauf_runtime_stack_frame* prev;
+
+    static lauf_runtime_stack_frame make_trampoline_frame(const lauf_asm_function* fn)
+    {
+        return {fn, nullptr, 0, sizeof(lauf_runtime_stack_frame), nullptr};
+    }
+    static lauf_runtime_stack_frame make_dummy_frame(const lauf_asm_inst*      ip,
+                                                     lauf_runtime_stack_frame* frame_ptr)
+    {
+        return {nullptr, ip + 1, 0, 0, frame_ptr};
+    }
+    static lauf_runtime_stack_frame make_call_frame(const lauf_asm_function*    callee,
+                                                    const lauf_runtime_process* process,
+                                                    const lauf_asm_inst*        ip,
+                                                    lauf_runtime_stack_frame*   frame_ptr);
 
     bool is_trampoline_frame() const
     {
@@ -32,7 +51,13 @@ struct lauf_runtime_stack_frame
     {
         return prev->is_trampoline_frame();
     }
+
+    void* next_frame()
+    {
+        return reinterpret_cast<unsigned char*>(this) + next_offset;
+    }
 };
+static_assert(alignof(lauf_runtime_stack_frame) == alignof(void*));
 
 //=== allocation ===//
 namespace lauf
@@ -41,6 +66,7 @@ enum class allocation_source : std::uint8_t
 {
     static_const_memory,
     static_mut_memory,
+    local_memory,
 };
 
 constexpr bool is_const(allocation_source source)
@@ -50,6 +76,7 @@ constexpr bool is_const(allocation_source source)
     case allocation_source::static_const_memory:
         return true;
     case allocation_source::static_mut_memory:
+    case allocation_source::local_memory:
         return false;
     }
 }
@@ -102,6 +129,7 @@ struct lauf_runtime_process
 
     // The allocations of the process.
     lauf::array<lauf::allocation> allocations;
+    std::uint8_t                  alloc_generation = 0;
 
     lauf::allocation* get_allocation(std::uint32_t index)
     {
@@ -111,6 +139,14 @@ struct lauf_runtime_process
             return &allocations[index];
     }
 };
+
+inline lauf_runtime_stack_frame lauf_runtime_stack_frame::make_call_frame(
+    const lauf_asm_function* callee, const lauf_runtime_process* process, const lauf_asm_inst* ip,
+    lauf_runtime_stack_frame* frame_ptr)
+{
+    auto alloc_idx = std::uint32_t(process->allocations.size());
+    return {callee, ip + 1, alloc_idx, sizeof(lauf_runtime_stack_frame), frame_ptr};
+}
 
 #endif // SRC_LAUF_RUNTIME_PROCESS_HPP_INCLUDED
 

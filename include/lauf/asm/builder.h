@@ -13,6 +13,7 @@ typedef struct lauf_asm_global      lauf_asm_global;
 typedef struct lauf_asm_function    lauf_asm_function;
 typedef struct lauf_asm_signature   lauf_asm_signature;
 typedef struct lauf_asm_type        lauf_asm_type;
+typedef struct lauf_asm_layout      lauf_asm_layout;
 typedef struct lauf_runtime_builtin lauf_runtime_builtin_function;
 
 //=== builder ===//
@@ -45,6 +46,14 @@ void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function
 /// Only at this point will the body be added to the function.
 /// Returns true if the body is well-formed, false otherwise.
 bool lauf_asm_build_finish(lauf_asm_builder* b);
+
+//=== local variables ===//
+/// A local variable within a function.
+typedef struct lauf_asm_local lauf_asm_local;
+
+/// Creates a new local variable.
+/// They are allocated when the function is initially called, and freed at the end.
+lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout);
 
 //=== blocks ===//
 /// A basic block inside a function.

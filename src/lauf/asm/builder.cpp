@@ -56,11 +56,15 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
                 b->error(context, "unterminated block");
                 break;
 
-            case lauf_asm_block::tail_call:
-                // Don't need terminator, previous instruction is the tail call which terminates.
+            case lauf_asm_block::fallthrough:
                 break;
 
             case lauf_asm_block::return_:
+                ++result;
+                if (b->local_allocation_count > 0)
+                    ++result;
+                break;
+
             case lauf_asm_block::jump:
             case lauf_asm_block::panic:
                 ++result;
@@ -92,10 +96,12 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
         switch (block.terminator)
         {
         case lauf_asm_block::unterminated:
-        case lauf_asm_block::tail_call:
+        case lauf_asm_block::fallthrough:
             break;
 
         case lauf_asm_block::return_:
+            if (b->local_allocation_count > 0)
+                *ip++ = LAUF_BUILD_INST_VALUE(local_free, b->local_allocation_count);
             *ip++ = LAUF_BUILD_INST_NONE(return_);
             break;
 
@@ -154,9 +160,24 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
     return !b->errored;
 }
 
+lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout)
+{
+    // Ensure that the stack frame is always aligned to a pointer.
+    // This means we can allocate without worrying about alignment.
+    LAUF_BUILD_ASSERT(layout.alignment <= alignof(void*), "overaligned local variable");
+    layout.size      = lauf::round_to_multiple_of_alignment(layout.size, alignof(void*));
+    layout.alignment = alignof(void*);
+
+    b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, layout));
+
+    auto idx = b->local_allocation_count;
+    ++b->local_allocation_count;
+    return reinterpret_cast<lauf_asm_local*>(idx); // NOLINT
+}
+
 lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, lauf_asm_signature sig)
 {
-    if (b->blocks.empty())
+    if (b->blocks.size() == 1u)
         LAUF_BUILD_ASSERT(sig.input_count == b->fn->sig.input_count,
                           "requested entry block has different input count from function");
 
@@ -183,12 +204,12 @@ void lauf_asm_inst_return(lauf_asm_builder* b)
     if (!b->cur->insts.empty() && b->cur->insts.back().op() == lauf::asm_op::call)
     {
         b->cur->insts.back().call.op = lauf::asm_op::tail_call;
-        b->cur->terminator           = lauf_asm_block::tail_call;
+        b->cur->terminator           = lauf_asm_block::fallthrough;
     }
     else if (!b->cur->insts.empty() && b->cur->insts.back().op() == lauf::asm_op::call_indirect)
     {
         b->cur->insts.back().call.op = lauf::asm_op::tail_call_indirect;
-        b->cur->terminator           = lauf_asm_block::tail_call;
+        b->cur->terminator           = lauf_asm_block::fallthrough;
     }
     else
     {

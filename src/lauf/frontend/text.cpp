@@ -444,6 +444,23 @@ struct block
     static constexpr auto value = lexy::forward<void>;
 };
 
+struct layout_expr
+{
+    static constexpr auto rule
+        = dsl::parenthesized(dsl::twice(dsl::integer<std::size_t>, dsl::sep(dsl::comma)));
+    static constexpr auto value = lexy::construct<lauf_asm_layout>;
+};
+
+struct local_decl
+{
+    static constexpr auto rule = LEXY_LIT("local") >> dsl::p<local_identifier> + dsl::colon
+                                                          + dsl::p<layout_expr> + dsl::semicolon;
+    static constexpr auto value
+        = callback([](const parse_state& state, const std::string&, lauf_asm_layout layout) {
+              lauf_asm_build_local(state.builder, layout);
+          });
+};
+
 struct function_decl
 {
     struct header
@@ -487,7 +504,9 @@ struct function_decl
             auto inst_list = dsl::p<entry_block> //
                              + dsl::curly_bracketed.as_terminator().list(dsl::p<instruction>);
 
-            return dsl::curly_bracketed.open() >> (block_list | dsl::else_ >> inst_list);
+            auto locals = dsl::if_(dsl::list(dsl::p<local_decl>));
+
+            return dsl::curly_bracketed.open() >> locals + (block_list | dsl::else_ >> inst_list);
         }();
 
         static constexpr auto value = lexy::noop >> callback([](const parse_state& state) {

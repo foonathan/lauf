@@ -73,7 +73,7 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
                const lauf_asm_function* fn)
 {
     // Create the initial stack frame.
-    auto frame_ptr = ::new (cstack_base) lauf_runtime_stack_frame{fn, nullptr, nullptr};
+    auto frame_ptr = ::new (cstack_base) auto(lauf_runtime_stack_frame::make_trampoline_frame(fn));
     assert(frame_ptr->is_trampoline_frame());
 
     // Create the trampoline.
@@ -107,9 +107,8 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
 bool lauf_runtime_panic(lauf_runtime_process* p, const lauf_asm_inst* ip, const char* msg)
 {
-    // Return address is always +1.
-    lauf_runtime_stack_frame dummy_frame{nullptr, ip + 1, p->frame_ptr};
-    p->frame_ptr = &dummy_frame;
+    auto dummy_frame = lauf_runtime_stack_frame::make_dummy_frame(ip, p->frame_ptr);
+    p->frame_ptr     = &dummy_frame;
 
     p->vm->panic_handler(p, msg);
     return false;

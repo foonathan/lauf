@@ -63,6 +63,7 @@ lauf_asm_module* example_module()
         }
 
         function @fib(1 => 1) {
+            local %arg : (8, 8);
             block %entry(1 => 1) {
                 pick 0; sint 2; $my.sub;
                 branch3 %base(1 => 1) %recurse(1 => 1) %recurse(1 => 1);
@@ -81,6 +82,7 @@ lauf_asm_module* example_module()
         global @foo align 8 = zero * 8;
 
         function @test() {
+            local %foo : (8, 8);
             uint 42;
             global_addr @foo;
             store_field $lauf.Value 0;

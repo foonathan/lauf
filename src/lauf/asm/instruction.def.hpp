@@ -79,7 +79,15 @@ LAUF_ASM_INST(dup, asm_inst_stack_idx)
 LAUF_ASM_INST(roll, asm_inst_stack_idx)
 LAUF_ASM_INST(swap, asm_inst_stack_idx)
 
-//=== load/store ===//
+//=== memory ===//
+// Allocate memory for a local variable.
+// Signature: _ => _
+LAUF_ASM_INST(local_alloc, asm_inst_layout)
+
+// Frees N local memory allocations.
+// Signature: _ => _
+LAUF_ASM_INST(local_free, asm_inst_value)
+
 // Used by lauf_asm_inst_load/store_field()
 // Signature: address => native_ptr
 LAUF_ASM_INST(deref_const, asm_inst_layout)
