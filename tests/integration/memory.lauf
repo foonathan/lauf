@@ -4,7 +4,7 @@ module @memory;
 global @value : $lauf.Value = 0;
 
 function @set_pointer(1 => 0) {
-    # We add an unused local so that a dangling local's memory gets reused.
+    # We add an unused local so that a dangling local's memory index gets reused.
     local %unused : $lauf.Value;
 
     uint 11; roll 1; store_field $lauf.Value 0;

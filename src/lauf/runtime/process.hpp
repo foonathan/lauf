@@ -140,6 +140,22 @@ struct lauf_runtime_process
         else
             return &allocations[index];
     }
+
+    void try_free_allocations()
+    {
+        if (allocations.empty() || allocations.back().status != lauf::allocation_status::freed)
+            // We only remove from the back.
+            return;
+
+        do
+        {
+            allocations.pop_back();
+        } while (!allocations.empty()
+                 && allocations.back().status == lauf::allocation_status::freed);
+
+        // Since we changed something, we need to increment the generation.
+        ++alloc_generation;
+    }
 };
 
 inline lauf_runtime_stack_frame lauf_runtime_stack_frame::make_call_frame(

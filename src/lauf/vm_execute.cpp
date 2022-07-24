@@ -372,6 +372,7 @@ LAUF_VM_EXECUTE(local_free)
         auto index                         = frame_ptr->first_local_alloc + i;
         process->allocations[index].status = allocation_status::freed;
     }
+    process->try_free_allocations();
 
     ++ip;
     LAUF_VM_DISPATCH;

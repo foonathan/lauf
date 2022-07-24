@@ -56,6 +56,23 @@ public:
         return _ptr[idx];
     }
 
+    T& front()
+    {
+        return _ptr[0];
+    }
+    const T& front() const
+    {
+        return _ptr[0];
+    }
+    T& back()
+    {
+        return _ptr[_size - 1];
+    }
+    const T& back() const
+    {
+        return _ptr[_size - 1];
+    }
+
     T* begin()
     {
         return _ptr;
@@ -117,6 +134,11 @@ public:
             ensure_space(arena, new_size);
             _size = new_size;
         }
+    }
+
+    void pop_back()
+    {
+        --_size;
     }
 
 private:
