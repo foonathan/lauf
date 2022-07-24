@@ -162,13 +162,19 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 
 lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout)
 {
-    // Ensure that the stack frame is always aligned to a pointer.
-    // This means we can allocate without worrying about alignment.
-    LAUF_BUILD_ASSERT(layout.alignment <= alignof(void*), "overaligned local variable");
-    layout.size      = lauf::round_to_multiple_of_alignment(layout.size, alignof(void*));
-    layout.alignment = alignof(void*);
+    layout.size = lauf::round_to_multiple_of_alignment(layout.size, alignof(void*));
 
-    b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, layout));
+    if (layout.alignment <= alignof(void*))
+    {
+        // Ensure that the stack frame is always aligned to a pointer.
+        // This means we can allocate without worrying about alignment.
+        layout.alignment = alignof(void*);
+        b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, layout));
+    }
+    else
+    {
+        b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned, layout));
+    }
 
     auto idx = b->local_allocation_count;
     ++b->local_allocation_count;

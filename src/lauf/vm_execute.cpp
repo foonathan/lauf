@@ -21,6 +21,16 @@ bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
 #define LAUF_DO_PANIC(Msg)                                                                         \
     [[clang::musttail]] return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
 
+lauf::allocation make_local_alloc(void* memory, std::size_t size, std::uint8_t generation)
+{
+    lauf::allocation alloc;
+    alloc.ptr        = memory;
+    alloc.size       = std::uint32_t(size);
+    alloc.source     = lauf::allocation_source::local_memory;
+    alloc.status     = lauf::allocation_status::allocated;
+    alloc.generation = generation;
+    return alloc;
+}
 } // namespace
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
@@ -353,13 +363,24 @@ LAUF_VM_EXECUTE(local_alloc)
     auto memory = frame_ptr->next_frame();
     frame_ptr->next_offset += ip->local_alloc.size;
 
-    lauf::allocation alloc;
-    alloc.ptr        = memory;
-    alloc.size       = ip->local_alloc.size;
-    alloc.source     = allocation_source::local_memory;
-    alloc.status     = allocation_status::allocated;
-    alloc.generation = process->alloc_generation;
-    process->allocations.push_back(*process->vm, alloc);
+    process->allocations.push_back(*process->vm, make_local_alloc(memory, ip->local_alloc.size,
+                                                                  frame_ptr->local_generation));
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+LAUF_VM_EXECUTE(local_alloc_aligned)
+{
+    // The builder has taken care of ensuring alignment.
+    assert(ip->local_alloc.alignment >= alignof(void*));
+
+    frame_ptr->next_offset
+        += lauf::align_offset(frame_ptr->next_frame(), ip->local_alloc.alignment);
+    auto memory = frame_ptr->next_frame();
+    frame_ptr->next_offset += ip->local_alloc.size;
+
+    process->allocations.push_back(*process->vm, make_local_alloc(memory, ip->local_alloc.size,
+                                                                  frame_ptr->local_generation));
 
     ++ip;
     LAUF_VM_DISPATCH;

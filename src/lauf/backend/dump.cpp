@@ -173,6 +173,10 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::local_alloc:
             writer->format("local_alloc (%d, %d)", ip->local_alloc.size, ip->local_alloc.alignment);
             break;
+        case lauf::asm_op::local_alloc_aligned:
+            writer->format("local_alloc_aligned (%d, %d)", ip->local_alloc_aligned.size,
+                           ip->local_alloc_aligned.alignment);
+            break;
         case lauf::asm_op::local_free:
             writer->format("local_free %d", ip->local_free.value);
             break;

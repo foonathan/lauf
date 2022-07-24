@@ -31,6 +31,16 @@ function @load_store_field_local() {
 
     return;
 }
+function @load_store_field_local_aligned() {
+    local %value : (8, 128);
+    uint 42; local_addr %value; store_field $lauf.Value 0;
+    local_addr %value; call @set_pointer;
+
+    local_addr %value; load_field $lauf.Value 0;
+    uint 11; $lauf.test.assert_eq;
+
+    return;
+}
 
 #== Invalid global addresses ===#
 # Order matters to ensure that the misaligned ends up misaligned.
@@ -75,8 +85,11 @@ function @reuse_dangling() {
 global const @msg_invalid_address = "invalid address", 0;
 
 function @main() {
-    call @load_store_field_global();
-    call @load_store_field_local();
+    [
+        call @load_store_field_global();
+        call @load_store_field_local();
+        call @load_store_field_local_aligned();
+    ]
 
     [
         function_addr @store_const; global_addr @msg_invalid_address; $lauf.test.assert_panic;
