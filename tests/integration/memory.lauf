@@ -32,7 +32,7 @@ function @load_store_field_local() {
     return;
 }
 function @load_store_field_local_aligned() {
-    local %value : (8, 128);
+    local %value : (8, 1024);
     uint 42; local_addr %value; store_field $lauf.Value 0;
     local_addr %value; call @set_pointer;
 

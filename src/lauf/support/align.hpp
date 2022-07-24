@@ -14,6 +14,12 @@ constexpr bool is_valid_alignment(std::size_t alignment) noexcept
     return alignment != 0u && (alignment & (alignment - 1)) == 0u;
 }
 
+constexpr std::uint8_t align_log2(std::size_t alignment) noexcept
+{
+    assert(is_valid_alignment(alignment));
+    return std::uint8_t(__builtin_ctzll(alignment));
+}
+
 constexpr std::size_t align_offset(std::uintptr_t address, std::size_t alignment) noexcept
 {
     assert(is_valid_alignment(alignment));

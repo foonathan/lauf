@@ -357,7 +357,7 @@ LAUF_VM_EXECUTE(swap)
 LAUF_VM_EXECUTE(local_alloc)
 {
     // The builder has taken care of ensuring alignment.
-    assert(ip->local_alloc.alignment == alignof(void*));
+    assert(ip->local_alloc.alignment() == alignof(void*));
     assert(lauf::is_aligned(frame_ptr->next_frame(), alignof(void*)));
 
     auto memory = frame_ptr->next_frame();
@@ -372,10 +372,8 @@ LAUF_VM_EXECUTE(local_alloc)
 LAUF_VM_EXECUTE(local_alloc_aligned)
 {
     // The builder has taken care of ensuring alignment.
-    assert(ip->local_alloc.alignment >= alignof(void*));
-
     frame_ptr->next_offset
-        += lauf::align_offset(frame_ptr->next_frame(), ip->local_alloc.alignment);
+        += lauf::align_offset(frame_ptr->next_frame(), ip->local_alloc_aligned.alignment());
     auto memory = frame_ptr->next_frame();
     frame_ptr->next_offset += ip->local_alloc.size;
 
@@ -404,7 +402,7 @@ LAUF_VM_EXECUTE(deref_const)
     auto address = vstack_ptr[0].as_address;
 
     auto ptr = lauf_runtime_get_const_ptr(process, address,
-                                          {ip->deref_const.size, ip->deref_const.alignment});
+                                          {ip->deref_const.size, ip->deref_const.alignment()});
     if (ptr == nullptr)
         LAUF_DO_PANIC("invalid address");
 
@@ -418,8 +416,8 @@ LAUF_VM_EXECUTE(deref_mut)
 {
     auto address = vstack_ptr[0].as_address;
 
-    auto ptr
-        = lauf_runtime_get_mut_ptr(process, address, {ip->deref_mut.size, ip->deref_mut.alignment});
+    auto ptr = lauf_runtime_get_mut_ptr(process, address,
+                                        {ip->deref_mut.size, ip->deref_mut.alignment()});
     if (ptr == nullptr)
         LAUF_DO_PANIC("invalid address");
 

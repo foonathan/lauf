@@ -171,20 +171,22 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             break;
 
         case lauf::asm_op::local_alloc:
-            writer->format("local_alloc (%d, %d)", ip->local_alloc.size, ip->local_alloc.alignment);
+            writer->format("local_alloc (%u, %zu)", ip->local_alloc.size,
+                           ip->local_alloc.alignment());
             break;
         case lauf::asm_op::local_alloc_aligned:
-            writer->format("local_alloc_aligned (%d, %d)", ip->local_alloc_aligned.size,
-                           ip->local_alloc_aligned.alignment);
+            writer->format("local_alloc_aligned (%u, %zu)", ip->local_alloc_aligned.size,
+                           ip->local_alloc_aligned.alignment());
             break;
         case lauf::asm_op::local_free:
             writer->format("local_free %d", ip->local_free.value);
             break;
         case lauf::asm_op::deref_const:
-            writer->format("deref_const (%d, %d)", ip->deref_const.size, ip->deref_const.alignment);
+            writer->format("deref_const (%u, %zu)", ip->deref_const.size,
+                           ip->deref_const.alignment());
             break;
         case lauf::asm_op::deref_mut:
-            writer->format("deref_mut (%d, %d)", ip->deref_mut.size, ip->deref_mut.alignment);
+            writer->format("deref_mut (%u, %zu)", ip->deref_mut.size, ip->deref_mut.alignment());
             break;
         }
         writer->write(";\n");

@@ -70,8 +70,13 @@ struct asm_inst_signature
 struct asm_inst_layout
 {
     asm_op        op;
-    std::uint8_t  alignment;
+    std::uint8_t  alignment_log2;
     std::uint16_t size;
+
+    constexpr std::size_t alignment() const
+    {
+        return std::size_t(1) << alignment_log2;
+    }
 };
 
 struct asm_inst_value
