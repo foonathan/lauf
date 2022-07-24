@@ -48,6 +48,11 @@ function @cstack_overflow() {
     call @cstack_overflow;
     return;
 }
+function @cstack_overflow_local() {
+    local %local : (1024, 8);
+    call @cstack_overflow_local();
+    return;
+}
 
 global const @msg_vstack_overflow = "vstack overflow", 0;
 global const @msg_cstack_overflow = "cstack overflow", 0;
@@ -92,6 +97,7 @@ function @main() {
     [
         function_addr @vstack_overflow; global_addr @msg_vstack_overflow; $lauf.test.assert_panic;
         function_addr @cstack_overflow; global_addr @msg_cstack_overflow; $lauf.test.assert_panic;
+        function_addr @cstack_overflow_local; global_addr @msg_cstack_overflow; $lauf.test.assert_panic;
     ]
 
     return;

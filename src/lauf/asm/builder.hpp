@@ -95,7 +95,8 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
     lauf_asm_block*                  prologue = nullptr;
     lauf_asm_block*                  cur      = nullptr;
 
-    std::uint32_t local_allocation_count = 0;
+    std::uint16_t local_allocation_count = 0;
+    std::uint16_t local_allocation_size  = 0;
     bool          errored                = false;
 
     explicit lauf_asm_builder(lauf::arena_key key, lauf_asm_build_options options)
@@ -113,6 +114,7 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         cur = nullptr;
 
         local_allocation_count = 0;
+        local_allocation_size  = 0;
         errored                = false;
 
         this->clear();

@@ -136,11 +136,15 @@ LAUF_VM_EXECUTE(call)
         LAUF_DO_PANIC("vstack overflow");
 
     // Check that we have enough space left on the cstack.
-    if (reinterpret_cast<unsigned char*>(frame_ptr + 1) >= process->cstack_end)
+    auto next_frame  = frame_ptr->next_frame();
+    auto size_needed = sizeof(lauf_runtime_stack_frame) + callee->max_cstack_size;
+    auto size_remaining
+        = std::size_t(process->cstack_end - static_cast<unsigned char*>(next_frame));
+    if (size_needed > size_remaining)
         LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
-    frame_ptr = ::new (frame_ptr->next_frame()) auto(
+    frame_ptr = ::new (next_frame) auto(
         lauf_runtime_stack_frame::make_call_frame(callee, process, ip, frame_ptr));
 
     // And start executing the function.
@@ -181,11 +185,15 @@ LAUF_VM_EXECUTE(call_indirect)
         LAUF_DO_PANIC("vstack overflow");
 
     // Check that we have enough space left on the cstack.
-    if (reinterpret_cast<unsigned char*>(frame_ptr + 1) >= process->cstack_end)
+    auto next_frame  = frame_ptr->next_frame();
+    auto size_needed = sizeof(lauf_runtime_stack_frame) + callee->max_cstack_size;
+    auto size_remaining
+        = std::size_t(process->cstack_end - static_cast<unsigned char*>(next_frame));
+    if (size_needed > size_remaining)
         LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
-    frame_ptr = ::new (frame_ptr->next_frame()) auto(
+    frame_ptr = ::new (next_frame) auto(
         lauf_runtime_stack_frame::make_call_frame(callee, process, ip, frame_ptr));
 
     // And start executing the function.

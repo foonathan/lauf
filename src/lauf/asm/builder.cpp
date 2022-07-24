@@ -157,6 +157,8 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
         return std::uint16_t(result);
     }();
 
+    b->fn->max_cstack_size = b->local_allocation_size;
+
     return !b->errored;
 }
 
@@ -175,6 +177,10 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
     {
         b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned, layout));
     }
+
+    b->local_allocation_size += layout.size;
+    if (layout.alignment > alignof(void*))
+        b->local_allocation_size += layout.alignment;
 
     auto idx = b->local_allocation_count;
     ++b->local_allocation_count;
