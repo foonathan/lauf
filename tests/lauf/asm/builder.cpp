@@ -514,19 +514,6 @@ TEST_CASE("lauf_asm_inst_call")
     // cannot check offset
 }
 
-TEST_CASE("lauf_asm_inst_tail_call")
-{
-    auto tail = build({2, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
-        auto f = lauf_asm_add_function(mod, "a", {2, 0});
-        lauf_asm_inst_tail_call(b, f);
-
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, {0, 0}));
-    });
-    REQUIRE(tail.size() == 1);
-    CHECK(tail[0].op() == lauf::asm_op::tail_call);
-    // cannot check offset
-}
-
 TEST_CASE("lauf_asm_inst_call_indirect")
 {
     auto regular = build({4, 5}, [](lauf_asm_module*, lauf_asm_builder* b) {
@@ -536,19 +523,6 @@ TEST_CASE("lauf_asm_inst_call_indirect")
     CHECK(regular[0].op() == lauf::asm_op::call_indirect);
     CHECK(regular[0].call_indirect.input_count == 3);
     CHECK(regular[0].call_indirect.output_count == 5);
-}
-
-TEST_CASE("lauf_asm_inst_tail_call_indirect")
-{
-    auto tail = build({2, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        lauf_asm_inst_tail_call_indirect(b, {1, 0});
-
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, {0, 0}));
-    });
-    REQUIRE(tail.size() == 1);
-    CHECK(tail[0].op() == lauf::asm_op::tail_call_indirect);
-    CHECK(tail[0].tail_call_indirect.input_count == 1);
-    CHECK(tail[0].tail_call_indirect.output_count == 0);
 }
 
 TEST_CASE("lauf_asm_inst_call_builtin")

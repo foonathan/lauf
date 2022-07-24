@@ -307,36 +307,6 @@ void lauf_asm_inst_panic(lauf_asm_builder* b)
     b->cur             = nullptr;
 }
 
-void lauf_asm_inst_tail_call(lauf_asm_builder* b, const lauf_asm_function* callee)
-{
-    // Generate a call that we then change to tail call.
-    lauf_asm_inst_call(b, callee);
-    b->cur->insts.back().call.op = lauf::asm_op::tail_call;
-
-    // We then generate a return.
-    auto block = b->cur;
-    lauf_asm_inst_return(b);
-
-    // We terminate the block with fallthrough, as the tail call instruction is the actual
-    // terminator.
-    block->terminator = lauf_asm_block::fallthrough;
-}
-
-void lauf_asm_inst_tail_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
-{
-    // Generate a call that we then change to tail call.
-    lauf_asm_inst_call_indirect(b, sig);
-    b->cur->insts.back().call_indirect.op = lauf::asm_op::tail_call_indirect;
-
-    // We then generate a return.
-    auto block = b->cur;
-    lauf_asm_inst_return(b);
-
-    // We terminate the block with fallthrough, as the tail call instruction is the actual
-    // terminator.
-    block->terminator = lauf_asm_block::fallthrough;
-}
-
 void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
 {
     LAUF_BUILD_ASSERT_CUR;

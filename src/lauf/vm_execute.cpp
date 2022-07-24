@@ -152,23 +152,6 @@ LAUF_VM_EXECUTE(call)
     LAUF_VM_DISPATCH;
 }
 
-LAUF_VM_EXECUTE(tail_call)
-{
-    auto callee
-        = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
-
-    // Check that we have enough space left on the vstack.
-    if (auto remaining = vstack_ptr - process->vstack_end; remaining < callee->max_vstack_size)
-        LAUF_DO_PANIC("vstack overflow");
-
-    // Overwrite the current function, return_ip stays unchanged.
-    frame_ptr->function = callee;
-
-    // And start executing the function.
-    ip = callee->insts;
-    LAUF_VM_DISPATCH;
-}
-
 LAUF_VM_EXECUTE(call_indirect)
 {
     auto ptr = vstack_ptr[0].as_function_address;
@@ -195,28 +178,6 @@ LAUF_VM_EXECUTE(call_indirect)
     // Create a new stack frame.
     frame_ptr = ::new (next_frame) auto(
         lauf_runtime_stack_frame::make_call_frame(callee, process, ip, frame_ptr));
-
-    // And start executing the function.
-    ip = callee->insts;
-    LAUF_VM_DISPATCH;
-}
-LAUF_VM_EXECUTE(tail_call_indirect)
-{
-    auto ptr = vstack_ptr[0].as_function_address;
-    ++vstack_ptr;
-
-    auto callee = lauf_runtime_get_function_ptr(process, ptr,
-                                                {ip->call_indirect.input_count,
-                                                 ip->call_indirect.output_count});
-    if (callee == nullptr)
-        LAUF_DO_PANIC("invalid function address");
-
-    // Check that we have enough space left on the vstack.
-    if (auto remaining = vstack_ptr - process->vstack_end; remaining < callee->max_vstack_size)
-        LAUF_DO_PANIC("vstack overflow");
-
-    // Overwrite the current function, return_ip stays unchanged.
-    frame_ptr->function = callee;
 
     // And start executing the function.
     ip = callee->insts;

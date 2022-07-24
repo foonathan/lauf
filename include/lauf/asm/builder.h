@@ -101,18 +101,6 @@ void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
 /// Signature: msg:char* => n/a
 void lauf_asm_inst_panic(lauf_asm_builder* b);
 
-/// Terminator: tail call.
-///
-/// Same as `lauf_asm_inst_call()` followed by `lauf_asm_inst_return()` except that local variables
-/// are deallocated before the call.
-void lauf_asm_inst_tail_call(lauf_asm_builder* b, const lauf_asm_function* callee);
-
-/// Terminator: indirect tail call.
-///
-/// Same as `lauf_asm_inst_call_indirect()` followed by `lauf_asm_inst_return()` except that local
-/// variables are deallocated before the call.
-void lauf_asm_inst_tail_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
-
 //=== call instructions ===//
 /// Calls the specified function.
 ///

@@ -411,20 +411,10 @@ struct inst_call
     static constexpr auto rule  = LAUF_KEYWORD("call") >> dsl::p<function_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_call);
 };
-struct inst_tail_call
-{
-    static constexpr auto rule  = LAUF_KEYWORD("tail_call") >> dsl::p<function_ref>;
-    static constexpr auto value = inst(&lauf_asm_inst_tail_call);
-};
 struct inst_call_indirect
 {
     static constexpr auto rule  = LAUF_KEYWORD("call_indirect") >> dsl::p<signature>;
     static constexpr auto value = inst(&lauf_asm_inst_call_indirect);
-};
-struct inst_tail_call_indirect
-{
-    static constexpr auto rule  = LAUF_KEYWORD("tail_call_indirect") >> dsl::p<signature>;
-    static constexpr auto value = inst(&lauf_asm_inst_tail_call_indirect);
 };
 struct inst_call_builtin
 {
@@ -457,8 +447,7 @@ struct instruction
               | dsl::p<inst_null> | dsl::p<inst_global_addr>                               //
               | dsl::p<inst_function_addr> | dsl::p<inst_local_addr>                       //
               | dsl::p<inst_stack_op>                                                      //
-              | dsl::p<inst_tail_call_indirect> | dsl::p<inst_tail_call>                   //
-              | dsl::p<inst_call_indirect> | dsl::p<inst_call> | dsl::p<inst_call_builtin> //
+              | dsl::p<inst_call> | dsl::p<inst_call_indirect> | dsl::p<inst_call_builtin> //
               | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
 
         return nested | dsl::else_ >> single + dsl::semicolon;

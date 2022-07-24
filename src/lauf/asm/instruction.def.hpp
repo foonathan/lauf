@@ -31,12 +31,10 @@ LAUF_ASM_INST(exit, asm_inst_none)
 // The offset is the difference between the address of the current function and the called function
 // divided by sizeof(void*).
 LAUF_ASM_INST(call, asm_inst_offset)
-LAUF_ASM_INST(tail_call, asm_inst_offset)
 
 // lauf_asm_inst_call_indirect()
 // data is function index
 LAUF_ASM_INST(call_indirect, asm_inst_signature)
-LAUF_ASM_INST(tail_call_indirect, asm_inst_signature)
 
 // lauf_asm_inst_call_builtin()
 // The offset is the difference between the address of the lauf_runtime_builtin_dispatch() and the
