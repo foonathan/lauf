@@ -348,6 +348,7 @@ LAUF_VM_EXECUTE(local_alloc)
     alloc.generation = process->alloc_generation;
     process->allocations.push_back(*process->vm, alloc);
 
+    ++ip;
     LAUF_VM_DISPATCH;
 }
 
@@ -359,6 +360,7 @@ LAUF_VM_EXECUTE(local_free)
         process->allocations[index].status = allocation_status::freed;
     }
 
+    ++ip;
     LAUF_VM_DISPATCH;
 }
 

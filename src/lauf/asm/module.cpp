@@ -3,6 +3,7 @@
 
 #include <lauf/asm/module.hpp>
 
+#include <lauf/asm/type.h>
 #include <string_view>
 
 lauf_asm_module* lauf_asm_create_module(const char* name)
@@ -26,23 +27,22 @@ const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* m
     return nullptr;
 }
 
-lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, size_t size_in_bytes,
-                                               size_t alignment)
+lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, lauf_asm_layout layout)
 {
-    return mod->construct<lauf_asm_global>(mod, size_in_bytes, alignment);
+    return mod->construct<lauf_asm_global>(mod, layout.size, layout.alignment);
 }
 
 lauf_asm_global* lauf_asm_add_global_const_data(lauf_asm_module* mod, const void* data,
-                                                size_t size_in_bytes, size_t alignment)
+                                                lauf_asm_layout layout)
 {
-    return mod->construct<lauf_asm_global>(mod, data, size_in_bytes, alignment,
+    return mod->construct<lauf_asm_global>(mod, data, layout.size, layout.alignment,
                                            lauf_asm_global::read_only);
 }
 
 lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* data,
-                                              size_t size_in_bytes, size_t alignment)
+                                              lauf_asm_layout layout)
 {
-    return mod->construct<lauf_asm_global>(mod, data, size_in_bytes, alignment,
+    return mod->construct<lauf_asm_global>(mod, data, layout.size, layout.alignment,
                                            lauf_asm_global::read_write);
 }
 

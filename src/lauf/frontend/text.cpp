@@ -198,6 +198,26 @@ struct block_ref
         });
 };
 
+//=== layout ===//
+struct layout_expr
+{
+    struct literal
+    {
+        static constexpr auto rule
+            = dsl::parenthesized(dsl::twice(dsl::integer<std::size_t>, dsl::sep(dsl::comma)));
+        static constexpr auto value = lexy::construct<lauf_asm_layout>;
+    };
+
+    struct type
+    {
+        static constexpr auto rule  = dsl::p<type_ref>;
+        static constexpr auto value = lexy::mem_fn(&lauf_asm_type::layout);
+    };
+
+    static constexpr auto rule  = dsl::p<literal> | dsl::p<type>;
+    static constexpr auto value = lexy::forward<lauf_asm_layout>;
+};
+
 //=== global ===//
 struct data_expr
 {
@@ -235,47 +255,48 @@ struct data_expr
 
 struct global_decl
 {
-    struct alignment
-    {
-        static constexpr auto rule = dsl::opt(LEXY_LIT("align") >> dsl::integer<std::size_t>);
-        static constexpr auto value
-            = lexy::bind(lexy::forward<std::size_t>, lexy::_1 or alignof(lauf_uint));
-    };
-
     struct const_global
     {
-        static constexpr auto rule
-            = LEXY_LIT("const") >> dsl::p<global_identifier> + dsl::p<alignment> + dsl::equal_sign
-                                       + dsl::p<data_expr>;
+        static constexpr auto rule = [] {
+            auto decl = dsl::p<global_identifier> + dsl::opt(dsl::colon >> dsl::p<layout_expr>)
+                        + dsl::equal_sign + dsl::p<data_expr>;
+            return LEXY_LIT("const") >> decl;
+        }();
 
-        static constexpr auto value = callback([](const parse_state& state, const std::string& name,
-                                                  std::size_t alignment, const std::string& data) {
-            auto g
-                = lauf_asm_add_global_const_data(state.mod, data.c_str(), data.size(), alignment);
-            state.globals.insert(name, g);
-        });
+        static constexpr auto value = callback(
+            [](const parse_state& state, const std::string& name, lauf_asm_layout layout,
+               std::string data) {
+                data.resize(layout.size);
+                auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(), layout);
+                state.globals.insert(name, g);
+            },
+            [](const parse_state& state, const std::string& name, lexy::nullopt,
+               const std::string& data) {
+                auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(),
+                                                        {data.size(), alignof(void*)});
+                state.globals.insert(name, g);
+            });
     };
 
     struct mut_global
     {
         static constexpr auto rule = [] {
-            auto zero_expr = LEXY_LIT("zero") >> dsl::lit_c<'*'> + dsl::integer<std::size_t>;
-            auto expr      = zero_expr | dsl::else_ >> dsl::p<data_expr>;
-
-            return dsl::else_
-                   >> dsl::p<global_identifier> + dsl::p<alignment> + dsl::equal_sign + expr;
+            auto decl = dsl::p<global_identifier> + dsl::opt(dsl::colon >> dsl::p<layout_expr>)
+                        + dsl::equal_sign + dsl::p<data_expr>;
+            return dsl::else_ >> decl;
         }();
 
         static constexpr auto value = callback(
-            [](const parse_state& state, const std::string& name, std::size_t alignment,
-               const std::string& data) {
-                auto g
-                    = lauf_asm_add_global_mut_data(state.mod, data.c_str(), data.size(), alignment);
+            [](const parse_state& state, const std::string& name, lauf_asm_layout layout,
+               std::string data) {
+                data.resize(layout.size);
+                auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(), layout);
                 state.globals.insert(name, g);
             },
-            [](const parse_state& state, const std::string& name, std::size_t alignment,
-               std::size_t size) {
-                auto g = lauf_asm_add_global_zero_data(state.mod, size, alignment);
+            [](const parse_state& state, const std::string& name, lexy::nullopt,
+               const std::string& data) {
+                auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(),
+                                                      {data.size(), alignof(void*)});
                 state.globals.insert(name, g);
             });
     };
@@ -442,13 +463,6 @@ struct block
 
     static constexpr auto rule  = dsl::p<header> + dsl::curly_bracketed.list(dsl::p<instruction>);
     static constexpr auto value = lexy::forward<void>;
-};
-
-struct layout_expr
-{
-    static constexpr auto rule
-        = dsl::parenthesized(dsl::twice(dsl::integer<std::size_t>, dsl::sep(dsl::comma)));
-    static constexpr auto value = lexy::construct<lauf_asm_layout>;
 };
 
 struct local_decl

@@ -8,6 +8,8 @@
 
 LAUF_HEADER_START
 
+typedef struct lauf_asm_layout lauf_asm_layout;
+
 //=== types ===//
 /// A module, which is a self-contained unit of lauf ASM.
 ///
@@ -50,16 +52,15 @@ const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* m
 
 //=== global memory ===//
 /// Adds zero-initialized, mutable global memory of the specified size to the module.
-lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, size_t size_in_bytes,
-                                               size_t alignment);
+lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, lauf_asm_layout layout);
 
 /// Adds the specified data as constant global memory to the module.
 lauf_asm_global* lauf_asm_add_global_const_data(lauf_asm_module* mod, const void* data,
-                                                size_t size_in_bytes, size_t alignment);
+                                                lauf_asm_layout layout);
 
 /// Adds the specified data as mutable global memory to the module.
 lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* data,
-                                              size_t size_in_bytes, size_t alignment);
+                                              lauf_asm_layout layout);
 
 //=== functions ===//
 /// Adds the declaration of a function with the specified name and signature.
