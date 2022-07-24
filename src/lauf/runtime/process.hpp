@@ -22,7 +22,9 @@ struct lauf_runtime_stack_frame
     // The return address to jump to when the call finishes.
     const lauf_asm_inst* return_ip;
     // The allocation of the first local_alloc (only meaningful if the function has any)
-    uint32_t first_local_alloc;
+    uint16_t first_local_alloc;
+    // The generation of the local variables.
+    uint8_t local_generation;
     // The offset from this where the next frame can be put, i.e. after the local allocs.
     uint32_t next_offset;
     // The previous stack frame.
@@ -30,12 +32,12 @@ struct lauf_runtime_stack_frame
 
     static lauf_runtime_stack_frame make_trampoline_frame(const lauf_asm_function* fn)
     {
-        return {fn, nullptr, 0, sizeof(lauf_runtime_stack_frame), nullptr};
+        return {fn, nullptr, 0, 0, sizeof(lauf_runtime_stack_frame), nullptr};
     }
     static lauf_runtime_stack_frame make_dummy_frame(const lauf_asm_inst*      ip,
                                                      lauf_runtime_stack_frame* frame_ptr)
     {
-        return {nullptr, ip + 1, 0, 0, frame_ptr};
+        return {nullptr, ip + 1, 0, 0, 0, frame_ptr};
     }
     static lauf_runtime_stack_frame make_call_frame(const lauf_asm_function*    callee,
                                                     const lauf_runtime_process* process,
@@ -144,8 +146,13 @@ inline lauf_runtime_stack_frame lauf_runtime_stack_frame::make_call_frame(
     const lauf_asm_function* callee, const lauf_runtime_process* process, const lauf_asm_inst* ip,
     lauf_runtime_stack_frame* frame_ptr)
 {
-    auto alloc_idx = std::uint32_t(process->allocations.size());
-    return {callee, ip + 1, alloc_idx, sizeof(lauf_runtime_stack_frame), frame_ptr};
+    auto alloc_idx = std::uint16_t(process->allocations.size());
+    return {callee,
+            ip + 1,
+            alloc_idx,
+            process->alloc_generation,
+            sizeof(lauf_runtime_stack_frame),
+            frame_ptr};
 }
 
 #endif // SRC_LAUF_RUNTIME_PROCESS_HPP_INCLUDED

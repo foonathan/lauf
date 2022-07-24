@@ -66,6 +66,10 @@ LAUF_ASM_INST(global_addr, asm_inst_value)
 // divided by sizeof(void*).
 LAUF_ASM_INST(function_addr, asm_inst_offset)
 
+// lauf_asm_inst_local_addr()
+// The value is the index of the local allocation.
+LAUF_ASM_INST(local_addr, asm_inst_value)
+
 //=== stack manipulation ===//
 // lauf_asm_inst_pop()
 LAUF_ASM_INST(pop, asm_inst_stack_idx)
@@ -81,6 +85,7 @@ LAUF_ASM_INST(swap, asm_inst_stack_idx)
 
 //=== memory ===//
 // Allocate memory for a local variable.
+// Invariant: all local_alloc happen at the beginning of the function.
 // Signature: _ => _
 LAUF_ASM_INST(local_alloc, asm_inst_layout)
 

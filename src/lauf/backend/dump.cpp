@@ -152,6 +152,10 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("function_addr @'%s'", callee->name);
             break;
         }
+        case lauf::asm_op::local_addr: {
+            writer->format("local_addr %u", ip->global_addr.value);
+            break;
+        }
 
         case lauf::asm_op::pop:
         case lauf::asm_op::pop_top:

@@ -265,6 +265,19 @@ LAUF_VM_EXECUTE(function_addr)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(local_addr)
+{
+    auto allocation_idx = frame_ptr->first_local_alloc + ip->local_addr.value;
+
+    --vstack_ptr;
+    vstack_ptr[0].as_address.allocation = std::uint32_t(allocation_idx);
+    vstack_ptr[0].as_address.offset     = 0;
+    vstack_ptr[0].as_address.generation = frame_ptr->local_generation;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
 //=== stack manipulation ===//
 LAUF_VM_EXECUTE(pop)
 {

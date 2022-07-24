@@ -431,6 +431,15 @@ void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* f
     b->cur->vstack.push();
 }
 
+void lauf_asm_inst_local_addr(lauf_asm_builder* b, const lauf_asm_local* local)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    auto index = reinterpret_cast<std::uint64_t>(local);
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_addr, std::uint32_t(index)));
+    b->cur->vstack.push();
+}
+
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
 {
     LAUF_BUILD_ASSERT_CUR;

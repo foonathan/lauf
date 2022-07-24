@@ -49,11 +49,22 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 
     auto str = lauf_create_string_writer();
     lauf_backend_dump(str, lauf_backend_default_dump_options, mod);
-    // MESSAGE(lauf_writer_get_string(str));
+    MESSAGE(lauf_writer_get_string(str));
     lauf_destroy_writer(str);
 
     std::vector<lauf_asm_inst> result;
-    for (auto i = sig.input_count; i != fn->insts_count - 1 - sig.output_count; ++i)
+
+    auto start_index = 0;
+    while (fn->insts[start_index].op() == lauf::asm_op::local_alloc)
+        ++start_index;
+    start_index += sig.input_count;
+
+    auto end_index = fn->insts_count - 1;
+    if (fn->insts[end_index - 1].op() == lauf::asm_op::local_free)
+        --end_index;
+    end_index -= sig.output_count;
+
+    for (auto i = start_index; i != end_index; ++i)
         result.push_back(fn->insts[i]);
 
     lauf_asm_destroy_module(mod);
@@ -409,6 +420,27 @@ TEST_CASE("lauf_asm_inst_global_addr")
     REQUIRE(multiple.size() == 1);
     CHECK(multiple[0].op() == lauf::asm_op::global_addr);
     CHECK(multiple[0].global_addr.value == 1);
+}
+
+TEST_CASE("lauf_asm_inst_local_addr")
+{
+    auto single = build({0, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        auto loc = lauf_asm_build_local(b, {8, 8});
+        lauf_asm_inst_local_addr(b, loc);
+    });
+    REQUIRE(single.size() == 1);
+    CHECK(single[0].op() == lauf::asm_op::local_addr);
+    CHECK(single[0].local_addr.value == 0);
+
+    auto multiple = build({0, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_build_local(b, {8, 8});
+        auto loc = lauf_asm_build_local(b, {8, 8});
+        lauf_asm_inst_local_addr(b, loc);
+        lauf_asm_build_local(b, {8, 8});
+    });
+    REQUIRE(multiple.size() == 1);
+    CHECK(multiple[0].op() == lauf::asm_op::local_addr);
+    CHECK(multiple[0].local_addr.value == 1);
 }
 
 TEST_CASE("lauf_asm_inst_function_addr")

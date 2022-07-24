@@ -79,18 +79,15 @@ lauf_asm_module* example_module()
             }
         }
 
-        global @foo : $lauf.Value = 0;
-
-        function @test() {
+        function @test(0 => 1) {
             local %foo : (8, 8);
             uint 42;
-            global_addr @foo;
+            local_addr %foo;
             store_field $lauf.Value 0;
 
-            global_addr @foo;
+            local_addr %foo;
             load_field $lauf.Value 0;
             $lauf.debug.print;
-            pop 0;
 
             return;
         }

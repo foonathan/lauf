@@ -1,10 +1,19 @@
 module @memory;
 
+#=== Valid ===#
 global @value : $lauf.Value = 0;
 
-function @load_store_field() {
+function @set_pointer(1 => 0) {
+    # We add an unused local so that a dangling local's memory gets reused.
+    local %unused : $lauf.Value;
+
+    uint 11; roll 1; store_field $lauf.Value 0;
+    return;
+}
+
+function @load_store_field_global() {
     uint 42; global_addr @value; store_field $lauf.Value 0;
-    uint 11; global_addr @value; store_field $lauf.Value 0;
+    global_addr @value; call @set_pointer;
 
     global_addr @value; load_field $lauf.Value 0;
     uint 11; $lauf.test.assert_eq;
@@ -12,6 +21,18 @@ function @load_store_field() {
     return;
 }
 
+function @load_store_field_local() {
+    local %value : $lauf.Value;
+    uint 42; local_addr %value; store_field $lauf.Value 0;
+    local_addr %value; call @set_pointer;
+
+    local_addr %value; load_field $lauf.Value 0;
+    uint 11; $lauf.test.assert_eq;
+
+    return;
+}
+
+#== Invalid global addresses ===#
 # Order matters to ensure that the misaligned ends up misaligned.
 # (Globals happen to be allocated in reverse order)
 global @misaligned : (8, 4) = 0;
@@ -31,15 +52,39 @@ function @store_misaligned() {
     return;
 }
 
+#== Invalid local addresses ===#
+function @get_dangling_local(0 => 1) {
+    local %value : $lauf.Value;
+    local_addr %value;
+    return;
+}
+
+function @use_dangling() {
+    uint 11;
+    call @get_dangling_local;
+    store_field $lauf.Value 0;
+    return;
+}
+
+function @reuse_dangling() {
+    call @get_dangling_local;
+    call @set_pointer;
+    return;
+}
+
 global const @msg_invalid_address = "invalid address", 0;
 
 function @main() {
-    call @load_store_field();
+    call @load_store_field_global();
+    call @load_store_field_local();
 
     [
         function_addr @store_const; global_addr @msg_invalid_address; $lauf.test.assert_panic;
         function_addr @store_small; global_addr @msg_invalid_address; $lauf.test.assert_panic;
         function_addr @store_misaligned; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+
+        function_addr @use_dangling; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+        function_addr @reuse_dangling; global_addr @msg_invalid_address; $lauf.test.assert_panic;
     ]
 
     return;
