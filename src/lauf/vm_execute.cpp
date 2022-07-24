@@ -31,6 +31,16 @@ lauf::allocation make_local_alloc(void* memory, std::size_t size, std::uint8_t g
     alloc.generation = generation;
     return alloc;
 }
+
+// We move the expensive call into a separate function, so the hot path contains no function calls.
+[[gnu::noinline]] bool grow_allocation_array(const lauf_asm_inst*      ip,
+                                             lauf_runtime_value*       vstack_ptr,
+                                             lauf_runtime_stack_frame* frame_ptr,
+                                             lauf_runtime_process*     process)
+{
+    process->allocations.reserve(*process->vm, process->allocations.size() + 1);
+    LAUF_VM_DISPATCH;
+}
 } // namespace
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
@@ -329,25 +339,33 @@ LAUF_VM_EXECUTE(local_alloc)
     assert(ip->local_alloc.alignment() == alignof(void*));
     assert(lauf::is_aligned(frame_ptr->next_frame(), alignof(void*)));
 
+    // If necessary, grow the allocation array - this will then tail call back here.
+    if (process->allocations.size() == process->allocations.capacity()) [[clang::musttail]]
+        return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
+
     auto memory = frame_ptr->next_frame();
     frame_ptr->next_offset += ip->local_alloc.size;
 
-    process->allocations.push_back(*process->vm, make_local_alloc(memory, ip->local_alloc.size,
-                                                                  frame_ptr->local_generation));
+    process->allocations.push_back_unchecked(
+        make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
 
     ++ip;
     LAUF_VM_DISPATCH;
 }
 LAUF_VM_EXECUTE(local_alloc_aligned)
 {
+    // If necessary, grow the allocation array - this will then tail call back here.
+    if (process->allocations.size() == process->allocations.capacity()) [[clang::musttail]]
+        return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
+
     // The builder has taken care of ensuring alignment.
     frame_ptr->next_offset
         += lauf::align_offset(frame_ptr->next_frame(), ip->local_alloc_aligned.alignment());
     auto memory = frame_ptr->next_frame();
     frame_ptr->next_offset += ip->local_alloc.size;
 
-    process->allocations.push_back(*process->vm, make_local_alloc(memory, ip->local_alloc.size,
-                                                                  frame_ptr->local_generation));
+    process->allocations.push_back_unchecked(
+        make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
 
     ++ip;
     LAUF_VM_DISPATCH;

@@ -63,7 +63,6 @@ lauf_asm_module* example_module()
         }
 
         function @fib(1 => 1) {
-            local %arg : $lauf.Value;
             block %entry(1 => 1) {
                 pick 0; sint 2; $my.sub;
                 branch3 %base(1 => 1) %recurse(1 => 1) %recurse(1 => 1);
@@ -74,6 +73,25 @@ lauf_asm_module* example_module()
             block %recurse(1 => 1) {
                 pick 0; sint 1; $my.sub; call @fib;
                 roll 1; sint 2; $my.sub; call @fib;
+                $my.add;
+                return;
+            }
+        }
+
+        function @fib_local(1 => 1) {
+            local %arg : $lauf.Value;
+            block %entry(1 => 0) {
+                pick 0; local_addr %arg; store_field $lauf.Value 0;
+                sint 2; $my.sub;
+                branch3 %base(0 => 1) %recurse(0 => 1) %recurse(0 => 1);
+            }
+            block %base(0 => 1) {
+                local_addr %arg; load_field $lauf.Value 0;
+                return;
+            }
+            block %recurse(1 => 1) {
+                local_addr %arg; load_field $lauf.Value 0; sint 1; $my.sub; call @fib_local;
+                local_addr %arg; load_field $lauf.Value 0; sint 2; $my.sub; call @fib_local;
                 $my.add;
                 return;
             }
@@ -134,7 +152,7 @@ int main()
     auto mod = example_module();
     dump_module(mod);
 
-    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "test"));
+    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib_local"));
     execute(program, lauf_uint(35));
 
     lauf_asm_destroy_module(mod);

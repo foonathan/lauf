@@ -105,45 +105,7 @@ public:
     }
 
     template <typename Arena>
-    void push_back(Arena& arena, const T& obj)
-    {
-        ensure_space(arena, _size + 1);
-
-        _ptr[_size] = obj;
-        ++_size;
-    }
-
-    template <typename Arena, typename... Args>
-    void emplace_back(Arena& arena, Args&&... args)
-    {
-        ensure_space(arena, _size + 1);
-
-        ::new (&_ptr[_size]) T(static_cast<Args&&>(args)...);
-        ++_size;
-    }
-
-    template <typename Arena>
-    void resize_uninitialized(Arena& arena, std::size_t new_size)
-    {
-        if (new_size < _size)
-        {
-            _size = new_size;
-        }
-        else
-        {
-            ensure_space(arena, new_size);
-            _size = new_size;
-        }
-    }
-
-    void pop_back()
-    {
-        --_size;
-    }
-
-private:
-    template <typename Arena>
-    void ensure_space(Arena& arena, std::size_t new_size)
+    void reserve(Arena& arena, std::size_t new_size)
     {
         if (new_size < _capacity)
             return;
@@ -173,6 +135,51 @@ private:
         _is_heap  = true;
     }
 
+    void push_back_unchecked(const T& obj)
+    {
+        _ptr[_size] = obj;
+        ++_size;
+    }
+    template <typename Arena>
+    void push_back(Arena& arena, const T& obj)
+    {
+        reserve(arena, _size + 1);
+        push_back_unchecked(obj);
+    }
+
+    template <typename... Args>
+    void emplace_back_unchecked(Args&&... args)
+    {
+        ::new (&_ptr[_size]) T(static_cast<Args&&>(args)...);
+        ++_size;
+    }
+    template <typename Arena, typename... Args>
+    void emplace_back(Arena& arena, Args&&... args)
+    {
+        reserve(arena, _size + 1);
+        emplace_back_unchecked(static_cast<Args&&>(args)...);
+    }
+
+    template <typename Arena>
+    void resize_uninitialized(Arena& arena, std::size_t new_size)
+    {
+        if (new_size < _size)
+        {
+            _size = new_size;
+        }
+        else
+        {
+            reserve(arena, new_size);
+            _size = new_size;
+        }
+    }
+
+    void pop_back()
+    {
+        --_size;
+    }
+
+private:
     T*          _ptr;
     std::size_t _size;
     std::size_t _capacity : 63;
