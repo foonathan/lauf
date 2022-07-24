@@ -5,8 +5,6 @@
 
 #include <lauf/asm/module.hpp>
 #include <lauf/asm/program.hpp>
-#include <lauf/asm/type.h>
-#include <lauf/runtime/value.h>
 #include <lauf/vm.hpp>
 
 const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p)
@@ -23,41 +21,11 @@ const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p)
 
 // lauf_runtime_call(), lauf_runtime_panic() implemented in vm.cpp
 
-namespace
-{
-const void* checked_offset(lauf::allocation alloc, lauf_runtime_address addr,
-                           lauf_asm_layout layout)
-{
-    if (!lauf::is_usable(alloc.status) || (alloc.generation & 0b11) != addr.generation)
-        return nullptr;
-
-    if (addr.offset + layout.size > alloc.size)
-        return nullptr;
-
-    auto ptr = alloc.unchecked_offset(addr.offset);
-    if (!lauf::is_aligned(ptr, layout.alignment))
-        return nullptr;
-
-    return ptr;
-}
-
-const void* checked_offset(lauf::allocation alloc, lauf_runtime_address addr)
-{
-    if (!lauf::is_usable(alloc.status) || (alloc.generation & 0b11) != addr.generation)
-        return nullptr;
-
-    if (addr.offset >= alloc.size)
-        return nullptr;
-
-    return alloc.unchecked_offset(addr.offset);
-}
-} // namespace
-
 const void* lauf_runtime_get_const_ptr(lauf_runtime_process* p, lauf_runtime_address addr,
                                        lauf_asm_layout layout)
 {
     if (auto alloc = p->get_allocation(addr.allocation))
-        return checked_offset(*alloc, addr, layout);
+        return lauf::checked_offset(*alloc, addr, layout);
     else
         return nullptr;
 }
@@ -67,7 +35,7 @@ void* lauf_runtime_get_mut_ptr(lauf_runtime_process* p, lauf_runtime_address add
 {
     if (auto alloc = p->get_allocation(addr.allocation);
         alloc != nullptr && !lauf::is_const(alloc->source))
-        return const_cast<void*>(checked_offset(*alloc, addr, layout));
+        return const_cast<void*>(lauf::checked_offset(*alloc, addr, layout));
     else
         return nullptr;
 }

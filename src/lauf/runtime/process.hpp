@@ -7,6 +7,8 @@
 #include <lauf/runtime/process.h>
 
 #include <lauf/asm/instruction.hpp>
+#include <lauf/asm/type.h>
+#include <lauf/runtime/value.h>
 #include <lauf/support/array.hpp>
 
 typedef struct lauf_asm_function lauf_asm_function;
@@ -170,6 +172,36 @@ inline lauf_runtime_stack_frame lauf_runtime_stack_frame::make_call_frame(
             sizeof(lauf_runtime_stack_frame),
             frame_ptr};
 }
+
+namespace lauf
+{
+inline const void* checked_offset(lauf::allocation alloc, lauf_runtime_address addr,
+                                  lauf_asm_layout layout)
+{
+    if (!lauf::is_usable(alloc.status) || (alloc.generation & 0b11) != addr.generation)
+        return nullptr;
+
+    if (addr.offset + layout.size > alloc.size)
+        return nullptr;
+
+    auto ptr = alloc.unchecked_offset(addr.offset);
+    if (!lauf::is_aligned(ptr, layout.alignment))
+        return nullptr;
+
+    return ptr;
+}
+
+inline const void* checked_offset(lauf::allocation alloc, lauf_runtime_address addr)
+{
+    if (!lauf::is_usable(alloc.status) || (alloc.generation & 0b11) != addr.generation)
+        return nullptr;
+
+    if (addr.offset >= alloc.size)
+        return nullptr;
+
+    return alloc.unchecked_offset(addr.offset);
+}
+} // namespace lauf
 
 #endif // SRC_LAUF_RUNTIME_PROCESS_HPP_INCLUDED
 

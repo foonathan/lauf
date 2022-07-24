@@ -388,29 +388,40 @@ LAUF_VM_EXECUTE(deref_const)
 {
     auto address = vstack_ptr[0].as_address;
 
-    auto ptr = lauf_runtime_get_const_ptr(process, address,
-                                          {ip->deref_const.size, ip->deref_const.alignment()});
-    if (ptr == nullptr)
-        LAUF_DO_PANIC("invalid address");
+    if (auto alloc = process->get_allocation(address.allocation))
+    {
+        auto ptr = lauf::checked_offset(*alloc, address,
+                                        {ip->deref_const.size, ip->deref_const.alignment()});
+        if (ptr != nullptr)
+        {
+            vstack_ptr[0].as_native_ptr = const_cast<void*>(ptr);
 
-    vstack_ptr[0].as_native_ptr = const_cast<void*>(ptr);
+            ++ip;
+            LAUF_VM_DISPATCH;
+        }
+    }
 
-    ++ip;
-    LAUF_VM_DISPATCH;
+    LAUF_DO_PANIC("invalid address");
 }
 
 LAUF_VM_EXECUTE(deref_mut)
 {
     auto address = vstack_ptr[0].as_address;
 
-    auto ptr = lauf_runtime_get_mut_ptr(process, address,
-                                        {ip->deref_mut.size, ip->deref_mut.alignment()});
-    if (ptr == nullptr)
-        LAUF_DO_PANIC("invalid address");
+    if (auto alloc = process->get_allocation(address.allocation);
+        alloc != nullptr && !lauf::is_const(alloc->source))
+    {
+        auto ptr = lauf::checked_offset(*alloc, address,
+                                        {ip->deref_const.size, ip->deref_const.alignment()});
+        if (ptr != nullptr)
+        {
+            vstack_ptr[0].as_native_ptr = const_cast<void*>(ptr);
 
-    vstack_ptr[0].as_native_ptr = ptr;
+            ++ip;
+            LAUF_VM_DISPATCH;
+        }
+    }
 
-    ++ip;
-    LAUF_VM_DISPATCH;
+    LAUF_DO_PANIC("invalid address");
 }
 
