@@ -55,7 +55,6 @@ function @vstack_overflow() {
 }
 function @cstack_overflow() {
     function_addr @cstack_overflow; call_indirect ();
-    uint 0; pop 0; # We need something to prevent a tail call.
     return;
 }
 

@@ -16,8 +16,7 @@
 namespace
 {
 template <typename BuilderFn>
-std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn,
-                                 int epilogue_count = 1)
+std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 {
     auto mod = lauf_asm_create_module("test");
     auto fn  = lauf_asm_add_function(mod, "test", {0, 0});
@@ -54,7 +53,7 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn,
     lauf_destroy_writer(str);
 
     std::vector<lauf_asm_inst> result;
-    for (auto i = sig.input_count; i != fn->insts_count - epilogue_count - sig.output_count; ++i)
+    for (auto i = sig.input_count; i != fn->insts_count - 1 - sig.output_count; ++i)
         result.push_back(fn->insts[i]);
 
     lauf_asm_destroy_module(mod);
@@ -481,14 +480,16 @@ TEST_CASE("lauf_asm_inst_call")
     REQUIRE(regular.size() == 1);
     CHECK(regular[0].op() == lauf::asm_op::call);
     // cannot check offset
+}
 
-    auto tail = build(
-        {2, 0},
-        [](lauf_asm_module* mod, lauf_asm_builder* b) {
-            auto f = lauf_asm_add_function(mod, "a", {2, 0});
-            lauf_asm_inst_call(b, f);
-        },
-        0);
+TEST_CASE("lauf_asm_inst_tail_call")
+{
+    auto tail = build({2, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
+        auto f = lauf_asm_add_function(mod, "a", {2, 0});
+        lauf_asm_inst_tail_call(b, f);
+
+        lauf_asm_build_block(b, lauf_asm_declare_block(b, {0, 0}));
+    });
     REQUIRE(tail.size() == 1);
     CHECK(tail[0].op() == lauf::asm_op::tail_call);
     // cannot check offset
@@ -503,13 +504,15 @@ TEST_CASE("lauf_asm_inst_call_indirect")
     CHECK(regular[0].op() == lauf::asm_op::call_indirect);
     CHECK(regular[0].call_indirect.input_count == 3);
     CHECK(regular[0].call_indirect.output_count == 5);
+}
 
-    auto tail = build(
-        {2, 0},
-        [](lauf_asm_module*, lauf_asm_builder* b) {
-            lauf_asm_inst_call_indirect(b, {1, 0});
-        },
-        0);
+TEST_CASE("lauf_asm_inst_tail_call_indirect")
+{
+    auto tail = build({2, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_tail_call_indirect(b, {1, 0});
+
+        lauf_asm_build_block(b, lauf_asm_declare_block(b, {0, 0}));
+    });
     REQUIRE(tail.size() == 1);
     CHECK(tail[0].op() == lauf::asm_op::tail_call_indirect);
     CHECK(tail[0].tail_call_indirect.input_count == 1);

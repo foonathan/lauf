@@ -201,22 +201,8 @@ void lauf_asm_inst_return(lauf_asm_builder* b)
     LAUF_BUILD_ASSERT(b->cur->sig.output_count == b->fn->sig.output_count,
                       "requested exit block has different output count from function");
 
-    if (!b->cur->insts.empty() && b->cur->insts.back().op() == lauf::asm_op::call)
-    {
-        b->cur->insts.back().call.op = lauf::asm_op::tail_call;
-        b->cur->terminator           = lauf_asm_block::fallthrough;
-    }
-    else if (!b->cur->insts.empty() && b->cur->insts.back().op() == lauf::asm_op::call_indirect)
-    {
-        b->cur->insts.back().call.op = lauf::asm_op::tail_call_indirect;
-        b->cur->terminator           = lauf_asm_block::fallthrough;
-    }
-    else
-    {
-        b->cur->terminator = lauf_asm_block::return_;
-    }
-
-    b->cur = nullptr;
+    b->cur->terminator = lauf_asm_block::return_;
+    b->cur             = nullptr;
 }
 
 void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest)
@@ -307,6 +293,73 @@ void lauf_asm_inst_panic(lauf_asm_builder* b)
 
     b->cur->terminator = lauf_asm_block::panic;
     b->cur             = nullptr;
+}
+
+void lauf_asm_inst_tail_call(lauf_asm_builder* b, const lauf_asm_function* callee)
+{
+    // Generate a call that we then change to tail call.
+    lauf_asm_inst_call(b, callee);
+    b->cur->insts.back().call.op = lauf::asm_op::tail_call;
+
+    // We then generate a return.
+    auto block = b->cur;
+    lauf_asm_inst_return(b);
+
+    // We terminate the block with fallthrough, as the tail call instruction is the actual
+    // terminator.
+    block->terminator = lauf_asm_block::fallthrough;
+}
+
+void lauf_asm_inst_tail_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
+{
+    // Generate a call that we then change to tail call.
+    lauf_asm_inst_call_indirect(b, sig);
+    b->cur->insts.back().call_indirect.op = lauf::asm_op::tail_call_indirect;
+
+    // We then generate a return.
+    auto block = b->cur;
+    lauf_asm_inst_return(b);
+
+    // We terminate the block with fallthrough, as the tail call instruction is the actual
+    // terminator.
+    block->terminator = lauf_asm_block::fallthrough;
+}
+
+void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee->sig.input_count), "missing input values for call");
+
+    auto offset = lauf::compress_pointer_offset(b->fn, callee);
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call, offset));
+
+    b->cur->vstack.push(callee->sig.output_count);
+}
+
+void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values for call");
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing function address");
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_indirect, sig.input_count,
+                                                          sig.output_count));
+
+    b->cur->vstack.push(sig.output_count);
+}
+
+void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee.input_count), "missing input values for call");
+
+    auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
+
+    b->cur->vstack.push(callee.output_count);
 }
 
 void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value)
@@ -418,43 +471,6 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(swap, stack_index));
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
-}
-
-void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
-{
-    LAUF_BUILD_ASSERT_CUR;
-
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee->sig.input_count), "missing input values for call");
-
-    auto offset = lauf::compress_pointer_offset(b->fn, callee);
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call, offset));
-
-    b->cur->vstack.push(callee->sig.output_count);
-}
-
-void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
-{
-    LAUF_BUILD_ASSERT_CUR;
-
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee.input_count), "missing input values for call");
-
-    auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
-
-    b->cur->vstack.push(callee.output_count);
-}
-
-void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
-{
-    LAUF_BUILD_ASSERT_CUR;
-
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values for call");
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing function address");
-
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_indirect, sig.input_count,
-                                                          sig.output_count));
-
-    b->cur->vstack.push(sig.output_count);
 }
 
 void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index)

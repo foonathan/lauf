@@ -101,6 +101,35 @@ void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
 /// Signature: msg:char* => n/a
 void lauf_asm_inst_panic(lauf_asm_builder* b);
 
+/// Terminator: tail call.
+///
+/// Same as `lauf_asm_inst_call()` followed by `lauf_asm_inst_return()` except that local variables
+/// are deallocated before the call.
+void lauf_asm_inst_tail_call(lauf_asm_builder* b, const lauf_asm_function* callee);
+
+/// Terminator: indirect tail call.
+///
+/// Same as `lauf_asm_inst_call_indirect()` followed by `lauf_asm_inst_return()` except that local
+/// variables are deallocated before the call.
+void lauf_asm_inst_tail_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
+
+//=== call instructions ===//
+/// Calls the specified function.
+///
+/// The function must be declared in the same module.
+///
+/// Signature: in_N ... in_0 => out_M ... out_0
+void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee);
+
+/// Calls the function specified via its address on the vstack.
+///
+/// Signature: in_N ... in_0 f => out_M ... out_0
+void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
+
+/// Calls the specified builtin function.
+///
+/// Signature: in_N ... in_0 => out_M ... out_0
+void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
 //=== value instructions ===//
 /// Pushes an signed integer onto the stack.
 ///
@@ -146,24 +175,6 @@ void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index);
 ///
 /// Signature: x_N+1 x_N x_N-1 ... x_0 => x_N+1 x_N-1 ... x_0 x_N
 void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
-
-//=== call instructions ===//
-/// Calls the specified function.
-///
-/// The function must be declared in the same module.
-///
-/// Signature: in_N ... in_0 => out_M ... out_0
-void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee);
-
-/// Calls the function specified via its address on the vstack.
-///
-/// Signature: in_N ... in_0 f => out_M ... out_0
-void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
-
-/// Calls the specified builtin function.
-///
-/// Signature: in_N ... in_0 => out_M ... out_0
-void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
 
 //=== load/store ===//
 /// Loads a field from a type and pushes it value.

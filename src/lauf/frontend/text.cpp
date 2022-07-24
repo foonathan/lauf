@@ -393,15 +393,25 @@ struct inst_call
     static constexpr auto rule  = LEXY_LIT("call") >> dsl::p<function_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_call);
 };
-struct inst_call_builtin
+struct inst_tail_call
 {
-    static constexpr auto rule  = dsl::p<builtin_ref>;
-    static constexpr auto value = inst(&lauf_asm_inst_call_builtin);
+    static constexpr auto rule  = LEXY_LIT("tail_call") >> dsl::p<function_ref>;
+    static constexpr auto value = inst(&lauf_asm_inst_tail_call);
 };
 struct inst_call_indirect
 {
     static constexpr auto rule  = LEXY_LIT("call_indirect") >> dsl::p<signature>;
     static constexpr auto value = inst(&lauf_asm_inst_call_indirect);
+};
+struct inst_tail_call_indirect
+{
+    static constexpr auto rule  = LEXY_LIT("tail_call_indirect") >> dsl::p<signature>;
+    static constexpr auto value = inst(&lauf_asm_inst_tail_call_indirect);
+};
+struct inst_call_builtin
+{
+    static constexpr auto rule  = dsl::p<builtin_ref>;
+    static constexpr auto value = inst(&lauf_asm_inst_call_builtin);
 };
 
 struct inst_load_field
@@ -428,6 +438,7 @@ struct instruction
               | dsl::p<inst_sint> | dsl::p<inst_uint>                                      //
               | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_function_addr>  //
               | dsl::p<inst_stack_op>                                                      //
+              | dsl::p<inst_tail_call_indirect> | dsl::p<inst_tail_call>                   //
               | dsl::p<inst_call_indirect> | dsl::p<inst_call> | dsl::p<inst_call_builtin> //
               | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
 
