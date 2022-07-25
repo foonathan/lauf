@@ -1,0 +1,279 @@
+module @int;
+
+function @sadd_flag() {
+    [ sint 11; sint 42; $lauf.int.sadd_flag; ]
+    sint 0; $lauf.test.assert_eq; sint 53; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.sadd_flag; ]
+    sint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_FFFF; $lauf.test.assert_eq;
+
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.sadd_flag; ]
+    sint 1; $lauf.test.assert_eq; uint 0x7FFF_FFFF_FFFF_0001; $lauf.test.assert_eq;
+
+    return;
+}
+function @sadd_wrap() {
+    [ sint 11; sint 42; $lauf.int.sadd_wrap; ]
+    sint 53; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.sadd_wrap; ]
+    uint 0x8000_0000_0000_FFFF; $lauf.test.assert_eq;
+
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.sadd_wrap; ]
+    uint 0x7FFF_FFFF_FFFF_0001; $lauf.test.assert_eq;
+
+    return;
+}
+function @sadd_sat() {
+    [ sint 11; sint 42; $lauf.int.sadd_sat; ]
+    sint 53; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.sadd_sat; ]
+    uint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.sadd_sat; ]
+    uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @sadd_panic() {
+    [ sint 11; sint 42; $lauf.int.sadd_panic; ]
+    sint 53; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @ssub_flag() {
+    [ sint 11; sint 42; $lauf.int.ssub_flag; ]
+    sint 0; $lauf.test.assert_eq; sint -31; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.ssub_flag; ]
+    sint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_FFFF; $lauf.test.assert_eq;
+
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.ssub_flag; ]
+    sint 1; $lauf.test.assert_eq; uint 0x7FFF_FFFF_FFFF_0001; $lauf.test.assert_eq;
+
+    return;
+}
+function @ssub_wrap() {
+    [ sint 11; sint 42; $lauf.int.ssub_wrap; ]
+    sint -31; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.ssub_wrap; ]
+    uint 0x8000_0000_0000_FFFF; $lauf.test.assert_eq;
+
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.ssub_wrap; ]
+    uint 0x7FFF_FFFF_FFFF_0001; $lauf.test.assert_eq;
+
+    return;
+}
+function @ssub_sat() {
+    [ sint 11; sint 42; $lauf.int.ssub_sat; ]
+    sint -31; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.ssub_sat; ]
+    uint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.ssub_sat; ]
+    uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @ssub_panic() {
+    [ sint 11; sint 42; $lauf.int.ssub_panic; ]
+    sint -31; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @smul_flag() {
+    [ sint 11; sint 42; $lauf.int.smul_flag; ]
+    sint 0; $lauf.test.assert_eq; sint 462; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_flag; ]
+    sint 1; $lauf.test.assert_eq; uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_flag; ]
+    sint 1; $lauf.test.assert_eq; uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_flag; ]
+    sint 1; $lauf.test.assert_eq; uint 0x2_0000; $lauf.test.assert_eq;
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_flag; ]
+    sint 1; $lauf.test.assert_eq; uint 0x2_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @smul_wrap() {
+    [ sint 11; sint 42; $lauf.int.smul_wrap; ]
+    sint 462; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_wrap; ]
+    uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_wrap; ]
+    uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_wrap; ]
+    uint 0x2_0000; $lauf.test.assert_eq;
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_wrap; ]
+    uint 0x2_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @smul_sat() {
+    [ sint 11; sint 42; $lauf.int.smul_sat; ]
+    sint 462; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_sat; ]
+    uint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_sat; ]
+    uint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_sat; ]
+    uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_sat; ]
+    uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @smul_panic() {
+    [ sint 11; sint 42; $lauf.int.smul_panic; ]
+    sint 462; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @uadd_flag() {
+    [ uint 11; uint 42; $lauf.int.uadd_flag; ]
+    uint 0; $lauf.test.assert_eq; uint 53; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.int.uadd_flag; ]
+    uint 1; $lauf.test.assert_eq; uint 0xFFFF; $lauf.test.assert_eq;
+
+    return;
+}
+function @uadd_wrap() {
+    [ uint 11; uint 42; $lauf.int.uadd_wrap; ]
+    uint 53; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.int.uadd_wrap; ]
+    uint 0xFFFF; $lauf.test.assert_eq;
+
+    return;
+}
+function @uadd_sat() {
+    [ uint 11; uint 42; $lauf.int.uadd_sat; ]
+    uint 53; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.int.uadd_sat; ]
+    uint 0xFFFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+
+    return;
+}
+function @uadd_panic() {
+    [ uint 11; uint 42; $lauf.int.uadd_panic; ]
+    uint 53; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @usub_flag() {
+    [ uint 42; uint 11; $lauf.int.usub_flag; ]
+    uint 0; $lauf.test.assert_eq; uint 31; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.int.usub_flag; ]
+    uint 1; $lauf.test.assert_eq; uint 0x1_FFFF; $lauf.test.assert_eq;
+
+    return;
+}
+function @usub_wrap() {
+    [ uint 42; uint 11; $lauf.int.usub_wrap; ]
+    uint 31; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.int.usub_wrap; ]
+    uint 0x1_FFFF; $lauf.test.assert_eq;
+
+    return;
+}
+function @usub_sat() {
+    [ uint 42; uint 11; $lauf.int.usub_sat; ]
+    uint 31; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.int.usub_sat; ]
+    uint 0; $lauf.test.assert_eq;
+
+    return;
+}
+function @usub_panic() {
+    [ uint 42; uint 11; $lauf.int.usub_panic; ]
+    uint 31; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @umul_flag() {
+    [ uint 11; uint 42; $lauf.int.umul_flag; ]
+    uint 0; $lauf.test.assert_eq; uint 462; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.int.umul_flag; ]
+    uint 1; $lauf.test.assert_eq; uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @umul_wrap() {
+    [ uint 11; uint 42; $lauf.int.umul_wrap; ]
+    uint 462; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.int.umul_wrap; ]
+    uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @umul_sat() {
+    [ uint 11; uint 42; $lauf.int.umul_sat; ]
+    uint 462; $lauf.test.assert_eq;
+
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.int.umul_sat; ]
+    uint 0xFFFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+
+    return;
+}
+function @umul_panic() {
+    [ uint 11; uint 42; $lauf.int.umul_panic; ]
+    uint 462; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @scmp() {
+    [ sint 11; sint 42; $lauf.int.scmp; ] sint -1; $lauf.test.assert_eq;
+    [ sint 42; sint 11; $lauf.int.scmp; ] sint +1; $lauf.test.assert_eq;
+    [ sint 42; sint 42; $lauf.int.scmp; ] sint 0; $lauf.test.assert_eq;
+
+    [ sint -11; sint 42; $lauf.int.scmp; ] sint -1; $lauf.test.assert_eq;
+    [ sint 42; sint -11; $lauf.int.scmp; ] sint +1; $lauf.test.assert_eq;
+    [ sint -42; sint -42; $lauf.int.scmp; ] sint 0; $lauf.test.assert_eq;
+
+    return;
+}
+function @ucmp() {
+    [ uint 11; uint 42; $lauf.int.ucmp; ] sint -1; $lauf.test.assert_eq;
+    [ uint 42; uint 11; $lauf.int.ucmp; ] sint +1; $lauf.test.assert_eq;
+    [ uint 42; uint 42; $lauf.int.ucmp; ] sint 0; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @main() {
+    call @sadd_flag; call @sadd_wrap; call @sadd_sat; call @sadd_panic;
+    call @ssub_flag; call @ssub_wrap; call @ssub_sat; call @ssub_panic;
+    call @smul_flag; call @smul_wrap; call @smul_sat; call @smul_panic;
+
+    call @uadd_flag; call @uadd_wrap; call @uadd_sat; call @sadd_panic;
+    call @usub_flag; call @usub_wrap; call @usub_sat; call @ssub_panic;
+    call @umul_flag; call @umul_wrap; call @umul_sat; call @smul_sat;
+
+    call @scmp;
+    call @ucmp;
+
+    return;
+}
+

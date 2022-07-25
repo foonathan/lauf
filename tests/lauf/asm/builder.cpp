@@ -45,11 +45,12 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 
         lauf_asm_inst_return(builder);
         lauf_asm_build_finish(builder);
+        lauf_asm_destroy_builder(builder);
     }
 
     auto str = lauf_create_string_writer();
     lauf_backend_dump(str, lauf_backend_default_dump_options, mod);
-    MESSAGE(lauf_writer_get_string(str));
+    // MESSAGE(lauf_writer_get_string(str));
     lauf_destroy_writer(str);
 
     std::vector<lauf_asm_inst> result;

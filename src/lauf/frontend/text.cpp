@@ -359,9 +359,14 @@ struct inst_branch3
 
 struct inst_sint
 {
-    struct integer
+    struct integer : lexy::token_production
     {
-        static constexpr auto rule  = dsl::sign + dsl::integer<lauf_sint>;
+        static constexpr auto rule = [] {
+            auto dec = dsl::integer<lauf_sint>(dsl::digits<>.sep(dsl::lit_c<'_'>));
+            auto hex = LEXY_LIT("0x")
+                       >> dsl::integer<lauf_sint>(dsl::digits<dsl::hex_upper>.sep(dsl::lit_c<'_'>));
+            return dsl::sign + (hex | dec);
+        }();
         static constexpr auto value = lexy::as_integer<lauf_sint>;
     };
 
@@ -370,7 +375,18 @@ struct inst_sint
 };
 struct inst_uint
 {
-    static constexpr auto rule  = LAUF_KEYWORD("uint") >> dsl::integer<lauf_uint>;
+    struct integer : lexy::token_production
+    {
+        static constexpr auto rule = [] {
+            auto dec = dsl::integer<lauf_uint>(dsl::digits<>.sep(dsl::lit_c<'_'>));
+            auto hex = LEXY_LIT("0x")
+                       >> dsl::integer<lauf_uint>(dsl::digits<dsl::hex_upper>.sep(dsl::lit_c<'_'>));
+            return hex | dec;
+        }();
+        static constexpr auto value = lexy::as_integer<lauf_uint>;
+    };
+
+    static constexpr auto rule  = LAUF_KEYWORD("uint") >> dsl::p<integer>;
     static constexpr auto value = inst(&lauf_asm_inst_uint);
 };
 struct inst_null

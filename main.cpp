@@ -15,28 +15,7 @@
 #include <lauf/vm.h>
 #include <lauf/writer.h>
 
-LAUF_RUNTIME_BUILTIN(builtin_add, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "add", nullptr)
-{
-    vstack_ptr[1].as_sint = vstack_ptr[1].as_sint + vstack_ptr[0].as_sint;
-    ++vstack_ptr;
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-LAUF_RUNTIME_BUILTIN(builtin_sub, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "sub", &builtin_add)
-{
-    vstack_ptr[1].as_sint = vstack_ptr[1].as_sint - vstack_ptr[0].as_sint;
-    ++vstack_ptr;
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-LAUF_RUNTIME_BUILTIN(builtin_mul, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "mul", &builtin_sub)
-{
-    vstack_ptr[1].as_sint = vstack_ptr[1].as_sint * vstack_ptr[0].as_sint;
-    ++vstack_ptr;
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-
-const lauf_runtime_builtin_library my_lib = {"my", &builtin_mul};
-
-const lauf_runtime_builtin_library builtins[]         = {lauf_lib_debug, lauf_lib_test, my_lib};
+const lauf_runtime_builtin_library builtins[] = {lauf_lib_debug, lauf_lib_test, lauf_lib_int};
 constexpr size_t                   builtin_libs_count = 3;
 
 lauf_asm_module* example_module()
@@ -56,58 +35,26 @@ lauf_asm_module* example_module()
             }
             block %recurse(1 => 1) {
                 pick 0;
-                sint 1; $my.sub; call @fac;
-                $my.mul;
+                sint 1; $lauf.int.ssub_wrap; call @fac;
+                $lauf.int.smul_panic;
                 return;
             }
         }
 
         function @fib(1 => 1) {
             block %entry(1 => 1) {
-                pick 0; sint 2; $my.sub;
+                pick 0; sint 2; $lauf.int.scmp;
                 branch3 %base(1 => 1) %recurse(1 => 1) %recurse(1 => 1);
             }
             block %base(1 => 1) {
                 return;
             }
             block %recurse(1 => 1) {
-                pick 0; sint 1; $my.sub; call @fib;
-                roll 1; sint 2; $my.sub; call @fib;
-                $my.add;
+                pick 0; sint 1; $lauf.int.ssub_wrap; call @fib;
+                roll 1; sint 2; $lauf.int.ssub_wrap; call @fib;
+                $lauf.int.sadd_wrap;
                 return;
             }
-        }
-
-        function @fib_local(1 => 1) {
-            local %arg : $lauf.Value;
-            block %entry(1 => 0) {
-                pick 0; local_addr %arg; store_field $lauf.Value 0;
-                sint 2; $my.sub;
-                branch3 %base(0 => 1) %recurse(0 => 1) %recurse(0 => 1);
-            }
-            block %base(0 => 1) {
-                local_addr %arg; load_field $lauf.Value 0;
-                return;
-            }
-            block %recurse(1 => 1) {
-                local_addr %arg; load_field $lauf.Value 0; sint 1; $my.sub; call @fib_local;
-                local_addr %arg; load_field $lauf.Value 0; sint 2; $my.sub; call @fib_local;
-                $my.add;
-                return;
-            }
-        }
-
-        function @test(0 => 1) {
-            local %foo : (8, 8);
-            uint 42;
-            local_addr %foo;
-            store_field $lauf.Value 0;
-
-            local_addr %foo;
-            load_field $lauf.Value 0;
-            $lauf.debug.print;
-
-            return;
         }
     )");
 
@@ -142,7 +89,7 @@ void execute(lauf_asm_program* program, Input... inputs)
     if (lauf_vm_execute_oneshot(vm, program, input, &output))
         std::printf("result: %lu\n", output.as_sint);
     else
-        std::puts("panic!\n");
+        std::puts("panic!");
 
     lauf_destroy_vm(vm);
 }
@@ -152,7 +99,7 @@ int main()
     auto mod = example_module();
     dump_module(mod);
 
-    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib_local"));
+    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib"));
     execute(program, lauf_uint(35));
 
     lauf_asm_destroy_module(mod);
