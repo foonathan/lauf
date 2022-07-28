@@ -7,6 +7,7 @@
 #include <lauf/config.h>
 
 #include <cassert>
+#include <lauf/support/align.hpp>
 #include <type_traits>
 
 // The ASM instructions are also the bytecode for the VM.
@@ -49,9 +50,12 @@ struct asm_inst_offset
 };
 
 template <typename CurType, typename DestType>
-std::ptrdiff_t compress_pointer_offset(CurType* cur, DestType* dest)
+std::ptrdiff_t compress_pointer_offset(CurType* _cur, DestType* _dest)
 {
-    return reinterpret_cast<void* const*>(dest) - reinterpret_cast<void* const*>(cur);
+    auto cur  = (void*)(_cur);
+    auto dest = (void*)(_dest);
+    assert(is_aligned(cur, alignof(void*)) && is_aligned(dest, alignof(void*)));
+    return (void**)dest - (void**)cur;
 }
 
 template <typename DestType, typename CurType>

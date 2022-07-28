@@ -8,8 +8,9 @@
 
 namespace
 {
-bool load_value(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-                lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
+LAUF_RUNTIME_BUILTIN_IMPL bool load_value(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                          lauf_runtime_stack_frame* frame_ptr,
+                                          lauf_runtime_process*     process)
 {
     vstack_ptr[1] = *static_cast<const lauf_runtime_value*>(vstack_ptr[1].as_native_ptr);
     ++vstack_ptr;
@@ -17,8 +18,9 @@ bool load_value(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-bool store_value(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-                 lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
+LAUF_RUNTIME_BUILTIN_IMPL bool store_value(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                           lauf_runtime_stack_frame* frame_ptr,
+                                           lauf_runtime_process*     process)
 {
     *static_cast<lauf_runtime_value*>(vstack_ptr[1].as_native_ptr) = vstack_ptr[2];
     vstack_ptr += 3;
