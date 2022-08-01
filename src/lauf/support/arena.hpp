@@ -20,9 +20,8 @@ class arena_key
     friend class intrinsic_arena;
 };
 
-/// Adds arena allocation to an object.
-template <typename Derived>
-class intrinsic_arena
+/// An arena.
+class arena_base
 {
     static constexpr auto block_size = std::size_t(16) * 1024 - sizeof(void*);
 
@@ -63,29 +62,9 @@ class intrinsic_arena
     };
 
 public:
-    template <typename... Args>
-    static Derived* create(Args&&... args)
-    {
-        // Allocate the first block.
-        auto b = block::allocate();
-        assert(is_aligned(b, alignof(Derived)));
-        assert(b->memory == reinterpret_cast<unsigned char*>(b));
+    arena_base(const arena_base&)            = delete;
+    arena_base& operator=(const arena_base&) = delete;
 
-        // Construct ourself in its memory.
-        return ::new (b->memory) Derived(arena_key(), static_cast<Args&&>(args)...);
-    }
-
-    static void destroy(Derived* derived)
-    {
-        auto b = static_cast<intrinsic_arena*>(derived)->first_block();
-        derived->~Derived();
-        block::deallocate(b);
-    }
-
-    intrinsic_arena(const intrinsic_arena&)            = delete;
-    intrinsic_arena& operator=(const intrinsic_arena&) = delete;
-
-    //=== allocation ===//
     void* allocate(std::size_t size, std::size_t alignment)
     {
         if (size > block_size)
@@ -151,7 +130,26 @@ public:
         return reinterpret_cast<const char*>(memdup(str, std::strlen(str) + 1));
     }
 
-    void clear()
+private:
+    explicit arena_base(block* first_block, std::size_t sizeof_derived)
+    : _cur_block(first_block), _cur_pos(&_cur_block->memory[0]), _extern_allocs(nullptr)
+    {
+        _cur_pos += sizeof_derived;
+    }
+
+    // We can't destroy it, so parent needs to do it.
+    ~arena_base() = default;
+
+    void destroy_impl(block* first_block)
+    {
+        for (auto cur = _extern_allocs; cur != nullptr; cur = cur->next)
+            ::operator delete(cur->allocation, cur->align);
+
+        for (auto cur = first_block->next; cur != nullptr;)
+            cur = block::deallocate(cur);
+    }
+
+    void clear_impl(block* first_block, std::size_t sizeof_derived)
     {
         // Deallocate all extern allocations.
         for (auto cur = _extern_allocs; cur != nullptr; cur = cur->next)
@@ -161,25 +159,54 @@ public:
         // Reset the stack allocator to the beginning.
         // We don't free the blocks themselves, as we could re-use them.
         // We also don't touch the actual bytes of the derived object.
-        _cur_block = first_block();
+        _cur_block = first_block;
         _cur_pos   = &_cur_block->memory[0];
-        _cur_pos += sizeof(Derived);
+        _cur_pos += sizeof_derived;
+    }
+
+    block*         _cur_block;
+    unsigned char* _cur_pos;
+    extern_alloc*  _extern_allocs;
+
+    template <typename Derived>
+    friend class intrinsic_arena;
+};
+
+/// Adds arena allocation to an object.
+template <typename Derived>
+class intrinsic_arena : public arena_base
+{
+public:
+    template <typename... Args>
+    static Derived* create(Args&&... args)
+    {
+        // Allocate the first block.
+        auto b = block::allocate();
+        assert(is_aligned(b, alignof(Derived)));
+        assert(b->memory == reinterpret_cast<unsigned char*>(b));
+
+        // Construct ourself in its memory.
+        return ::new (b->memory) Derived(arena_key(), static_cast<Args&&>(args)...);
+    }
+
+    static void destroy(Derived* derived)
+    {
+        auto b = static_cast<intrinsic_arena*>(derived)->first_block();
+        derived->~Derived();
+        block::deallocate(b);
+    }
+
+    void clear()
+    {
+        clear_impl(first_block(), sizeof(Derived));
     }
 
 protected:
-    intrinsic_arena(arena_key)
-    : _cur_block(first_block()), _cur_pos(&_cur_block->memory[0]), _extern_allocs(nullptr)
-    {
-        _cur_pos += sizeof(Derived);
-    }
+    intrinsic_arena(arena_key) : arena_base(first_block(), sizeof(Derived)) {}
 
     ~intrinsic_arena()
     {
-        for (auto cur = _extern_allocs; cur != nullptr; cur = cur->next)
-            ::operator delete(cur->allocation, cur->align);
-
-        for (auto cur = first_block()->next; cur != nullptr;)
-            cur = block::deallocate(cur);
+        destroy_impl(first_block());
     }
 
 private:
@@ -188,10 +215,6 @@ private:
         // We are always in the beginning memory of the first block.
         return reinterpret_cast<block*>(static_cast<Derived*>(this));
     }
-
-    block*         _cur_block;
-    unsigned char* _cur_pos;
-    extern_alloc*  _extern_allocs;
 };
 
 struct arena : intrinsic_arena<arena>

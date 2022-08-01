@@ -104,8 +104,7 @@ public:
         }
     }
 
-    template <typename Arena>
-    void reserve(Arena& arena, std::size_t new_size)
+    void reserve(arena_base& arena, std::size_t new_size)
     {
         if (new_size < _capacity)
             return;
@@ -140,8 +139,7 @@ public:
         _ptr[_size] = obj;
         ++_size;
     }
-    template <typename Arena>
-    void push_back(Arena& arena, const T& obj)
+    void push_back(arena_base& arena, const T& obj)
     {
         reserve(arena, _size + 1);
         push_back_unchecked(obj);
@@ -153,15 +151,20 @@ public:
         ::new (&_ptr[_size]) T(static_cast<Args&&>(args)...);
         ++_size;
     }
-    template <typename Arena, typename... Args>
-    void emplace_back(Arena& arena, Args&&... args)
+    template <typename... Args>
+    void emplace_back(arena_base& arena, Args&&... args)
     {
         reserve(arena, _size + 1);
         emplace_back_unchecked(static_cast<Args&&>(args)...);
     }
 
-    template <typename Arena>
-    void resize_uninitialized(Arena& arena, std::size_t new_size)
+    void shrink(std::size_t new_size)
+    {
+        assert(new_size <= _size);
+        _size = new_size;
+    }
+
+    void resize_uninitialized(arena_base& arena, std::size_t new_size)
     {
         if (new_size < _size)
         {

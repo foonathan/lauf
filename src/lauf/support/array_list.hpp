@@ -134,8 +134,7 @@ public:
     }
 
     //=== modifiers ===//
-    template <typename Arena>
-    T& push_back(Arena& arena, const T& obj)
+    T& push_back(arena_base& arena, const T& obj)
     {
         ensure_space(arena);
 
@@ -144,8 +143,8 @@ public:
         return *result;
     }
 
-    template <typename Arena, typename... Args>
-    T& emplace_back(Arena& arena, Args&&... args)
+    template <typename... Args>
+    T& emplace_back(arena_base& arena, Args&&... args)
     {
         ensure_space(arena);
 
@@ -162,8 +161,7 @@ public:
     }
 
 private:
-    template <typename Arena>
-    void ensure_space(Arena& arena)
+    void ensure_space(arena_base& arena)
     {
         if (_cur_block == nullptr)
         {
