@@ -99,17 +99,14 @@ bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* 
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        lauf_runtime_value* vstack_ptr)
 {
-    auto frame_ptr     = process->frame_ptr;
-    auto result        = root_call(process, vstack_ptr, frame_ptr + 1, fn);
-    process->frame_ptr = frame_ptr;
+    auto dummy_frame     = process->dummy_frame;
+    auto result          = root_call(process, vstack_ptr, dummy_frame.prev + 1, fn);
+    process->dummy_frame = dummy_frame;
     return result;
 }
 
-bool lauf_runtime_panic(lauf_runtime_process* p, const lauf_asm_inst* ip, const char* msg)
+bool lauf_runtime_panic(lauf_runtime_process* p, const char* msg)
 {
-    auto dummy_frame = lauf_runtime_stack_frame::make_dummy_frame(ip, p->frame_ptr);
-    p->frame_ptr     = &dummy_frame;
-
     p->vm->panic_handler(p, msg);
     return false;
 }

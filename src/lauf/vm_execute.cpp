@@ -13,10 +13,9 @@ namespace
 bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
               lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
 {
-    auto msg = reinterpret_cast<const char*>(vstack_ptr);
-
-    process->frame_ptr = frame_ptr;
-    return lauf_runtime_panic(process, ip, msg);
+    auto msg             = reinterpret_cast<const char*>(vstack_ptr);
+    process->dummy_frame = lauf_runtime_stack_frame::make_dummy_frame(ip, frame_ptr);
+    return lauf_runtime_panic(process, msg);
 }
 #define LAUF_DO_PANIC(Msg)                                                                         \
     [[clang::musttail]] return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
@@ -132,7 +131,8 @@ LAUF_VM_EXECUTE(call_builtin)
         = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl>(&lauf_runtime_builtin_dispatch,
                                                                      ip->call_builtin.offset);
 
-    process->frame_ptr = frame_ptr;
+    process->dummy_frame = lauf_runtime_stack_frame::make_dummy_frame(ip, frame_ptr);
+
     [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, process);
 }
 

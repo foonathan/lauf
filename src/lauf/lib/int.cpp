@@ -57,7 +57,7 @@ LAUF_RUNTIME_BUILTIN(sadd_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "sadd_panic
     auto overflow = __builtin_add_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                            &vstack_ptr[1].as_sint);
     if (overflow)
-        return lauf_runtime_panic(process, ip, "integer overflow");
+        return lauf_runtime_panic(process, "integer overflow");
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -99,7 +99,7 @@ LAUF_RUNTIME_BUILTIN(ssub_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "ssub_panic
     auto overflow = __builtin_sub_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                            &vstack_ptr[1].as_sint);
     if (overflow)
-        return lauf_runtime_panic(process, ip, "integer overflow");
+        return lauf_runtime_panic(process, "integer overflow");
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -142,7 +142,7 @@ LAUF_RUNTIME_BUILTIN(smul_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "smul_panic
     auto overflow = __builtin_mul_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                            &vstack_ptr[1].as_sint);
     if (overflow)
-        return lauf_runtime_panic(process, ip, "integer overflow");
+        return lauf_runtime_panic(process, "integer overflow");
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -179,7 +179,7 @@ LAUF_RUNTIME_BUILTIN(uadd_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "uadd_panic
     auto overflow = __builtin_add_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
     if (overflow)
-        return lauf_runtime_panic(process, ip, "integer overflow");
+        return lauf_runtime_panic(process, "integer overflow");
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -216,7 +216,7 @@ LAUF_RUNTIME_BUILTIN(usub_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "usub_panic
     auto overflow = __builtin_sub_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
     if (overflow)
-        return lauf_runtime_panic(process, ip, "integer overflow");
+        return lauf_runtime_panic(process, "integer overflow");
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -253,7 +253,7 @@ LAUF_RUNTIME_BUILTIN(umul_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "umul_panic
     auto overflow = __builtin_mul_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
     if (overflow)
-        return lauf_runtime_panic(process, ip, "integer overflow");
+        return lauf_runtime_panic(process, "integer overflow");
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }

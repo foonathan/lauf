@@ -120,6 +120,11 @@ static_assert(sizeof(allocation) == 2 * sizeof(void*));
 
 struct lauf_runtime_process
 {
+    // The dummy frame for call stacks -- this is only lazily updated
+    // It needs to be valid when calling a builtin or panicing.
+    // NOTE: JIT code assumes this location!
+    lauf_runtime_stack_frame dummy_frame;
+
     // The VM that is executing the process.
     lauf_vm*            vm         = nullptr;
     lauf_runtime_value* vstack_end = nullptr;
@@ -127,9 +132,6 @@ struct lauf_runtime_process
 
     // The program that is running.
     const lauf_asm_program* program = nullptr;
-
-    // The current frame pointer -- this is only lazily updated.
-    lauf_runtime_stack_frame* frame_ptr = nullptr;
 
     // The allocations of the process.
     lauf::array<lauf::allocation> allocations;
