@@ -136,6 +136,15 @@ LAUF_VM_EXECUTE(call_builtin)
     [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, process);
 }
 
+LAUF_VM_EXECUTE(call_builtin_no_process)
+{
+    auto callee
+        = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl>(&lauf_runtime_builtin_dispatch,
+                                                                     ip->call_builtin.offset);
+
+    [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, process);
+}
+
 LAUF_VM_EXECUTE(call)
 {
     auto callee

@@ -339,7 +339,10 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee.input_count), "missing input values for call");
 
     auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
+    if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0)
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin_no_process, offset));
+    else
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
 
     b->cur->vstack.push(callee.output_count);
 }

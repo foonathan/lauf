@@ -40,6 +40,7 @@ LAUF_ASM_INST(call_indirect, asm_inst_signature)
 // The offset is the difference between the address of the lauf_runtime_builtin_dispatch() and the
 // called builtin divided by sizeof(void*).
 LAUF_ASM_INST(call_builtin, asm_inst_offset)
+LAUF_ASM_INST(call_builtin_no_process, asm_inst_offset)
 
 //=== value ===//
 // lauf_asm_inst_Xint(): push 24 bit immediate, zero extended to 64 bit.
