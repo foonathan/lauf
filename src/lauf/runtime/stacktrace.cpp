@@ -10,7 +10,7 @@ lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p)
 {
     // A stacktrace is simply the dummy frame reinterpret-casted.
     // Code that exposes the process needs to set it correctly.
-    return reinterpret_cast<lauf_runtime_stacktrace*>(&p->dummy_frame);
+    return reinterpret_cast<lauf_runtime_stacktrace*>(&p->callstack_leaf_frame);
 }
 
 const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt)

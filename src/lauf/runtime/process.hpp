@@ -36,15 +36,16 @@ struct lauf_runtime_stack_frame
     {
         return {fn, nullptr, 0, 0, sizeof(lauf_runtime_stack_frame), nullptr};
     }
-    static lauf_runtime_stack_frame make_dummy_frame(const lauf_asm_inst*      ip,
-                                                     lauf_runtime_stack_frame* frame_ptr)
-    {
-        return {nullptr, ip + 1, 0, 0, 0, frame_ptr};
-    }
     static lauf_runtime_stack_frame make_call_frame(const lauf_asm_function*    callee,
                                                     const lauf_runtime_process* process,
                                                     const lauf_asm_inst*        ip,
                                                     lauf_runtime_stack_frame*   frame_ptr);
+
+    void assign_callstack_leaf_frame(const lauf_asm_inst* ip, lauf_runtime_stack_frame* frame_ptr)
+    {
+        return_ip = ip + 1;
+        prev      = frame_ptr;
+    }
 
     bool is_trampoline_frame() const
     {
@@ -120,15 +121,14 @@ static_assert(sizeof(allocation) == 2 * sizeof(void*));
 
 struct lauf_runtime_process
 {
-    // The dummy frame for call stacks -- this is only lazily updated
-    // It needs to be valid when calling a builtin or panicing.
-    // NOTE: JIT code assumes this location!
-    lauf_runtime_stack_frame dummy_frame;
-
     // The VM that is executing the process.
     lauf_vm*            vm         = nullptr;
     lauf_runtime_value* vstack_end = nullptr;
     unsigned char*      cstack_end = nullptr;
+
+    // The dummy frame for call stacks -- this is only lazily updated
+    // It needs to be valid when calling a builtin or panicing.
+    lauf_runtime_stack_frame callstack_leaf_frame;
 
     // The program that is running.
     const lauf_asm_program* program = nullptr;

@@ -99,9 +99,9 @@ bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* 
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        lauf_runtime_value* vstack_ptr)
 {
-    auto dummy_frame     = process->dummy_frame;
-    auto result          = root_call(process, vstack_ptr, dummy_frame.prev + 1, fn);
-    process->dummy_frame = dummy_frame;
+    auto leaf                     = process->callstack_leaf_frame;
+    auto result                   = root_call(process, vstack_ptr, leaf.prev + 1, fn);
+    process->callstack_leaf_frame = leaf;
     return result;
 }
 
