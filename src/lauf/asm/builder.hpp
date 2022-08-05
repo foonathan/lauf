@@ -110,7 +110,7 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         this->mod = mod;
         this->fn  = fn;
 
-        blocks.clear();
+        blocks.reset();
         cur = nullptr;
 
         local_allocation_count = 0;

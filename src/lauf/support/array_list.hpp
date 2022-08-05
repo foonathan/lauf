@@ -16,13 +16,14 @@ class array_list
 {
     static_assert(std::is_trivially_copyable_v<T>); // For simplicity for now.
 
-    static constexpr auto block_size      = 1024 - sizeof(void*);
+    static constexpr auto block_size      = 1024 - 2 * sizeof(void*);
     static constexpr auto elems_per_block = block_size / sizeof(T);
 
     struct block
     {
         T      array[elems_per_block];
-        block* next = nullptr;
+        block* next;
+        block* prev;
     };
 
 public:
@@ -67,6 +68,20 @@ public:
             {
                 _cur_block = _cur_block->next;
                 _cur_idx   = 0;
+            }
+            return *this;
+        }
+
+        _iterator& operator--()
+        {
+            if (_cur_idx == 0)
+            {
+                _cur_block = _cur_block->prev;
+                _cur_idx   = elems_per_block - 1;
+            }
+            else
+            {
+                --_cur_idx;
             }
             return *this;
         }
@@ -153,7 +168,21 @@ public:
         return *result;
     }
 
-    void clear()
+    void pop_back()
+    {
+        if (_next_idx == 0)
+        {
+            _cur_block = _cur_block->prev;
+            --_block_count;
+            _next_idx = elems_per_block - 1;
+        }
+        else
+        {
+            --_next_idx;
+        }
+    }
+
+    void reset()
     {
         _first_block = _cur_block = nullptr;
         _next_idx                 = 0;
@@ -166,17 +195,23 @@ private:
         if (_cur_block == nullptr)
         {
             assert(_first_block == nullptr);
-            _first_block = arena.template allocate<block>();
-            _cur_block   = _first_block;
+            _first_block       = arena.template allocate<block>();
+            _first_block->next = _first_block->prev = nullptr;
+            _cur_block                              = _first_block;
 
             _next_idx = 0;
             ++_block_count;
         }
         else if (_next_idx == elems_per_block)
         {
-            auto next        = arena.template allocate<block>();
-            _cur_block->next = next;
-            _cur_block       = next;
+            if (_cur_block->next == nullptr)
+            {
+                auto next        = arena.template allocate<block>();
+                next->next       = nullptr;
+                next->prev       = _cur_block;
+                _cur_block->next = next;
+            }
+            _cur_block = _cur_block->next;
 
             _next_idx = 0;
             ++_block_count;

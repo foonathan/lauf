@@ -13,9 +13,18 @@ void check_range(const List& list, const T... t)
     CHECK(!list.empty());
     CHECK(list.size() == sizeof...(T));
 
-    auto cur = list.begin();
-    auto end = list.end();
+    auto begin = list.begin();
+    auto end   = list.end();
+
+    auto cur = begin;
     ((REQUIRE(cur != end), CHECK(*cur == t), ++cur), ...);
+
+    for (auto i = 0u; i != sizeof...(t); ++i)
+    {
+        REQUIRE(cur != begin);
+        --cur;
+    }
+    REQUIRE(cur == begin);
 }
 } // namespace
 
@@ -40,23 +49,40 @@ TEST_CASE("array_list")
 
             list.emplace_back(*arena, 2);
             check_range(list, 0, 1, 2);
+
+            list.pop_back();
+            check_range(list, 0, 1);
+
+            list.push_back(*arena, 3);
+            check_range(list, 0, 1, 3);
         }
         SUBCASE("big push_back")
         {
             for (auto i = 0; i != 1024; ++i)
                 list.push_back(*arena, 42);
 
+            SUBCASE("pop_back")
+            {
+                for (auto i = 0; i != 1024; ++i)
+                    list.pop_back();
+                CHECK(list.size() == 0);
+
+                for (auto i = 0; i != 1024; ++i)
+                    list.push_back(*arena, 42);
+            }
+
             CHECK(list.size() == 1024);
             for (auto elem : list)
                 CHECK(elem == 42);
         }
-        SUBCASE("re-use after clear")
+
+        SUBCASE("re-use after reset")
         {
             for (auto i = 0; i != 1024; ++i)
                 list.push_back(*arena, 11);
             CHECK(list.size() == 1024);
 
-            list.clear();
+            list.reset();
 
             for (auto i = 0; i != 2048; ++i)
                 list.push_back(*arena, 42);
@@ -71,7 +97,7 @@ TEST_CASE("array_list")
                 list.push_back(*arena, 11);
             CHECK(list.size() == 1024);
 
-            list.clear();
+            list.reset();
             arena->clear();
 
             for (auto i = 0; i != 2048; ++i)
