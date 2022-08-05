@@ -88,14 +88,6 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
 }
 } // namespace
 
-bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-                                   lauf_runtime_stack_frame* frame_ptr,
-                                   lauf_runtime_process*     process)
-{
-    ++ip;
-    LAUF_VM_DISPATCH;
-}
-
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        lauf_runtime_value* vstack_ptr)
 {

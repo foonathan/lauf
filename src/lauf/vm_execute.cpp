@@ -8,6 +8,48 @@
 #include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
 
+//=== execute ===//
+#define LAUF_VM_DISPATCH                                                                           \
+    [[clang::musttail]] return dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr, process)
+
+#define LAUF_VM_EXECUTE(Name)                                                                      \
+    static bool execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,            \
+                               lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
+
+#define LAUF_ASM_INST(Name, Type)                                                                  \
+    static bool execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,            \
+                               lauf_runtime_stack_frame* frame_ptr,                                \
+                               lauf_runtime_process*     process);
+#include <lauf/asm/instruction.def.hpp>
+#undef LAUF_ASM_INST
+
+namespace
+{
+using dispatch_fn = bool (*)(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                             lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process);
+
+constexpr dispatch_fn dispatch[] = {
+#define LAUF_ASM_INST(Name, Type) &execute_##Name,
+#include <lauf/asm/instruction.def.hpp>
+#undef LAUF_ASM_INST
+};
+} // namespace
+
+bool lauf::execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                   lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
+{
+    LAUF_VM_DISPATCH;
+}
+
+bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                   lauf_runtime_stack_frame* frame_ptr,
+                                   lauf_runtime_process*     process)
+{
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+//=== helper functions ===//
 namespace
 {
 bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
@@ -41,10 +83,6 @@ lauf::allocation make_local_alloc(void* memory, std::size_t size, std::uint8_t g
     LAUF_VM_DISPATCH;
 }
 } // namespace
-
-#define LAUF_VM_EXECUTE(Name)                                                                      \
-    bool lauf::execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,             \
-                              lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
 
 //=== control flow ===//
 LAUF_VM_EXECUTE(nop)
@@ -127,13 +165,8 @@ LAUF_VM_EXECUTE(exit)
 //=== calls ===//
 LAUF_VM_EXECUTE(call_builtin)
 {
-    auto callee
-        = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl>(&lauf_runtime_builtin_dispatch,
-                                                                     ip->call_builtin.offset);
-
     process->callstack_leaf_frame.assign_callstack_leaf_frame(ip, frame_ptr);
-
-    [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, process);
+    [[clang::musttail]] return execute_call_builtin_no_process(ip, vstack_ptr, frame_ptr, process);
 }
 
 LAUF_VM_EXECUTE(call_builtin_no_process)
@@ -385,7 +418,7 @@ LAUF_VM_EXECUTE(local_free)
     for (auto i = 0u; i != ip->local_free.value; ++i)
     {
         auto index                         = frame_ptr->first_local_alloc + i;
-        process->allocations[index].status = allocation_status::freed;
+        process->allocations[index].status = lauf::allocation_status::freed;
     }
     process->try_free_allocations();
 
