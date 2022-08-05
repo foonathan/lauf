@@ -193,7 +193,7 @@ lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, lauf_asm_signature s
         LAUF_BUILD_ASSERT(sig.input_count == b->fn->sig.input_count,
                           "requested entry block has different input count from function");
 
-    return &b->blocks.emplace_back(*b, sig);
+    return &b->blocks.emplace_back(*b, *b, sig);
 }
 
 void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block)
@@ -316,7 +316,7 @@ void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
     auto offset = lauf::compress_pointer_offset(b->fn, callee);
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call, offset));
 
-    b->cur->vstack.push(callee->sig.output_count);
+    b->cur->vstack.push(*b, callee->sig.output_count);
 }
 
 void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
@@ -329,7 +329,7 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_indirect, sig.input_count,
                                                           sig.output_count));
 
-    b->cur->vstack.push(sig.output_count);
+    b->cur->vstack.push(*b, sig.output_count);
 }
 
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
@@ -344,7 +344,7 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
 
-    b->cur->vstack.push(callee.output_count);
+    b->cur->vstack.push(*b, callee.output_count);
 }
 
 void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value)
@@ -387,7 +387,11 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push3, std::uint32_t(value >> 48)));
     }
 
-    b->cur->vstack.push();
+    b->cur->vstack.push(*b, [&] {
+        lauf_runtime_value result;
+        result.as_uint = value;
+        return result;
+    }());
 }
 
 void lauf_asm_inst_null(lauf_asm_builder* b)
@@ -396,7 +400,7 @@ void lauf_asm_inst_null(lauf_asm_builder* b)
 
     // NULL has all bits set.
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(pushn, 0));
-    b->cur->vstack.push();
+    b->cur->vstack.push(*b, lauf_runtime_value{});
 }
 
 void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* global)
@@ -404,7 +408,13 @@ void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* globa
     LAUF_BUILD_ASSERT_CUR;
 
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(global_addr, global->allocation_idx));
-    b->cur->vstack.push();
+    b->cur->vstack.push(*b, [&] {
+        lauf_runtime_value result;
+        result.as_address.allocation = global->allocation_idx;
+        result.as_address.offset     = 0;
+        result.as_address.generation = 0; // Always true for globals.
+        return result;
+    }());
 }
 
 void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* function)
@@ -413,7 +423,13 @@ void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* f
 
     auto offset = lauf::compress_pointer_offset(b->fn, function);
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(function_addr, offset));
-    b->cur->vstack.push();
+    b->cur->vstack.push(*b, [&] {
+        lauf_runtime_value result;
+        result.as_function_address.index        = function->function_idx;
+        result.as_function_address.input_count  = function->sig.input_count;
+        result.as_function_address.output_count = function->sig.output_count;
+        return result;
+    }());
 }
 
 void lauf_asm_inst_local_addr(lauf_asm_builder* b, const lauf_asm_local* local)
@@ -422,7 +438,7 @@ void lauf_asm_inst_local_addr(lauf_asm_builder* b, const lauf_asm_local* local)
 
     auto index = reinterpret_cast<std::uint64_t>(local);
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_addr, std::uint32_t(index)));
-    b->cur->vstack.push();
+    b->cur->vstack.push(*b, 1);
 }
 
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
@@ -450,7 +466,7 @@ void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index)
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pick, stack_index));
 
-    b->cur->vstack.push();
+    b->cur->vstack.push(*b, b->cur->vstack.pick(stack_index));
 }
 
 void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)

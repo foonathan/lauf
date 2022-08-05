@@ -7,63 +7,102 @@
 #include <lauf/asm/builder.h>
 #include <lauf/asm/instruction.hpp>
 #include <lauf/asm/module.hpp>
+#include <lauf/runtime/value.h>
 #include <lauf/support/arena.hpp>
 #include <lauf/support/array_list.hpp>
 
-//=== vstack_size_checker ===//
+//=== vstack ===//
 namespace lauf
 {
-class vstack_size_checker
+class builder_vstack
 {
 public:
-    explicit vstack_size_checker(std::size_t input_count) : _cur(input_count), _max(input_count) {}
+    struct value
+    {
+        enum
+        {
+            unknown,
+            constant,
+        } type;
+        union
+        {
+            char               as_unknown;
+            lauf_runtime_value as_constant;
+        };
+    };
+
+    explicit builder_vstack(arena_base& arena, std::size_t input_count) : _max(input_count)
+    {
+        for (auto i = 0u; i != input_count; ++i)
+            _stack.push_back(arena, {value::unknown, {}});
+    }
 
     std::size_t size() const
     {
-        return _cur;
+        return _stack.size();
     }
     std::size_t max_size() const
     {
         return _max;
     }
 
-    void push(std::size_t n = 1)
+    void push(arena_base& arena, value v)
     {
-        _cur += n;
-        if (_cur > _max)
-            _max = _cur;
+        _stack.push_back(arena, v);
+        if (size() > _max)
+            _max = size();
+    }
+    void push(arena_base& arena, std::size_t n)
+    {
+        for (auto i = 0u; i != n; ++i)
+            push(arena, {value::unknown, {}});
+    }
+    void push(arena_base& arena, lauf_runtime_value constant)
+    {
+        value v;
+        v.type        = value::constant;
+        v.as_constant = constant;
+        push(arena, v);
     }
 
     bool pop(std::size_t n = 1)
     {
-        if (_cur < n)
+        for (auto i = 0u; i != n; ++i)
         {
-            _cur = 0;
-            return false;
+            if (_stack.empty())
+                return false;
+
+            _stack.pop_back();
         }
-        else
-        {
-            _cur -= n;
-            return true;
-        }
+
+        return true;
+    }
+
+    value pick(std::size_t stack_idx)
+    {
+        auto cur = _stack.end();
+        --cur;
+        for (auto i = 0u; i != stack_idx; ++i)
+            --cur;
+        return *cur;
     }
 
     bool finish(std::size_t output_count)
     {
-        return _cur == output_count;
+        return size() == output_count;
     }
 
 private:
-    std::size_t _cur;
-    std::size_t _max;
+    lauf::array_list<value> _stack;
+    std::size_t             _max;
 };
 } // namespace lauf
 
 //=== types ===//
 struct lauf_asm_block
 {
-    lauf_asm_signature        sig;
-    lauf::vstack_size_checker vstack;
+    lauf_asm_signature   sig;
+    lauf::builder_vstack vstack;
 
     std::ptrdiff_t                  offset = 0;
     lauf::array_list<lauf_asm_inst> insts;
@@ -80,8 +119,8 @@ struct lauf_asm_block
     } terminator;
     const lauf_asm_block* next[3];
 
-    explicit lauf_asm_block(lauf_asm_signature sig)
-    : sig(sig), vstack(sig.input_count), terminator(unterminated), next{}
+    explicit lauf_asm_block(lauf::arena_base& arena, lauf_asm_signature sig)
+    : sig(sig), vstack(arena, sig.input_count), terminator(unterminated), next{}
     {}
 };
 
@@ -119,8 +158,9 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
         this->clear();
 
-        prologue             = &blocks.emplace_back(*this, lauf_asm_signature{fn->sig.input_count,
-                                                                  fn->sig.input_count});
+        prologue
+            = &blocks.emplace_back(*this, *this,
+                                   lauf_asm_signature{fn->sig.input_count, fn->sig.input_count});
         prologue->terminator = lauf_asm_block::fallthrough;
     }
 };
