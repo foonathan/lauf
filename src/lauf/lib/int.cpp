@@ -25,20 +25,27 @@
 
 namespace
 {
-LAUF_RUNTIME_BUILTIN(sadd_flag, 2, 2, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "sadd_flag", nullptr)
+constexpr auto no_panic_flags
+    = LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD;
+constexpr auto panic_flags = LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD;
+} // namespace
+
+namespace
+{
+LAUF_RUNTIME_BUILTIN(sadd_flag, 2, 2, no_panic_flags, "sadd_flag", nullptr)
 {
     auto overflow         = __builtin_add_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                                    &vstack_ptr[1].as_sint);
     vstack_ptr[0].as_uint = overflow ? 1 : 0;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(sadd_wrap, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "sadd_wrap", &sadd_flag)
+LAUF_RUNTIME_BUILTIN(sadd_wrap, 2, 1, no_panic_flags, "sadd_wrap", &sadd_flag)
 {
     __builtin_add_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint, &vstack_ptr[1].as_sint);
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(sadd_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "sadd_sat", &sadd_wrap)
+LAUF_RUNTIME_BUILTIN(sadd_sat, 2, 1, no_panic_flags, "sadd_sat", &sadd_wrap)
 {
     auto overflow = __builtin_add_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                            &vstack_ptr[1].as_sint);
@@ -52,7 +59,7 @@ LAUF_RUNTIME_BUILTIN(sadd_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "sadd_sat"
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(sadd_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "sadd_panic", &sadd_sat)
+LAUF_RUNTIME_BUILTIN(sadd_panic, 2, 1, panic_flags, "sadd_panic", &sadd_sat)
 {
     auto overflow = __builtin_add_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                            &vstack_ptr[1].as_sint);
@@ -67,20 +74,20 @@ LAUF_MAKE_ARITHMETIC_BUILTIN(sadd)
 
 namespace
 {
-LAUF_RUNTIME_BUILTIN(ssub_flag, 2, 2, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "ssub_flag", &sadd_panic)
+LAUF_RUNTIME_BUILTIN(ssub_flag, 2, 2, no_panic_flags, "ssub_flag", &sadd_panic)
 {
     auto overflow         = __builtin_sub_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                                    &vstack_ptr[1].as_sint);
     vstack_ptr[0].as_uint = overflow ? 1 : 0;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(ssub_wrap, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "ssub_wrap", &ssub_flag)
+LAUF_RUNTIME_BUILTIN(ssub_wrap, 2, 1, no_panic_flags, "ssub_wrap", &ssub_flag)
 {
     __builtin_sub_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint, &vstack_ptr[1].as_sint);
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(ssub_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "ssub_sat", &ssub_wrap)
+LAUF_RUNTIME_BUILTIN(ssub_sat, 2, 1, no_panic_flags, "ssub_sat", &ssub_wrap)
 {
     auto overflow = __builtin_sub_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                            &vstack_ptr[1].as_sint);
@@ -94,7 +101,7 @@ LAUF_RUNTIME_BUILTIN(ssub_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "ssub_sat"
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(ssub_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "ssub_panic", &ssub_sat)
+LAUF_RUNTIME_BUILTIN(ssub_panic, 2, 1, panic_flags, "ssub_panic", &ssub_sat)
 {
     auto overflow = __builtin_sub_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                            &vstack_ptr[1].as_sint);
@@ -109,20 +116,20 @@ LAUF_MAKE_ARITHMETIC_BUILTIN(ssub)
 
 namespace
 {
-LAUF_RUNTIME_BUILTIN(smul_flag, 2, 2, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "smul_flag", &ssub_panic)
+LAUF_RUNTIME_BUILTIN(smul_flag, 2, 2, no_panic_flags, "smul_flag", &ssub_panic)
 {
     auto overflow         = __builtin_mul_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                                    &vstack_ptr[1].as_sint);
     vstack_ptr[0].as_uint = overflow ? 1 : 0;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(smul_wrap, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "smul_wrap", &smul_flag)
+LAUF_RUNTIME_BUILTIN(smul_wrap, 2, 1, no_panic_flags, "smul_wrap", &smul_flag)
 {
     __builtin_mul_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint, &vstack_ptr[1].as_sint);
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(smul_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "smul_sat", &smul_wrap)
+LAUF_RUNTIME_BUILTIN(smul_sat, 2, 1, no_panic_flags, "smul_sat", &smul_wrap)
 {
     auto different_signs = (vstack_ptr[1].as_sint < 0) != (vstack_ptr[0].as_sint < 0);
     auto overflow        = __builtin_mul_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
@@ -137,7 +144,7 @@ LAUF_RUNTIME_BUILTIN(smul_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "smul_sat"
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(smul_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "smul_panic", &smul_sat)
+LAUF_RUNTIME_BUILTIN(smul_panic, 2, 1, panic_flags, "smul_panic", &smul_sat)
 {
     auto overflow = __builtin_mul_overflow(vstack_ptr[1].as_sint, vstack_ptr[0].as_sint,
                                            &vstack_ptr[1].as_sint);
@@ -152,20 +159,20 @@ LAUF_MAKE_ARITHMETIC_BUILTIN(smul)
 
 namespace
 {
-LAUF_RUNTIME_BUILTIN(uadd_flag, 2, 2, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "uadd_flag", &smul_panic)
+LAUF_RUNTIME_BUILTIN(uadd_flag, 2, 2, no_panic_flags, "uadd_flag", &smul_panic)
 {
     auto overflow         = __builtin_add_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                                    &vstack_ptr[1].as_uint);
     vstack_ptr[0].as_uint = overflow ? 1 : 0;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(uadd_wrap, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "uadd_wrap", &uadd_flag)
+LAUF_RUNTIME_BUILTIN(uadd_wrap, 2, 1, no_panic_flags, "uadd_wrap", &uadd_flag)
 {
     __builtin_add_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint, &vstack_ptr[1].as_uint);
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(uadd_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "uadd_sat", &uadd_wrap)
+LAUF_RUNTIME_BUILTIN(uadd_sat, 2, 1, no_panic_flags, "uadd_sat", &uadd_wrap)
 {
     auto overflow = __builtin_add_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
@@ -174,7 +181,7 @@ LAUF_RUNTIME_BUILTIN(uadd_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "uadd_sat"
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(uadd_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "uadd_panic", &uadd_sat)
+LAUF_RUNTIME_BUILTIN(uadd_panic, 2, 1, panic_flags, "uadd_panic", &uadd_sat)
 {
     auto overflow = __builtin_add_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
@@ -189,20 +196,20 @@ LAUF_MAKE_ARITHMETIC_BUILTIN(uadd)
 
 namespace
 {
-LAUF_RUNTIME_BUILTIN(usub_flag, 2, 2, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "usub_flag", &uadd_panic)
+LAUF_RUNTIME_BUILTIN(usub_flag, 2, 2, no_panic_flags, "usub_flag", &uadd_panic)
 {
     auto overflow         = __builtin_sub_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                                    &vstack_ptr[1].as_uint);
     vstack_ptr[0].as_uint = overflow ? 1 : 0;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(usub_wrap, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "usub_wrap", &usub_flag)
+LAUF_RUNTIME_BUILTIN(usub_wrap, 2, 1, no_panic_flags, "usub_wrap", &usub_flag)
 {
     __builtin_sub_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint, &vstack_ptr[1].as_uint);
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(usub_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "usub_sat", &usub_wrap)
+LAUF_RUNTIME_BUILTIN(usub_sat, 2, 1, no_panic_flags, "usub_sat", &usub_wrap)
 {
     auto overflow = __builtin_sub_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
@@ -211,7 +218,7 @@ LAUF_RUNTIME_BUILTIN(usub_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "usub_sat"
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(usub_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "usub_panic", &usub_sat)
+LAUF_RUNTIME_BUILTIN(usub_panic, 2, 1, panic_flags, "usub_panic", &usub_sat)
 {
     auto overflow = __builtin_sub_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
@@ -226,20 +233,20 @@ LAUF_MAKE_ARITHMETIC_BUILTIN(usub)
 
 namespace
 {
-LAUF_RUNTIME_BUILTIN(umul_flag, 2, 2, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "umul_flag", &usub_panic)
+LAUF_RUNTIME_BUILTIN(umul_flag, 2, 2, no_panic_flags, "umul_flag", &usub_panic)
 {
     auto overflow         = __builtin_mul_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                                    &vstack_ptr[1].as_uint);
     vstack_ptr[0].as_uint = overflow ? 1 : 0;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(umul_wrap, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "umul_wrap", &umul_flag)
+LAUF_RUNTIME_BUILTIN(umul_wrap, 2, 1, no_panic_flags, "umul_wrap", &umul_flag)
 {
     __builtin_mul_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint, &vstack_ptr[1].as_uint);
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(umul_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "umul_sat", &umul_wrap)
+LAUF_RUNTIME_BUILTIN(umul_sat, 2, 1, no_panic_flags, "umul_sat", &umul_wrap)
 {
     auto overflow = __builtin_mul_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
@@ -248,7 +255,7 @@ LAUF_RUNTIME_BUILTIN(umul_sat, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "umul_sat"
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(umul_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "umul_panic", &umul_sat)
+LAUF_RUNTIME_BUILTIN(umul_panic, 2, 1, panic_flags, "umul_panic", &umul_sat)
 {
     auto overflow = __builtin_mul_overflow(vstack_ptr[1].as_uint, vstack_ptr[0].as_uint,
                                            &vstack_ptr[1].as_uint);
@@ -261,7 +268,7 @@ LAUF_RUNTIME_BUILTIN(umul_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "umul_panic
 
 LAUF_MAKE_ARITHMETIC_BUILTIN(umul)
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_int_scmp, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "scmp", &umul_panic)
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_scmp, 2, 1, no_panic_flags, "scmp", &umul_panic)
 {
     vstack_ptr[1].as_sint = int(vstack_ptr[1].as_sint > vstack_ptr[0].as_sint)
                             - int(vstack_ptr[1].as_sint < vstack_ptr[0].as_sint);
@@ -269,8 +276,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_int_scmp, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_int_ucmp, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "ucmp",
-                     &lauf_lib_int_scmp)
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_ucmp, 2, 1, no_panic_flags, "ucmp", &lauf_lib_int_scmp)
 {
     vstack_ptr[1].as_sint = int(vstack_ptr[1].as_uint > vstack_ptr[0].as_uint)
                             - int(vstack_ptr[1].as_uint < vstack_ptr[0].as_uint);

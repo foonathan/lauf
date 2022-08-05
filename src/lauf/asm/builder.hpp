@@ -10,6 +10,7 @@
 #include <lauf/runtime/value.h>
 #include <lauf/support/arena.hpp>
 #include <lauf/support/array_list.hpp>
+#include <optional>
 
 //=== vstack ===//
 namespace lauf
@@ -65,7 +66,16 @@ public:
         push(arena, v);
     }
 
-    bool pop(std::size_t n = 1)
+    std::optional<value> pop()
+    {
+        if (_stack.empty())
+            return std::nullopt;
+
+        auto result = _stack.back();
+        _stack.pop_back();
+        return result;
+    }
+    bool pop(std::size_t n)
     {
         for (auto i = 0u; i != n; ++i)
         {

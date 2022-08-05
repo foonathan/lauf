@@ -45,6 +45,9 @@ bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* 
                                    lauf_runtime_stack_frame* frame_ptr,
                                    lauf_runtime_process*     process)
 {
+    if (ip == nullptr)
+        return true;
+
     ++ip;
     LAUF_VM_DISPATCH;
 }

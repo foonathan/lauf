@@ -336,15 +336,58 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
 {
     LAUF_BUILD_ASSERT_CUR;
 
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee.input_count), "missing input values for call");
+    bool               all_constant = true;
+    lauf_runtime_value vstack[UINT8_MAX];
 
-    auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
-    if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0)
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin_no_process, offset));
+    // vstack grows down.
+    auto vstack_ptr = vstack + UINT8_MAX;
+    // We pop arguments in reverse order.
+    vstack_ptr -= callee.input_count;
+
+    for (auto i = 0u; i != callee.input_count; ++i)
+    {
+        auto value = b->cur->vstack.pop();
+        LAUF_BUILD_ASSERT(value, "missing input values for call");
+        if (value->type == lauf::builder_vstack::value::constant)
+        {
+            *vstack_ptr = value->as_constant;
+            ++vstack_ptr;
+        }
+        else
+            all_constant = false;
+    }
+
+    if (all_constant && (callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0
+        && (callee.flags & LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD) != 0)
+    {
+        // Pop the input values as the call would.
+        // TODO: actually remove the instruction that produced the result instead.
+        for (auto i = 0u; i != callee.input_count; ++i)
+            b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+
+        assert(vstack_ptr == vstack + UINT8_MAX);
+        [[maybe_unused]] auto success
+            = callee.impl(nullptr, vstack_ptr - callee.input_count, nullptr, nullptr);
+        assert(success && "how did it panic?!");
+
+        // Push the results. We start at the top and walk our way down,
+        // to get them in the correct oder.
+        for (auto i = 0u; i != callee.output_count; ++i)
+        {
+            --vstack_ptr;
+            lauf_asm_inst_uint(b, vstack_ptr->as_uint);
+        }
+    }
     else
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
+    {
+        auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
+        if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0)
+            b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin_no_process, offset));
+        else
+            b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
 
-    b->cur->vstack.push(*b, callee.output_count);
+        b->cur->vstack.push(*b, callee.output_count);
+    }
 }
 
 void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value)

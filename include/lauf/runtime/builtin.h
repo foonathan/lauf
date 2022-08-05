@@ -27,6 +27,9 @@ typedef enum lauf_runtime_builtin_flags
 
     /// The builtin can only be used with the VM and not in other backends.
     LAUF_RUNTIME_BUILTIN_VM_ONLY = 1 << 2,
+    /// The builtin can be constant folded.
+    /// Builtin can only access `vstack_ptr`; everything else is `nullptr`.
+    LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD = 1 << 3,
 } lauf_runtime_builtin_flags;
 
 /// Must be tail-called when a buitlin finishes succesfully.
