@@ -332,6 +332,21 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
     b->cur->vstack.push(*b, sig.output_count);
 }
 
+namespace
+{
+void add_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
+{
+    auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
+    if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0
+        && (callee.flags & LAUF_RUNTIME_BUILTIN_NO_PANIC) != 0)
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin_no_frame, offset));
+    else
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
+
+    b->cur->vstack.push(*b, callee.output_count);
+}
+} // namespace
+
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
 {
     LAUF_BUILD_ASSERT_CUR;
@@ -360,34 +375,34 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     if (all_constant && (callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0
         && (callee.flags & LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD) != 0)
     {
-        // Pop the input values as the call would.
-        // TODO: actually remove the instruction that produced the result instead.
-        for (auto i = 0u; i != callee.input_count; ++i)
-            b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
-
         assert(vstack_ptr == vstack + UINT8_MAX);
         lauf_asm_inst         code[2] = {LAUF_BUILD_INST_NONE(nop), LAUF_BUILD_INST_NONE(exit)};
         [[maybe_unused]] auto success
             = callee.impl(code, vstack_ptr - callee.input_count, nullptr, nullptr);
-        assert(success && "how did it panic?!");
-
-        // Push the results. We start at the top and walk our way down,
-        // to get them in the correct oder.
-        for (auto i = 0u; i != callee.output_count; ++i)
+        if (success)
         {
-            --vstack_ptr;
-            lauf_asm_inst_uint(b, vstack_ptr->as_uint);
+            // Pop the input values as the call would.
+            // TODO: actually remove the instruction that produced the result instead.
+            for (auto i = 0u; i != callee.input_count; ++i)
+                b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+
+            // Push the results. We start at the top and walk our way down,
+            // to get them in the correct oder.
+            for (auto i = 0u; i != callee.output_count; ++i)
+            {
+                --vstack_ptr;
+                lauf_asm_inst_uint(b, vstack_ptr->as_uint);
+            }
+        }
+        else
+        {
+            // It paniced, so we keep the call as-is.
+            add_call_builtin(b, callee);
         }
     }
     else
     {
-        auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
-        if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0)
-            b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin_no_process, offset));
-        else
-            b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
-
-        b->cur->vstack.push(*b, callee.output_count);
+        add_call_builtin(b, callee);
     }
 }
 

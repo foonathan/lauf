@@ -97,9 +97,11 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     return result;
 }
 
-bool lauf_runtime_panic(lauf_runtime_process* p, const char* msg)
+bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
 {
-    p->vm->panic_handler(p, msg);
+    // The process is nullptr during constant folding.
+    if (process != nullptr)
+        process->vm->panic_handler(process, msg);
     return false;
 }
 

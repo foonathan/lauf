@@ -22,7 +22,7 @@ typedef enum lauf_runtime_builtin_flags
     /// The builtin will never panic.
     LAUF_RUNTIME_BUILTIN_NO_PANIC = 1 << 0,
     /// The builtin does not need the process.
-    /// Logically mplies no panic.
+    /// It may only use the `process` argument to call `lauf_runtime_panic()`.
     LAUF_RUNTIME_BUILTIN_NO_PROCESS = 1 << 1,
 
     /// The builtin can only be used with the VM and not in other backends.

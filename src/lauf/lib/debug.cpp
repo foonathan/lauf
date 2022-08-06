@@ -80,14 +80,16 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_cstack, 0, 0, LAUF_RUNTIME_BUILTIN_NO_
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_debug_break, 0, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "break",
+LAUF_RUNTIME_BUILTIN(lauf_lib_debug_break, 0, 0,
+                     LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_NO_PANIC, "break",
                      &lauf_lib_debug_print_cstack)
 {
     __builtin_debugtrap();
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_debug_read, 0, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "read",
+LAUF_RUNTIME_BUILTIN(lauf_lib_debug_read, 0, 1,
+                     LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_NO_PANIC, "read",
                      &lauf_lib_debug_break)
 {
     std::printf("[lauf] debug read: 0x");

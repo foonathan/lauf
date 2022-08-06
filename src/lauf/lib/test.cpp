@@ -9,7 +9,7 @@
 #include <lauf/runtime/value.h>
 #include <lauf/vm.hpp>
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_test_unreachable, 0, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "unreachable",
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_unreachable, 0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC, "unreachable",
                      nullptr)
 {
     (void)ip;
@@ -18,7 +18,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_test_unreachable, 0, 0, LAUF_RUNTIME_BUILTIN_DEFAU
     return lauf_runtime_panic(process, "unreachable code reached");
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert, 1, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "assert",
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert, 1, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "assert",
                      &lauf_lib_test_unreachable)
 {
     auto value = vstack_ptr[0].as_uint;
@@ -30,7 +30,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert, 1, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "
         return lauf_runtime_panic(process, "assert failed");
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_eq, 2, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "assert_eq",
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_eq, 2, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "assert_eq",
                      &lauf_lib_test_assert)
 {
     auto lhs = vstack_ptr[1].as_uint;

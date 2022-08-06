@@ -166,14 +166,15 @@ LAUF_VM_EXECUTE(exit)
 LAUF_VM_EXECUTE(call_builtin)
 {
     process->callstack_leaf_frame.assign_callstack_leaf_frame(ip, frame_ptr);
-    [[clang::musttail]] return execute_call_builtin_no_process(ip, vstack_ptr, frame_ptr, process);
+    [[clang::musttail]] return execute_call_builtin_no_frame(ip, vstack_ptr, frame_ptr, process);
 }
 
-LAUF_VM_EXECUTE(call_builtin_no_process)
+LAUF_VM_EXECUTE(call_builtin_no_frame)
 {
     auto callee
         = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl>(&lauf_runtime_builtin_dispatch,
-                                                                     ip->call_builtin.offset);
+                                                                     ip->call_builtin_no_frame
+                                                                         .offset);
 
     [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, process);
 }

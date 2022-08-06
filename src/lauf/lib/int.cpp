@@ -25,9 +25,9 @@
 
 namespace
 {
-constexpr auto no_panic_flags
-    = LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD;
-constexpr auto panic_flags = LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD;
+constexpr auto no_panic_flags = LAUF_RUNTIME_BUILTIN_NO_PANIC | LAUF_RUNTIME_BUILTIN_NO_PROCESS
+                                | LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD;
+constexpr auto panic_flags = LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD;
 } // namespace
 
 namespace
