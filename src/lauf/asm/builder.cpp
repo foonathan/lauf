@@ -366,8 +366,9 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
             b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
 
         assert(vstack_ptr == vstack + UINT8_MAX);
+        lauf_asm_inst         code[2] = {LAUF_BUILD_INST_NONE(nop), LAUF_BUILD_INST_NONE(exit)};
         [[maybe_unused]] auto success
-            = callee.impl(nullptr, vstack_ptr - callee.input_count, nullptr, nullptr);
+            = callee.impl(code, vstack_ptr - callee.input_count, nullptr, nullptr);
         assert(success && "how did it panic?!");
 
         // Push the results. We start at the top and walk our way down,
