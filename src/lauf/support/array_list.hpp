@@ -60,6 +60,10 @@ public:
         {
             return _cur_block->array[_cur_idx];
         }
+        ConstT* operator->() const
+        {
+            return &**this;
+        }
 
         _iterator& operator++()
         {

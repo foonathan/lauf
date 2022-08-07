@@ -99,3 +99,10 @@ LAUF_ASM_INST(local_free, asm_inst_value)
 LAUF_ASM_INST(deref_const, asm_inst_layout)
 LAUF_ASM_INST(deref_mut, asm_inst_layout)
 
+// lauf_asm_inst_load/store_field() for locals and the value type.
+// The value is the offset after frame_ptr.
+// Signature: _ => value
+LAUF_ASM_INST(load_local_value, asm_inst_value)
+// Signature: value => _
+LAUF_ASM_INST(store_local_value, asm_inst_value)
+

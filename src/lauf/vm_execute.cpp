@@ -401,11 +401,12 @@ LAUF_VM_EXECUTE(local_alloc_aligned)
     if (process->allocations.size() == process->allocations.capacity()) [[clang::musttail]]
         return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
 
-    // The builder has taken care of ensuring alignment.
-    frame_ptr->next_offset
-        += lauf::align_offset(frame_ptr->next_frame(), ip->local_alloc_aligned.alignment());
-    auto memory = frame_ptr->next_frame();
-    frame_ptr->next_offset += ip->local_alloc.size;
+    // We need to ensure the starting address is aligned.
+    auto memory = static_cast<unsigned char*>(frame_ptr->next_frame());
+    memory += lauf::align_offset(memory, ip->local_alloc_aligned.alignment());
+    // However, to increment the offset we need both alignment and size, as that was the offset
+    // computation in the builder assumes.
+    frame_ptr->next_offset += ip->local_alloc_aligned.alignment() + ip->local_alloc.size;
 
     process->allocations.push_back_unchecked(
         make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
@@ -466,5 +467,27 @@ LAUF_VM_EXECUTE(deref_mut)
     }
 
     LAUF_DO_PANIC("invalid address");
+}
+
+LAUF_VM_EXECUTE(load_local_value)
+{
+    auto memory = reinterpret_cast<unsigned char*>(frame_ptr) + ip->load_local_value.value;
+
+    --vstack_ptr;
+    vstack_ptr[0] = *reinterpret_cast<lauf_runtime_value*>(memory);
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(store_local_value)
+{
+    auto memory = reinterpret_cast<unsigned char*>(frame_ptr) + ip->store_local_value.value;
+
+    *reinterpret_cast<lauf_runtime_value*>(memory) = vstack_ptr[0];
+    ++vstack_ptr;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
 }
 

@@ -7,6 +7,7 @@
 #include <lauf/asm/builder.h>
 #include <lauf/asm/instruction.hpp>
 #include <lauf/asm/module.hpp>
+#include <lauf/asm/type.h>
 #include <lauf/runtime/value.h>
 #include <lauf/support/arena.hpp>
 #include <lauf/support/array_list.hpp>
@@ -24,11 +25,13 @@ public:
         {
             unknown,
             constant,
+            local_addr,
         } type;
         union
         {
-            char               as_unknown;
-            lauf_runtime_value as_constant;
+            char                  as_unknown;
+            lauf_runtime_value    as_constant;
+            const lauf_asm_local* as_local;
         };
     };
 
@@ -134,6 +137,13 @@ struct lauf_asm_block
     {}
 };
 
+struct lauf_asm_local
+{
+    lauf_asm_layout layout;
+    std::uint16_t   index;
+    std::uint16_t   offset; // UINT16_MAX if unknown for layout.alignment > alignof(void*)
+};
+
 struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 {
     lauf_asm_build_options options;
@@ -144,9 +154,9 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
     lauf_asm_block*                  prologue = nullptr;
     lauf_asm_block*                  cur      = nullptr;
 
-    std::uint16_t local_allocation_count = 0;
-    std::uint16_t local_allocation_size  = 0;
-    bool          errored                = false;
+    lauf::array_list<lauf_asm_local> locals;
+    std::uint16_t                    local_allocation_size = 0;
+    bool                             errored               = false;
 
     explicit lauf_asm_builder(lauf::arena_key key, lauf_asm_build_options options)
     : lauf::intrinsic_arena<lauf_asm_builder>(key), options(options)
@@ -162,9 +172,9 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         blocks.reset();
         cur = nullptr;
 
-        local_allocation_count = 0;
-        local_allocation_size  = 0;
-        errored                = false;
+        locals.reset();
+        local_allocation_size = 0;
+        errored               = false;
 
         this->clear();
 

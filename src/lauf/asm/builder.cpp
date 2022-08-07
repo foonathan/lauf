@@ -6,9 +6,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include <lauf/asm/module.hpp>
-#include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
+#include <lauf/runtime/process.hpp>
 
 void lauf_asm_builder::error(const char* context, const char* msg)
 {
@@ -61,7 +60,7 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 
             case lauf_asm_block::return_:
                 ++result;
-                if (b->local_allocation_count > 0)
+                if (b->locals.size() > 0)
                     ++result;
                 break;
 
@@ -100,8 +99,8 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
             break;
 
         case lauf_asm_block::return_:
-            if (b->local_allocation_count > 0)
-                *ip++ = LAUF_BUILD_INST_VALUE(local_free, b->local_allocation_count);
+            if (b->locals.size() > 0)
+                *ip++ = LAUF_BUILD_INST_VALUE(local_free, unsigned(b->locals.size()));
             *ip++ = LAUF_BUILD_INST_NONE(return_);
             break;
 
@@ -166,25 +165,37 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
 {
     layout.size = lauf::round_to_multiple_of_alignment(layout.size, alignof(void*));
 
+    std::uint16_t offset;
     if (layout.alignment <= alignof(void*))
     {
         // Ensure that the stack frame is always aligned to a pointer.
         // This means we can allocate without worrying about alignment.
         layout.alignment = alignof(void*);
         b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, layout));
+
+        // The offset is the current size, we don't need to worry about alignment.
+        offset = std::uint16_t(b->local_allocation_size + sizeof(lauf_runtime_stack_frame));
+        b->local_allocation_size += layout.size;
     }
     else
     {
         b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned, layout));
+
+        // We need to align it, but don't know the base address of the stack frame yet.
+        // We only know that we need at most `layout.alignment` padding bytes*, so reserve that much
+        // space.
+        //
+        // * Actually only `layout.alignment - 1`, but we need to ensure that we're always aligned
+        // for a pointer.
+        //  Since `layout.alignment` is a multiple of it (as a power of two bigger than it), and
+        //  size a multiple of alignment, `layout.alignment + layout.size` is as well.
+        b->local_allocation_size += layout.alignment + layout.size;
+        // Since we don't know the exact alignment offset, we can't compute it statically.
+        offset = UINT16_MAX;
     }
 
-    b->local_allocation_size += layout.size;
-    if (layout.alignment > alignof(void*))
-        b->local_allocation_size += layout.alignment;
-
-    auto idx = b->local_allocation_count;
-    ++b->local_allocation_count;
-    return reinterpret_cast<lauf_asm_local*>(idx); // NOLINT
+    auto index = b->locals.size();
+    return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset});
 }
 
 lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, lauf_asm_signature sig)
@@ -495,9 +506,13 @@ void lauf_asm_inst_local_addr(lauf_asm_builder* b, const lauf_asm_local* local)
 {
     LAUF_BUILD_ASSERT_CUR;
 
-    auto index = reinterpret_cast<std::uint64_t>(local);
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_addr, std::uint32_t(index)));
-    b->cur->vstack.push(*b, 1);
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_addr, local->index));
+    b->cur->vstack.push(*b, [&] {
+        lauf::builder_vstack::value result;
+        result.type     = result.local_addr;
+        result.as_local = local;
+        return result;
+    }());
 }
 
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
@@ -542,35 +557,81 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
 }
 
+namespace
+{
+bool is_valid_local_load_store_value(lauf::builder_vstack::value addr, lauf_asm_type type)
+{
+    if (type.load_fn != lauf_asm_type_value.load_fn
+        || type.store_fn != lauf_asm_type_value.store_fn)
+        return false;
+
+    if (addr.type != addr.local_addr)
+        return false;
+
+    auto local_layout = addr.as_local->layout;
+    if (local_layout.alignment > alignof(void*))
+        // Don't know the offset for over aligned data yet.
+        return false;
+
+    return local_layout.size >= type.layout.size && local_layout.alignment >= type.layout.alignment;
+}
+} // namespace
+
 void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index)
 {
     LAUF_BUILD_ASSERT_CUR;
-
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_const, type.layout));
-
     LAUF_BUILD_ASSERT(field_index < type.field_count, "invalid field index");
-    lauf_asm_inst_uint(b, field_index);
 
-    lauf_runtime_builtin_function builtin{};
-    builtin.impl         = type.load_fn;
-    builtin.input_count  = 2;
-    builtin.output_count = 1;
-    lauf_asm_inst_call_builtin(b, builtin);
+    auto addr = b->cur->vstack.pop();
+    LAUF_BUILD_ASSERT(addr, "missing address");
+    if (is_valid_local_load_store_value(*addr, type))
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        b->cur->insts.push_back(*b,
+                                LAUF_BUILD_INST_VALUE(load_local_value, addr->as_local->offset));
+        b->cur->vstack.push(*b, 1);
+    }
+    else
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_const, type.layout));
+        b->cur->vstack.push(*b, 1);
+
+        lauf_asm_inst_uint(b, field_index);
+
+        lauf_runtime_builtin_function builtin{};
+        builtin.impl         = type.load_fn;
+        builtin.input_count  = 2;
+        builtin.output_count = 1;
+        lauf_asm_inst_call_builtin(b, builtin);
+    }
 }
 
 void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index)
 {
     LAUF_BUILD_ASSERT_CUR;
-
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_mut, type.layout));
-
     LAUF_BUILD_ASSERT(field_index < type.field_count, "invalid field index");
-    lauf_asm_inst_uint(b, field_index);
 
-    lauf_runtime_builtin_function builtin{};
-    builtin.impl         = type.store_fn;
-    builtin.input_count  = 3;
-    builtin.output_count = 0;
-    lauf_asm_inst_call_builtin(b, builtin);
+    auto addr = b->cur->vstack.pop();
+    LAUF_BUILD_ASSERT(addr, "missing address");
+    if (is_valid_local_load_store_value(*addr, type))
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        b->cur->insts.push_back(*b,
+                                LAUF_BUILD_INST_VALUE(store_local_value, addr->as_local->offset));
+        b->cur->vstack.pop(1);
+    }
+    else
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_mut, type.layout));
+        b->cur->vstack.push(*b, 1);
+
+        lauf_asm_inst_uint(b, field_index);
+
+        lauf_runtime_builtin_function builtin{};
+        builtin.impl         = type.store_fn;
+        builtin.input_count  = 3;
+        builtin.output_count = 0;
+        lauf_asm_inst_call_builtin(b, builtin);
+    }
 }
 

@@ -180,6 +180,12 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::deref_mut:
             writer->format("deref_mut (%u, %zu)", ip->deref_mut.size, ip->deref_mut.alignment());
             break;
+        case lauf::asm_op::load_local_value:
+            writer->format("load_local_value <%u>", ip->load_local_value.value);
+            break;
+        case lauf::asm_op::store_local_value:
+            writer->format("store_local_value <%u>", ip->load_local_value.value);
+            break;
         }
         writer->write(";\n");
     }
