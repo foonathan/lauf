@@ -40,7 +40,7 @@ public:
     //=== access ===//
     bool empty() const
     {
-        return _block_count == 0 && _next_idx == 0;
+        return size() == 0;
     }
     std::size_t size() const
     {

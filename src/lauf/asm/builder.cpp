@@ -15,6 +15,71 @@ void lauf_asm_builder::error(const char* context, const char* msg)
     errored = true;
 }
 
+namespace
+{
+void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
+{
+    while (count > 0)
+    {
+        // The block can be come empty if we attempt to pop an argument.
+        // In that case we treat it as any instruction that we couldn't remove anyway.
+        auto op = b->cur->insts.empty() ? lauf::asm_op::call : b->cur->insts.back().op();
+        switch (op)
+        {
+        case lauf::asm_op::nop:
+        case lauf::asm_op::return_:
+        case lauf::asm_op::jump:
+        case lauf::asm_op::branch_false:
+        case lauf::asm_op::branch_eq:
+        case lauf::asm_op::branch_gt:
+        case lauf::asm_op::panic:
+        case lauf::asm_op::exit:
+        case lauf::asm_op::local_alloc:
+        case lauf::asm_op::local_alloc_aligned:
+        case lauf::asm_op::local_free:
+            assert(false && "not added at this point");
+            break;
+
+        case lauf::asm_op::push2:
+        case lauf::asm_op::push3:
+        case lauf::asm_op::deref_const:
+        case lauf::asm_op::deref_mut:
+            // Signature 1 => 1, remove as well.
+            b->cur->insts.pop_back();
+            break;
+
+        case lauf::asm_op::push:
+        case lauf::asm_op::pushn:
+        case lauf::asm_op::global_addr:
+        case lauf::asm_op::function_addr:
+        case lauf::asm_op::local_addr:
+        case lauf::asm_op::pick:
+        case lauf::asm_op::dup:
+            // Signature 0 => 1, actually removed something.
+            b->cur->insts.pop_back();
+            --count;
+            break;
+
+        case lauf::asm_op::call:
+        case lauf::asm_op::call_indirect:
+        case lauf::asm_op::call_builtin:
+        case lauf::asm_op::call_builtin_no_frame:
+        case lauf::asm_op::pop:
+        case lauf::asm_op::pop_top:
+        case lauf::asm_op::roll:
+        case lauf::asm_op::swap:
+        case lauf::asm_op::load_local_value:
+        case lauf::asm_op::store_local_value:
+            // We have reached an instruction that we can't remove easily; add pop instruction.
+            for (auto i = 0u; i != count; ++i)
+                b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+            count = 0;
+            break;
+        }
+    }
+}
+} // namespace
+
 const lauf_asm_build_options lauf_asm_default_build_options = {
     [](const char* fn_name, const char* context, const char* msg) {
         std::fprintf(stderr, "[lauf build error] %s() of '%s': %s\n", context, fn_name, msg);
@@ -393,9 +458,7 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
         if (success)
         {
             // Pop the input values as the call would.
-            // TODO: actually remove the instruction that produced the result instead.
-            for (auto i = 0u; i != callee.input_count; ++i)
-                b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+            add_pop_top_n(b, callee.input_count);
 
             // Push the results. We start at the top and walk our way down,
             // to get them in the correct oder.
@@ -522,7 +585,7 @@ void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
     LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
 
     if (stack_index == 0)
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, stack_index));
+        add_pop_top_n(b, 1);
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop, stack_index));
 
@@ -586,7 +649,7 @@ void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t fi
     LAUF_BUILD_ASSERT(addr, "missing address");
     if (is_valid_local_load_store_value(*addr, type))
     {
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b,
                                 LAUF_BUILD_INST_VALUE(load_local_value, addr->as_local->offset));
         b->cur->vstack.push(*b, 1);
@@ -615,7 +678,7 @@ void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t f
     LAUF_BUILD_ASSERT(addr, "missing address");
     if (is_valid_local_load_store_value(*addr, type))
     {
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b,
                                 LAUF_BUILD_INST_VALUE(store_local_value, addr->as_local->offset));
         b->cur->vstack.pop(1);

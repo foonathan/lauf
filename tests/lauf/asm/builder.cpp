@@ -19,7 +19,7 @@ template <typename BuilderFn>
 std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 {
     auto mod = lauf_asm_create_module("test");
-    auto fn  = lauf_asm_add_function(mod, "test", {0, 0});
+    auto fn  = lauf_asm_add_function(mod, "test", {sig.input_count, sig.output_count});
 
     {
         auto builder = lauf_asm_create_builder([] {
@@ -30,18 +30,10 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
             return opts;
         }());
         lauf_asm_build(builder, mod, fn);
-        auto block = lauf_asm_declare_block(builder, {0, 0});
+        auto block = lauf_asm_declare_block(builder, {sig.input_count, sig.output_count});
         lauf_asm_build_block(builder, block);
 
-        // Add dummy values for the instructions to consume.
-        for (auto i = 0u; i != sig.input_count; ++i)
-            lauf_asm_inst_null(builder);
-
         builder_fn(mod, builder);
-
-        // Pop all values it consumed.
-        for (auto i = 0u; i != sig.output_count; ++i)
-            lauf_asm_inst_pop(builder, 0);
 
         lauf_asm_inst_return(builder);
         lauf_asm_build_finish(builder);
@@ -58,12 +50,10 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
     auto start_index = 0;
     while (fn->insts[start_index].op() == lauf::asm_op::local_alloc)
         ++start_index;
-    start_index += sig.input_count;
 
     auto end_index = fn->insts_count - 1;
     if (fn->insts[end_index - 1].op() == lauf::asm_op::local_free)
         --end_index;
-    end_index -= sig.output_count;
 
     for (auto i = start_index; i != end_index; ++i)
         result.push_back(fn->insts[i]);
@@ -119,11 +109,13 @@ TEST_CASE("lauf_asm_inst_jump")
     CHECK(self[1].op() == lauf::asm_op::jump);
     CHECK(self[1].jump.offset == 0);
 
-    auto backward = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
+    auto backward = build({0, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
+        auto fn = lauf_asm_add_function(mod, "foo", {0, 1});
+
         auto block = lauf_asm_declare_block(b, {0, 0});
         lauf_asm_inst_jump(b, block);
         lauf_asm_build_block(b, block);
-        lauf_asm_inst_null(b);
+        lauf_asm_inst_call(b, fn);
         lauf_asm_inst_pop(b, 0);
         lauf_asm_inst_jump(b, block); // This is the one we're trying to test.
 
