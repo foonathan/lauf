@@ -240,11 +240,13 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
     }(LAUF_BUILD_ASSERT_CONTEXT, Layout)
 
 #define LAUF_BUILD_INST_VALUE(Name, Value)                                                         \
-    [&] {                                                                                          \
+    [&](const char* context, std::size_t value) {                                                  \
         lauf_asm_inst result;                                                                      \
-        result.Name = {lauf::asm_op::Name, Value};                                                 \
+        result.Name = {lauf::asm_op::Name, std::uint32_t(value)};                                  \
+        if (value != result.Name.value)                                                            \
+            b->error(context, "invalid value");                                                    \
         return result;                                                                             \
-    }()
+    }(LAUF_BUILD_ASSERT_CONTEXT, Value)
 
 #endif // SRC_LAUF_ASM_BUILDER_HPP_INCLUDED
 

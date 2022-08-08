@@ -226,7 +226,17 @@ struct layout_expr
         static constexpr auto value = lexy::mem_fn(&lauf_asm_type::layout);
     };
 
-    static constexpr auto rule  = dsl::p<literal> | dsl::p<type>;
+    struct array
+    {
+        static constexpr auto rule
+            = dsl::square_bracketed(dsl::integer<std::size_t>) >> dsl::recurse<layout_expr>;
+        static constexpr auto value
+            = lexy::callback<lauf_asm_layout>([](std::size_t size, lauf_asm_layout layout) {
+                  return lauf_asm_array_layout(layout, size);
+              });
+    };
+
+    static constexpr auto rule  = dsl::p<literal> | dsl::p<type> | dsl::p<array>;
     static constexpr auto value = lexy::forward<lauf_asm_layout>;
 };
 
@@ -438,6 +448,11 @@ struct inst_call_builtin
     static constexpr auto value = inst(&lauf_asm_inst_call_builtin);
 };
 
+struct inst_array_element
+{
+    static constexpr auto rule  = LAUF_KEYWORD("array_element") >> dsl::p<layout_expr>;
+    static constexpr auto value = inst(&lauf_asm_inst_array_element);
+};
 struct inst_load_field
 {
     static constexpr auto rule
@@ -464,7 +479,7 @@ struct instruction
               | dsl::p<inst_function_addr> | dsl::p<inst_local_addr>                       //
               | dsl::p<inst_stack_op>                                                      //
               | dsl::p<inst_call> | dsl::p<inst_call_indirect> | dsl::p<inst_call_builtin> //
-              | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
+              | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
 
         return nested | dsl::else_ >> single + dsl::semicolon;
     }();

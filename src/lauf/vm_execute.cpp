@@ -469,6 +469,20 @@ LAUF_VM_EXECUTE(deref_mut)
     LAUF_DO_PANIC("invalid address");
 }
 
+LAUF_VM_EXECUTE(array_element)
+{
+    auto index   = vstack_ptr[1].as_uint;
+    auto address = vstack_ptr[0].as_address;
+
+    address.offset += ip->array_element.value * index;
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = address;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
 LAUF_VM_EXECUTE(load_local_value)
 {
     auto memory = reinterpret_cast<unsigned char*>(frame_ptr) + ip->load_local_value.value;

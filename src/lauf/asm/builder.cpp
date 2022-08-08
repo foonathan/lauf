@@ -68,6 +68,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::pop_top:
         case lauf::asm_op::roll:
         case lauf::asm_op::swap:
+        case lauf::asm_op::array_element:
         case lauf::asm_op::load_local_value:
         case lauf::asm_op::store_local_value:
             // We have reached an instruction that we can't remove easily; add pop instruction.
@@ -496,13 +497,13 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
     if ((value & lauf_uint(0xFFFF'FFFF'FF00'0000)) == 0)
     {
         // 0x0000'0000'00xx'xxxx: push
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, std::uint32_t(value)));
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, value));
     }
     else if ((value & lauf_uint(0xFFFF'0000'0000'0000)) == 0)
     {
         // 0x0000'yyyy'yyxx'xxxx: push + push2
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, std::uint32_t(value)));
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push2, std::uint32_t(value >> 24)));
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, value & 0xFF'FFFF));
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push2, value >> 24));
     }
     else if ((value & lauf_uint(0xFFFF'FFFF'FF00'0000)) == 0xFFFF'FFFF'FF00'0000)
     {
@@ -514,10 +515,10 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
     {
         // 0xzzzz'yyyy'yyxx'xxxx: push + push2 + push3
         // Omit push2 if y = 0.
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, std::uint32_t(value)));
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, value & 0xFF'FFFF));
         if ((std::uint32_t(value >> 24) & 0xFF'FFFF) != 0)
-            b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push2, std::uint32_t(value >> 24)));
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push3, std::uint32_t(value >> 48)));
+            b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push2, (value >> 24) & 0xFF'FFFF));
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push3, value >> 48));
     }
 
     b->cur->vstack.push(*b, [&] {
@@ -618,6 +619,18 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(swap, stack_index));
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
+}
+
+void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_layout)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    auto multiple
+        = lauf::round_to_multiple_of_alignment(element_layout.size, element_layout.alignment);
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(2), "missing index or address");
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(array_element, multiple));
+    b->cur->vstack.push(*b, 1);
 }
 
 namespace

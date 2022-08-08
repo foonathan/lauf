@@ -1,0 +1,33 @@
+module @array_aggregate;
+
+function @local_array() {
+    local %array : [2]$lauf.Value;
+
+    uint 11; [ uint 0; local_addr %array; array_element $lauf.Value; ] store_field $lauf.Value 0;
+    uint 42; [ uint 1; local_addr %array; array_element $lauf.Value; ] store_field $lauf.Value 0;
+
+    [ uint 0; local_addr %array; array_element $lauf.Value; ] load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+    [ uint 1; local_addr %array; array_element $lauf.Value; ] load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @array_zero_element() {
+    local %array : [2]$lauf.Value;
+
+    uint 11; local_addr %array; store_field $lauf.Value 0;
+    [ uint 0; local_addr %array; array_element $lauf.Value; ] load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+
+    uint 42; [ uint 0; local_addr %array; array_element $lauf.Value; ] store_field $lauf.Value 0;
+    local_addr %array; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @main() {
+    call @local_array;
+    call @array_zero_element;
+
+    return;
+}
+

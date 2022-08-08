@@ -94,6 +94,10 @@ LAUF_ASM_INST(local_alloc_aligned, asm_inst_layout)
 // Signature: _ => _
 LAUF_ASM_INST(local_free, asm_inst_value)
 
+// lauf_asm_inst_array_element()
+// Value is multiple.
+LAUF_ASM_INST(array_element, asm_inst_value)
+
 // Used by lauf_asm_inst_load/store_field()
 // Signature: address => native_ptr
 LAUF_ASM_INST(deref_const, asm_inst_layout)

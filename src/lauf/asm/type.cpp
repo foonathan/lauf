@@ -5,6 +5,15 @@
 
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/value.h>
+#include <lauf/support/align.hpp>
+
+lauf_asm_layout lauf_asm_array_layout(lauf_asm_layout element_layout, size_t element_count)
+{
+    element_layout.size
+        = lauf::round_to_multiple_of_alignment(element_layout.size, element_layout.alignment);
+    element_layout.size *= element_count;
+    return element_layout;
+}
 
 namespace
 {

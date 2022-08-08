@@ -169,7 +169,12 @@ void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index);
 /// Signature: x_N+1 x_N x_N-1 ... x_0 => x_N+1 x_N-1 ... x_0 x_N
 void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
 
-//=== load/store ===//
+//=== memory ===//
+/// Computes the address of an array element given the element layout.
+///
+/// Signature: index:uint ptr:address => (ptr + index * layout):address
+void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_layout);
+
 /// Loads a field from a type and pushes it value.
 ///
 /// Signature: ptr:address => value

@@ -528,3 +528,20 @@ TEST_CASE("lauf_asm_inst_call_builtin")
     // cannot check offset
 }
 
+TEST_CASE("lauf_asm_inst_array_element")
+{
+    auto normal = build({2, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_array_element(b, {8, 8});
+    });
+    REQUIRE(normal.size() == 1);
+    CHECK(normal[0].op() == lauf::asm_op::array_element);
+    CHECK(normal[0].array_element.value == 8);
+
+    auto alignment = build({2, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_array_element(b, {4, 8});
+    });
+    REQUIRE(alignment.size() == 1);
+    CHECK(alignment[0].op() == lauf::asm_op::array_element);
+    CHECK(alignment[0].array_element.value == 8);
+}
+
