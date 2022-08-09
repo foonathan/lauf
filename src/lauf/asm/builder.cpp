@@ -61,6 +61,12 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
             --count;
             break;
 
+        case lauf::asm_op::array_element:
+            // Signature 2 => 1, we remove it, but need to pop one more after we did that.
+            b->cur->insts.pop_back();
+            ++count;
+            break;
+
         case lauf::asm_op::call:
         case lauf::asm_op::call_indirect:
         case lauf::asm_op::call_builtin:
@@ -69,7 +75,6 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::pop_top:
         case lauf::asm_op::roll:
         case lauf::asm_op::swap:
-        case lauf::asm_op::array_element:
         case lauf::asm_op::load_local_value:
         case lauf::asm_op::store_local_value:
             // We have reached an instruction that we can't remove easily; add pop instruction.
@@ -629,9 +634,23 @@ void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_la
     auto multiple
         = lauf::round_to_multiple_of_alignment(element_layout.size, element_layout.alignment);
 
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(2), "missing index or address");
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(array_element, multiple));
-    b->cur->vstack.push(*b, 1);
+    auto index = b->cur->vstack.pop();
+    LAUF_BUILD_ASSERT(index, "missing index");
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(1), "missing address");
+
+    if (index->type == index->constant)
+    {
+        add_pop_top_n(b, 1);
+        auto offset = index->as_constant.as_uint * multiple;
+        if (offset > 0)
+            b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(aggregate_member, offset));
+        b->cur->vstack.push(*b, 1);
+    }
+    else
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(array_element, multiple));
+        b->cur->vstack.push(*b, 1);
+    }
 }
 
 void lauf_asm_inst_aggregate_member(lauf_asm_builder* b, size_t member_index,

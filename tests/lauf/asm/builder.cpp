@@ -42,7 +42,7 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 
     auto str = lauf_create_string_writer();
     lauf_backend_dump(str, lauf_backend_default_dump_options, mod);
-    // MESSAGE(lauf_writer_get_string(str));
+    MESSAGE(lauf_writer_get_string(str));
     lauf_destroy_writer(str);
 
     std::vector<lauf_asm_inst> result;
@@ -543,6 +543,20 @@ TEST_CASE("lauf_asm_inst_array_element")
     REQUIRE(alignment.size() == 1);
     CHECK(alignment[0].op() == lauf::asm_op::array_element);
     CHECK(alignment[0].array_element.value == 8);
+
+    auto constant_zero = build({1, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_uint(b, 0);
+        lauf_asm_inst_array_element(b, {8, 8});
+    });
+    REQUIRE(constant_zero.empty());
+
+    auto constant = build({1, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_uint(b, 2);
+        lauf_asm_inst_array_element(b, {8, 8});
+    });
+    REQUIRE(constant.size() == 1);
+    CHECK(constant[0].op() == lauf::asm_op::aggregate_member);
+    CHECK(constant[0].aggregate_member.value == 16);
 }
 
 TEST_CASE("lauf_asm_inst_aggregate_member")

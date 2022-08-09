@@ -471,8 +471,8 @@ LAUF_VM_EXECUTE(deref_mut)
 
 LAUF_VM_EXECUTE(array_element)
 {
-    auto index   = vstack_ptr[1].as_uint;
-    auto address = vstack_ptr[0].as_address;
+    auto address = vstack_ptr[1].as_address;
+    auto index   = vstack_ptr[0].as_uint;
 
     address.offset += ip->array_element.value * index;
 
