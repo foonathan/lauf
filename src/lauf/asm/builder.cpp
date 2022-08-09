@@ -34,6 +34,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::branch_gt:
         case lauf::asm_op::panic:
         case lauf::asm_op::exit:
+        case lauf::asm_op::setup_local_alloc:
         case lauf::asm_op::local_alloc:
         case lauf::asm_op::local_alloc_aligned:
         case lauf::asm_op::local_free:
@@ -233,13 +234,18 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
         return std::uint16_t(result);
     }();
 
-    b->fn->max_cstack_size = b->local_allocation_size;
+    b->fn->max_cstack_size = sizeof(lauf_runtime_stack_frame) + b->local_allocation_size;
 
     return !b->errored;
 }
 
 lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout)
 {
+    if (b->prologue->insts.empty())
+        b->prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(setup_local_alloc, 1));
+    else
+        ++b->prologue->insts.front().setup_local_alloc.value;
+
     layout.size = lauf::round_to_multiple_of_alignment(layout.size, alignof(void*));
 
     std::uint16_t offset;

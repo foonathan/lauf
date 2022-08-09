@@ -191,15 +191,15 @@ LAUF_VM_EXECUTE(call)
 
     // Check that we have enough space left on the cstack.
     auto next_frame  = frame_ptr->next_frame();
-    auto size_needed = sizeof(lauf_runtime_stack_frame) + callee->max_cstack_size;
+    auto size_needed = callee->max_cstack_size;
     auto size_remaining
         = std::size_t(process->cstack_end - static_cast<unsigned char*>(next_frame));
     if (LAUF_UNLIKELY(size_remaining < size_needed))
         LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
-    frame_ptr = ::new (next_frame) auto(
-        lauf_runtime_stack_frame::make_call_frame(callee, process, ip, frame_ptr));
+    frame_ptr
+        = ::new (next_frame) auto(lauf_runtime_stack_frame::make_call_frame(callee, ip, frame_ptr));
 
     // And start executing the function.
     ip = callee->insts;
@@ -224,15 +224,15 @@ LAUF_VM_EXECUTE(call_indirect)
 
     // Check that we have enough space left on the cstack.
     auto next_frame  = frame_ptr->next_frame();
-    auto size_needed = sizeof(lauf_runtime_stack_frame) + callee->max_cstack_size;
+    auto size_needed = callee->max_cstack_size;
     auto size_remaining
         = std::size_t(process->cstack_end - static_cast<unsigned char*>(next_frame));
     if (LAUF_UNLIKELY(size_remaining < size_needed))
         LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
-    frame_ptr = ::new (next_frame) auto(
-        lauf_runtime_stack_frame::make_call_frame(callee, process, ip, frame_ptr));
+    frame_ptr
+        = ::new (next_frame) auto(lauf_runtime_stack_frame::make_call_frame(callee, ip, frame_ptr));
 
     // And start executing the function.
     ip = callee->insts;
@@ -378,15 +378,25 @@ LAUF_VM_EXECUTE(swap)
 }
 
 //=== memory ===//
+LAUF_VM_EXECUTE(setup_local_alloc)
+{
+    // If necessary, grow the allocation array - this will then tail call back here.
+    if (LAUF_UNLIKELY(process->allocations.size() + ip->setup_local_alloc.value
+                      > process->allocations.capacity()))
+        LAUF_TAIL_CALL return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
+
+    // Setup the necessary metadata.
+    frame_ptr->first_local_alloc = std::uint16_t(process->allocations.size());
+    frame_ptr->local_generation  = process->alloc_generation;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
 LAUF_VM_EXECUTE(local_alloc)
 {
     // The builder has taken care of ensuring alignment.
     assert(ip->local_alloc.alignment() == alignof(void*));
     assert(lauf::is_aligned(frame_ptr->next_frame(), alignof(void*)));
-
-    // If necessary, grow the allocation array - this will then tail call back here.
-    if (LAUF_UNLIKELY(process->allocations.size() == process->allocations.capacity()))
-        LAUF_TAIL_CALL return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
 
     auto memory = frame_ptr->next_frame();
     frame_ptr->next_offset += ip->local_alloc.size;
@@ -399,10 +409,6 @@ LAUF_VM_EXECUTE(local_alloc)
 }
 LAUF_VM_EXECUTE(local_alloc_aligned)
 {
-    // If necessary, grow the allocation array - this will then tail call back here.
-    if (LAUF_UNLIKELY(process->allocations.size() == process->allocations.capacity()))
-        LAUF_TAIL_CALL return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
-
     // We need to ensure the starting address is aligned.
     auto memory = static_cast<unsigned char*>(frame_ptr->next_frame());
     memory += lauf::align_offset(memory, ip->local_alloc_aligned.alignment());

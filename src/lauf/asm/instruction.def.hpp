@@ -83,9 +83,13 @@ LAUF_ASM_INST(roll, asm_inst_stack_idx)
 LAUF_ASM_INST(swap, asm_inst_stack_idx)
 
 //=== memory ===//
+
+// Setups a call frame for local allocations.
+// Value is the count of local allocations.
+// Invariant: Followed by N local_alloc[_aligned] instructions.
+LAUF_ASM_INST(setup_local_alloc, asm_inst_value)
 // Allocate memory for a local variable.
 // First version assumes alignment of 8, second one allows bigger alignments.
-// Invariant: all local_alloc happen at the beginning of the function.
 // Signature: _ => _
 LAUF_ASM_INST(local_alloc, asm_inst_layout)
 LAUF_ASM_INST(local_alloc_aligned, asm_inst_layout)

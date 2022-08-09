@@ -143,6 +143,15 @@ public:
         return out;
     }
 
+    T& front()
+    {
+        return _first_block->array[0];
+    }
+    const T& front() const
+    {
+        return _first_block->array[0];
+    }
+
     T& back()
     {
         return _cur_block->array[_next_idx - 1];

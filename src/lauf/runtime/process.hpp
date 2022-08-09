@@ -36,10 +36,12 @@ struct lauf_runtime_stack_frame
     {
         return {fn, nullptr, 0, 0, sizeof(lauf_runtime_stack_frame), nullptr};
     }
-    static lauf_runtime_stack_frame make_call_frame(const lauf_asm_function*    callee,
-                                                    const lauf_runtime_process* process,
-                                                    const lauf_asm_inst*        ip,
-                                                    lauf_runtime_stack_frame*   frame_ptr);
+    static lauf_runtime_stack_frame make_call_frame(const lauf_asm_function*  callee,
+                                                    const lauf_asm_inst*      ip,
+                                                    lauf_runtime_stack_frame* frame_ptr)
+    {
+        return {callee, ip + 1, 0, 0, sizeof(lauf_runtime_stack_frame), frame_ptr};
+    }
 
     void assign_callstack_leaf_frame(const lauf_asm_inst* ip, lauf_runtime_stack_frame* frame_ptr)
     {
@@ -161,19 +163,6 @@ struct lauf_runtime_process
         ++alloc_generation;
     }
 };
-
-inline lauf_runtime_stack_frame lauf_runtime_stack_frame::make_call_frame(
-    const lauf_asm_function* callee, const lauf_runtime_process* process, const lauf_asm_inst* ip,
-    lauf_runtime_stack_frame* frame_ptr)
-{
-    auto alloc_idx = std::uint16_t(process->allocations.size());
-    return {callee,
-            ip + 1,
-            alloc_idx,
-            process->alloc_generation,
-            sizeof(lauf_runtime_stack_frame),
-            frame_ptr};
-}
 
 namespace lauf
 {

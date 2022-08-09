@@ -162,6 +162,9 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("roll %d", ip->roll.idx);
             break;
 
+        case lauf::asm_op::setup_local_alloc:
+            writer->format("setup_local_alloc %u", ip->setup_local_alloc.value);
+            break;
         case lauf::asm_op::local_alloc:
             writer->format("local_alloc (%u, %zu)", ip->local_alloc.size,
                            ip->local_alloc.alignment());

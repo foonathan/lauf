@@ -42,14 +42,14 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 
     auto str = lauf_create_string_writer();
     lauf_backend_dump(str, lauf_backend_default_dump_options, mod);
-    MESSAGE(lauf_writer_get_string(str));
+    // MESSAGE(lauf_writer_get_string(str));
     lauf_destroy_writer(str);
 
     std::vector<lauf_asm_inst> result;
 
     auto start_index = 0;
-    while (fn->insts[start_index].op() == lauf::asm_op::local_alloc)
-        ++start_index;
+    if (fn->insts[start_index].op() == lauf::asm_op::setup_local_alloc)
+        start_index += 1 + fn->insts[start_index].setup_local_alloc.value;
 
     auto end_index = fn->insts_count - 1;
     if (fn->insts[end_index - 1].op() == lauf::asm_op::local_free)
