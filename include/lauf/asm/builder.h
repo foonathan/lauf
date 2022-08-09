@@ -175,6 +175,12 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
 /// Signature: index:uint ptr:address => (ptr + index * layout):address
 void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_layout);
 
+/// Computes the address of a member of an aggregate with the specified members.
+///
+/// Signature: ptr:address => (ptr + offset):address
+void lauf_asm_inst_aggregate_member(lauf_asm_builder* b, size_t member_index,
+                                    const lauf_asm_layout* member_layouts, size_t member_count);
+
 /// Loads a field from a type and pushes it value.
 ///
 /// Signature: ptr:address => value

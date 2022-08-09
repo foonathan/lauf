@@ -44,6 +44,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::push3:
         case lauf::asm_op::deref_const:
         case lauf::asm_op::deref_mut:
+        case lauf::asm_op::aggregate_member:
             // Signature 1 => 1, remove as well.
             b->cur->insts.pop_back();
             break;
@@ -631,6 +632,26 @@ void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_la
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(2), "missing index or address");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(array_element, multiple));
     b->cur->vstack.push(*b, 1);
+}
+
+void lauf_asm_inst_aggregate_member(lauf_asm_builder* b, size_t member_index,
+                                    const lauf_asm_layout* member_layouts, size_t member_count)
+{
+    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_ASSERT(member_index < member_count, "invalid member");
+
+    // The offset is the size of the aggregate that stops at the specified member,
+    // but without its size.
+    // That way, we get the alignment buffer for the desired member.
+    auto layout = lauf_asm_aggregate_layout(member_layouts, member_index + 1);
+    auto offset = layout.size - member_layouts[member_index].size;
+
+    if (offset > 0)
+    {
+        LAUF_BUILD_ASSERT(b->cur->vstack.pop(1), "missing address");
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(aggregate_member, offset));
+        b->cur->vstack.push(*b, 1);
+    }
 }
 
 namespace

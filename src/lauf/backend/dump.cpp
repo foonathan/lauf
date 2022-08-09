@@ -181,7 +181,10 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("deref_mut (%u, %zu)", ip->deref_mut.size, ip->deref_mut.alignment());
             break;
         case lauf::asm_op::array_element:
-            writer->format("array_element %u", ip->array_element.value);
+            writer->format("array_element [%u]", ip->array_element.value);
+            break;
+        case lauf::asm_op::aggregate_member:
+            writer->format("aggregate_member %u", ip->aggregate_member.value);
             break;
         case lauf::asm_op::load_local_value:
             writer->format("load_local_value <%x>", ip->load_local_value.value);

@@ -483,6 +483,16 @@ LAUF_VM_EXECUTE(array_element)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(aggregate_member)
+{
+    auto address = vstack_ptr[0].as_address;
+    address.offset += ip->aggregate_member.value;
+    vstack_ptr[0].as_address = address;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
 LAUF_VM_EXECUTE(load_local_value)
 {
     auto memory = reinterpret_cast<unsigned char*>(frame_ptr) + ip->load_local_value.value;

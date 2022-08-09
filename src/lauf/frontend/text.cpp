@@ -13,7 +13,9 @@
 #include <lexy/dsl.hpp>
 #include <lexy_ext/report_error.hpp>
 #include <map>
+#include <optional>
 #include <string>
+#include <vector>
 
 const lauf_frontend_text_options lauf_frontend_default_text_options
     = {nullptr, 0, &lauf_asm_type_value, 1};
@@ -236,7 +238,21 @@ struct layout_expr
               });
     };
 
-    static constexpr auto rule  = dsl::p<literal> | dsl::p<type> | dsl::p<array>;
+    struct aggregate
+    {
+        static constexpr auto rule
+            = dsl::curly_bracketed.opt_list(dsl::recurse<layout_expr>, dsl::sep(dsl::comma));
+        static constexpr auto value
+            = lexy::as_list<std::vector<lauf_asm_layout>> >> lexy::callback<lauf_asm_layout>(
+                  [](const std::optional<std::vector<lauf_asm_layout>>& members) {
+                      if (!members)
+                          return lauf_asm_aggregate_layout(nullptr, 0);
+                      else
+                          return lauf_asm_aggregate_layout(members->data(), members->size());
+                  });
+    };
+
+    static constexpr auto rule = dsl::p<literal> | dsl::p<type> | dsl::p<array> | dsl::p<aggregate>;
     static constexpr auto value = lexy::forward<lauf_asm_layout>;
 };
 
@@ -453,6 +469,22 @@ struct inst_array_element
     static constexpr auto rule  = LAUF_KEYWORD("array_element") >> dsl::p<layout_expr>;
     static constexpr auto value = inst(&lauf_asm_inst_array_element);
 };
+struct inst_aggregate_member
+{
+    struct aggregate
+    {
+        static constexpr auto rule
+            = dsl::curly_bracketed.list(dsl::p<layout_expr>, dsl::sep(dsl::comma));
+        static constexpr auto value = lexy::as_list<std::vector<lauf_asm_layout>>;
+    };
+
+    static constexpr auto rule
+        = LAUF_KEYWORD("aggregate_member") >> dsl::p<aggregate> + dsl::integer<std::size_t>;
+    static constexpr auto value = inst(
+        [](lauf_asm_builder* b, const std::vector<lauf_asm_layout>& members, std::size_t index) {
+            lauf_asm_inst_aggregate_member(b, index, members.data(), members.size());
+        });
+};
 struct inst_load_field
 {
     static constexpr auto rule
@@ -479,7 +511,8 @@ struct instruction
               | dsl::p<inst_function_addr> | dsl::p<inst_local_addr>                       //
               | dsl::p<inst_stack_op>                                                      //
               | dsl::p<inst_call> | dsl::p<inst_call_indirect> | dsl::p<inst_call_builtin> //
-              | dsl::p<inst_array_element> | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
+              | dsl::p<inst_array_element> | dsl::p<inst_aggregate_member>                 //
+              | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
 
         return nested | dsl::else_ >> single + dsl::semicolon;
     }();

@@ -15,6 +15,22 @@ lauf_asm_layout lauf_asm_array_layout(lauf_asm_layout element_layout, size_t ele
     return element_layout;
 }
 
+lauf_asm_layout lauf_asm_aggregate_layout(const lauf_asm_layout* member_layouts,
+                                          size_t                 member_count)
+{
+    auto size      = std::size_t(0);
+    auto alignment = std::size_t(1);
+    for (auto i = 0u; i != member_count; ++i)
+    {
+        size += lauf::align_offset(size, member_layouts[i].alignment);
+        size += member_layouts[i].size;
+
+        if (member_layouts[i].alignment > alignment)
+            alignment = member_layouts[i].alignment;
+    }
+    return {size, alignment};
+}
+
 namespace
 {
 LAUF_RUNTIME_BUILTIN_IMPL bool load_value(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,

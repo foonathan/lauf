@@ -32,6 +32,10 @@ typedef struct lauf_asm_layout
 /// Layout of an array with the specified element layout.
 lauf_asm_layout lauf_asm_array_layout(lauf_asm_layout element_layout, size_t element_count);
 
+/// Layout of an aggregate with the specified member types.
+lauf_asm_layout lauf_asm_aggregate_layout(const lauf_asm_layout* member_layouts,
+                                          size_t                 member_count);
+
 /// A type, which controls load/store operations in memory.
 ///
 /// It consists of a number of fields that can be individually load/stored using the vstack.

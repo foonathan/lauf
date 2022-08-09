@@ -24,9 +24,23 @@ function @array_zero_element() {
     return;
 }
 
+function @local_aggregate() {
+    local %agg : {$lauf.Value, $lauf.Value};
+
+    uint 11; [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 0; ] store_field $lauf.Value 0;
+    uint 42; [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 1; ] store_field $lauf.Value 0;
+
+    [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 0; ] load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+    [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 1; ] load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+
+    return;
+}
+
 function @main() {
     call @local_array;
     call @array_zero_element;
+
+    call @local_aggregate;
 
     return;
 }

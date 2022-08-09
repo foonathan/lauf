@@ -545,3 +545,26 @@ TEST_CASE("lauf_asm_inst_array_element")
     CHECK(alignment[0].array_element.value == 8);
 }
 
+TEST_CASE("lauf_asm_inst_aggregate_member")
+{
+    lauf_asm_layout agg[] = {{4, 4}, {8, 8}, {4, 4}};
+
+    auto first = build({1, 1}, [&](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_aggregate_member(b, 0, agg, 3);
+    });
+    REQUIRE(first.empty());
+
+    auto second = build({1, 1}, [&](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_aggregate_member(b, 1, agg, 3);
+    });
+    REQUIRE(second.size() == 1);
+    CHECK(second[0].op() == lauf::asm_op::aggregate_member);
+    CHECK(second[0].aggregate_member.value == 8);
+
+    auto third = build({1, 1}, [&](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_aggregate_member(b, 2, agg, 3);
+    });
+    REQUIRE(third.size() == 1);
+    CHECK(third[0].op() == lauf::asm_op::aggregate_member);
+    CHECK(third[0].aggregate_member.value == 16);
+}
