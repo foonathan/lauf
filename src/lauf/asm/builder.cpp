@@ -40,6 +40,19 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
             assert(false && "not added at this point");
             break;
 
+        case lauf::asm_op::push:
+        case lauf::asm_op::pushn:
+        case lauf::asm_op::global_addr:
+        case lauf::asm_op::function_addr:
+        case lauf::asm_op::local_addr:
+        case lauf::asm_op::pick:
+        case lauf::asm_op::dup:
+        case lauf::asm_op::load_local_value:
+            // Signature 0 => 1, actually removed something.
+            b->cur->insts.pop_back();
+            --count;
+            break;
+
         case lauf::asm_op::push2:
         case lauf::asm_op::push3:
         case lauf::asm_op::deref_const:
@@ -49,35 +62,27 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
             b->cur->insts.pop_back();
             break;
 
-        case lauf::asm_op::push:
-        case lauf::asm_op::pushn:
-        case lauf::asm_op::global_addr:
-        case lauf::asm_op::function_addr:
-        case lauf::asm_op::local_addr:
-        case lauf::asm_op::pick:
-        case lauf::asm_op::dup:
-            // Signature 0 => 1, actually removed something.
-            b->cur->insts.pop_back();
-            --count;
-            break;
-
         case lauf::asm_op::array_element:
-            // Signature 2 => 1, we remove it, but need to pop one more after we did that.
+            // Signature 2 => 1, we can remove it, but need to pop one more after we did
+            // that.
             b->cur->insts.pop_back();
             ++count;
             break;
 
+        // Instructions that we can't remove due to side-effects.
         case lauf::asm_op::call:
         case lauf::asm_op::call_indirect:
         case lauf::asm_op::call_builtin:
         case lauf::asm_op::call_builtin_no_frame:
+        case lauf::asm_op::store_local_value:
+        // Instructions that we can't remove easily.
         case lauf::asm_op::pop:
-        case lauf::asm_op::pop_top:
         case lauf::asm_op::roll:
         case lauf::asm_op::swap:
-        case lauf::asm_op::load_local_value:
-        case lauf::asm_op::store_local_value:
-            // We have reached an instruction that we can't remove easily; add pop instruction.
+        // We never remove pop_top; it was added because we couldn't pop the last time, so why
+        // should it be possible now.
+        case lauf::asm_op::pop_top:
+            // Give up at this point and add actual instructions for popping.
             for (auto i = 0u; i != count; ++i)
                 b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
             count = 0;

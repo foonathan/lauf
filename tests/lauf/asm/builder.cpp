@@ -460,6 +460,68 @@ TEST_CASE("lauf_asm_inst_pop")
     REQUIRE(pop2.size() == 1);
     CHECK(pop2[0].op() == lauf::asm_op::pop);
     CHECK(pop2[0].pop.idx == 2);
+
+    auto pop_push = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_uint(b, 0);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_push.empty());
+    auto pop_pushn = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_sint(b, -1);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_pushn.empty());
+    auto pop_global_addr = build({0, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
+        auto glob = lauf_asm_add_global_zero_data(mod, {1, 1});
+        lauf_asm_inst_global_addr(b, glob);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_global_addr.empty());
+    auto pop_function_addr = build({0, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
+        auto fn = lauf_asm_add_function(mod, "fn", {1, 1});
+        lauf_asm_inst_function_addr(b, fn);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_function_addr.empty());
+    auto pop_pick0 = build({1, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_pick(b, 0);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_pick0.empty());
+    auto pop_pick1 = build({2, 2}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_pick(b, 1);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_pick1.empty());
+    auto pop_load = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        auto loc = lauf_asm_build_local(b, lauf_asm_type_value.layout);
+        lauf_asm_inst_local_addr(b, loc);
+        lauf_asm_inst_load_field(b, lauf_asm_type_value, 0);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_load.empty());
+
+    auto pop_push2_3 = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_uint(b, 0xFFFF'FFFF'FFFFF);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_push2_3.empty());
+    auto pop_aggregate_member = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        auto loc = lauf_asm_build_local(b, lauf_asm_type_value.layout);
+        lauf_asm_inst_local_addr(b, loc);
+        lauf_asm_inst_aggregate_member(b, 0, &lauf_asm_type_value.layout, 1);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_aggregate_member.empty());
+
+    auto pop_array_element = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        auto loc = lauf_asm_build_local(b, lauf_asm_type_value.layout);
+        lauf_asm_inst_local_addr(b, loc);
+        lauf_asm_inst_uint(b, 1);
+        lauf_asm_inst_array_element(b, lauf_asm_type_value.layout);
+        lauf_asm_inst_pop(b, 0);
+    });
+    REQUIRE(pop_array_element.empty());
 }
 
 TEST_CASE("lauf_asm_inst_pick")
