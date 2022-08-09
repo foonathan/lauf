@@ -10,7 +10,7 @@
 
 //=== execute ===//
 #define LAUF_VM_DISPATCH                                                                           \
-    [[clang::musttail]] return dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr, process)
+    LAUF_TAIL_CALL return dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr, process)
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
     static bool execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,            \
@@ -60,7 +60,7 @@ bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
     return lauf_runtime_panic(process, msg);
 }
 #define LAUF_DO_PANIC(Msg)                                                                         \
-    [[clang::musttail]] return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
+    LAUF_TAIL_CALL return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
 
 lauf::allocation make_local_alloc(void* memory, std::size_t size, std::uint8_t generation)
 {
@@ -166,7 +166,7 @@ LAUF_VM_EXECUTE(exit)
 LAUF_VM_EXECUTE(call_builtin)
 {
     process->callstack_leaf_frame.assign_callstack_leaf_frame(ip, frame_ptr);
-    [[clang::musttail]] return execute_call_builtin_no_frame(ip, vstack_ptr, frame_ptr, process);
+    LAUF_TAIL_CALL return execute_call_builtin_no_frame(ip, vstack_ptr, frame_ptr, process);
 }
 
 LAUF_VM_EXECUTE(call_builtin_no_frame)
@@ -176,7 +176,7 @@ LAUF_VM_EXECUTE(call_builtin_no_frame)
                                                                      ip->call_builtin_no_frame
                                                                          .offset);
 
-    [[clang::musttail]] return callee(ip, vstack_ptr, frame_ptr, process);
+    LAUF_TAIL_CALL return callee(ip, vstack_ptr, frame_ptr, process);
 }
 
 LAUF_VM_EXECUTE(call)
@@ -185,7 +185,8 @@ LAUF_VM_EXECUTE(call)
         = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
 
     // Check that we have enough space left on the vstack.
-    if (auto remaining = vstack_ptr - process->vstack_end; remaining < callee->max_vstack_size)
+    if (auto remaining = vstack_ptr - process->vstack_end;
+        LAUF_UNLIKELY(remaining < callee->max_vstack_size))
         LAUF_DO_PANIC("vstack overflow");
 
     // Check that we have enough space left on the cstack.
@@ -193,7 +194,7 @@ LAUF_VM_EXECUTE(call)
     auto size_needed = sizeof(lauf_runtime_stack_frame) + callee->max_cstack_size;
     auto size_remaining
         = std::size_t(process->cstack_end - static_cast<unsigned char*>(next_frame));
-    if (size_needed > size_remaining)
+    if (LAUF_UNLIKELY(size_remaining < size_needed))
         LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
@@ -213,11 +214,12 @@ LAUF_VM_EXECUTE(call_indirect)
     auto callee = lauf_runtime_get_function_ptr(process, ptr,
                                                 {ip->call_indirect.input_count,
                                                  ip->call_indirect.output_count});
-    if (callee == nullptr)
+    if (LAUF_UNLIKELY(callee == nullptr))
         LAUF_DO_PANIC("invalid function address");
 
     // Check that we have enough space left on the vstack.
-    if (auto remaining = vstack_ptr - process->vstack_end; remaining < callee->max_vstack_size)
+    if (auto remaining = vstack_ptr - process->vstack_end;
+        LAUF_UNLIKELY(remaining < callee->max_vstack_size))
         LAUF_DO_PANIC("vstack overflow");
 
     // Check that we have enough space left on the cstack.
@@ -225,7 +227,7 @@ LAUF_VM_EXECUTE(call_indirect)
     auto size_needed = sizeof(lauf_runtime_stack_frame) + callee->max_cstack_size;
     auto size_remaining
         = std::size_t(process->cstack_end - static_cast<unsigned char*>(next_frame));
-    if (size_needed > size_remaining)
+    if (LAUF_UNLIKELY(size_remaining < size_needed))
         LAUF_DO_PANIC("cstack overflow");
 
     // Create a new stack frame.
@@ -383,8 +385,8 @@ LAUF_VM_EXECUTE(local_alloc)
     assert(lauf::is_aligned(frame_ptr->next_frame(), alignof(void*)));
 
     // If necessary, grow the allocation array - this will then tail call back here.
-    if (process->allocations.size() == process->allocations.capacity()) [[clang::musttail]]
-        return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
+    if (LAUF_UNLIKELY(process->allocations.size() == process->allocations.capacity()))
+        LAUF_TAIL_CALL return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
 
     auto memory = frame_ptr->next_frame();
     frame_ptr->next_offset += ip->local_alloc.size;
@@ -398,8 +400,8 @@ LAUF_VM_EXECUTE(local_alloc)
 LAUF_VM_EXECUTE(local_alloc_aligned)
 {
     // If necessary, grow the allocation array - this will then tail call back here.
-    if (process->allocations.size() == process->allocations.capacity()) [[clang::musttail]]
-        return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
+    if (LAUF_UNLIKELY(process->allocations.size() == process->allocations.capacity()))
+        LAUF_TAIL_CALL return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
 
     // We need to ensure the starting address is aligned.
     auto memory = static_cast<unsigned char*>(frame_ptr->next_frame());
@@ -432,19 +434,23 @@ LAUF_VM_EXECUTE(deref_const)
 {
     auto address = vstack_ptr[0].as_address;
 
-    if (auto alloc = process->get_allocation(address.allocation))
+    auto alloc = process->get_allocation(address.allocation);
+    if (LAUF_UNLIKELY(alloc == nullptr))
+        goto panic;
+
     {
         auto ptr = lauf::checked_offset(*alloc, address,
                                         {ip->deref_const.size, ip->deref_const.alignment()});
-        if (ptr != nullptr)
-        {
-            vstack_ptr[0].as_native_ptr = const_cast<void*>(ptr);
+        if (LAUF_UNLIKELY(ptr == nullptr))
+            goto panic;
 
-            ++ip;
-            LAUF_VM_DISPATCH;
-        }
+        vstack_ptr[0].as_native_ptr = const_cast<void*>(ptr);
     }
 
+    ++ip;
+    LAUF_VM_DISPATCH;
+
+panic:
     LAUF_DO_PANIC("invalid address");
 }
 
@@ -452,20 +458,23 @@ LAUF_VM_EXECUTE(deref_mut)
 {
     auto address = vstack_ptr[0].as_address;
 
-    if (auto alloc = process->get_allocation(address.allocation);
-        alloc != nullptr && !lauf::is_const(alloc->source))
+    auto alloc = process->get_allocation(address.allocation);
+    if (LAUF_UNLIKELY(alloc == nullptr) || LAUF_UNLIKELY(lauf::is_const(alloc->source)))
+        goto panic;
+
     {
         auto ptr = lauf::checked_offset(*alloc, address,
-                                        {ip->deref_const.size, ip->deref_const.alignment()});
-        if (ptr != nullptr)
-        {
-            vstack_ptr[0].as_native_ptr = const_cast<void*>(ptr);
+                                        {ip->deref_mut.size, ip->deref_mut.alignment()});
+        if (LAUF_UNLIKELY(ptr == nullptr))
+            goto panic;
 
-            ++ip;
-            LAUF_VM_DISPATCH;
-        }
+        vstack_ptr[0].as_native_ptr = const_cast<void*>(ptr);
     }
 
+    ++ip;
+    LAUF_VM_DISPATCH;
+
+panic:
     LAUF_DO_PANIC("invalid address");
 }
 

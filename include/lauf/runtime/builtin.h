@@ -71,7 +71,7 @@ typedef struct lauf_runtime_builtin
                                                               lauf_runtime_process*     process)
 
 #define LAUF_RUNTIME_BUILTIN_DISPATCH                                                              \
-    [[clang::musttail]] return lauf_runtime_builtin_dispatch(ip, vstack_ptr, frame_ptr, process)
+    LAUF_TAIL_CALL return lauf_runtime_builtin_dispatch(ip, vstack_ptr, frame_ptr, process)
 
 /// A builtin library.
 typedef struct lauf_runtime_builtin_library

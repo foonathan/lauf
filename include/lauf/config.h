@@ -37,6 +37,10 @@
 #    error "lauf currently requires GCC or GCC compatible compilers"
 #endif
 
+//=== optimizations ===//
+#define LAUF_UNLIKELY(Cond) __builtin_expect((Cond), 0)
+#define LAUF_TAIL_CALL [[clang::musttail]]
+
 //=== basic types ===//
 typedef int64_t  lauf_sint;
 typedef uint64_t lauf_uint;
