@@ -26,6 +26,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         auto op = b->cur->insts.empty() ? lauf::asm_op::call : b->cur->insts.back().op();
         switch (op)
         {
+        case lauf::asm_op::count:
         case lauf::asm_op::nop:
         case lauf::asm_op::return_:
         case lauf::asm_op::jump:

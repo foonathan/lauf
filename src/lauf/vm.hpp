@@ -56,11 +56,5 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
     }
 };
 
-namespace lauf
-{
-bool execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-             lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process);
-}
-
 #endif // SRC_LAUF_VM_HPP_INCLUDED
 

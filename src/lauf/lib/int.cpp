@@ -6,6 +6,7 @@
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
+#include <lauf/vm_execute.hpp> // So builtin dispatch is inlined.
 
 #define LAUF_MAKE_ARITHMETIC_BUILTIN(Name)                                                         \
     lauf_runtime_builtin lauf_lib_int_##Name(lauf_lib_int_overflow overflow)                       \

@@ -7,11 +7,9 @@
 #include <lauf/asm/module.hpp>
 #include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
+#include <lauf/vm_execute.hpp>
 
 //=== execute ===//
-#define LAUF_VM_DISPATCH                                                                           \
-    LAUF_TAIL_CALL return dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr, process)
-
 #define LAUF_VM_EXECUTE(Name)                                                                      \
     static bool execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,            \
                                lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
@@ -23,31 +21,11 @@
 #include <lauf/asm/instruction.def.hpp>
 #undef LAUF_ASM_INST
 
-namespace
-{
-using dispatch_fn = bool (*)(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-                             lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process);
-
-constexpr dispatch_fn dispatch[] = {
+lauf_runtime_builtin_impl* const lauf::dispatch[] = {
 #define LAUF_ASM_INST(Name, Type) &execute_##Name,
 #include <lauf/asm/instruction.def.hpp>
 #undef LAUF_ASM_INST
 };
-} // namespace
-
-bool lauf::execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-                   lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
-{
-    LAUF_VM_DISPATCH;
-}
-
-bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-                                   lauf_runtime_stack_frame* frame_ptr,
-                                   lauf_runtime_process*     process)
-{
-    ++ip;
-    LAUF_VM_DISPATCH;
-}
 
 //=== helper functions ===//
 namespace

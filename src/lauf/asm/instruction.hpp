@@ -21,6 +21,7 @@ enum class asm_op : std::uint8_t
 #define LAUF_ASM_INST(Name, Type) Name,
 #include "instruction.def.hpp"
 #undef LAUF_ASM_INST
+    count,
 };
 
 constexpr const char* to_string(asm_op op)
@@ -32,6 +33,10 @@ case asm_op::Name:                                                              
     return #Name;
 #include "instruction.def.hpp"
 #undef LAUF_ASM_INST
+
+    case asm_op::count:
+        assert(false);
+        return nullptr;
     }
 }
 } // namespace lauf
