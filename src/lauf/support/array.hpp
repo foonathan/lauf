@@ -121,17 +121,21 @@ public:
         if (new_capacity < new_size)
             new_capacity = new_size;
 
-        if (arena.try_expand(_ptr, _capacity, new_capacity))
+        if (!_is_heap && arena.try_expand(_ptr, _capacity, new_capacity))
         {
             _capacity = new_capacity;
-            return;
         }
+        else
+        {
+            auto new_memory = ::operator new(new_capacity * sizeof(T));
+            std::memcpy(new_memory, _ptr, _size * sizeof(T));
+            if (_is_heap)
+                ::operator delete(_ptr);
 
-        auto new_memory = ::operator new(new_capacity * sizeof(T));
-        std::memcpy(new_memory, _ptr, _size * sizeof(T));
-        _ptr      = static_cast<T*>(new_memory);
-        _capacity = new_capacity;
-        _is_heap  = true;
+            _ptr      = static_cast<T*>(new_memory);
+            _capacity = new_capacity;
+            _is_heap  = true;
+        }
     }
 
     void push_back_unchecked(const T& obj)
