@@ -119,6 +119,17 @@ struct allocation
     }
 };
 static_assert(sizeof(allocation) == 2 * sizeof(void*));
+
+constexpr lauf::allocation make_local_alloc(void* memory, std::size_t size, std::uint8_t generation)
+{
+    lauf::allocation alloc;
+    alloc.ptr        = memory;
+    alloc.size       = std::uint32_t(size);
+    alloc.source     = lauf::allocation_source::local_memory;
+    alloc.status     = lauf::allocation_status::allocated;
+    alloc.generation = generation;
+    return alloc;
+}
 } // namespace lauf
 
 struct lauf_runtime_process

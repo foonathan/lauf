@@ -28,10 +28,12 @@ lauf_runtime_builtin_impl* const lauf::dispatch[] = {
 };
 
 //=== helper functions ===//
+// We move expensive calls into a separate function that is tail called.
+// That way the the hot path contains no function calls, so the compiler doesn't spill stuff.
 namespace
 {
-bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-              lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
+LAUF_NOINLINE bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                            lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
 {
     auto msg = reinterpret_cast<const char*>(vstack_ptr);
     process->callstack_leaf_frame.assign_callstack_leaf_frame(ip, frame_ptr);
@@ -40,22 +42,9 @@ bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
 #define LAUF_DO_PANIC(Msg)                                                                         \
     LAUF_TAIL_CALL return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
 
-lauf::allocation make_local_alloc(void* memory, std::size_t size, std::uint8_t generation)
-{
-    lauf::allocation alloc;
-    alloc.ptr        = memory;
-    alloc.size       = std::uint32_t(size);
-    alloc.source     = lauf::allocation_source::local_memory;
-    alloc.status     = lauf::allocation_status::allocated;
-    alloc.generation = generation;
-    return alloc;
-}
-
-// We move the expensive call into a separate function, so the hot path contains no function calls.
-[[gnu::noinline]] bool grow_allocation_array(const lauf_asm_inst*      ip,
-                                             lauf_runtime_value*       vstack_ptr,
-                                             lauf_runtime_stack_frame* frame_ptr,
-                                             lauf_runtime_process*     process)
+LAUF_NOINLINE bool grow_allocation_array(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                         lauf_runtime_stack_frame* frame_ptr,
+                                         lauf_runtime_process*     process)
 {
     process->allocations.reserve(*process->vm, process->allocations.size() + 1);
     LAUF_VM_DISPATCH;
@@ -380,7 +369,7 @@ LAUF_VM_EXECUTE(local_alloc)
     frame_ptr->next_offset += ip->local_alloc.size;
 
     process->allocations.push_back_unchecked(
-        make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
+        lauf::make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
 
     ++ip;
     LAUF_VM_DISPATCH;
@@ -395,7 +384,7 @@ LAUF_VM_EXECUTE(local_alloc_aligned)
     frame_ptr->next_offset += ip->local_alloc_aligned.alignment() + ip->local_alloc.size;
 
     process->allocations.push_back_unchecked(
-        make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
+        lauf::make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
 
     ++ip;
     LAUF_VM_DISPATCH;
