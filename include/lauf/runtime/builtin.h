@@ -59,7 +59,7 @@ typedef struct lauf_runtime_builtin
     const lauf_runtime_builtin* next;
 } lauf_runtime_builtin;
 
-#define LAUF_RUNTIME_BUILTIN(ConstantName, InputCount, OutputCount, Flags, Name, Next, ...)         \
+#define LAUF_RUNTIME_BUILTIN(ConstantName, InputCount, OutputCount, Flags, Name, Next)              \
     static bool ConstantName##_impl(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,        \
                                     lauf_runtime_stack_frame* frame_ptr,                            \
                                     lauf_runtime_process*     process);                                 \

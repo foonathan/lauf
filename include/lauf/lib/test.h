@@ -8,7 +8,7 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_runtime_builtin         lauf_runtime_builtin_function;
+typedef struct lauf_runtime_builtin         lauf_runtime_builtin;
 typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 
 /// A collection of functions especially designed for writing tests for lauf in lauf.
@@ -18,19 +18,19 @@ extern const lauf_runtime_builtin_library lauf_lib_test;
 /// Panics otherwise.
 ///
 /// Signature: _ => _
-extern const lauf_runtime_builtin_function lauf_lib_test_unreachable;
+extern const lauf_runtime_builtin lauf_lib_test_unreachable;
 
 /// Asserts that the value on top of the stack is non-zero.
 /// Prints it and panics otherwise.
 ///
 /// Signature: top => _
-extern const lauf_runtime_builtin_function lauf_lib_test_assert;
+extern const lauf_runtime_builtin lauf_lib_test_assert;
 
 /// Asserts that the two values on top of the stack are bitwise equal.
 /// Prints them and panics otherwise.
 ///
 /// Signature: a b => _
-extern const lauf_runtime_builtin_function lauf_lib_test_assert_eq;
+extern const lauf_runtime_builtin lauf_lib_test_assert_eq;
 
 /// Asserts that a function does panic with the specified message.
 ///
@@ -38,7 +38,7 @@ extern const lauf_runtime_builtin_function lauf_lib_test_assert_eq;
 /// and panics if it does not panic with the specified message.
 ///
 /// Signature: fn msg => _
-extern const lauf_runtime_builtin_function lauf_lib_test_assert_panic;
+extern const lauf_runtime_builtin lauf_lib_test_assert_panic;
 
 LAUF_HEADER_END
 

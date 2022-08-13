@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 #include <lauf/asm/module.hpp>
 #include <lauf/asm/program.hpp>
 #include <lauf/lib/debug.hpp>
@@ -13,12 +14,25 @@
 #include <lauf/runtime/stacktrace.h>
 #include <lauf/vm_execute.hpp>
 
+const lauf_vm_allocator lauf_vm_null_allocator
+    = {nullptr, [](void*, size_t, size_t) -> void* { return nullptr; },
+       [](void*, void*, size_t) {}};
+
+const lauf_vm_allocator lauf_vm_malloc_allocator
+    = {nullptr,
+       [](void*, size_t size, size_t alignment) {
+           return alignment > alignof(std::max_align_t) ? nullptr : std::calloc(size, 1);
+       },
+       [](void*, void* memory, size_t) { std::free(memory); }};
+
 const lauf_vm_options lauf_default_vm_options
-    = {512 * 1024ull, 16 * 1024ull, [](lauf_runtime_process* process, const char* msg) {
+    = {512 * 1024ull, 16 * 1024ull,
+       [](lauf_runtime_process* process, const char* msg) {
            std::fprintf(stderr, "[lauf] panic: %s\n",
                         msg == nullptr ? "(invalid message pointer)" : msg);
            lauf::debug_print_cstack(process);
-       }};
+       },
+       lauf_vm_malloc_allocator};
 
 lauf_vm* lauf_create_vm(lauf_vm_options options)
 {

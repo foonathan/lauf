@@ -569,6 +569,19 @@ void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* globa
     }());
 }
 
+void lauf_asm_inst_local_addr(lauf_asm_builder* b, const lauf_asm_local* local)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_addr, local->index));
+    b->cur->vstack.push(*b, [&] {
+        lauf::builder_vstack::value result;
+        result.type     = result.local_addr;
+        result.as_local = local;
+        return result;
+    }());
+}
+
 void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* function)
 {
     LAUF_BUILD_ASSERT_CUR;
@@ -584,17 +597,10 @@ void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* f
     }());
 }
 
-void lauf_asm_inst_local_addr(lauf_asm_builder* b, const lauf_asm_local* local)
+void lauf_asm_inst_layout(lauf_asm_builder* b, lauf_asm_layout layout)
 {
-    LAUF_BUILD_ASSERT_CUR;
-
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_addr, local->index));
-    b->cur->vstack.push(*b, [&] {
-        lauf::builder_vstack::value result;
-        result.type     = result.local_addr;
-        result.as_local = local;
-        return result;
-    }());
+    lauf_asm_inst_uint(b, layout.alignment);
+    lauf_asm_inst_uint(b, layout.size);
 }
 
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)

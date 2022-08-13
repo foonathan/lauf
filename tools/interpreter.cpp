@@ -12,8 +12,9 @@
 
 #include "defer.hpp"
 
-const lauf_runtime_builtin_library builtin_libs[] = {lauf_lib_debug, lauf_lib_int, lauf_lib_test};
-const auto                         builtin_libs_count = 3;
+const lauf_runtime_builtin_library builtin_libs[]
+    = {lauf_lib_debug, lauf_lib_int, lauf_lib_heap, lauf_lib_test};
+const auto builtin_libs_count = 4;
 
 int main(int argc, char* argv[])
 {

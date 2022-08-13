@@ -49,6 +49,7 @@ target_sources(lauf_core PUBLIC
 
                 ${include_dir}/lib/debug.h
                 ${include_dir}/lib/int.h
+                ${include_dir}/lib/heap.h
                 ${include_dir}/lib/test.h
                 ${include_dir}/lib.h
 
@@ -86,6 +87,7 @@ target_sources(lauf_core PRIVATE
 
                 ${src_dir}/lib/debug.cpp
                 ${src_dir}/lib/int.cpp
+                ${src_dir}/lib/heap.cpp
                 ${src_dir}/lib/test.cpp
 
                 ${src_dir}/support/align.hpp

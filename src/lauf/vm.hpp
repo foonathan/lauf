@@ -14,6 +14,7 @@
 struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 {
     lauf_vm_panic_handler panic_handler;
+    lauf_vm_allocator     allocator;
 
     // Grows up.
     unsigned char* cstack_base;
@@ -25,7 +26,8 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 
     explicit lauf_vm(lauf::arena_key key, lauf_vm_options options)
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
-      cstack_size(options.cstack_size_in_bytes), vstack_size(options.vstack_size_in_elements)
+      allocator(options.allocator), cstack_size(options.cstack_size_in_bytes),
+      vstack_size(options.vstack_size_in_elements)
     {
         // We allocate the stacks using new, as unlike the arena, their memory should not be freed
         // between executions.

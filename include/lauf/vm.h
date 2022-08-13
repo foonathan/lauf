@@ -15,6 +15,16 @@ typedef union lauf_runtime_value    lauf_runtime_value;
 //=== vm options ===//
 typedef void (*lauf_vm_panic_handler)(lauf_runtime_process* p, const char* msg);
 
+typedef struct lauf_vm_allocator
+{
+    void* user_data;
+    void* (*heap_alloc)(void* user_data, size_t size, size_t alignment);
+    void (*free_alloc)(void* user_data, void* ptr, size_t size);
+} lauf_vm_allocator;
+
+extern const lauf_vm_allocator lauf_vm_null_allocator;
+extern const lauf_vm_allocator lauf_vm_malloc_allocator;
+
 typedef struct lauf_vm_options
 {
     /// The fixed size of the call stack.
@@ -23,6 +33,8 @@ typedef struct lauf_vm_options
     size_t vstack_size_in_elements;
     /// A handler that is called when a process panics.
     lauf_vm_panic_handler panic_handler;
+    /// The allocator used when the program wants to allocate heap memory.
+    lauf_vm_allocator allocator;
 } lauf_vm_options;
 
 extern const lauf_vm_options lauf_default_vm_options;

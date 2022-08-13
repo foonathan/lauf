@@ -74,6 +74,7 @@ enum class allocation_source : std::uint8_t
     static_const_memory,
     static_mut_memory,
     local_memory,
+    heap_memory,
 };
 
 constexpr bool is_const(allocation_source source)
@@ -84,6 +85,7 @@ constexpr bool is_const(allocation_source source)
         return true;
     case allocation_source::static_mut_memory:
     case allocation_source::local_memory:
+    case allocation_source::heap_memory:
         return false;
     }
 }
@@ -130,6 +132,17 @@ constexpr lauf::allocation make_local_alloc(void* memory, std::size_t size, std:
     alloc.generation = generation;
     return alloc;
 }
+
+constexpr lauf::allocation make_heap_alloc(void* memory, std::size_t size, std::uint8_t generation)
+{
+    lauf::allocation alloc;
+    alloc.ptr        = memory;
+    alloc.size       = std::uint32_t(size);
+    alloc.source     = lauf::allocation_source::heap_memory;
+    alloc.status     = lauf::allocation_status::allocated;
+    alloc.generation = generation;
+    return alloc;
+}
 } // namespace lauf
 
 struct lauf_runtime_process
@@ -149,6 +162,8 @@ struct lauf_runtime_process
     // The allocations of the process.
     lauf::array<lauf::allocation> allocations;
     std::uint8_t                  alloc_generation = 0;
+
+    lauf_runtime_address add_allocation(lauf::allocation alloc);
 
     lauf::allocation* get_allocation(std::uint32_t index)
     {

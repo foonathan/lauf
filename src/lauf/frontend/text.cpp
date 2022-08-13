@@ -425,15 +425,20 @@ struct inst_global_addr
     static constexpr auto rule  = LAUF_KEYWORD("global_addr") >> dsl::p<global_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_global_addr);
 };
+struct inst_local_addr
+{
+    static constexpr auto rule  = LAUF_KEYWORD("local_addr") >> dsl::p<local_ref>;
+    static constexpr auto value = inst(&lauf_asm_inst_local_addr);
+};
 struct inst_function_addr
 {
     static constexpr auto rule  = LAUF_KEYWORD("function_addr") >> dsl::p<function_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_function_addr);
 };
-struct inst_local_addr
+struct inst_layout
 {
-    static constexpr auto rule  = LAUF_KEYWORD("local_addr") >> dsl::p<local_ref>;
-    static constexpr auto value = inst(&lauf_asm_inst_local_addr);
+    static constexpr auto rule  = LAUF_KEYWORD("layout") >> dsl::p<layout_expr>;
+    static constexpr auto value = inst(&lauf_asm_inst_layout);
 };
 
 struct inst_stack_op
@@ -507,8 +512,8 @@ struct instruction
             = dsl::p<inst_return> | dsl::p<inst_jump>                                      //
               | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic>           //
               | dsl::p<inst_sint> | dsl::p<inst_uint>                                      //
-              | dsl::p<inst_null> | dsl::p<inst_global_addr>                               //
-              | dsl::p<inst_function_addr> | dsl::p<inst_local_addr>                       //
+              | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>     //
+              | dsl::p<inst_function_addr> | dsl::p<inst_layout>                           //
               | dsl::p<inst_stack_op>                                                      //
               | dsl::p<inst_call> | dsl::p<inst_call_indirect> | dsl::p<inst_call_builtin> //
               | dsl::p<inst_array_element> | dsl::p<inst_aggregate_member>                 //

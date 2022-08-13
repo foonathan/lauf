@@ -7,6 +7,13 @@
 #include <lauf/asm/program.hpp>
 #include <lauf/vm.hpp>
 
+lauf_runtime_address lauf_runtime_process::add_allocation(lauf::allocation alloc)
+{
+    auto index = allocations.size();
+    allocations.push_back(*vm, alloc);
+    return {std::uint32_t(index), alloc.generation, 0};
+}
+
 const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p)
 {
     return p->program;
