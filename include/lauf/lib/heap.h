@@ -23,6 +23,13 @@ extern const lauf_runtime_builtin lauf_lib_heap_alloc;
 /// Signature: ptr:address => _
 extern const lauf_runtime_builtin lauf_lib_heap_free;
 
+/// Marks heap memory as freed without it being actually freed.
+///
+/// This prevents code from ever accessing it again.
+///
+/// Signature: ptr:address => _
+extern const lauf_runtime_builtin lauf_lib_heap_leak;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_HEAP_H_INCLUDED

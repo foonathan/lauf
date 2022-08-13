@@ -44,5 +44,22 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "fr
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_free};
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "leak",
+                     &lauf_lib_heap_free)
+{
+    auto address = vstack_ptr[0].as_address;
+    ++vstack_ptr;
+
+    auto alloc = process->get_allocation(address.allocation);
+    if (alloc == nullptr || alloc->generation != address.generation
+        || alloc->status != lauf::allocation_status::allocated
+        || alloc->source != lauf::allocation_source::heap_memory)
+        return lauf_runtime_panic(process, "invalid heap address");
+
+    alloc->status = lauf::allocation_status::freed;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_leak};
 
