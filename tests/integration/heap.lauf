@@ -10,6 +10,23 @@ function @heap_alloc() {
     return;
 }
 
+function @heap_transfer_local() {
+    local %foo : $lauf.Value;
+    uint 42; local_addr %foo; store_field $lauf.Value 0;
+
+    local_addr %foo; $lauf.heap.transfer_local;
+    pick 0; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+
+    $lauf.heap.free;
+    return;
+}
+function @heap_transfer_local_from_heap() {
+    layout $lauf.Value; $lauf.heap.alloc; pick 0;
+    pick 0; $lauf.heap.transfer_local; $lauf.test.assert_eq;
+    $lauf.heap.free;
+    return;
+}
+
 function @heap_double_free() {
     layout $lauf.Value; $lauf.heap.alloc;
 
@@ -34,6 +51,8 @@ global const @msg_invalid_heap_address = "invalid heap address", 0;
 
 function @main() {
     call @heap_alloc;
+    call @heap_transfer_local;
+    call @heap_transfer_local_from_heap;
 
     function_addr @heap_double_free; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
     function_addr @heap_free_local; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;

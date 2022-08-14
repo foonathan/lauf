@@ -30,6 +30,17 @@ extern const lauf_runtime_builtin lauf_lib_heap_free;
 /// Signature: ptr:address => _
 extern const lauf_runtime_builtin lauf_lib_heap_leak;
 
+/// Transfers a local variable to the heap by memcpy'ing it.
+///
+/// If the address points to heap or global memory, returns it unchanged.
+/// Otherwise, allocates new heap memory of the same size and default alignment,
+/// and uses `memcpy()` to copy the bytes over.
+///
+/// This can be used when a local variable escapes from the function and needs to be heap allocated.
+///
+/// Signature: ptr:address => heap_ptr:address
+extern const lauf_runtime_builtin lauf_lib_heap_transfer_local;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_HEAP_H_INCLUDED

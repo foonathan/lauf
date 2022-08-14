@@ -61,5 +61,31 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "le
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_leak};
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+                     "transfer_local", &lauf_lib_heap_leak)
+{
+    auto address = vstack_ptr[0].as_address;
+
+    auto alloc = process->get_allocation(address.allocation);
+    if (alloc == nullptr || alloc->generation != address.generation
+        || alloc->status != lauf::allocation_status::allocated)
+        return lauf_runtime_panic(process, "invalid address");
+
+    if (alloc->source == lauf::allocation_source::local_memory)
+    {
+        auto memory = process->vm->allocator.heap_alloc(process->vm->allocator.user_data,
+                                                        alloc->size, alignof(void*));
+        if (memory == nullptr)
+            return lauf_runtime_panic(process, "out of memory");
+
+        std::memcpy(memory, alloc->ptr, alloc->size);
+
+        auto heap_alloc = lauf::make_heap_alloc(memory, alloc->size, process->alloc_generation);
+        vstack_ptr[0].as_address = process->add_allocation(heap_alloc);
+    }
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_transfer_local};
 
