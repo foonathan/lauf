@@ -20,6 +20,13 @@ extern const lauf_runtime_builtin_library lauf_lib_heap;
 /// Signature: alignment:uint size:uint => ptr:address
 extern const lauf_runtime_builtin lauf_lib_heap_alloc;
 
+/// Allocates new heap memory for an array using the allocator of the VM.
+///
+/// It behaves like `lauf_lib_heap_alloc` but takes the count of the array as additional parameter.
+///
+/// Signature: alignment:uint size:uint count:uint => ptr:address
+extern const lauf_runtime_builtin lauf_lib_heap_alloc_array;
+
 /// Frees previously allocated heap memory.
 ///
 /// Signature: ptr:address => _

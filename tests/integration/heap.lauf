@@ -10,6 +10,19 @@ function @heap_alloc() {
     return;
 }
 
+function @heap_alloc_array() {
+    layout $lauf.Value; uint 2; $lauf.heap.alloc_array;
+
+    uint 42; [ pick 1; uint 0; array_element $lauf.Value; ] store_field $lauf.Value 0;
+    uint 11; [ pick 1; uint 1; array_element $lauf.Value; ] store_field $lauf.Value 0;
+
+    [ pick 0; uint 0; array_element $lauf.Value; ] load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+    [ pick 0; uint 1; array_element $lauf.Value; ] load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+
+    $lauf.heap.free;
+    return;
+}
+
 function @heap_transfer_local() {
     local %foo : $lauf.Value;
     uint 42; local_addr %foo; store_field $lauf.Value 0;

@@ -26,8 +26,23 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "a
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "free",
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc_array, 3, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "alloc_array",
                      &lauf_lib_heap_alloc)
+{
+    auto count     = vstack_ptr[0].as_uint;
+    auto size      = vstack_ptr[1].as_uint;
+    auto alignment = vstack_ptr[2].as_uint;
+
+    auto memory_size = lauf::round_to_multiple_of_alignment(size, alignment) * count;
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_uint = memory_size;
+
+    LAUF_TAIL_CALL return lauf_lib_heap_alloc.impl(ip, vstack_ptr, frame_ptr, process);
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "free",
+                     &lauf_lib_heap_alloc_array)
 {
     auto address = vstack_ptr[0].as_address;
     ++vstack_ptr;
