@@ -17,7 +17,7 @@ function @heap_transfer_local() {
     local_addr %foo; $lauf.heap.transfer_local;
     pick 0; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
 
-    $lauf.heap.free;
+    pop 0; #$lauf.heap.free;
     return;
 }
 function @heap_transfer_local_from_heap() {

@@ -138,18 +138,26 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     }
 
     auto success = root_call(&process, vstack_ptr, vm->cstack_base, fn);
-    if (!success)
-        return false;
-
-    // Pop output values from the value stack.
-    vstack_ptr = vm->vstack_base - sig.output_count;
-    for (auto i = 0u; i != sig.output_count; ++i)
+    if (success)
     {
-        output[sig.output_count - i - 1] = vstack_ptr[0];
-        ++vstack_ptr;
+        // Pop output values from the value stack.
+        vstack_ptr = vm->vstack_base - sig.output_count;
+        for (auto i = 0u; i != sig.output_count; ++i)
+        {
+            output[sig.output_count - i - 1] = vstack_ptr[0];
+            ++vstack_ptr;
+        }
     }
 
-    return true;
+    // Free allocated heap memory.
+    for (auto alloc : process.allocations)
+        if (alloc.source == lauf::allocation_source::heap_memory
+            && alloc.status != lauf::allocation_status::freed)
+        {
+            vm->allocator.free_alloc(vm->allocator.user_data, alloc.ptr, alloc.size);
+        }
+
+    return success;
 }
 
 bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program* program,
