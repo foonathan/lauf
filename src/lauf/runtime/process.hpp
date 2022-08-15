@@ -94,6 +94,7 @@ enum allocation_status : std::uint8_t
 {
     allocated,
     freed,
+    poison,
 };
 
 constexpr bool is_usable(allocation_status status)
@@ -103,6 +104,7 @@ constexpr bool is_usable(allocation_status status)
     case allocated:
         return true;
     case freed:
+    case poison:
         return false;
     }
 }
@@ -165,12 +167,16 @@ struct lauf_runtime_process
 
     lauf_runtime_address add_allocation(lauf::allocation alloc);
 
-    lauf::allocation* get_allocation(std::uint32_t index)
+    lauf::allocation* get_allocation(lauf_runtime_address addr)
     {
-        if (index >= allocations.size())
+        if (LAUF_UNLIKELY(addr.allocation >= allocations.size()))
             return nullptr;
-        else
-            return &allocations[index];
+
+        auto alloc = &allocations[addr.allocation];
+        if (LAUF_UNLIKELY((alloc->generation & 0b11) != addr.generation))
+            return nullptr;
+
+        return alloc;
     }
 
     void try_free_allocations()
@@ -195,14 +201,14 @@ namespace lauf
 inline const void* checked_offset(lauf::allocation alloc, lauf_runtime_address addr,
                                   lauf_asm_layout layout)
 {
-    if (!lauf::is_usable(alloc.status) || (alloc.generation & 0b11) != addr.generation)
+    if (LAUF_UNLIKELY(!lauf::is_usable(alloc.status)))
         return nullptr;
 
-    if (addr.offset + layout.size > alloc.size)
+    if (LAUF_UNLIKELY(addr.offset + layout.size > alloc.size))
         return nullptr;
 
     auto ptr = alloc.unchecked_offset(addr.offset);
-    if (!lauf::is_aligned(ptr, layout.alignment))
+    if (LAUF_UNLIKELY(!lauf::is_aligned(ptr, layout.alignment)))
         return nullptr;
 
     return ptr;
@@ -210,10 +216,10 @@ inline const void* checked_offset(lauf::allocation alloc, lauf_runtime_address a
 
 inline const void* checked_offset(lauf::allocation alloc, lauf_runtime_address addr)
 {
-    if (!lauf::is_usable(alloc.status) || (alloc.generation & 0b11) != addr.generation)
+    if (LAUF_UNLIKELY(!lauf::is_usable(alloc.status)))
         return nullptr;
 
-    if (addr.offset >= alloc.size)
+    if (LAUF_UNLIKELY(addr.offset >= alloc.size))
         return nullptr;
 
     return alloc.unchecked_offset(addr.offset);

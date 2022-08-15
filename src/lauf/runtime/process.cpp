@@ -31,7 +31,7 @@ const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p)
 const void* lauf_runtime_get_const_ptr(lauf_runtime_process* p, lauf_runtime_address addr,
                                        lauf_asm_layout layout)
 {
-    if (auto alloc = p->get_allocation(addr.allocation))
+    if (auto alloc = p->get_allocation(addr))
         return lauf::checked_offset(*alloc, addr, layout);
     else
         return nullptr;
@@ -40,8 +40,7 @@ const void* lauf_runtime_get_const_ptr(lauf_runtime_process* p, lauf_runtime_add
 void* lauf_runtime_get_mut_ptr(lauf_runtime_process* p, lauf_runtime_address addr,
                                lauf_asm_layout layout)
 {
-    if (auto alloc = p->get_allocation(addr.allocation);
-        alloc != nullptr && !lauf::is_const(alloc->source))
+    if (auto alloc = p->get_allocation(addr); alloc != nullptr && !lauf::is_const(alloc->source))
         return const_cast<void*>(lauf::checked_offset(*alloc, addr, layout));
     else
         return nullptr;
@@ -49,7 +48,7 @@ void* lauf_runtime_get_mut_ptr(lauf_runtime_process* p, lauf_runtime_address add
 
 const char* lauf_runtime_get_cstr(lauf_runtime_process* p, lauf_runtime_address addr)
 {
-    if (auto alloc = p->get_allocation(addr.allocation))
+    if (auto alloc = p->get_allocation(addr))
     {
         auto str = static_cast<const char*>(checked_offset(*alloc, addr));
         if (str == nullptr)

@@ -407,7 +407,7 @@ LAUF_VM_EXECUTE(deref_const)
 {
     auto address = vstack_ptr[0].as_address;
 
-    auto alloc = process->get_allocation(address.allocation);
+    auto alloc = process->get_allocation(address);
     if (LAUF_UNLIKELY(alloc == nullptr))
         goto panic;
 
@@ -431,7 +431,7 @@ LAUF_VM_EXECUTE(deref_mut)
 {
     auto address = vstack_ptr[0].as_address;
 
-    auto alloc = process->get_allocation(address.allocation);
+    auto alloc = process->get_allocation(address);
     if (LAUF_UNLIKELY(alloc == nullptr) || LAUF_UNLIKELY(lauf::is_const(alloc->source)))
         goto panic;
 
