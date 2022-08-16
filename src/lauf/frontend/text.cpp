@@ -17,8 +17,14 @@
 #include <string>
 #include <vector>
 
+extern "C"
+{
+    extern const lauf_runtime_builtin_library* lauf_libs;
+    extern const size_t                        lauf_libs_count;
+}
+
 const lauf_frontend_text_options lauf_frontend_default_text_options
-    = {nullptr, 0, &lauf_asm_type_value, 1};
+    = {lauf_libs, lauf_libs_count, &lauf_asm_type_value, 1};
 
 namespace
 {

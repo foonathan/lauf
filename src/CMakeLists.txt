@@ -89,6 +89,7 @@ target_sources(lauf_core PRIVATE
                 ${src_dir}/lib/int.cpp
                 ${src_dir}/lib/heap.cpp
                 ${src_dir}/lib/test.cpp
+                ${src_dir}/lib.cpp
 
                 ${src_dir}/support/align.hpp
                 ${src_dir}/support/array.hpp

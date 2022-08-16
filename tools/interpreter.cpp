@@ -12,10 +12,6 @@
 
 #include "defer.hpp"
 
-const lauf_runtime_builtin_library builtin_libs[]
-    = {lauf_lib_debug, lauf_lib_int, lauf_lib_heap, lauf_lib_test};
-const auto builtin_libs_count = 4;
-
 int main(int argc, char* argv[])
 {
     lauf_reader* reader = nullptr;
@@ -36,12 +32,7 @@ int main(int argc, char* argv[])
     }
     LAUF_DEFER_EXPR(lauf_destroy_reader(reader));
 
-    auto mod = lauf_frontend_text(reader, [] {
-        auto options               = lauf_frontend_default_text_options;
-        options.builtin_libs       = builtin_libs;
-        options.builtin_libs_count = builtin_libs_count;
-        return options;
-    }());
+    auto mod = lauf_frontend_text(reader, lauf_frontend_default_text_options);
     if (mod == nullptr)
         return 2;
     LAUF_DEFER_EXPR(lauf_asm_destroy_module(mod));

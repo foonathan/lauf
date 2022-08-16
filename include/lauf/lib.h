@@ -9,5 +9,12 @@
 #include <lauf/lib/int.h>
 #include <lauf/lib/test.h>
 
+LAUF_HEADER_START
+
+extern const lauf_runtime_builtin_library* lauf_libs;
+extern const size_t                        lauf_libs_count;
+
+LAUF_HEADER_END
+
 #endif // LAUF_LIB_H_INCLUDED
 

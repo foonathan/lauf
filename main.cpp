@@ -15,9 +15,6 @@
 #include <lauf/vm.h>
 #include <lauf/writer.h>
 
-const lauf_runtime_builtin_library builtins[] = {lauf_lib_debug, lauf_lib_test, lauf_lib_int};
-constexpr size_t                   builtin_libs_count = 3;
-
 lauf_asm_module* example_module()
 {
     auto reader = lauf_create_cstring_reader(R"(
@@ -58,11 +55,7 @@ lauf_asm_module* example_module()
         }
     )");
 
-    auto opts               = lauf_frontend_default_text_options;
-    opts.builtin_libs       = builtins;
-    opts.builtin_libs_count = builtin_libs_count;
-    auto result             = lauf_frontend_text(reader, opts);
-
+    auto result = lauf_frontend_text(reader, lauf_frontend_default_text_options);
     lauf_destroy_reader(reader);
     return result;
 }
@@ -70,12 +63,7 @@ lauf_asm_module* example_module()
 void dump_module(lauf_asm_module* mod)
 {
     auto writer = lauf_create_stdout_writer();
-
-    auto opts               = lauf_backend_default_dump_options;
-    opts.builtin_libs       = builtins;
-    opts.builtin_libs_count = builtin_libs_count;
-    lauf_backend_dump(writer, opts, mod);
-
+    lauf_backend_dump(writer, lauf_backend_default_dump_options, mod);
     lauf_destroy_writer(writer);
 }
 

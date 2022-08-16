@@ -10,8 +10,14 @@
 #include <lauf/writer.hpp>
 #include <string>
 
+extern "C"
+{
+    extern const lauf_runtime_builtin_library* lauf_libs;
+    extern const size_t                        lauf_libs_count;
+}
+
 const lauf_backend_dump_options lauf_backend_default_dump_options
-    = {nullptr, 0, &lauf_asm_type_value, 1};
+    = {lauf_libs, lauf_libs_count, &lauf_asm_type_value, 1};
 
 namespace
 {
