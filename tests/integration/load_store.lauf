@@ -1,4 +1,4 @@
-module @memory;
+module @load_store;
 
 #=== Valid ===#
 global @value : $lauf.Value = 0;
