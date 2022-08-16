@@ -154,7 +154,13 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
         if (alloc.source == lauf::allocation_source::heap_memory
             && alloc.status != lauf::allocation_status::freed)
         {
-            vm->allocator.free_alloc(vm->allocator.user_data, alloc.ptr, alloc.size);
+            if (alloc.split == lauf::allocation_split::unsplit)
+                vm->allocator.free_alloc(vm->allocator.user_data, alloc.ptr, alloc.size);
+            else if (alloc.split == lauf::allocation_split::split_first)
+                // We don't know the full size.
+                vm->allocator.free_alloc(vm->allocator.user_data, alloc.ptr, 0);
+            else
+                ; // We don't know the starting address of the allocation.
         }
 
     return success;

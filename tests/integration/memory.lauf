@@ -38,6 +38,62 @@ function @access_poison() {
     return;
 }
 
+function @split_unsplit() {
+    layout $lauf.Value; uint 2; $lauf.heap.alloc_array; pick 0;
+
+    uint 1; array_element $lauf.Value; $lauf.memory.split;
+    # original_ptr ptr1 ptr2
+    uint 42; pick 2; store_field $lauf.Value 0;
+    uint 11; pick 1; store_field $lauf.Value 0;
+
+    # original_ptr ptr1 ptr2
+    $lauf.memory.merge;
+    # original_ptr split_ptr
+    pick 1; $lauf.test.assert_eq;
+
+    # original_ptr
+    pick 0; uint 0; array_element $lauf.Value; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+    pick 0; uint 1; array_element $lauf.Value; load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+
+    $lauf.heap.free;
+    return;
+}
+function @split4() {
+    layout $lauf.Value; uint 4; $lauf.heap.alloc_array;
+
+    uint 2; array_element $lauf.Value; $lauf.memory.split;
+    # ptr1 ptr2
+    roll 1; uint 1; array_element $lauf.Value; $lauf.memory.split;
+    # ptr2 ptr11 ptr12
+    roll 2; uint 1; array_element $lauf.Value; $lauf.memory.split;
+    # ptr11 ptr12 ptr21 ptr22
+
+    $lauf.memory.merge;
+    # ptr11 ptr12 ptr2
+    roll 2; roll 2; $lauf.memory.merge;
+    # ptr2 ptr1
+    roll 1; $lauf.memory.merge;
+    $lauf.debug.print_vstack;
+
+    # ptr
+    $lauf.heap.free;
+    return;
+}
+
+function @split_overflow() {
+    layout $lauf.Value; uint 2; $lauf.heap.alloc_array;
+
+    uint 1; array_element $lauf.Value; $lauf.memory.split;
+    # ptr1 ptr2
+    uint 42; pick 2; uint 0; array_element $lauf.Value; store_field $lauf.Value 0;
+    uint 11; pick 2; uint 1; array_element $lauf.Value; store_field $lauf.Value 0;
+
+    # ptr1 ptr2
+    $lauf.memory.merge;
+    $lauf.heap.free;
+    return;
+}
+
 global const @msg_invalid_address = "invalid address", 0;
 
 function @main() {
@@ -45,6 +101,10 @@ function @main() {
     function_addr @double_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
     function_addr @unpoison_non_poisoned; global_addr @msg_invalid_address; $lauf.test.assert_panic;
     function_addr @access_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+
+    call @split_unsplit;
+    call @split4;
+    function_addr @split_overflow; global_addr @msg_invalid_address; $lauf.test.assert_panic;
 
     return;
 }

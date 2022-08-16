@@ -49,7 +49,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "fr
 
     auto alloc = process->get_allocation(address);
     if (alloc == nullptr || alloc->status != lauf::allocation_status::allocated
-        || alloc->source != lauf::allocation_source::heap_memory)
+        || alloc->source != lauf::allocation_source::heap_memory
+        || alloc->split != lauf::allocation_split::unsplit)
         return lauf_runtime_panic(process, "invalid heap address");
 
     process->vm->allocator.free_alloc(process->vm->allocator.user_data, alloc->ptr, alloc->size);
@@ -66,7 +67,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "le
 
     auto alloc = process->get_allocation(address);
     if (alloc == nullptr || alloc->status != lauf::allocation_status::allocated
-        || alloc->source != lauf::allocation_source::heap_memory)
+        || alloc->source != lauf::allocation_source::heap_memory
+        || alloc->split != lauf::allocation_split::unsplit)
         return lauf_runtime_panic(process, "invalid heap address");
 
     alloc->status = lauf::allocation_status::freed;

@@ -90,7 +90,7 @@ constexpr bool is_const(allocation_source source)
     }
 }
 
-enum allocation_status : std::uint8_t
+enum class allocation_status : std::uint8_t
 {
     allocated,
     freed,
@@ -101,13 +101,21 @@ constexpr bool is_usable(allocation_status status)
 {
     switch (status)
     {
-    case allocated:
+    case allocation_status::allocated:
         return true;
-    case freed:
-    case poison:
+    case allocation_status::freed:
+    case allocation_status::poison:
         return false;
     }
 }
+
+enum class allocation_split : std::uint8_t
+{
+    unsplit,
+    split_first,  // ptr is the actual beginning of the original allocation.
+    split_middle, // ptr is somewhere in the middle of the allocation.
+    split_last,   // ptr + size is the actual end of the original allocation.
+};
 
 struct allocation
 {
@@ -115,6 +123,7 @@ struct allocation
     std::uint32_t     size;
     allocation_source source;
     allocation_status status;
+    allocation_split  split = allocation_split::unsplit;
     std::uint8_t      generation;
 
     constexpr void* unchecked_offset(std::uint32_t offset) const
@@ -179,6 +188,8 @@ struct lauf_runtime_process
         return alloc;
     }
 
+    // This function is called on frame entry of functions with local variables.
+    // It will garbage collect allocations that have been freed.
     void try_free_allocations()
     {
         if (allocations.empty() || allocations.back().status != lauf::allocation_status::freed)

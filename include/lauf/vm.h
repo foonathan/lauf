@@ -19,6 +19,7 @@ typedef struct lauf_vm_allocator
 {
     void* user_data;
     void* (*heap_alloc)(void* user_data, size_t size, size_t alignment);
+    // size may be 0 if it is not known.
     void (*free_alloc)(void* user_data, void* ptr, size_t size);
 } lauf_vm_allocator;
 
