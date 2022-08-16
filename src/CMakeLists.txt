@@ -48,8 +48,9 @@ target_sources(lauf_core PUBLIC
                 ${include_dir}/backend/dump.h
 
                 ${include_dir}/lib/debug.h
-                ${include_dir}/lib/int.h
                 ${include_dir}/lib/heap.h
+                ${include_dir}/lib/int.h
+                ${include_dir}/lib/memory.h
                 ${include_dir}/lib/test.h
                 ${include_dir}/lib.h
 
@@ -86,8 +87,9 @@ target_sources(lauf_core PRIVATE
                 ${src_dir}/runtime/stacktrace.cpp
 
                 ${src_dir}/lib/debug.cpp
-                ${src_dir}/lib/int.cpp
                 ${src_dir}/lib/heap.cpp
+                ${src_dir}/lib/int.cpp
+                ${src_dir}/lib/memory.cpp
                 ${src_dir}/lib/test.cpp
                 ${src_dir}/lib.cpp
 

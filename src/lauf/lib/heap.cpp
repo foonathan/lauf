@@ -99,35 +99,5 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_VM
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_poison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "poison",
-                     &lauf_lib_heap_transfer_local)
-{
-    auto address = vstack_ptr[0].as_address;
-    ++vstack_ptr;
-
-    auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory
-        || alloc->status != lauf::allocation_status::allocated)
-        return lauf_runtime_panic(process, "invalid heap address");
-    alloc->status = lauf::allocation_status::poison;
-
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_unpoison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "unpoison",
-                     &lauf_lib_heap_poison)
-{
-    auto address = vstack_ptr[0].as_address;
-    ++vstack_ptr;
-
-    auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || alloc->status != lauf::allocation_status::poison)
-        // (We don't need to check for heap memory, only heap memory may be poisoned anyway.)
-        return lauf_runtime_panic(process, "invalid heap address");
-    alloc->status = lauf::allocation_status::allocated;
-
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-
-const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_unpoison};
+const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_transfer_local};
 

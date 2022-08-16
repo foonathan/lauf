@@ -51,19 +51,6 @@ extern const lauf_runtime_builtin lauf_lib_heap_leak;
 /// Signature: ptr:address => heap_ptr:address
 extern const lauf_runtime_builtin lauf_lib_heap_transfer_local;
 
-/// Poisons a heap allocation.
-///
-/// It may not be accessed until un-poisoned again.
-/// Poisoned memory may not be freed.
-///
-/// Signature: ptr:address => _
-extern const lauf_runtime_builtin lauf_lib_heap_poison;
-
-/// Unpoisons a heap allocation that was previously poisned.
-///
-/// Signature: ptr:address => _
-extern const lauf_runtime_builtin lauf_lib_heap_unpoison;
-
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_HEAP_H_INCLUDED

@@ -1,0 +1,51 @@
+module @memory;
+
+function @poison_unpoison_memory() {
+    layout $lauf.Value; $lauf.heap.alloc;
+
+    uint 42; pick 1; store_field $lauf.Value 0;
+    pick 0; $lauf.memory.poison;
+
+    pick 0; $lauf.memory.unpoison;
+    pick 0; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+
+    $lauf.heap.free;
+    return;
+}
+function @double_poison() {
+    layout $lauf.Value; $lauf.heap.alloc;
+
+    pick 0; $lauf.memory.poison;
+    pick 0; $lauf.memory.poison;
+
+    $lauf.heap.free;
+    return;
+}
+function @unpoison_non_poisoned() {
+    layout $lauf.Value; $lauf.heap.alloc;
+    pick 0; $lauf.memory.unpoison;
+
+    $lauf.heap.free;
+    return;
+}
+function @access_poison() {
+    layout $lauf.Value; $lauf.heap.alloc;
+
+    pick 0; $lauf.memory.poison;
+    uint 42; pick 1; store_field $lauf.Value 0;
+
+    $lauf.heap.free;
+    return;
+}
+
+global const @msg_invalid_address = "invalid address", 0;
+
+function @main() {
+    call @poison_unpoison_memory;
+    function_addr @double_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+    function_addr @unpoison_non_poisoned; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+    function_addr @access_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+
+    return;
+}
+
