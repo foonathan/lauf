@@ -141,11 +141,12 @@ struct allocation
 {
     void*             ptr;
     std::uint32_t     size;
+    std::uint8_t      generation;
     allocation_source source;
     allocation_status status;
-    allocation_split  split : 2 = allocation_split::unsplit;
-    gc_tracking       gc : 2    = gc_tracking::unreachable;
-    std::uint8_t      generation;
+    allocation_split  split : 2      = allocation_split::unsplit;
+    gc_tracking       gc : 2         = gc_tracking::unreachable;
+    bool              is_gc_weak : 1 = false;
 
     constexpr void* unchecked_offset(std::uint32_t offset) const
     {

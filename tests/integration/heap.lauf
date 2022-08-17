@@ -30,7 +30,7 @@ function @heap_transfer_local() {
     local_addr %foo; $lauf.heap.transfer_local;
     pick 0; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
 
-    pop 0; #$lauf.heap.free;
+    $lauf.heap.free;
     return;
 }
 function @heap_transfer_local_from_heap() {
@@ -44,9 +44,6 @@ global @address : $lauf.Value = 0;
 
 function @heap_gc() {
     local %address : $lauf.Value;
-
-    # Free anything leaked by previous tests first.
-    $lauf.heap.gc; pop 0;
 
     # Allocate memory reachable via global, local, and the vstack.
     layout $lauf.Value; $lauf.heap.alloc; global_addr @address; store_field $lauf.Value 0;
@@ -64,8 +61,12 @@ function @heap_gc() {
     layout $lauf.Value; $lauf.heap.alloc; pop 0;
     layout $lauf.Value; $lauf.heap.alloc; [ layout $lauf.Value; $lauf.heap.alloc; ] store_field $lauf.Value 0;
 
+    # Allocate and store in weak region.
+    global_addr @address; load_field $lauf.Value 0; $lauf.heap.declare_weak;
+    layout $lauf.Value; $lauf.heap.alloc; [ global_addr @address; load_field $lauf.Value 0; ] store_field $lauf.Value 0;
+
     # GC.
-    $lauf.heap.gc; uint 24; $lauf.test.assert_eq;
+    $lauf.heap.gc; uint 32; $lauf.test.assert_eq;
 
     # Use all reachable memory to ensure it hasn't been freed.
     uint 42; [ roll 1; uint 100; $lauf.int.usub_wrap; [ pick 0; $lauf.heap.undeclare_reachable; ] ] store_field $lauf.Value 0;

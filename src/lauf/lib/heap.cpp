@@ -118,7 +118,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
         }
     };
     auto process_reachable_memory = [&](lauf::allocation* alloc) {
-        if (alloc->size < sizeof(lauf_runtime_address))
+        if (alloc->size < sizeof(lauf_runtime_address) || alloc->is_gc_weak)
             return;
 
         // Assume the allocation contains an array of values.
@@ -222,6 +222,33 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_reachable, 1, 0, LAUF_RUNTIME_BUILT
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_heap
-    = {"lauf.heap", &lauf_lib_heap_undeclare_reachable};
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "declare_weak",
+                     &lauf_lib_heap_undeclare_reachable)
+{
+    auto ptr = vstack_ptr[0].as_address;
+    ++vstack_ptr;
+
+    auto alloc = process->get_allocation(ptr);
+    if (alloc == nullptr)
+        return lauf_runtime_panic(process, "invalid address");
+    alloc->is_gc_weak = true;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+                     "undeclare_weak", &lauf_lib_heap_declare_weak)
+{
+    auto ptr = vstack_ptr[0].as_address;
+    ++vstack_ptr;
+
+    auto alloc = process->get_allocation(ptr);
+    if (alloc == nullptr)
+        return lauf_runtime_panic(process, "invalid address");
+    alloc->is_gc_weak = false;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_undeclare_weak};
 

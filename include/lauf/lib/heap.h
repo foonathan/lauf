@@ -69,6 +69,19 @@ extern const lauf_runtime_builtin lauf_lib_heap_declare_reachable;
 /// Signature: ptr:address => _
 extern const lauf_runtime_builtin lauf_lib_heap_undeclare_reachable;
 
+/// Marks an (arbitrary) allocation as weak for the purposes of garbage collection.
+///
+/// When determening whether an allocation is reachable, any addresses inside weak allocations are
+/// not considered.
+///
+/// Signature: ptr:address => _
+extern const lauf_runtime_builtin lauf_lib_heap_declare_weak;
+
+/// Undeclares an allocation as weak.
+///
+/// Signature: ptr:address => _
+extern const lauf_runtime_builtin lauf_lib_heap_undeclare_weak;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_HEAP_H_INCLUDED
