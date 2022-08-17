@@ -48,7 +48,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "fr
     ++vstack_ptr;
 
     auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || alloc->status != lauf::allocation_status::allocated
+    if (alloc == nullptr || alloc->status == lauf::allocation_status::freed
         || alloc->source != lauf::allocation_source::heap_memory
         || alloc->split != lauf::allocation_split::unsplit)
         return lauf_runtime_panic(process, "invalid heap address");
@@ -66,7 +66,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "le
     ++vstack_ptr;
 
     auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || alloc->status != lauf::allocation_status::allocated
+    if (alloc == nullptr || alloc->status == lauf::allocation_status::freed
         || alloc->source != lauf::allocation_source::heap_memory
         || alloc->split != lauf::allocation_split::unsplit)
         return lauf_runtime_panic(process, "invalid heap address");

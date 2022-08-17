@@ -15,8 +15,7 @@ extern const lauf_runtime_builtin_library lauf_lib_memory;
 
 /// Poisons the allocation a pointer is in.
 ///
-/// It may not be accessed until un-poisoned again.
-/// Poisoned memory may not be freed.
+/// It may not be accessed until un-poisoned again, but can be freed.
 /// Poisoning a local variable may not have any effect if its pointer arithmetic has been optimized
 /// out.
 ///
