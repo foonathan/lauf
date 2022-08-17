@@ -394,7 +394,11 @@ LAUF_VM_EXECUTE(local_free)
 {
     for (auto i = 0u; i != ip->local_free.value; ++i)
     {
-        auto index                         = frame_ptr->first_local_alloc + i;
+        auto index = frame_ptr->first_local_alloc + i;
+
+        if (LAUF_UNLIKELY(process->allocations[index].split != lauf::allocation_split::unsplit))
+            LAUF_DO_PANIC("cannot free split allocation");
+
         process->allocations[index].status = lauf::allocation_status::freed;
     }
     process->try_free_allocations();

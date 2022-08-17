@@ -79,6 +79,21 @@ function @split4() {
     $lauf.heap.free;
     return;
 }
+function @split_local() {
+    local %array : [2]$lauf.Value;
+
+    local_addr %array; uint 1; array_element $lauf.Value; $lauf.memory.split;
+    # ptr1 ptr2
+    uint 42; pick 2; store_field $lauf.Value 0;
+    uint 11; pick 1; store_field $lauf.Value 0;
+    # ptr1 ptr2
+    $lauf.memory.merge; pop 0;
+
+    local_addr %array; uint 0; array_element $lauf.Value; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+    local_addr %array; uint 1; array_element $lauf.Value; load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+
+    return;
+}
 
 function @split_overflow() {
     layout $lauf.Value; uint 2; $lauf.heap.alloc_array;
@@ -93,8 +108,24 @@ function @split_overflow() {
     $lauf.heap.free;
     return;
 }
+function @split_heap_free() {
+    layout $lauf.Value; uint 2; $lauf.heap.alloc_array;
+
+    pick 0; uint 1; array_element $lauf.Value; $lauf.memory.split; pop 0; pop 0;
+
+    $lauf.heap.free;
+    return;
+}
+function @split_local_free() {
+    local %array : [2]$lauf.Value;
+
+    local_addr %array; uint 1; array_element $lauf.Value; $lauf.memory.split; pop 0; pop 0;
+    return;
+}
 
 global const @msg_invalid_address = "invalid address", 0;
+global const @msg_invalid_heap_address = "invalid heap address", 0;
+global const @msg_invalid_free = "cannot free split allocation", 0;
 
 function @main() {
     call @poison_unpoison_memory;
@@ -104,7 +135,10 @@ function @main() {
 
     call @split_unsplit;
     call @split4;
+    call @split_local;
     function_addr @split_overflow; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+    function_addr @split_heap_free; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
+    function_addr @split_local_free; global_addr @msg_invalid_free; $lauf.test.assert_panic;
 
     return;
 }
