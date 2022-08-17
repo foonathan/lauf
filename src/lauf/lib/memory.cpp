@@ -13,7 +13,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_poison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
     ++vstack_ptr;
 
     auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || alloc->status != lauf::allocation_status::allocated)
+    if (alloc == nullptr || !lauf::is_usable(alloc->status))
         return lauf_runtime_panic(process, "invalid address");
     alloc->status = lauf::allocation_status::poison;
 
@@ -40,8 +40,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_split, 1, 2, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
     auto ptr = vstack_ptr[0].as_address;
 
     auto alloc = process->get_allocation(ptr);
-    if (alloc == nullptr || alloc->status != lauf::allocation_status::allocated
-        || ptr.offset >= alloc->size)
+    if (alloc == nullptr || !lauf::is_usable(alloc->status) || ptr.offset >= alloc->size)
         return lauf_runtime_panic(process, "invalid address");
 
     // We create a new allocation as a copy, but with modified pointer and size.
@@ -81,9 +80,11 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_merge, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
 
     auto alloc1 = process->get_allocation(ptr1);
     auto alloc2 = process->get_allocation(ptr2);
-    if (alloc1 == nullptr || alloc2 == nullptr
-        || alloc1->status != lauf::allocation_status::allocated
-        || alloc2->status != lauf::allocation_status::allocated
+    if (alloc1 == nullptr
+        || alloc2 == nullptr
+        // Allocations must be usable.
+        || !lauf::is_usable(alloc1->status)
+        || !lauf::is_usable(alloc2->status)
         // Allocations must be split.
         || alloc1->split == lauf::allocation_split::unsplit
         || alloc2->split == lauf::allocation_split::unsplit

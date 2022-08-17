@@ -99,14 +99,11 @@ enum class allocation_status : std::uint8_t
 
 constexpr bool is_usable(allocation_status status)
 {
-    switch (status)
-    {
-    case allocation_status::allocated:
-        return true;
-    case allocation_status::freed:
-    case allocation_status::poison:
-        return false;
-    }
+    return status == allocation_status::allocated;
+}
+constexpr bool can_be_freed(allocation_status status)
+{
+    return status != allocation_status::freed;
 }
 
 enum class allocation_split : std::uint8_t
