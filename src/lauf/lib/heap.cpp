@@ -107,48 +107,19 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
 {
     auto                                marker = process->vm->get_marker();
     lauf::array_list<lauf::allocation*> pending_allocations;
-    auto                                mark_reachable = [&](lauf::allocation* alloc) {
-        if (alloc->status == lauf::allocation_status::freed)
-            // Allocation is freed, reachability doesn't matter.
-            return;
 
-        if (alloc->gc != lauf::gc_tracking::unreachable)
-            // We're already aware of this allocation, don't need to add again.
-            return;
-
-        if (alloc->size < sizeof(lauf_runtime_address))
+    auto mark_reachable = [&](lauf::allocation* alloc) {
+        if (alloc->status != lauf::allocation_status::freed
+            && alloc->gc == lauf::gc_tracking::unreachable)
         {
-            // Allocation cannot fit a pointer, don't need to consider it.
-            alloc->gc = lauf::gc_tracking::reachable_completed;
-        }
-        else
-        {
-            alloc->gc = lauf::gc_tracking::reachable_pending;
+            // It is a not freed allocation that we didn't know was reachable yet, add it.
+            alloc->gc = lauf::gc_tracking::reachable;
             pending_allocations.push_back(*process->vm, alloc);
         }
     };
-
-    // Mark static and local memory as reachable.
-    for (auto& alloc : process->allocations)
-    {
-        if (alloc.source != lauf::allocation_source::heap_memory)
-            mark_reachable(&alloc);
-    }
-
-    // Mark allocations reachable by addresses in the vstack as reachable.
-    for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(process); ++cur)
-    {
-        auto alloc = process->get_allocation(cur->as_address);
-        if (alloc != nullptr)
-            mark_reachable(alloc);
-    }
-
-    // Recursively mark everything as reachable from reachable allocations.
-    while (!pending_allocations.empty())
-    {
-        auto alloc = pending_allocations.back();
-        pending_allocations.pop_back();
-        alloc->gc = lauf::gc_tracking::reachable_completed;
+    auto process_reachable_memory = [&](lauf::allocation* alloc) {
+        if (alloc->size < sizeof(lauf_runtime_address))
+            return;
 
         // Assume the allocation contains an array of values.
         // For that we need to align the pointer properly.
@@ -164,6 +135,34 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
             if (alloc != nullptr)
                 mark_reachable(alloc);
         }
+    };
+
+    // Mark allocations reachable by addresses in the vstack as reachable.
+    for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(process); ++cur)
+    {
+        auto alloc = process->get_allocation(cur->as_address);
+        if (alloc != nullptr)
+            mark_reachable(alloc);
+    }
+
+    // Process memory from explicitly reachable allocations.
+    for (auto& alloc : process->allocations)
+    {
+        // Non-heap memory should always be reachable.
+        assert(alloc.source == lauf::allocation_source::heap_memory
+               || alloc.gc == lauf::gc_tracking::reachable_explicit);
+
+        if (alloc.gc == lauf::gc_tracking::reachable_explicit
+            && alloc.status != lauf::allocation_status::freed)
+            process_reachable_memory(&alloc);
+    }
+
+    // Recursively mark everything as reachable from reachable allocations.
+    while (!pending_allocations.empty())
+    {
+        auto alloc = pending_allocations.back();
+        pending_allocations.pop_back();
+        process_reachable_memory(alloc);
     }
 
     // Free unreachable heap memory.
@@ -183,7 +182,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
         }
 
         // Need to reset GC tracking for next GC run.
-        alloc.gc = lauf::gc_tracking::unreachable;
+        if (alloc.gc != lauf::gc_tracking::reachable_explicit)
+            alloc.gc = lauf::gc_tracking::unreachable;
     }
 
     // Set result.
@@ -194,5 +194,34 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_gc};
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+                     "declare_reachable", &lauf_lib_heap_gc)
+{
+    auto ptr = vstack_ptr[0].as_address;
+    ++vstack_ptr;
+
+    auto alloc = process->get_allocation(ptr);
+    if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory)
+        return lauf_runtime_panic(process, "invalid heap address");
+    alloc->gc = lauf::gc_tracking::reachable_explicit;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+                     "undeclare_reachable", &lauf_lib_heap_declare_reachable)
+{
+    auto ptr = vstack_ptr[0].as_address;
+    ++vstack_ptr;
+
+    auto alloc = process->get_allocation(ptr);
+    if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory)
+        return lauf_runtime_panic(process, "invalid heap address");
+    alloc->gc = lauf::gc_tracking::unreachable;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_heap
+    = {"lauf.heap", &lauf_lib_heap_undeclare_reachable};
 

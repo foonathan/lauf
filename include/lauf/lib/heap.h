@@ -59,6 +59,16 @@ extern const lauf_runtime_builtin lauf_lib_heap_transfer_local;
 /// Signature: _ => total_bytes_freed:uint
 extern const lauf_runtime_builtin lauf_lib_heap_gc;
 
+/// Marks a heap allocation as reachable for the purposes of garbage collection.
+///
+/// Signature: ptr:address => _
+extern const lauf_runtime_builtin lauf_lib_heap_declare_reachable;
+
+/// Unmarks a heap allocation as reachable for the purposes of garbage collection.
+///
+/// Signature: ptr:address => _
+extern const lauf_runtime_builtin lauf_lib_heap_undeclare_reachable;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_HEAP_H_INCLUDED

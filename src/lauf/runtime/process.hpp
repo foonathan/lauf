@@ -129,9 +129,12 @@ enum class allocation_split : std::uint8_t
 
 enum class gc_tracking : std::uint8_t
 {
+    // Allocation is not reachable/reachability hasn't been determined yet.
     unreachable,
-    reachable_pending,
-    reachable_completed,
+    // Allocation is reachable.
+    reachable,
+    // Allocation has been explicitly marked as reachable.
+    reachable_explicit,
 };
 
 struct allocation
@@ -158,6 +161,7 @@ constexpr lauf::allocation make_local_alloc(void* memory, std::size_t size, std:
     alloc.size       = std::uint32_t(size);
     alloc.source     = lauf::allocation_source::local_memory;
     alloc.status     = lauf::allocation_status::allocated;
+    alloc.gc         = lauf::gc_tracking::reachable_explicit;
     alloc.generation = generation;
     return alloc;
 }

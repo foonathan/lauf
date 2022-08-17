@@ -57,6 +57,9 @@ function @heap_gc() {
     layout $lauf.Value; $lauf.heap.alloc; [ local_addr %address; load_field $lauf.Value 0; ] store_field $lauf.Value 0;
     layout $lauf.Value; $lauf.heap.alloc; [ local_addr %address; load_field $lauf.Value 0; load_field $lauf.Value 0; ] store_field $lauf.Value 0;
 
+    # Allocate memory, mark it as reachable, and obfuscate it.
+    layout $lauf.Value; $lauf.heap.alloc; [ pick 0; $lauf.heap.declare_reachable; ] uint 100; $lauf.int.uadd_wrap;
+
     # Allocate and drop memory.
     layout $lauf.Value; $lauf.heap.alloc; pop 0;
     layout $lauf.Value; $lauf.heap.alloc; [ layout $lauf.Value; $lauf.heap.alloc; ] store_field $lauf.Value 0;
@@ -65,9 +68,10 @@ function @heap_gc() {
     $lauf.heap.gc; uint 24; $lauf.test.assert_eq;
 
     # Use all reachable memory to ensure it hasn't been freed.
-    uint 42; global_addr @address; store_field $lauf.Value 0;
+    uint 42; [ roll 1; uint 100; $lauf.int.usub_wrap; [ pick 0; $lauf.heap.undeclare_reachable; ] ] store_field $lauf.Value 0;
     uint 42; roll 1; store_field $lauf.Value 0;
     uint 42; [local_addr %address; load_field $lauf.Value 0; load_field $lauf.Value 0; load_field $lauf.Value 0;] store_field $lauf.Value 0;
+    uint 42; global_addr @address; store_field $lauf.Value 0;
 
     return;
 }

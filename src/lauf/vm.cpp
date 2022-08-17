@@ -67,6 +67,7 @@ lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm
                             ? lauf::allocation_source::static_mut_memory
                             : lauf::allocation_source::static_const_memory;
     result.status     = lauf::allocation_status::allocated;
+    result.gc         = lauf::gc_tracking::reachable_explicit;
     result.generation = 0;
 
     return result;
