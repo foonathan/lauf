@@ -90,6 +90,19 @@ constexpr bool is_const(allocation_source source)
     }
 }
 
+constexpr bool is_static(allocation_source source)
+{
+    switch (source)
+    {
+    case allocation_source::static_const_memory:
+    case allocation_source::static_mut_memory:
+        return true;
+    case allocation_source::local_memory:
+    case allocation_source::heap_memory:
+        return false;
+    }
+}
+
 enum class allocation_status : std::uint8_t
 {
     allocated,
@@ -114,13 +127,21 @@ enum class allocation_split : std::uint8_t
     split_last,   // ptr + size is the actual end of the original allocation.
 };
 
+enum class gc_tracking : std::uint8_t
+{
+    unreachable,
+    reachable_pending,
+    reachable_completed,
+};
+
 struct allocation
 {
     void*             ptr;
     std::uint32_t     size;
     allocation_source source;
     allocation_status status;
-    allocation_split  split = allocation_split::unsplit;
+    allocation_split  split : 2 = allocation_split::unsplit;
+    gc_tracking       gc : 2    = gc_tracking::unreachable;
     std::uint8_t      generation;
 
     constexpr void* unchecked_offset(std::uint32_t offset) const

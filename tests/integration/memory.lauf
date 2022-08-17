@@ -73,7 +73,6 @@ function @split4() {
     roll 2; roll 2; $lauf.memory.merge;
     # ptr2 ptr1
     roll 1; $lauf.memory.merge;
-    $lauf.debug.print_vstack;
 
     # ptr
     $lauf.heap.free;

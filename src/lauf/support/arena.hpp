@@ -130,6 +130,23 @@ public:
         return reinterpret_cast<const char*>(memdup(str, std::strlen(str) + 1));
     }
 
+    struct marker
+    {
+        block*         cur_block;
+        unsigned char* cur_pos;
+    };
+
+    marker get_marker() const
+    {
+        return {_cur_block, _cur_pos};
+    }
+
+    void unwind(marker m)
+    {
+        _cur_block = m.cur_block;
+        _cur_pos   = m.cur_pos;
+    }
+
 private:
     explicit arena_base(block* first_block, std::size_t sizeof_derived)
     : _cur_block(first_block), _cur_pos(&_cur_block->memory[0]), _extern_allocs(nullptr)
