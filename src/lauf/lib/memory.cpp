@@ -93,13 +93,22 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_merge, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, 
 
     // alloc1 grows to cover alloc2.
     alloc1->size += alloc2->size;
-    // If alloc1 is the first split and alloc2 the last split, the entire allocation is now unsplit.
-    if (alloc1->split == lauf::allocation_split::split_first
-        && alloc2->split == lauf::allocation_split::split_last)
-        alloc1->split = lauf::allocation_split::unsplit;
-    // Otherwise, if alloc2 is the last split, alloc1 is the last split as well.
-    else if (alloc2->split == lauf::allocation_split::split_last)
-        alloc1->split = lauf::allocation_split::split_last;
+
+    // Since alloc1 precedes alloc2, the following split configuration are possible:
+    // 1. (first, mid)
+    // 2. (first, last)
+    // 3. (mid, mid)
+    // 4. (mid, last)
+    //
+    // In case 2, we merged everything back and are unsplit.
+    // In case 4, we create a bigger last split.
+    if (alloc2->split == lauf::allocation_split::split_last)
+    {
+        if (alloc1->split == lauf::allocation_split::split_first)
+            alloc1->split = lauf::allocation_split::unsplit; // case 2
+        else
+            alloc1->split = lauf::allocation_split::split_last; // case 4
+    }
 
     // We don't need alloc2 anymore.
     alloc2->status = lauf::allocation_status::freed;
