@@ -15,7 +15,7 @@ extern const lauf_runtime_builtin_library lauf_lib_int;
 
 typedef enum lauf_lib_int_overflow
 {
-    /// Operations have the signature: `a b => result did_overflow`
+    /// Operations have the signature: `inputs => result did_overflow`
     LAUF_LIB_INT_OVERFLOW_FLAG,
     /// Operations wrap around.
     LAUF_LIB_INT_OVERFLOW_WRAP,
@@ -37,6 +37,18 @@ lauf_runtime_builtin lauf_lib_int_smul(lauf_lib_int_overflow overflow);
 //=== comparison ===//
 extern const lauf_runtime_builtin lauf_lib_int_scmp;
 extern const lauf_runtime_builtin lauf_lib_int_ucmp;
+
+//=== conversion ===//
+/// Signed to unsigned conversion.
+lauf_runtime_builtin lauf_lib_int_stou(lauf_lib_int_overflow overflow);
+/// Unsigned to signed conversion.
+lauf_runtime_builtin lauf_lib_int_utos(lauf_lib_int_overflow overflow);
+
+/// Signed to absolute signed.
+lauf_runtime_builtin lauf_lib_sabs(lauf_lib_int_overflow overflow);
+
+/// Signed to absolute unsigned (can't overflow).
+extern const lauf_runtime_builtin lauf_lib_uabs;
 
 LAUF_HEADER_END
 

@@ -285,5 +285,131 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_int_ucmp, 2, 1, no_panic_flags, "ucmp", &lauf_lib_
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_int = {"lauf.int", &lauf_lib_int_ucmp};
+namespace
+{
+// The conversion itself is a no-op, only handle overflow.
+LAUF_RUNTIME_BUILTIN(stou_flag, 1, 2, no_panic_flags, "stou_flag", &lauf_lib_int_ucmp)
+{
+    auto is_negative = vstack_ptr[0].as_sint < 0;
+    --vstack_ptr;
+    vstack_ptr[0].as_uint = is_negative ? 1 : 0;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(stou_wrap, 1, 1, no_panic_flags, "stou_wrap", &stou_flag)
+{
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(stou_sat, 1, 1, no_panic_flags, "stou_sat", &stou_wrap)
+{
+    if (vstack_ptr[0].as_sint < 0)
+        vstack_ptr[0].as_uint = 0;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(stou_panic, 1, 1, panic_flags, "stou_panic", &stou_sat)
+{
+    if (vstack_ptr[0].as_sint < 0)
+        return lauf_runtime_panic(process, "integer overflow");
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(utos_flag, 1, 2, no_panic_flags, "utos_flag", &stou_panic)
+{
+    auto is_too_big = vstack_ptr[0].as_uint > INT64_MAX;
+    --vstack_ptr;
+    vstack_ptr[0].as_uint = is_too_big ? 1 : 0;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(utos_wrap, 1, 1, no_panic_flags, "utos_wrap", &utos_flag)
+{
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(utos_sat, 1, 1, no_panic_flags, "utos_sat", &utos_wrap)
+{
+    if (vstack_ptr[0].as_uint > INT64_MAX)
+        vstack_ptr[0].as_sint = INT64_MAX;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(utos_panic, 1, 1, panic_flags, "utos_panic", &utos_sat)
+{
+    if (vstack_ptr[0].as_uint > INT64_MAX)
+        return lauf_runtime_panic(process, "integer overflow");
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+} // namespace
+
+LAUF_MAKE_ARITHMETIC_BUILTIN(stou)
+LAUF_MAKE_ARITHMETIC_BUILTIN(utos)
+
+namespace
+{
+LAUF_RUNTIME_BUILTIN(sabs_flag, 1, 2, no_panic_flags, "sabs_flag", &utos_panic)
+{
+    auto input = vstack_ptr[0].as_sint;
+    if (input == INT64_MIN)
+    {
+        --vstack_ptr;
+        vstack_ptr[0].as_uint = 1;
+    }
+    else if (input < 0)
+    {
+        vstack_ptr[0].as_sint = -input;
+        --vstack_ptr;
+        vstack_ptr[0].as_uint = 0;
+    }
+    else
+    {
+        --vstack_ptr;
+        vstack_ptr[0].as_uint = 0;
+    }
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(sabs_wrap, 1, 1, no_panic_flags, "sabs_wrap", &sabs_flag)
+{
+    auto input = vstack_ptr[0].as_sint;
+    if (input < 0 && input != INT64_MIN)
+        vstack_ptr[0].as_sint = -input;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(sabs_sat, 1, 1, no_panic_flags, "sabs_sat", &sabs_wrap)
+{
+    auto input = vstack_ptr[0].as_sint;
+    if (input == INT64_MIN)
+        vstack_ptr[0].as_sint = INT64_MAX;
+    else if (input < 0)
+        vstack_ptr[0].as_sint = -input;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(sabs_panic, 1, 1, panic_flags, "sabs_panic", &sabs_sat)
+{
+    auto input = vstack_ptr[0].as_sint;
+    if (input == INT64_MIN)
+        return lauf_runtime_panic(process, "integer overflow");
+    else if (input < 0)
+        vstack_ptr[0].as_sint = -input;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+} // namespace
+
+LAUF_MAKE_ARITHMETIC_BUILTIN(sabs)
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_uabs, 1, 1, no_panic_flags, "uabs", &sabs_panic)
+{
+    auto input = vstack_ptr[0].as_sint;
+    if (input == INT64_MIN)
+    {
+        vstack_ptr[0].as_uint = lauf_uint(INT64_MAX) + 1;
+    }
+    else if (input < 0)
+    {
+        vstack_ptr[0].as_uint = lauf_uint(-input);
+    }
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_int = {"lauf.int", &lauf_lib_int_uabs};
 
