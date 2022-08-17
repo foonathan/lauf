@@ -100,6 +100,27 @@ public:
         return *cur;
     }
 
+    void roll(std::size_t stack_idx)
+    {
+        auto cur = _stack.end();
+        --cur;
+        for (auto i = 0u; i != stack_idx; ++i)
+            --cur;
+
+        auto save = *cur;
+        while (true)
+        {
+            auto next = cur;
+            ++next;
+
+            if (next == _stack.end())
+                break;
+            *cur = *next;
+            cur  = next;
+        }
+        *cur = save;
+    }
+
     bool finish(std::size_t output_count)
     {
         return size() == output_count;

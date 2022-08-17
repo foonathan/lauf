@@ -643,6 +643,8 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(swap, stack_index));
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
+
+    b->cur->vstack.roll(stack_index);
 }
 
 void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_layout)
