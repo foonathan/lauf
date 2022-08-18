@@ -13,6 +13,7 @@ typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 
 extern const lauf_runtime_builtin_library lauf_lib_memory;
 
+//=== allocation flagging ===//
 /// Poisons the allocation a pointer is in.
 ///
 /// It may not be accessed until un-poisoned again, but can be freed.
@@ -53,6 +54,7 @@ extern const lauf_runtime_builtin lauf_lib_memory_split;
 /// Signature: addr1:address addr2:address => addr:address
 extern const lauf_runtime_builtin lauf_lib_memory_merge;
 
+//=== address manipulation ===//
 /// Converts an address to an integer.
 ///
 /// In addition to the integer it returns provenance information that must be kept available to
@@ -66,6 +68,26 @@ extern const lauf_runtime_builtin lauf_lib_memory_addr_to_int;
 ///
 /// Signature: provenance:address uint => addr:address
 extern const lauf_runtime_builtin lauf_lib_memory_int_to_addr;
+
+/// Adds an offset to an address.
+///
+/// This may invalidate the address.
+///
+/// Signature: addr:address offset:sint => (addr + offset):address
+extern const lauf_runtime_builtin lauf_lib_memory_addr_add;
+/// Subtracts an offset from an address.
+///
+/// This may invalidate the address.
+///
+/// Signature: addr:address offset:sint => (addr - offset):address
+extern const lauf_runtime_builtin lauf_lib_memory_addr_sub;
+
+/// Returns the distance in bytes between two addresses.
+///
+/// The addresses must be in the same allocation.
+///
+/// Signature: addr1:address addr2:address => (addr1 - addr2):sint
+extern const lauf_runtime_builtin lauf_lib_memory_addr_distance;
 
 LAUF_HEADER_END
 

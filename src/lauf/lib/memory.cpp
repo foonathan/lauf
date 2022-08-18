@@ -161,5 +161,54 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_int_to_addr, 2, 1, LAUF_RUNTIME_BUILTIN_DEF
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_memory = {"lauf.memory", &lauf_lib_memory_int_to_addr};
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_add, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "addr_add",
+                     &lauf_lib_memory_int_to_addr)
+{
+    auto addr   = vstack_ptr[1].as_address;
+    auto offset = vstack_ptr[0].as_sint;
+
+    lauf_sint result;
+    auto      overflow = __builtin_add_overflow(lauf_sint(addr.offset), offset, &result);
+    if (overflow || result < 0 || result > UINT32_MAX)
+        result = UINT32_MAX;
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = {addr.allocation, addr.generation, std::uint32_t(result)};
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_sub, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "addr_sub",
+                     &lauf_lib_memory_addr_add)
+{
+    auto addr   = vstack_ptr[1].as_address;
+    auto offset = vstack_ptr[0].as_sint;
+
+    lauf_sint result;
+    auto      overflow = __builtin_sub_overflow(lauf_sint(addr.offset), offset, &result);
+    if (overflow || result < 0 || result > UINT32_MAX)
+        result = UINT32_MAX;
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = {addr.allocation, addr.generation, std::uint32_t(result)};
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_distance, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT,
+                     "addr_distance", &lauf_lib_memory_addr_sub)
+{
+    auto lhs = vstack_ptr[1].as_address;
+    auto rhs = vstack_ptr[0].as_address;
+
+    if (lhs.allocation != rhs.allocation || lhs.generation != rhs.generation)
+        return lauf_runtime_panic(process, "addresses are from different allocations");
+
+    auto distance = lauf_sint(lhs.offset) - lauf_sint(rhs.offset);
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_sint = distance;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_memory
+    = {"lauf.memory", &lauf_lib_memory_addr_distance};
 

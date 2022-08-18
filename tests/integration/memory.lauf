@@ -142,6 +142,22 @@ function @addr_to_ptr() {
     return;
 }
 
+function @addr_arithmetic() {
+    layout $lauf.Value; uint 10; $lauf.heap.alloc_array;
+
+    pick 0; uint 10; $lauf.memory.addr_add;
+    uint 2; $lauf.memory.addr_sub;
+
+    # addr (addr + 8) => addr (addr + 8)
+    pick 0; pick 2; uint 1; array_element $lauf.Value; $lauf.test.assert_eq;
+
+    # addr (addr + 8) => addr
+    pick 1; $lauf.memory.addr_distance; sint 8; $lauf.test.assert_eq;
+
+    $lauf.heap.free;
+    return;
+}
+
 global const @msg_invalid_address = "invalid address", 0;
 global const @msg_invalid_heap_address = "invalid heap address", 0;
 global const @msg_invalid_free = "cannot free split allocation", 0;
@@ -160,6 +176,7 @@ function @main() {
     function_addr @split_local_free; global_addr @msg_invalid_free; $lauf.test.assert_panic;
 
     call @addr_to_ptr;
+    call @addr_arithmetic;
 
     return;
 }
