@@ -197,6 +197,8 @@ struct lauf_runtime_process
     lauf::array<lauf::allocation> allocations;
     std::uint8_t                  alloc_generation = 0;
 
+    std::size_t remaining_steps;
+
     lauf_runtime_address add_allocation(lauf::allocation alloc);
 
     lauf::allocation* get_allocation(lauf_runtime_address addr)

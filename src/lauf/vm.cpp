@@ -26,7 +26,7 @@ const lauf_vm_allocator lauf_vm_malloc_allocator
        [](void*, void* memory, size_t) { std::free(memory); }};
 
 const lauf_vm_options lauf_default_vm_options
-    = {512 * 1024ull, 16 * 1024ull,
+    = {512 * 1024ull, 16 * 1024ull, 0,
        [](lauf_runtime_process* process, const char* msg) {
            std::fprintf(stderr, "[lauf] panic: %s\n",
                         msg == nullptr ? "(invalid message pointer)" : msg);
@@ -83,6 +83,8 @@ void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_pr
     process->allocations.resize_uninitialized(*vm, program->mod->globals_count);
     for (auto global = program->mod->globals; global != nullptr; global = global->next)
         process->allocations[global->allocation_idx] = allocate_global(vm, *global);
+
+    process->remaining_steps = vm->step_limit;
 }
 
 bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, void* cstack_base,

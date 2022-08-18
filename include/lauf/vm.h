@@ -32,6 +32,9 @@ typedef struct lauf_vm_options
     size_t cstack_size_in_bytes;
     /// The fixed size of the value stack.
     size_t vstack_size_in_elements;
+    /// The initial max step value (see lauf_lib_limits_set_step_limit).
+    /// A value of zero means unlimited.
+    size_t step_limit;
     /// A handler that is called when a process panics.
     lauf_vm_panic_handler panic_handler;
     /// The allocator used when the program wants to allocate heap memory.

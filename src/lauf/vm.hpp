@@ -24,10 +24,12 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
     lauf_runtime_value* vstack_base;
     std::size_t         vstack_size;
 
+    std::size_t step_limit;
+
     explicit lauf_vm(lauf::arena_key key, lauf_vm_options options)
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
       allocator(options.allocator), cstack_size(options.cstack_size_in_bytes),
-      vstack_size(options.vstack_size_in_elements)
+      vstack_size(options.vstack_size_in_elements), step_limit(options.step_limit)
     {
         // We allocate the stacks using new, as unlike the arena, their memory should not be freed
         // between executions.

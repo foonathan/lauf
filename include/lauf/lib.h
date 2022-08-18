@@ -7,6 +7,7 @@
 #include <lauf/lib/debug.h>
 #include <lauf/lib/heap.h>
 #include <lauf/lib/int.h>
+#include <lauf/lib/limits.h>
 #include <lauf/lib/memory.h>
 #include <lauf/lib/test.h>
 
