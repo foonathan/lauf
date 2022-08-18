@@ -54,7 +54,7 @@ extern const lauf_runtime_builtin lauf_lib_heap_transfer_local;
 /// Frees all heap allocated memory that is not reachable.
 ///
 /// It uses a conservative tracing algorithm that assumes anything that could be a valid address is
-/// one. Addresses with invalid offsets keep the allocation alive.
+/// one. Addresses with invalid offsets do not keep the allocation alive.
 ///
 /// Signature: _ => total_bytes_freed:uint
 extern const lauf_runtime_builtin lauf_lib_heap_gc;

@@ -132,7 +132,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
              ++ptr)
         {
             auto alloc = process->get_allocation(ptr->as_address);
-            if (alloc != nullptr)
+            if (alloc != nullptr && ptr->as_address.offset <= alloc->size)
                 mark_reachable(alloc);
         }
     };
@@ -141,7 +141,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
     for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(process); ++cur)
     {
         auto alloc = process->get_allocation(cur->as_address);
-        if (alloc != nullptr)
+        if (alloc != nullptr && cur->as_address.offset <= alloc->size)
             mark_reachable(alloc);
     }
 
