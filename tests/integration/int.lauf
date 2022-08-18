@@ -273,6 +273,20 @@ function @udiv() {
     return;
 }
 
+function @srem() {
+    [ sint 11; sint 3; $lauf.int.srem; ] sint 2; $lauf.test.assert_eq;
+    [ sint -11; sint 3; $lauf.int.srem; ] sint -2; $lauf.test.assert_eq;
+    [ sint 11; sint -3; $lauf.int.srem; ] sint 2; $lauf.test.assert_eq;
+    [ sint -11; sint -3; $lauf.int.srem; ] sint -2; $lauf.test.assert_eq;
+
+    return;
+}
+function @urem() {
+    [ uint 11; uint 3; $lauf.int.srem; ] uint 2; $lauf.test.assert_eq;
+
+    return;
+}
+
 function @scmp() {
     [ sint 11; sint 42; $lauf.int.scmp; ] sint -1; $lauf.test.assert_eq;
     [ sint 42; sint 11; $lauf.int.scmp; ] sint +1; $lauf.test.assert_eq;
@@ -387,6 +401,9 @@ function @main() {
 
     call @sdiv_flag; call @sdiv_wrap; call @sdiv_sat; call @sdiv_panic;
     call @udiv;
+
+    call @srem;
+    call @urem;
 
     call @scmp;
     call @ucmp;

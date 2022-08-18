@@ -41,6 +41,10 @@ lauf_runtime_builtin lauf_lib_int_sdiv(lauf_lib_int_overflow overflow);
 /// Division by zero panics.
 extern const lauf_runtime_builtin lauf_lib_int_udiv;
 
+/// Remainder of division, not modulo (result has same sign ad dividend).
+extern const lauf_runtime_builtin lauf_lib_int_srem;
+extern const lauf_runtime_builtin lauf_lib_int_urem;
+
 //=== comparison ===//
 extern const lauf_runtime_builtin lauf_lib_int_scmp;
 extern const lauf_runtime_builtin lauf_lib_int_ucmp;

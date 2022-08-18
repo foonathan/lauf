@@ -352,7 +352,38 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_int_udiv, 2, 1, panic_flags, "udiv", &sdiv_panic)
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_int_scmp, 2, 1, no_panic_flags, "scmp", &lauf_lib_int_udiv)
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_srem, 2, 1, panic_flags, "srem", &lauf_lib_int_udiv)
+{
+    auto lhs = vstack_ptr[1].as_sint;
+    auto rhs = vstack_ptr[0].as_sint;
+
+    ++vstack_ptr;
+    if (rhs == 0)
+        return lauf_runtime_panic(process, "division by zero");
+    else if (lhs == INT64_MIN && rhs == -1)
+        // lhs % rhs is actually UB for those values!
+        vstack_ptr[0].as_sint = 0;
+    else
+        vstack_ptr[0].as_sint = lhs % rhs;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_urem, 2, 1, panic_flags, "urem", &lauf_lib_int_srem)
+{
+    auto lhs = vstack_ptr[1].as_uint;
+    auto rhs = vstack_ptr[0].as_uint;
+
+    ++vstack_ptr;
+    if (rhs == 0)
+        return lauf_runtime_panic(process, "division by zero");
+    else
+        vstack_ptr[0].as_uint = lhs % rhs;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_scmp, 2, 1, no_panic_flags, "scmp", &lauf_lib_int_urem)
 {
     vstack_ptr[1].as_sint = int(vstack_ptr[1].as_sint > vstack_ptr[0].as_sint)
                             - int(vstack_ptr[1].as_sint < vstack_ptr[0].as_sint);
