@@ -197,10 +197,10 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
 LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
                      "declare_reachable", &lauf_lib_heap_gc)
 {
-    auto ptr = vstack_ptr[0].as_address;
+    auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(ptr);
+    auto alloc = process->get_allocation(addr);
     if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory)
         return lauf_runtime_panic(process, "invalid heap address");
     alloc->gc = lauf::gc_tracking::reachable_explicit;
@@ -211,10 +211,10 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN
 LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
                      "undeclare_reachable", &lauf_lib_heap_declare_reachable)
 {
-    auto ptr = vstack_ptr[0].as_address;
+    auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(ptr);
+    auto alloc = process->get_allocation(addr);
     if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory)
         return lauf_runtime_panic(process, "invalid heap address");
     alloc->gc = lauf::gc_tracking::unreachable;
@@ -225,10 +225,10 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_reachable, 1, 0, LAUF_RUNTIME_BUILT
 LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "declare_weak",
                      &lauf_lib_heap_undeclare_reachable)
 {
-    auto ptr = vstack_ptr[0].as_address;
+    auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(ptr);
+    auto alloc = process->get_allocation(addr);
     if (alloc == nullptr)
         return lauf_runtime_panic(process, "invalid address");
     alloc->is_gc_weak = true;
@@ -239,10 +239,10 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_O
 LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
                      "undeclare_weak", &lauf_lib_heap_declare_weak)
 {
-    auto ptr = vstack_ptr[0].as_address;
+    auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(ptr);
+    auto alloc = process->get_allocation(addr);
     if (alloc == nullptr)
         return lauf_runtime_panic(process, "invalid address");
     alloc->is_gc_weak = false;

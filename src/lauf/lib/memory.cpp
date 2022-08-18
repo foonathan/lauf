@@ -37,37 +37,37 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_unpoison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONL
 LAUF_RUNTIME_BUILTIN(lauf_lib_memory_split, 1, 2, LAUF_RUNTIME_BUILTIN_VM_ONLY, "split",
                      &lauf_lib_memory_unpoison)
 {
-    auto ptr = vstack_ptr[0].as_address;
+    auto addr = vstack_ptr[0].as_address;
 
-    auto alloc = process->get_allocation(ptr);
-    if (alloc == nullptr || !lauf::is_usable(alloc->status) || ptr.offset >= alloc->size)
+    auto alloc = process->get_allocation(addr);
+    if (alloc == nullptr || !lauf::is_usable(alloc->status) || addr.offset >= alloc->size)
         return lauf_runtime_panic(process, "invalid address");
 
     // We create a new allocation as a copy, but with modified pointer and size.
     // If the original allocation was unsplit or the last split, the new allocation is the end of
     // the allocation. Otherwise, it is somewhere in the middle.
     auto new_alloc = *alloc;
-    new_alloc.ptr  = static_cast<unsigned char*>(new_alloc.ptr) + ptr.offset;
-    new_alloc.size -= ptr.offset;
+    new_alloc.ptr  = static_cast<unsigned char*>(new_alloc.ptr) + addr.offset;
+    new_alloc.size -= addr.offset;
     new_alloc.split = alloc->split == lauf::allocation_split::unsplit
                               || alloc->split == lauf::allocation_split::split_last
                           ? lauf::allocation_split::split_last
                           : lauf::allocation_split::split_middle;
-    auto ptr2       = process->add_allocation(new_alloc);
+    auto addr2      = process->add_allocation(new_alloc);
 
     // We now modify the original allocation, by shrinking it.
     // If the original allocation was unsplit or the first split, it is the first split.
     // Otherwise, it is somewhere in the middle.
-    alloc->size  = ptr.offset;
+    alloc->size  = addr.offset;
     alloc->split = alloc->split == lauf::allocation_split::unsplit
                            || alloc->split == lauf::allocation_split::split_first
                        ? lauf::allocation_split::split_first
                        : lauf::allocation_split::split_middle;
-    auto ptr1    = lauf_runtime_address{ptr.allocation, ptr.generation, 0};
+    auto addr1   = lauf_runtime_address{addr.allocation, addr.generation, 0};
 
     --vstack_ptr;
-    vstack_ptr[1].as_address = ptr1;
-    vstack_ptr[0].as_address = ptr2;
+    vstack_ptr[1].as_address = addr1;
+    vstack_ptr[0].as_address = addr2;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -75,11 +75,11 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_split, 1, 2, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
 LAUF_RUNTIME_BUILTIN(lauf_lib_memory_merge, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "merge",
                      &lauf_lib_memory_split)
 {
-    auto ptr1 = vstack_ptr[1].as_address;
-    auto ptr2 = vstack_ptr[0].as_address;
+    auto addr1 = vstack_ptr[1].as_address;
+    auto addr2 = vstack_ptr[0].as_address;
 
-    auto alloc1 = process->get_allocation(ptr1);
-    auto alloc2 = process->get_allocation(ptr2);
+    auto alloc1 = process->get_allocation(addr1);
+    auto alloc2 = process->get_allocation(addr2);
     if (alloc1 == nullptr
         || alloc2 == nullptr
         // Allocations must be usable.
@@ -115,7 +115,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_merge, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
     alloc2->status = lauf::allocation_status::freed;
 
     ++vstack_ptr;
-    vstack_ptr[0].as_address = ptr1;
+    vstack_ptr[0].as_address = addr1;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }

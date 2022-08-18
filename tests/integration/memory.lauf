@@ -42,11 +42,11 @@ function @split_unsplit() {
     layout $lauf.Value; uint 2; $lauf.heap.alloc_array; pick 0;
 
     uint 1; array_element $lauf.Value; $lauf.memory.split;
-    # original_ptr ptr1 ptr2
+    # original_ptr addr1 addr2
     uint 42; pick 2; store_field $lauf.Value 0;
     uint 11; pick 1; store_field $lauf.Value 0;
 
-    # original_ptr ptr1 ptr2
+    # original_ptr addr1 addr2
     $lauf.memory.merge;
     # original_ptr split_ptr
     pick 1; $lauf.test.assert_eq;
@@ -62,19 +62,19 @@ function @split4() {
     layout $lauf.Value; uint 4; $lauf.heap.alloc_array;
 
     uint 2; array_element $lauf.Value; $lauf.memory.split;
-    # ptr1 ptr2
+    # addr1 addr2
     roll 1; uint 1; array_element $lauf.Value; $lauf.memory.split;
-    # ptr2 ptr11 ptr12
+    # addr2 addr11 addr12
     roll 2; uint 1; array_element $lauf.Value; $lauf.memory.split;
-    # ptr11 ptr12 ptr21 ptr22
+    # addr11 addr12 addr21 addr22
 
     $lauf.memory.merge;
-    # ptr11 ptr12 ptr2
+    # addr11 addr12 addr2
     roll 2; roll 2; $lauf.memory.merge;
-    # ptr2 ptr1
+    # addr2 addr1
     roll 1; $lauf.memory.merge;
 
-    # ptr
+    # addr
     $lauf.heap.free;
     return;
 }
@@ -82,10 +82,10 @@ function @split_local() {
     local %array : [2]$lauf.Value;
 
     local_addr %array; uint 1; array_element $lauf.Value; $lauf.memory.split;
-    # ptr1 ptr2
+    # addr1 addr2
     uint 42; pick 2; store_field $lauf.Value 0;
     uint 11; pick 1; store_field $lauf.Value 0;
-    # ptr1 ptr2
+    # addr1 addr2
     $lauf.memory.merge; pop 0;
 
     local_addr %array; uint 0; array_element $lauf.Value; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
@@ -98,11 +98,11 @@ function @split_overflow() {
     layout $lauf.Value; uint 2; $lauf.heap.alloc_array;
 
     uint 1; array_element $lauf.Value; $lauf.memory.split;
-    # ptr1 ptr2
+    # addr1 addr2
     uint 42; pick 2; uint 0; array_element $lauf.Value; store_field $lauf.Value 0;
     uint 11; pick 2; uint 1; array_element $lauf.Value; store_field $lauf.Value 0;
 
-    # ptr1 ptr2
+    # addr1 addr2
     $lauf.memory.merge;
     $lauf.heap.free;
     return;
