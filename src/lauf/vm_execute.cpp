@@ -458,9 +458,9 @@ panic:
 LAUF_VM_EXECUTE(array_element)
 {
     auto address = vstack_ptr[1].as_address;
-    auto index   = vstack_ptr[0].as_uint;
+    auto index   = vstack_ptr[0].as_sint;
 
-    address.offset += ip->array_element.value * index;
+    address.offset += lauf_sint(ip->array_element.value) * index;
 
     ++vstack_ptr;
     vstack_ptr[0].as_address = address;

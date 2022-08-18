@@ -177,7 +177,7 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
 //=== memory ===//
 /// Computes the address of an array element given the element layout.
 ///
-/// Signature: ptr:address index:uint => (ptr + index * layout):address
+/// Signature: ptr:address index:sint => (ptr + index * layout):address
 void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_layout);
 
 /// Computes the address of a member of an aggregate with the specified members.

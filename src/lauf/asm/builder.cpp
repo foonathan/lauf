@@ -661,9 +661,9 @@ void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_la
     if (index->type == index->constant)
     {
         add_pop_top_n(b, 1);
-        auto offset = index->as_constant.as_uint * multiple;
+        auto offset = index->as_constant.as_sint * lauf_sint(multiple);
         if (offset > 0)
-            b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(aggregate_member, offset));
+            b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(aggregate_member, lauf_uint(offset)));
         b->cur->vstack.push(*b, 1);
     }
     else
