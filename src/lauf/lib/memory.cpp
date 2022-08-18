@@ -120,5 +120,46 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_merge, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_memory = {"lauf.memory", &lauf_lib_memory_merge};
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_to_int, 1, 2, LAUF_RUNTIME_BUILTIN_DEFAULT, "addr_to_int",
+                     &lauf_lib_memory_merge)
+{
+    auto addr = vstack_ptr[0].as_address;
+
+    auto alloc = process->get_allocation(addr);
+    if (alloc == nullptr || addr.offset >= alloc->size)
+        return lauf_runtime_panic(process, "invalid address");
+
+    auto ptr = static_cast<unsigned char*>(alloc->ptr) + addr.offset;
+    // The provenance is an address with invalid offset that still keeps it alive during garbage
+    // collection.
+    auto provenance = lauf_runtime_address{addr.allocation, addr.generation, alloc->size};
+
+    --vstack_ptr;
+    vstack_ptr[1].as_address = provenance;
+    vstack_ptr[0].as_uint    = reinterpret_cast<std::uintptr_t>(ptr);
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_int_to_addr, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "int_to_addr",
+                     &lauf_lib_memory_addr_to_int)
+{
+    auto provenance = vstack_ptr[1].as_address;
+    auto ptr        = reinterpret_cast<unsigned char*>(vstack_ptr[0].as_uint); // NOLINT
+
+    auto alloc = process->get_allocation(provenance);
+    if (alloc == nullptr || provenance.offset != alloc->size)
+        return lauf_runtime_panic(process, "invalid provenance");
+
+    auto offset = ptr - static_cast<unsigned char*>(alloc->ptr);
+    if (offset < 0 || offset >= alloc->size)
+        return lauf_runtime_panic(process, "invalid address");
+
+    auto addr
+        = lauf_runtime_address{provenance.allocation, provenance.generation, std::uint32_t(offset)};
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = addr;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_memory = {"lauf.memory", &lauf_lib_memory_int_to_addr};
 

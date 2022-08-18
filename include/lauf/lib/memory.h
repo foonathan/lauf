@@ -53,6 +53,20 @@ extern const lauf_runtime_builtin lauf_lib_memory_split;
 /// Signature: addr1:address addr2:address => addr:address
 extern const lauf_runtime_builtin lauf_lib_memory_merge;
 
+/// Converts an address to an integer.
+///
+/// In addition to the integer it returns provenance information that must be kept available to
+/// convert the integer back to the address. This ensures that the integer cannot be manipulated to
+/// point to a different allocation.
+///
+/// Signature: addr:address => provenance:address uint
+extern const lauf_runtime_builtin lauf_lib_memory_addr_to_int;
+
+/// Converts an integer with provenance back to an address.
+///
+/// Signature: provenance:address uint => addr:address
+extern const lauf_runtime_builtin lauf_lib_memory_int_to_addr;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_MEMORY_H_INCLUDED

@@ -122,6 +122,26 @@ function @split_local_free() {
     return;
 }
 
+function @addr_to_ptr() {
+    layout $lauf.Value; $lauf.heap.alloc; $lauf.memory.addr_to_int;
+
+    # modify integer part
+    uint 100; $lauf.int.uadd_wrap;
+
+    # run GC, which shouldn't remove it as provenance keeps it alive
+    $lauf.heap.gc; pop 0;
+
+    # undo modification
+    uint 100; $lauf.int.usub_wrap;
+
+    # back to addr and use
+    $lauf.memory.int_to_addr;
+    uint 10; pick 1; store_field $lauf.Value 0;
+    $lauf.heap.free;
+
+    return;
+}
+
 global const @msg_invalid_address = "invalid address", 0;
 global const @msg_invalid_heap_address = "invalid heap address", 0;
 global const @msg_invalid_free = "cannot free split allocation", 0;
@@ -138,6 +158,8 @@ function @main() {
     function_addr @split_overflow; global_addr @msg_invalid_address; $lauf.test.assert_panic;
     function_addr @split_heap_free; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
     function_addr @split_local_free; global_addr @msg_invalid_free; $lauf.test.assert_panic;
+
+    call @addr_to_ptr;
 
     return;
 }
