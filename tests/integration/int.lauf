@@ -243,6 +243,36 @@ function @umul_panic() {
     return;
 }
 
+function @sdiv_flag() {
+    [ sint 11; sint 3; $lauf.int.sdiv_flag; ] sint 0; $lauf.test.assert_eq; sint 3; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.int.sdiv_flag; ] sint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @sdiv_wrap() {
+    [ sint 11; sint 3; $lauf.int.sdiv_wrap; ] sint 3; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.int.sdiv_wrap; ] uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+
+    return;
+}
+function @sdiv_sat() {
+    [ sint 11; sint 3; $lauf.int.sdiv_sat; ] sint 3; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.int.sdiv_sat; ] sint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+
+    return;
+}
+function @sdiv_panic() {
+    [ sint 11; sint 3; $lauf.int.sdiv_panic; ] sint 3; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @udiv() {
+    [ uint 11; uint 3; $lauf.int.udiv; ] uint 3; $lauf.test.assert_eq;
+
+    return;
+}
+
 function @scmp() {
     [ sint 11; sint 42; $lauf.int.scmp; ] sint -1; $lauf.test.assert_eq;
     [ sint 42; sint 11; $lauf.int.scmp; ] sint +1; $lauf.test.assert_eq;
@@ -354,6 +384,9 @@ function @main() {
     call @uadd_flag; call @uadd_wrap; call @uadd_sat; call @sadd_panic;
     call @usub_flag; call @usub_wrap; call @usub_sat; call @ssub_panic;
     call @umul_flag; call @umul_wrap; call @umul_sat; call @smul_sat;
+
+    call @sdiv_flag; call @sdiv_wrap; call @sdiv_sat; call @sdiv_panic;
+    call @udiv;
 
     call @scmp;
     call @ucmp;

@@ -30,9 +30,16 @@ lauf_runtime_builtin lauf_lib_int_sadd(lauf_lib_int_overflow overflow);
 lauf_runtime_builtin lauf_lib_int_ssub(lauf_lib_int_overflow overflow);
 lauf_runtime_builtin lauf_lib_int_smul(lauf_lib_int_overflow overflow);
 
-lauf_runtime_builtin lauf_lib_int_sadd(lauf_lib_int_overflow overflow);
-lauf_runtime_builtin lauf_lib_int_ssub(lauf_lib_int_overflow overflow);
-lauf_runtime_builtin lauf_lib_int_smul(lauf_lib_int_overflow overflow);
+lauf_runtime_builtin lauf_lib_int_uadd(lauf_lib_int_overflow overflow);
+lauf_runtime_builtin lauf_lib_int_usub(lauf_lib_int_overflow overflow);
+lauf_runtime_builtin lauf_lib_int_umul(lauf_lib_int_overflow overflow);
+
+/// Overflow behavior controls what happens on INT_MIN / -1.
+/// Division by zero panics.
+lauf_runtime_builtin lauf_lib_int_sdiv(lauf_lib_int_overflow overflow);
+
+/// Division by zero panics.
+extern const lauf_runtime_builtin lauf_lib_int_udiv;
 
 //=== comparison ===//
 extern const lauf_runtime_builtin lauf_lib_int_scmp;

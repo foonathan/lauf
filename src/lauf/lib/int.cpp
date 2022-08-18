@@ -269,7 +269,90 @@ LAUF_RUNTIME_BUILTIN(umul_panic, 2, 1, panic_flags, "umul_panic", &umul_sat)
 
 LAUF_MAKE_ARITHMETIC_BUILTIN(umul)
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_int_scmp, 2, 1, no_panic_flags, "scmp", &umul_panic)
+namespace
+{
+LAUF_RUNTIME_BUILTIN(sdiv_flag, 2, 2, panic_flags, "sdiv_flag", &umul_panic)
+{
+    auto lhs = vstack_ptr[1].as_sint;
+    auto rhs = vstack_ptr[0].as_sint;
+    if (rhs == 0)
+        return lauf_runtime_panic(process, "division by zero");
+
+    if (lhs == INT64_MIN && rhs == -1)
+    {
+        vstack_ptr[1].as_sint = INT64_MIN;
+        vstack_ptr[0].as_uint = 1;
+    }
+    else
+    {
+        vstack_ptr[1].as_sint = lhs / rhs;
+        vstack_ptr[0].as_uint = 0;
+    }
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(sdiv_wrap, 2, 1, panic_flags, "sdiv_wrap", &sdiv_flag)
+{
+    auto lhs = vstack_ptr[1].as_sint;
+    auto rhs = vstack_ptr[0].as_sint;
+    if (rhs == 0)
+        return lauf_runtime_panic(process, "division by zero");
+
+    ++vstack_ptr;
+    if (lhs == INT64_MIN && rhs == -1)
+        vstack_ptr[0].as_sint = INT64_MIN;
+    else
+        vstack_ptr[0].as_sint = lhs / rhs;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(sdiv_sat, 2, 1, panic_flags, "sdiv_sat", &sdiv_wrap)
+{
+    auto lhs = vstack_ptr[1].as_sint;
+    auto rhs = vstack_ptr[0].as_sint;
+    if (rhs == 0)
+        return lauf_runtime_panic(process, "division by zero");
+
+    ++vstack_ptr;
+    if (lhs == INT64_MIN && rhs == -1)
+        vstack_ptr[0].as_sint = INT64_MAX;
+    else
+        vstack_ptr[0].as_sint = lhs / rhs;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(sdiv_panic, 2, 1, panic_flags, "sdiv_panic", &sdiv_sat)
+{
+    auto lhs = vstack_ptr[1].as_sint;
+    auto rhs = vstack_ptr[0].as_sint;
+    if (rhs == 0)
+        return lauf_runtime_panic(process, "division by zero");
+
+    ++vstack_ptr;
+    if (lhs == INT64_MIN && rhs == -1)
+        return lauf_runtime_panic(process, "integer overflow");
+    else
+        vstack_ptr[0].as_sint = lhs / rhs;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+} // namespace
+
+LAUF_MAKE_ARITHMETIC_BUILTIN(sdiv)
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_udiv, 2, 1, panic_flags, "udiv", &sdiv_panic)
+{
+    auto lhs = vstack_ptr[1].as_uint;
+    auto rhs = vstack_ptr[0].as_uint;
+    if (rhs == 0)
+        return lauf_runtime_panic(process, "division by zero");
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_uint = lhs / rhs;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_scmp, 2, 1, no_panic_flags, "scmp", &lauf_lib_int_udiv)
 {
     vstack_ptr[1].as_sint = int(vstack_ptr[1].as_sint > vstack_ptr[0].as_sint)
                             - int(vstack_ptr[1].as_sint < vstack_ptr[0].as_sint);
