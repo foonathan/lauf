@@ -24,8 +24,19 @@ void lauf_asm_destroy_program(lauf_asm_program* program)
     lauf_asm_program::destroy(program);
 }
 
-const lauf_asm_function* lauf_asm_entry_function(const lauf_asm_program* program)
+const lauf_asm_function* lauf_asm_program_entry_function(const lauf_asm_program* program)
 {
     return program->functions[program->entry];
+}
+
+const char* lauf_asm_program_debug_path(const lauf_asm_program* program, const lauf_asm_function*)
+{
+    return program->mod->debug_path;
+}
+
+lauf_asm_debug_location lauf_asm_program_find_debug_location_of_instruction(
+    const lauf_asm_program* program, const lauf_asm_inst* ip)
+{
+    return lauf_asm_find_debug_location_of_instruction(program->mod, ip);
 }
 

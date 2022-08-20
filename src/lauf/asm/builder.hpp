@@ -138,8 +138,9 @@ struct lauf_asm_block
     lauf_asm_signature   sig;
     lauf::builder_vstack vstack;
 
-    std::ptrdiff_t                  offset = 0;
-    lauf::array_list<lauf_asm_inst> insts;
+    std::ptrdiff_t                              offset = 0;
+    lauf::array_list<lauf_asm_inst>             insts;
+    lauf::array_list<lauf::inst_debug_location> debug_locations;
 
     enum
     {

@@ -168,9 +168,10 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
     auto ip = insts;
     for (auto& block : b->blocks)
     {
-        ip = block.insts.copy_to(ip);
+        auto begin_offset = ip - insts;
+        ip                = block.insts.copy_to(ip);
+        auto end_offset   = ip - insts;
 
-        auto cur_offset = ip - insts;
         switch (block.terminator)
         {
         case lauf_asm_block::unterminated:
@@ -184,38 +185,44 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
             break;
 
         case lauf_asm_block::jump:
-            if (block.next[0]->offset == cur_offset + 1)
+            if (block.next[0]->offset == end_offset + 1)
                 *ip++ = LAUF_BUILD_INST_NONE(nop);
             else
-                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - cur_offset);
+                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - end_offset);
             break;
 
         case lauf_asm_block::branch2:
-            *ip++ = LAUF_BUILD_INST_OFFSET(branch_false, block.next[1]->offset - cur_offset);
-            ++cur_offset;
+            *ip++ = LAUF_BUILD_INST_OFFSET(branch_false, block.next[1]->offset - end_offset);
+            ++end_offset;
 
-            if (block.next[0]->offset == cur_offset + 1)
+            if (block.next[0]->offset == end_offset + 1)
                 *ip++ = LAUF_BUILD_INST_NONE(nop);
             else
-                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - cur_offset);
+                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - end_offset);
             break;
 
         case lauf_asm_block::branch3:
-            *ip++ = LAUF_BUILD_INST_OFFSET(branch_eq, block.next[1]->offset - cur_offset);
-            ++cur_offset;
+            *ip++ = LAUF_BUILD_INST_OFFSET(branch_eq, block.next[1]->offset - end_offset);
+            ++end_offset;
 
-            *ip++ = LAUF_BUILD_INST_OFFSET(branch_gt, block.next[2]->offset - cur_offset);
-            ++cur_offset;
+            *ip++ = LAUF_BUILD_INST_OFFSET(branch_gt, block.next[2]->offset - end_offset);
+            ++end_offset;
 
-            if (block.next[0]->offset == cur_offset + 1)
+            if (block.next[0]->offset == end_offset + 1)
                 *ip++ = LAUF_BUILD_INST_NONE(nop);
             else
-                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - cur_offset);
+                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - end_offset);
             break;
 
         case lauf_asm_block::panic:
             *ip++ = LAUF_BUILD_INST_NONE(panic);
             break;
+        }
+
+        for (auto loc : block.debug_locations)
+        {
+            loc.inst_idx += begin_offset;
+            b->mod->inst_debug_locations.push_back(*b->mod, loc);
         }
     }
 
@@ -297,6 +304,17 @@ void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block)
                       "cannot continue building a block that has been terminated already");
 
     b->cur = block;
+}
+
+void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location loc)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    if (b->cur->debug_locations.empty()
+        || b->cur->debug_locations.back().location.line_nr != loc.line_nr
+        || b->cur->debug_locations.back().location.column_nr != loc.column_nr)
+        b->cur->debug_locations.push_back(*b, {b->fn->function_idx, uint16_t(b->cur->insts.size()),
+                                               loc});
 }
 
 void lauf_asm_inst_return(lauf_asm_builder* b)

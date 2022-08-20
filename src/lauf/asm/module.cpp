@@ -21,6 +21,11 @@ void lauf_asm_set_module_debug_path(lauf_asm_module* mod, const char* path)
     mod->debug_path = mod->strdup(path);
 }
 
+const char* lauf_asm_module_debug_path(lauf_asm_module* mod)
+{
+    return mod->debug_path;
+}
+
 const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* mod,
                                                         const char*            _name)
 {
@@ -30,6 +35,47 @@ const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* m
             return fn;
 
     return nullptr;
+}
+
+const lauf_asm_function* lauf_asm_find_function_of_instruction(const lauf_asm_module* mod,
+                                                               const lauf_asm_inst*   ip)
+{
+    for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
+        if (ip >= fn->insts && ip < fn->insts + fn->insts_count)
+            return fn;
+
+    return nullptr;
+}
+
+lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_asm_module* mod,
+                                                                    const lauf_asm_inst*   ip)
+{
+    if (mod->inst_debug_locations.empty())
+        return {0, 0, false};
+
+    auto fn = lauf_asm_find_function_of_instruction(mod, ip);
+    assert(fn != nullptr);
+
+    auto fn_idx = fn->function_idx;
+    auto ip_idx = uint16_t(lauf_asm_get_instruction_index(fn, ip));
+
+    auto have_found_fn = false;
+    auto result        = lauf_asm_debug_location{0, 0, false};
+    for (auto loc : mod->inst_debug_locations)
+    {
+        if (loc.function_idx == fn_idx)
+        {
+            have_found_fn = true;
+
+            if (loc.inst_idx > ip_idx)
+                break;
+
+            result = loc.location;
+        }
+        else if (have_found_fn)
+            break;
+    }
+    return result;
 }
 
 lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, lauf_asm_layout layout)

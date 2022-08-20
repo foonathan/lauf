@@ -6,6 +6,7 @@
 #include <cinttypes>
 #include <cstdio>
 #include <lauf/asm/module.h>
+#include <lauf/asm/program.h>
 #include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
@@ -32,15 +33,29 @@ void lauf::debug_print(lauf_runtime_process* process, lauf_runtime_value value)
 
 void lauf::debug_print_cstack(lauf_runtime_process* process)
 {
+    auto program = lauf_runtime_get_program(process);
+
     auto index = 0;
     for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
          st      = lauf_runtime_stacktrace_parent(st))
     {
-        auto fn   = lauf_runtime_stacktrace_function(st);
-        auto addr = lauf_asm_get_instruction_index(fn, lauf_runtime_stacktrace_instruction(st));
+        auto fn = lauf_runtime_stacktrace_function(st);
+        auto ip = lauf_runtime_stacktrace_instruction(st);
 
         std::fprintf(stderr, " %4d. %s\n", index, lauf_asm_function_name(fn));
-        std::fprintf(stderr, "       at <%04lx>\n", addr);
+
+        if (auto loc = lauf_asm_program_find_debug_location_of_instruction(program, ip);
+            loc.line_nr != 0 && loc.column_nr != 0)
+        {
+            auto path = lauf_asm_program_debug_path(program, fn);
+            std::fprintf(stderr, "       at %s:%u:%u\n", path, loc.line_nr, loc.column_nr);
+        }
+        else
+        {
+            auto addr = lauf_asm_get_instruction_index(fn, ip);
+            std::fprintf(stderr, "       at <%04lx>\n", addr);
+        }
+
         ++index;
     }
 }

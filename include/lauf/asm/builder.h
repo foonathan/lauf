@@ -8,13 +8,14 @@
 
 LAUF_HEADER_START
 
-typedef struct lauf_asm_module      lauf_asm_module;
-typedef struct lauf_asm_global      lauf_asm_global;
-typedef struct lauf_asm_function    lauf_asm_function;
-typedef struct lauf_asm_signature   lauf_asm_signature;
-typedef struct lauf_asm_type        lauf_asm_type;
-typedef struct lauf_asm_layout      lauf_asm_layout;
-typedef struct lauf_runtime_builtin lauf_runtime_builtin_function;
+typedef struct lauf_asm_module         lauf_asm_module;
+typedef struct lauf_asm_global         lauf_asm_global;
+typedef struct lauf_asm_function       lauf_asm_function;
+typedef struct lauf_asm_signature      lauf_asm_signature;
+typedef struct lauf_asm_debug_location lauf_asm_debug_location;
+typedef struct lauf_asm_type           lauf_asm_type;
+typedef struct lauf_asm_layout         lauf_asm_layout;
+typedef struct lauf_runtime_builtin    lauf_runtime_builtin_function;
 
 //=== builder ===//
 /// Build options.
@@ -69,6 +70,11 @@ lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, lauf_asm_signature s
 ///
 /// Blocks don't need to be built at once; the builder can switch between them at will.
 void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block);
+
+/// Specifies a debug location for a basic block.
+///
+/// It remains active for all locations added until overriden by a later point.
+void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location loc);
 
 //=== block terminator instructions ===//
 /// Terminator: return from function.

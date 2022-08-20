@@ -126,7 +126,7 @@ bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
 bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
                      lauf_runtime_value* output)
 {
-    auto fn  = lauf_asm_entry_function(program);
+    auto fn  = lauf_asm_program_entry_function(program);
     auto sig = lauf_asm_function_signature(fn);
 
     lauf_runtime_process process;

@@ -37,6 +37,14 @@ typedef struct lauf_asm_signature
     uint8_t output_count;
 } lauf_asm_signature;
 
+/// The debug location of an entity.
+typedef struct lauf_asm_debug_location
+{
+    uint16_t line_nr;          /// 1 based, 0 means unknown
+    uint16_t column_nr : 15;   /// 1 based, 0 means unknown
+    bool     is_synthetic : 1; /// true if code was injected
+} lauf_asm_debug_location;
+
 //=== module ===//
 /// Creates an empty module giving its name.
 lauf_asm_module* lauf_asm_create_module(const char* name);
@@ -48,11 +56,26 @@ void lauf_asm_destroy_module(lauf_asm_module* mod);
 /// This is only used for debug information.
 void lauf_asm_set_module_debug_path(lauf_asm_module* mod, const char* path);
 
+/// Returns the debug path of the module.
+const char* lauf_asm_module_debug_path(lauf_asm_module* mod);
+
 /// Searches for a function by name.
 ///
 /// This is not optimized.
 const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* mod,
                                                         const char*            name);
+
+/// Retrieves the function that contains the instruction.
+///
+/// This is not optimized.
+const lauf_asm_function* lauf_asm_find_function_of_instruction(const lauf_asm_module* mod,
+                                                               const lauf_asm_inst*   ip);
+
+/// Retrieves the associated debug location of an instruction.
+///
+/// This is not optimized.
+lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_asm_module* mod,
+                                                                    const lauf_asm_inst*   ip);
 
 //=== global memory ===//
 /// Adds zero-initialized, mutable global memory of the specified size to the module.

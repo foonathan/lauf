@@ -11,6 +11,7 @@
 #include <lexy/action/parse.hpp>
 #include <lexy/callback.hpp>
 #include <lexy/dsl.hpp>
+#include <lexy/input_location.hpp>
 #include <lexy_ext/report_error.hpp>
 #include <map>
 #include <optional>
@@ -71,6 +72,7 @@ private:
 
 struct parse_state
 {
+    lexy::buffer<lexy::utf8_encoding>*                 input;
     lauf_asm_builder*                                  builder;
     symbol_table<const lauf_runtime_builtin_function*> builtins;
     symbol_table<const lauf_asm_type*>                 types;
@@ -82,8 +84,11 @@ struct parse_state
     mutable symbol_table<lauf_asm_block*>    blocks;
     mutable symbol_table<lauf_asm_local*>    locals;
 
-    parse_state(lauf_frontend_text_options opts)
-    : builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr)
+    mutable lexy::input_location_anchor<lexy::buffer<lexy::utf8_encoding>> anchor;
+
+    parse_state(lexy::buffer<lexy::utf8_encoding>& input, lauf_frontend_text_options opts)
+    : input(&input), builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr),
+      anchor(input)
     {
         for (auto i = 0u; i != opts.type_count; ++i)
             types.insert(opts.types[i].name, &opts.types[i]);
@@ -509,6 +514,17 @@ struct inst_store_field
     static constexpr auto value = inst(&lauf_asm_inst_store_field);
 };
 
+struct location
+{
+    static constexpr auto rule  = dsl::position;
+    static constexpr auto value = callback([](const parse_state& state, auto pos) {
+        auto loc = lexy::get_input_location(*state.input, pos, state.anchor);
+        lauf_asm_build_debug_location(state.builder, {std::uint16_t(loc.line_nr()),
+                                                      std::uint16_t(loc.column_nr()), false});
+        state.anchor = loc.anchor();
+    });
+};
+
 struct instruction
 {
     static constexpr auto rule = [] {
@@ -525,7 +541,7 @@ struct instruction
               | dsl::p<inst_array_element> | dsl::p<inst_aggregate_member>                 //
               | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
 
-        return nested | dsl::else_ >> single + dsl::semicolon;
+        return nested | dsl::else_ >> dsl::p<location> + single + dsl::semicolon;
     }();
 
     static constexpr auto value = lexy::forward<void>;
@@ -654,7 +670,7 @@ struct module_decl
 
 lauf_asm_module* lauf_frontend_text(lauf_reader* reader, lauf_frontend_text_options opts)
 {
-    parse_state state(opts);
+    parse_state state(reader->buffer, opts);
 
     auto result = lexy::parse<lauf::text_grammar::module_decl>(reader->buffer, state,
                                                                lexy_ext::report_error);

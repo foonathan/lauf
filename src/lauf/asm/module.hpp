@@ -7,6 +7,17 @@
 #include <lauf/asm/instruction.hpp>
 #include <lauf/asm/module.h>
 #include <lauf/support/arena.hpp>
+#include <lauf/support/array_list.hpp>
+
+namespace lauf
+{
+struct inst_debug_location
+{
+    std::uint16_t           function_idx;
+    std::uint16_t           inst_idx;
+    lauf_asm_debug_location location;
+};
+} // namespace lauf
 
 struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
 {
@@ -16,7 +27,8 @@ struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
     std::uint32_t      globals_count   = 0;
     std::uint32_t      functions_count = 0;
 
-    const char* debug_path = nullptr;
+    const char*                                 debug_path = nullptr;
+    lauf::array_list<lauf::inst_debug_location> inst_debug_locations;
 
     lauf_asm_module(lauf::arena_key key, const char* name)
     : lauf::intrinsic_arena<lauf_asm_module>(key), name(this->strdup(name))
