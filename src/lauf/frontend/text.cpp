@@ -666,6 +666,10 @@ lauf_asm_module* lauf_frontend_text(lauf_reader* reader, lauf_frontend_text_opti
     }
 
     lauf_asm_destroy_builder(state.builder);
+
+    if (auto path = reader->path)
+        lauf_asm_set_module_debug_path(state.mod, path);
+
     return state.mod;
 }
 

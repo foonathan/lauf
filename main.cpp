@@ -54,6 +54,7 @@ lauf_asm_module* example_module()
             }
         }
     )");
+    lauf_reader_set_path(reader, "prototype.lauf");
 
     auto result = lauf_frontend_text(reader, lauf_frontend_default_text_options);
     lauf_destroy_reader(reader);

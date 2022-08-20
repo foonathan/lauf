@@ -16,6 +16,8 @@ struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
     std::uint32_t      globals_count   = 0;
     std::uint32_t      functions_count = 0;
 
+    const char* debug_path = nullptr;
+
     lauf_asm_module(lauf::arena_key key, const char* name)
     : lauf::intrinsic_arena<lauf_asm_module>(key), name(this->strdup(name))
     {}

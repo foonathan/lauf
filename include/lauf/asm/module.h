@@ -44,6 +44,10 @@ lauf_asm_module* lauf_asm_create_module(const char* name);
 /// Destroys a module, and everything owned by it.
 void lauf_asm_destroy_module(lauf_asm_module* mod);
 
+/// Sets the path of the module.
+/// This is only used for debug information.
+void lauf_asm_set_module_debug_path(lauf_asm_module* mod, const char* path);
+
 /// Searches for a function by name.
 ///
 /// This is not optimized.

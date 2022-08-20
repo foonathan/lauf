@@ -217,11 +217,16 @@ void lauf_backend_dump(lauf_writer* writer, lauf_backend_dump_options options,
                        const lauf_asm_module* mod)
 {
     writer->format("module @'%s';\n", mod->name);
+    if (mod->debug_path != nullptr)
+        writer->format("debug_path \"%s\";\n", mod->debug_path);
     writer->write("\n");
 
-    for (auto global = mod->globals; global != nullptr; global = global->next)
-        dump_global(writer, options, global);
-    writer->write("\n");
+    if (mod->globals != nullptr)
+    {
+        for (auto global = mod->globals; global != nullptr; global = global->next)
+            dump_global(writer, options, global);
+        writer->write("\n");
+    }
 
     for (auto function = mod->functions; function != nullptr; function = function->next)
     {

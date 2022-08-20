@@ -16,6 +16,11 @@ void lauf_asm_destroy_module(lauf_asm_module* mod)
     lauf_asm_module::destroy(mod);
 }
 
+void lauf_asm_set_module_debug_path(lauf_asm_module* mod, const char* path)
+{
+    mod->debug_path = mod->strdup(path);
+}
+
 const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* mod,
                                                         const char*            _name)
 {

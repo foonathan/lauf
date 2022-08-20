@@ -10,9 +10,14 @@ void lauf_destroy_reader(lauf_reader* reader)
     delete reader;
 }
 
+void lauf_reader_set_path(lauf_reader* reader, const char* path)
+{
+    reader->path = path;
+}
+
 lauf_reader* lauf_create_string_reader(const char* str, std::size_t size)
 {
-    return new lauf_reader{lexy::buffer<lexy::utf8_encoding>(str, size)};
+    return new lauf_reader{lexy::buffer<lexy::utf8_encoding>(str, size), nullptr};
 }
 
 lauf_reader* lauf_create_cstring_reader(const char* str)
@@ -26,7 +31,7 @@ lauf_reader* lauf_create_file_reader(const char* path)
     if (!result)
         return nullptr;
 
-    return new lauf_reader{LEXY_MOV(result).buffer()};
+    return new lauf_reader{LEXY_MOV(result).buffer(), path};
 }
 
 lauf_reader* lauf_create_stdin_reader(void)
@@ -35,6 +40,6 @@ lauf_reader* lauf_create_stdin_reader(void)
     if (!result)
         return nullptr;
 
-    return new lauf_reader{LEXY_MOV(result).buffer()};
+    return new lauf_reader{LEXY_MOV(result).buffer(), nullptr};
 }
 
