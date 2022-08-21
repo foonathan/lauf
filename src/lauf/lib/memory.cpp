@@ -3,8 +3,9 @@
 
 #include <lauf/lib/memory.h>
 
+#include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
-#include <lauf/runtime/process.hpp>
+#include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
 
 LAUF_RUNTIME_BUILTIN(lauf_lib_memory_poison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "poison", nullptr)
@@ -12,10 +13,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_poison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
     auto address = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || !lauf::is_usable(alloc->status))
+    if (!lauf_runtime_poison_allocation(process, address))
         return lauf_runtime_panic(process, "invalid address");
-    alloc->status = lauf::allocation_status::poison;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -26,10 +25,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_unpoison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONL
     auto address = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || alloc->status != lauf::allocation_status::poison)
+    if (!lauf_runtime_unpoison_allocation(process, address))
         return lauf_runtime_panic(process, "invalid address");
-    alloc->status = lauf::allocation_status::allocated;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -39,35 +36,10 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_split, 1, 2, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
 {
     auto addr = vstack_ptr[0].as_address;
 
-    auto alloc = process->get_allocation(addr);
-    if (alloc == nullptr || !lauf::is_usable(alloc->status) || addr.offset >= alloc->size)
-        return lauf_runtime_panic(process, "invalid address");
-
-    // We create a new allocation as a copy, but with modified pointer and size.
-    // If the original allocation was unsplit or the last split, the new allocation is the end of
-    // the allocation. Otherwise, it is somewhere in the middle.
-    auto new_alloc = *alloc;
-    new_alloc.ptr  = static_cast<unsigned char*>(new_alloc.ptr) + addr.offset;
-    new_alloc.size -= addr.offset;
-    new_alloc.split = alloc->split == lauf::allocation_split::unsplit
-                              || alloc->split == lauf::allocation_split::split_last
-                          ? lauf::allocation_split::split_last
-                          : lauf::allocation_split::split_middle;
-    auto addr2      = process->add_allocation(new_alloc);
-
-    // We now modify the original allocation, by shrinking it.
-    // If the original allocation was unsplit or the first split, it is the first split.
-    // Otherwise, it is somewhere in the middle.
-    alloc->size  = addr.offset;
-    alloc->split = alloc->split == lauf::allocation_split::unsplit
-                           || alloc->split == lauf::allocation_split::split_first
-                       ? lauf::allocation_split::split_first
-                       : lauf::allocation_split::split_middle;
-    auto addr1   = lauf_runtime_address{addr.allocation, addr.generation, 0};
-
     --vstack_ptr;
-    vstack_ptr[1].as_address = addr1;
-    vstack_ptr[0].as_address = addr2;
+    if (!lauf_runtime_split_allocation(process, addr, &vstack_ptr[1].as_address,
+                                       &vstack_ptr[0].as_address))
+        return lauf_runtime_panic(process, "invalid address");
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -77,45 +49,10 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_merge, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
 {
     auto addr1 = vstack_ptr[1].as_address;
     auto addr2 = vstack_ptr[0].as_address;
-
-    auto alloc1 = process->get_allocation(addr1);
-    auto alloc2 = process->get_allocation(addr2);
-    if (alloc1 == nullptr
-        || alloc2 == nullptr
-        // Allocations must be usable.
-        || !lauf::is_usable(alloc1->status)
-        || !lauf::is_usable(alloc2->status)
-        // Allocations must be split.
-        || alloc1->split == lauf::allocation_split::unsplit
-        || alloc2->split == lauf::allocation_split::unsplit
-        // And they must be adjacent.
-        || static_cast<unsigned char*>(alloc1->ptr) + alloc1->size != alloc2->ptr)
-        return lauf_runtime_panic(process, "invalid address");
-
-    // alloc1 grows to cover alloc2.
-    alloc1->size += alloc2->size;
-
-    // Since alloc1 precedes alloc2, the following split configuration are possible:
-    // 1. (first, mid)
-    // 2. (first, last)
-    // 3. (mid, mid)
-    // 4. (mid, last)
-    //
-    // In case 2, we merged everything back and are unsplit.
-    // In case 4, we create a bigger last split.
-    if (alloc2->split == lauf::allocation_split::split_last)
-    {
-        if (alloc1->split == lauf::allocation_split::split_first)
-            alloc1->split = lauf::allocation_split::unsplit; // case 2
-        else
-            alloc1->split = lauf::allocation_split::split_last; // case 4
-    }
-
-    // We don't need alloc2 anymore.
-    alloc2->status = lauf::allocation_status::freed;
-
     ++vstack_ptr;
-    vstack_ptr[0].as_address = addr1;
+
+    if (!lauf_runtime_merge_allocation(process, addr1, addr2))
+        return lauf_runtime_panic(process, "invalid address");
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -125,14 +62,10 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_to_int, 1, 2, LAUF_RUNTIME_BUILTIN_DEF
 {
     auto addr = vstack_ptr[0].as_address;
 
-    auto alloc = process->get_allocation(addr);
-    if (alloc == nullptr || addr.offset >= alloc->size)
+    auto ptr = lauf_runtime_get_const_ptr(process, addr, {0, 1});
+    if (ptr == nullptr)
         return lauf_runtime_panic(process, "invalid address");
-
-    auto ptr = static_cast<unsigned char*>(alloc->ptr) + addr.offset;
-    // The provenance is an address with invalid offset that still keeps it alive during garbage
-    // collection.
-    auto provenance = lauf_runtime_address{addr.allocation, addr.generation, alloc->size};
+    auto provenance = lauf_runtime_address{addr.allocation, addr.generation, 0};
 
     --vstack_ptr;
     vstack_ptr[1].as_address = provenance;
@@ -146,18 +79,11 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_int_to_addr, 2, 1, LAUF_RUNTIME_BUILTIN_DEF
     auto provenance = vstack_ptr[1].as_address;
     auto ptr        = reinterpret_cast<unsigned char*>(vstack_ptr[0].as_uint); // NOLINT
 
-    auto alloc = process->get_allocation(provenance);
-    if (alloc == nullptr || provenance.offset != alloc->size)
-        return lauf_runtime_panic(process, "invalid provenance");
+    if (!lauf_runtime_get_address(process, &provenance, ptr))
+        return lauf_runtime_panic(process, "invalid int for int_to_addr");
 
-    auto offset = ptr - static_cast<unsigned char*>(alloc->ptr);
-    if (offset < 0 || offset >= alloc->size)
-        return lauf_runtime_panic(process, "invalid address");
-
-    auto addr
-        = lauf_runtime_address{provenance.allocation, provenance.generation, std::uint32_t(offset)};
     ++vstack_ptr;
-    vstack_ptr[0].as_address = addr;
+    vstack_ptr[0].as_address = provenance;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 

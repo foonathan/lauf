@@ -4,9 +4,8 @@
 #include <lauf/lib/limits.h>
 
 #include <lauf/runtime/builtin.h>
-#include <lauf/runtime/process.hpp>
+#include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
-#include <lauf/vm.hpp>
 
 LAUF_RUNTIME_BUILTIN(lauf_lib_limits_set_step_limit, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
                      "set_step_limit", nullptr)
@@ -15,12 +14,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_limits_set_step_limit, 1, 0, LAUF_RUNTIME_BUILTIN_
     if (new_limit == 0)
         return lauf_runtime_panic(process, "cannot remove step limit");
 
-    auto vm_limit = process->vm->step_limit;
-    if (vm_limit != 0 && new_limit > vm_limit)
+    if (!lauf_runtime_set_step_limit(process, new_limit))
         return lauf_runtime_panic(process, "cannot increase step limit");
-
-    process->remaining_steps = new_limit;
-    assert(process->remaining_steps != 0);
 
     ++vstack_ptr;
     LAUF_RUNTIME_BUILTIN_DISPATCH;
@@ -29,17 +24,11 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_limits_set_step_limit, 1, 0, LAUF_RUNTIME_BUILTIN_
 LAUF_RUNTIME_BUILTIN(lauf_lib_limits_step, 0, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "step",
                      &lauf_lib_limits_set_step_limit)
 {
-    // If the remaining steps are zero, we have no limit.
-    if (process->remaining_steps > 0)
-    {
-        --process->remaining_steps;
-        if (process->remaining_steps == 0)
-            return lauf_runtime_panic(process, "step limit exceeded");
+    if (!lauf_runtime_increment_step(process))
+        return lauf_runtime_panic(process, "step limit exceeded");
 
-        // Note that if the panic recovers (via `lauf.test.assert_panic`), the process now
-        // has an unlimited step limit.
-    }
-
+    // Note that if the panic recovers (via `lauf.test.assert_panic`), the process now
+    // has an unlimited step limit.
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 

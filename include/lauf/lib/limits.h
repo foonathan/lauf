@@ -13,21 +13,11 @@ typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 
 extern const lauf_runtime_builtin_library lauf_lib_limits;
 
-/// Limits the number of execution steps that can be taken before the process panics.
-///
-/// This has no effect, unless `lauf_lib_limitis_step[s]` is called, which modifies the limit.
-/// The limit cannot be increased beyond the limit provided in the VM config.
-/// It also reaches the existing steps taken.
-///
+/// Calls `lauf_runtime_set_step_limit()`.
 /// Signature: limit:uint => _
 extern const lauf_runtime_builtin lauf_lib_limits_set_step_limit;
 
-/// Increments the step count by one.
-///
-/// If this reaches the step limit, panics.
-/// It needs to be manually inserted during codegen (e.g. once per function and loop iteratation)
-/// for the step limit to work. If the step limit is unlimited, does nothing.
-///
+/// Calls `lauf_runtime_increment_step()`.
 /// Signature: _ => _
 extern const lauf_runtime_builtin lauf_lib_limits_step;
 

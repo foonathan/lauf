@@ -44,6 +44,25 @@ void lauf_destroy_vm(lauf_vm* vm)
     lauf_vm::destroy(vm);
 }
 
+lauf_vm_panic_handler lauf_vm_set_panic_handler(lauf_vm* vm, lauf_vm_panic_handler h)
+{
+    auto old          = vm->panic_handler;
+    vm->panic_handler = h;
+    return old;
+}
+
+lauf_vm_allocator lauf_vm_set_allocator(lauf_vm* vm, lauf_vm_allocator a)
+{
+    auto old      = vm->allocator;
+    vm->allocator = a;
+    return old;
+}
+
+lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm)
+{
+    return vm->allocator;
+}
+
 namespace
 {
 lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm_global global)

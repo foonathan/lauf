@@ -3,23 +3,24 @@
 
 #include <lauf/lib/heap.h>
 
+#include <cstring>
 #include <lauf/runtime/builtin.h>
-#include <lauf/runtime/process.hpp>
-#include <lauf/support/array_list.hpp>
-#include <lauf/vm.hpp>
+#include <lauf/runtime/process.h>
+#include <lauf/runtime/value.h>
+#include <lauf/support/align.hpp>
+#include <lauf/vm.h>
 
 LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "alloc", nullptr)
 {
     auto size      = vstack_ptr[0].as_uint;
     auto alignment = vstack_ptr[1].as_uint;
 
-    auto memory
-        = process->vm->allocator.heap_alloc(process->vm->allocator.user_data, size, alignment);
+    auto allocator = lauf_vm_get_allocator(lauf_runtime_get_vm(process));
+    auto memory    = allocator.heap_alloc(allocator.user_data, size, alignment);
     if (memory == nullptr)
         return lauf_runtime_panic(process, "out of memory");
 
-    auto alloc   = lauf::make_heap_alloc(memory, size, process->alloc_generation);
-    auto address = process->add_allocation(alloc);
+    auto address = lauf_runtime_add_heap_allocation(process, memory, size);
 
     ++vstack_ptr;
     vstack_ptr[0].as_address = address;
@@ -48,14 +49,13 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "fr
     auto address = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || !lauf::can_be_freed(alloc->status)
-        || alloc->source != lauf::allocation_source::heap_memory
-        || alloc->split != lauf::allocation_split::unsplit)
+    lauf_runtime_allocation alloc;
+    if (!lauf_runtime_get_allocation(process, address, &alloc)
+        || !lauf_runtime_leak_heap_allocation(process, address))
         return lauf_runtime_panic(process, "invalid heap address");
 
-    process->vm->allocator.free_alloc(process->vm->allocator.user_data, alloc->ptr, alloc->size);
-    alloc->status = lauf::allocation_status::freed;
+    auto allocator = lauf_vm_get_allocator(lauf_runtime_get_vm(process));
+    allocator.free_alloc(allocator.user_data, alloc.ptr, alloc.size);
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -66,13 +66,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "le
     auto address = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || !lauf::can_be_freed(alloc->status)
-        || alloc->source != lauf::allocation_source::heap_memory
-        || alloc->split != lauf::allocation_split::unsplit)
+    if (!lauf_runtime_leak_heap_allocation(process, address))
         return lauf_runtime_panic(process, "invalid heap address");
-
-    alloc->status = lauf::allocation_status::freed;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -82,21 +77,21 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_VM
 {
     auto address = vstack_ptr[0].as_address;
 
-    auto alloc = process->get_allocation(address);
-    if (alloc == nullptr || !lauf::is_usable(alloc->status))
+    lauf_runtime_allocation alloc;
+    if (!lauf_runtime_get_allocation(process, address, &alloc)
+        || (alloc.permission & LAUF_RUNTIME_PERM_READ) == 0)
         return lauf_runtime_panic(process, "invalid address");
 
-    if (alloc->source == lauf::allocation_source::local_memory)
+    if (alloc.source == LAUF_RUNTIME_LOCAL_ALLOCATION)
     {
-        auto memory = process->vm->allocator.heap_alloc(process->vm->allocator.user_data,
-                                                        alloc->size, alignof(void*));
+        auto allocator = lauf_vm_get_allocator(lauf_runtime_get_vm(process));
+        auto memory    = allocator.heap_alloc(allocator.user_data, alloc.size, alignof(void*));
         if (memory == nullptr)
             return lauf_runtime_panic(process, "out of memory");
 
-        std::memcpy(memory, alloc->ptr, alloc->size);
+        std::memcpy(memory, alloc.ptr, alloc.size);
 
-        auto heap_alloc = lauf::make_heap_alloc(memory, alloc->size, process->alloc_generation);
-        vstack_ptr[0].as_address = process->add_allocation(heap_alloc);
+        vstack_ptr[0].as_address = lauf_runtime_add_heap_allocation(process, memory, alloc.size);
     }
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
@@ -105,92 +100,11 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_VM
 LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
                      &lauf_lib_heap_transfer_local)
 {
-    auto                                marker = process->vm->get_marker();
-    lauf::array_list<lauf::allocation*> pending_allocations;
+    auto bytes_freed = lauf_runtime_gc(process, vstack_ptr);
 
-    auto mark_reachable = [&](lauf::allocation* alloc) {
-        if (alloc->status != lauf::allocation_status::freed
-            && alloc->gc == lauf::gc_tracking::unreachable)
-        {
-            // It is a not freed allocation that we didn't know was reachable yet, add it.
-            alloc->gc = lauf::gc_tracking::reachable;
-            pending_allocations.push_back(*process->vm, alloc);
-        }
-    };
-    auto process_reachable_memory = [&](lauf::allocation* alloc) {
-        if (alloc->size < sizeof(lauf_runtime_address) || alloc->is_gc_weak)
-            return;
-
-        // Assume the allocation contains an array of values.
-        // For that we need to align the pointer properly.
-        // (We've done a size check already, so the initial offset is fine)
-        auto offset = lauf::align_offset(alloc->ptr, alignof(lauf_runtime_value));
-        auto ptr    = reinterpret_cast<lauf_runtime_value*>(static_cast<unsigned char*>(alloc->ptr)
-                                                         + offset);
-
-        for (auto end = ptr + (alloc->size - offset) / sizeof(lauf_runtime_value); ptr != end;
-             ++ptr)
-        {
-            auto alloc = process->get_allocation(ptr->as_address);
-            if (alloc != nullptr && ptr->as_address.offset <= alloc->size)
-                mark_reachable(alloc);
-        }
-    };
-
-    // Mark allocations reachable by addresses in the vstack as reachable.
-    for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(process); ++cur)
-    {
-        auto alloc = process->get_allocation(cur->as_address);
-        if (alloc != nullptr && cur->as_address.offset <= alloc->size)
-            mark_reachable(alloc);
-    }
-
-    // Process memory from explicitly reachable allocations.
-    for (auto& alloc : process->allocations)
-    {
-        // Non-heap memory should always be reachable.
-        assert(alloc.source == lauf::allocation_source::heap_memory
-               || alloc.gc == lauf::gc_tracking::reachable_explicit);
-
-        if (alloc.gc == lauf::gc_tracking::reachable_explicit
-            && alloc.status != lauf::allocation_status::freed)
-            process_reachable_memory(&alloc);
-    }
-
-    // Recursively mark everything as reachable from reachable allocations.
-    while (!pending_allocations.empty())
-    {
-        auto alloc = pending_allocations.back();
-        pending_allocations.pop_back();
-        process_reachable_memory(alloc);
-    }
-
-    // Free unreachable heap memory.
-    auto allocator   = process->vm->allocator;
-    auto bytes_freed = std::size_t(0);
-    for (auto& alloc : process->allocations)
-    {
-        if (alloc.source == lauf::allocation_source::heap_memory
-            && alloc.status != lauf::allocation_status::freed
-            && alloc.split == lauf::allocation_split::unsplit
-            && alloc.gc == lauf::gc_tracking::unreachable)
-        {
-            // It is an unreachable allocation that we can free.
-            allocator.free_alloc(allocator.user_data, alloc.ptr, alloc.size);
-            alloc.status = lauf::allocation_status::freed;
-            bytes_freed += alloc.size;
-        }
-
-        // Need to reset GC tracking for next GC run.
-        if (alloc.gc != lauf::gc_tracking::reachable_explicit)
-            alloc.gc = lauf::gc_tracking::unreachable;
-    }
-
-    // Set result.
     --vstack_ptr;
     vstack_ptr[0].as_uint = bytes_freed;
 
-    process->vm->unwind(marker);
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
@@ -200,10 +114,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN
     auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(addr);
-    if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory)
+    if (!lauf_runtime_declare_reachable(process, addr))
         return lauf_runtime_panic(process, "invalid heap address");
-    alloc->gc = lauf::gc_tracking::reachable_explicit;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -214,10 +126,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_reachable, 1, 0, LAUF_RUNTIME_BUILT
     auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(addr);
-    if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory)
+    if (!lauf_runtime_undeclare_reachable(process, addr))
         return lauf_runtime_panic(process, "invalid heap address");
-    alloc->gc = lauf::gc_tracking::unreachable;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -228,10 +138,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_O
     auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(addr);
-    if (alloc == nullptr)
+    if (!lauf_runtime_declare_weak(process, addr))
         return lauf_runtime_panic(process, "invalid address");
-    alloc->is_gc_weak = true;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
@@ -242,10 +150,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM
     auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
 
-    auto alloc = process->get_allocation(addr);
-    if (alloc == nullptr)
+    if (!lauf_runtime_undeclare_weak(process, addr))
         return lauf_runtime_panic(process, "invalid address");
-    alloc->is_gc_weak = false;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }

@@ -49,6 +49,14 @@ typedef struct lauf_vm lauf_vm;
 lauf_vm* lauf_create_vm(lauf_vm_options options);
 void     lauf_destroy_vm(lauf_vm* vm);
 
+/// Exchanges the panic handler.
+lauf_vm_panic_handler lauf_vm_set_panic_handler(lauf_vm* vm, lauf_vm_panic_handler h);
+
+/// Exchanges the allocator.
+lauf_vm_allocator lauf_vm_set_allocator(lauf_vm* vm, lauf_vm_allocator a);
+/// Returns the allocator.
+lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm);
+
 /// Executes the program on the VM.
 ///
 /// `input` is an array that contains as many values as specified by the input signature of the

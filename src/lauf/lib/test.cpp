@@ -3,11 +3,12 @@
 
 #include <lauf/lib/test.h>
 
+#include <cstring>
 #include <lauf/asm/module.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
-#include <lauf/vm.hpp>
+#include <lauf/vm.h>
 
 LAUF_RUNTIME_BUILTIN(lauf_lib_test_unreachable, 0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC, "unreachable",
                      nullptr)
@@ -54,13 +55,15 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_panic, 2, 0, LAUF_RUNTIME_BUILTIN_VM_O
         return lauf_runtime_panic(process, "invalid function");
 
     // We temporarily replace the panic handler with one that simply remembers the message.
-    auto                            handler = process->vm->panic_handler;
+    auto                            vm = lauf_runtime_get_vm(process);
     static thread_local const char* panic_msg;
-    process->vm->panic_handler = [](lauf_runtime_process*, const char* msg) { panic_msg = msg; };
+    auto handler = lauf_vm_set_panic_handler(vm, [](lauf_runtime_process*, const char* msg) {
+        panic_msg = msg;
+    });
 
     auto did_not_panic = lauf_runtime_call(process, fn, vstack_ptr);
 
-    process->vm->panic_handler = handler;
+    lauf_vm_set_panic_handler(vm, handler);
 
     if (did_not_panic)
         return lauf_runtime_panic(process, "assert_panic failed: no panic");
