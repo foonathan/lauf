@@ -1,0 +1,32 @@
+name: CI
+
+on: [push]
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - "clang:13"
+        build_type: [Debug, Release]
+
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/foonathan/${{matrix.image}}
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create Build Environment
+      run: cmake -E make_directory build
+
+    - name: Configure
+      working-directory: build/
+      run: cmake -GNinja $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+    - name: Build
+      working-directory: build/
+      run: cmake --build .
+    - name: Test
+      working-directory: build/
+      run: ctest --output-on-failure
+
