@@ -1,0 +1,35 @@
+= lauf
+
+ifdef::env-github[]
+image:https://img.shields.io/endpoint?url=https%3A%2F%2Fwww.jonathanmueller.dev%2Fproject%2Flauf%2Findex.json[Project Status,link=https://www.jonathanmueller.dev/project/]
+image:https://github.com/foonathan/lauf/workflows/CI/badge.svg[Build Status]
+endif::[]
+
+lauf is work-in-progress bytecode interpreter with a C API.
+It is currently highly unstable, not ready for production use, and does not support anything other than a recent clang and Linux.
+
+== Features
+
+* Stack based bytecode API.
+* Designed to quickly generate bytecode and execute it; suitable for e.g. evaluating `constexpr` functions in a C++ compiler.
+* Extensible instruction set via `lauf_builtin`: things like `add` can be defined with your own semantics (e.g. overflow behavior).
+* Fully sandboxed VM that supports low-level operations like pointer arithmetic.
+
+== FAQ
+
+How fast is it?::
+  On an M1 processor, recursive `fib(35)` takes about 325ms while the luajit interpreter (without JIT) takes about 535ms.
+  Proper benchmarks are TODO.
+
+Does it support just-in-time compilation?::
+  Currently, no.
+  I have started implementing it, but it's a lot of work, and I'll focus on adding features first.
+
+Why is it called lauf?::
+  "Lauf!" is German for "Run!" and lauf runs bytecode.
+
+== Documentation
+
+Currently no documentation besides header comments.
+Everything should be considered unstable.
+
