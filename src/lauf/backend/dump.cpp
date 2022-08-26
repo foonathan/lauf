@@ -4,6 +4,7 @@
 #include <lauf/backend/dump.h>
 
 #include <cctype>
+#include <lauf/asm/builder.h>
 #include <lauf/asm/module.hpp>
 #include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
@@ -152,6 +153,30 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         }
         case lauf::asm_op::local_addr: {
             writer->format("local_addr %u", ip->global_addr.value);
+            break;
+        }
+        case lauf::asm_op::cc: {
+            switch (lauf_asm_inst_condition_code(ip->cc.value))
+            {
+            case LAUF_ASM_INST_CC_EQ:
+                writer->write("cc eq");
+                break;
+            case LAUF_ASM_INST_CC_NE:
+                writer->write("cc ne");
+                break;
+            case LAUF_ASM_INST_CC_LT:
+                writer->write("cc lt");
+                break;
+            case LAUF_ASM_INST_CC_LE:
+                writer->write("cc le");
+                break;
+            case LAUF_ASM_INST_CC_GT:
+                writer->write("cc gt");
+                break;
+            case LAUF_ASM_INST_CC_GE:
+                writer->write("cc ge");
+                break;
+            }
             break;
         }
 

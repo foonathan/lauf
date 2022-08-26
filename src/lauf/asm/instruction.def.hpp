@@ -69,6 +69,10 @@ LAUF_ASM_INST(function_addr, asm_inst_offset)
 // The value is the index of the local allocation.
 LAUF_ASM_INST(local_addr, asm_inst_value)
 
+// lauf_asm_inst_cc()
+// The value is the condition code.
+LAUF_ASM_INST(cc, asm_inst_value)
+
 //=== stack manipulation ===//
 // lauf_asm_inst_pop()
 LAUF_ASM_INST(pop, asm_inst_stack_idx)

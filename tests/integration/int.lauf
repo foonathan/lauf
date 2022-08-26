@@ -288,20 +288,20 @@ function @urem() {
 }
 
 function @scmp() {
-    [ sint 11; sint 42; $lauf.int.scmp; ] sint -1; $lauf.test.assert_eq;
-    [ sint 42; sint 11; $lauf.int.scmp; ] sint +1; $lauf.test.assert_eq;
-    [ sint 42; sint 42; $lauf.int.scmp; ] sint 0; $lauf.test.assert_eq;
+    [ sint 11; sint 42; $lauf.int.scmp; ] cc lt; $lauf.test.assert;
+    [ sint 42; sint 11; $lauf.int.scmp; ] cc gt; $lauf.test.assert;
+    [ sint 42; sint 42; $lauf.int.scmp; ] cc eq; $lauf.test.assert;
 
-    [ sint -11; sint 42; $lauf.int.scmp; ] sint -1; $lauf.test.assert_eq;
-    [ sint 42; sint -11; $lauf.int.scmp; ] sint +1; $lauf.test.assert_eq;
-    [ sint -42; sint -42; $lauf.int.scmp; ] sint 0; $lauf.test.assert_eq;
+    [ sint -11; sint 42; $lauf.int.scmp; ] cc lt; $lauf.test.assert;
+    [ sint 42; sint -11; $lauf.int.scmp; ] cc gt; $lauf.test.assert;
+    [ sint -42; sint -42; $lauf.int.scmp; ] cc eq; $lauf.test.assert;
 
     return;
 }
 function @ucmp() {
-    [ uint 11; uint 42; $lauf.int.ucmp; ] sint -1; $lauf.test.assert_eq;
-    [ uint 42; uint 11; $lauf.int.ucmp; ] sint +1; $lauf.test.assert_eq;
-    [ uint 42; uint 42; $lauf.int.ucmp; ] sint 0; $lauf.test.assert_eq;
+    [ uint 11; uint 42; $lauf.int.ucmp; ] cc lt; $lauf.test.assert;
+    [ uint 42; uint 11; $lauf.int.ucmp; ] cc gt; $lauf.test.assert;
+    [ uint 42; uint 42; $lauf.int.ucmp; ] cc eq; $lauf.test.assert;
 
     return;
 }

@@ -60,6 +60,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::deref_const:
         case lauf::asm_op::deref_mut:
         case lauf::asm_op::aggregate_member:
+        case lauf::asm_op::cc:
             // Signature 1 => 1, remove as well.
             b->cur->insts.pop_back();
             break;
@@ -619,6 +620,66 @@ void lauf_asm_inst_layout(lauf_asm_builder* b, lauf_asm_layout layout)
 {
     lauf_asm_inst_uint(b, layout.alignment);
     lauf_asm_inst_uint(b, layout.size);
+}
+
+void lauf_asm_inst_cc(lauf_asm_builder* b, lauf_asm_inst_condition_code cc)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    auto cmp = b->cur->vstack.pop();
+    LAUF_BUILD_ASSERT(cmp, "missing cmp");
+
+    if (cmp->type == cmp->constant)
+    {
+        auto value = cmp->as_constant;
+        switch (cc)
+        {
+        case LAUF_ASM_INST_CC_EQ:
+            if (value.as_sint == 0)
+                value.as_uint = 1;
+            else
+                value.as_uint = 0;
+            break;
+        case LAUF_ASM_INST_CC_NE:
+            if (value.as_sint != 0)
+                value.as_uint = 1;
+            else
+                value.as_uint = 0;
+            break;
+        case LAUF_ASM_INST_CC_LT:
+            if (value.as_sint < 0)
+                value.as_uint = 1;
+            else
+                value.as_uint = 0;
+            break;
+        case LAUF_ASM_INST_CC_LE:
+            if (value.as_sint <= 0)
+                value.as_uint = 1;
+            else
+                value.as_uint = 0;
+            break;
+        case LAUF_ASM_INST_CC_GT:
+            if (value.as_sint > 0)
+                value.as_uint = 1;
+            else
+                value.as_uint = 0;
+            break;
+        case LAUF_ASM_INST_CC_GE:
+            if (value.as_sint >= 0)
+                value.as_uint = 1;
+            else
+                value.as_uint = 0;
+            break;
+        }
+
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, value.as_uint));
+        b->cur->vstack.push(*b, value);
+    }
+    else
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(cc, unsigned(cc)));
+        b->cur->vstack.push(*b, 1);
+    }
 }
 
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)

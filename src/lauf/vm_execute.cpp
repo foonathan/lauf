@@ -4,8 +4,8 @@
 #include <lauf/vm.hpp>
 
 #include <cassert>
+#include <lauf/asm/builder.h>
 #include <lauf/asm/module.hpp>
-#include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/vm_execute.hpp>
 
@@ -276,6 +276,51 @@ LAUF_VM_EXECUTE(local_addr)
     vstack_ptr[0].as_address.generation = frame_ptr->local_generation;
 
     ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(cc)
+{
+    switch (lauf_asm_inst_condition_code(ip->cc.value))
+    {
+    case LAUF_ASM_INST_CC_EQ:
+        if (vstack_ptr[0].as_sint == 0)
+            vstack_ptr[0].as_uint = 1;
+        else
+            vstack_ptr[0].as_uint = 0;
+        break;
+    case LAUF_ASM_INST_CC_NE:
+        if (vstack_ptr[0].as_sint != 0)
+            vstack_ptr[0].as_uint = 1;
+        else
+            vstack_ptr[0].as_uint = 0;
+        break;
+    case LAUF_ASM_INST_CC_LT:
+        if (vstack_ptr[0].as_sint < 0)
+            vstack_ptr[0].as_uint = 1;
+        else
+            vstack_ptr[0].as_uint = 0;
+        break;
+    case LAUF_ASM_INST_CC_LE:
+        if (vstack_ptr[0].as_sint <= 0)
+            vstack_ptr[0].as_uint = 1;
+        else
+            vstack_ptr[0].as_uint = 0;
+        break;
+    case LAUF_ASM_INST_CC_GT:
+        if (vstack_ptr[0].as_sint > 0)
+            vstack_ptr[0].as_uint = 1;
+        else
+            vstack_ptr[0].as_uint = 0;
+        break;
+    case LAUF_ASM_INST_CC_GE:
+        if (vstack_ptr[0].as_sint >= 0)
+            vstack_ptr[0].as_uint = 1;
+        else
+            vstack_ptr[0].as_uint = 0;
+        break;
+    }
+
     LAUF_VM_DISPATCH;
 }
 

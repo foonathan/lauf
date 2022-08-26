@@ -17,6 +17,16 @@ typedef struct lauf_asm_type           lauf_asm_type;
 typedef struct lauf_asm_layout         lauf_asm_layout;
 typedef struct lauf_runtime_builtin    lauf_runtime_builtin_function;
 
+typedef enum lauf_asm_inst_condition_code
+{
+    LAUF_ASM_INST_CC_EQ,
+    LAUF_ASM_INST_CC_NE,
+    LAUF_ASM_INST_CC_LT,
+    LAUF_ASM_INST_CC_LE,
+    LAUF_ASM_INST_CC_GT,
+    LAUF_ASM_INST_CC_GE,
+} lauf_asm_inst_condition_code;
+
 //=== builder ===//
 /// Build options.
 typedef struct lauf_asm_build_options
@@ -163,6 +173,11 @@ void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* f
 ///
 /// Signature: _ => alignment:uint size:uint
 void lauf_asm_inst_layout(lauf_asm_builder* b, lauf_asm_layout layout);
+
+/// Converts the result of a three way comparison into 0 or 1.
+///
+/// Signature: cmp:sint => bool:uint
+void lauf_asm_inst_cc(lauf_asm_builder* b, lauf_asm_inst_condition_code cc);
 
 //=== stack manipulation instructions ===//
 /// Pops the Nth value of the stack.

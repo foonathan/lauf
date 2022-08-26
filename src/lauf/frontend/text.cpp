@@ -451,6 +451,19 @@ struct inst_layout
     static constexpr auto rule  = LAUF_KEYWORD("layout") >> dsl::p<layout_expr>;
     static constexpr auto value = inst(&lauf_asm_inst_layout);
 };
+struct inst_cc
+{
+    static constexpr auto ccs = lexy::symbol_table<lauf_asm_inst_condition_code> //
+                                    .map(LEXY_LIT("eq"), LAUF_ASM_INST_CC_EQ)
+                                    .map(LEXY_LIT("ne"), LAUF_ASM_INST_CC_NE)
+                                    .map(LEXY_LIT("lt"), LAUF_ASM_INST_CC_LT)
+                                    .map(LEXY_LIT("le"), LAUF_ASM_INST_CC_LE)
+                                    .map(LEXY_LIT("le"), LAUF_ASM_INST_CC_GT)
+                                    .map(LEXY_LIT("gt"), LAUF_ASM_INST_CC_GE);
+
+    static constexpr auto rule  = LAUF_KEYWORD("cc") >> dsl::symbol<ccs>;
+    static constexpr auto value = inst(&lauf_asm_inst_cc);
+};
 
 struct inst_stack_op
 {
@@ -535,7 +548,7 @@ struct instruction
               | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic>           //
               | dsl::p<inst_sint> | dsl::p<inst_uint>                                      //
               | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>     //
-              | dsl::p<inst_function_addr> | dsl::p<inst_layout>                           //
+              | dsl::p<inst_function_addr> | dsl::p<inst_layout> | dsl::p<inst_cc>         //
               | dsl::p<inst_stack_op>                                                      //
               | dsl::p<inst_call> | dsl::p<inst_call_indirect> | dsl::p<inst_call_builtin> //
               | dsl::p<inst_array_element> | dsl::p<inst_aggregate_member>                 //
