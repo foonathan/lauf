@@ -25,7 +25,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert, 1, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS
     auto value = vstack_ptr[0].as_uint;
     ++vstack_ptr;
 
-    if (value == 0)
+    if (value != 0)
         LAUF_RUNTIME_BUILTIN_DISPATCH;
     else
         return lauf_runtime_panic(process, "assert failed");
