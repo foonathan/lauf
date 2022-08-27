@@ -672,6 +672,7 @@ void lauf_asm_inst_cc(lauf_asm_builder* b, lauf_asm_inst_condition_code cc)
             break;
         }
 
+        add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, value.as_uint));
         b->cur->vstack.push(*b, value);
     }

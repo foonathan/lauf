@@ -436,6 +436,24 @@ TEST_CASE("lauf_asm_inst_local_addr")
     CHECK(multiple[0].local_addr.value == 1);
 }
 
+TEST_CASE("lauf_asm_inst_cc")
+{
+    auto dynamic = build({1, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_cc(b, LAUF_ASM_INST_CC_EQ);
+    });
+    REQUIRE(dynamic.size() == 1);
+    CHECK(dynamic[0].op() == lauf::asm_op::cc);
+    CHECK(dynamic[0].cc.value == LAUF_ASM_INST_CC_EQ);
+
+    auto constant = build({0, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_sint(b, -1);
+        lauf_asm_inst_cc(b, LAUF_ASM_INST_CC_EQ);
+    });
+    REQUIRE(constant.size() == 1);
+    CHECK(constant[0].op() == lauf::asm_op::push);
+    CHECK(constant[0].push.value == 0);
+}
+
 TEST_CASE("lauf_asm_inst_function_addr")
 {
     auto result = build({0, 1}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
