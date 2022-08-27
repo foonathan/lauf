@@ -13,10 +13,28 @@ function @xor() {
     return;
 }
 
+function @shl() {
+    [ uint 0x1234_5678_9ABC_DEF0; uint 4; $lauf.bits.shl; ] uint 0x2345_6789_ABCD_EF00; $lauf.test.assert_eq;
+    return;
+}
+function @ushr() {
+    [ uint 0x1234; uint 4; $lauf.bits.ushr; ] uint 0x123; $lauf.test.assert_eq;
+    return;
+}
+function @sshr() {
+    [ sint 0x1234; uint 4; $lauf.bits.sshr; ] sint 0x123; $lauf.test.assert_eq;
+    [ sint -2; uint 1; $lauf.bits.sshr; ] sint -1; $lauf.test.assert_eq;
+    return;
+}
+
 function @main() {
     call @and;
     call @or;
     call @xor;
+
+    call @shl;
+    call @ushr;
+    call @sshr;
 
     return;
 }
