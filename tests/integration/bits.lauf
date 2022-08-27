@@ -1,0 +1,23 @@
+module @bits;
+
+function @and() {
+    [ uint 0xABCDEF; uint 0x00F000; $lauf.bits.and; ] uint 0x00C000; $lauf.test.assert_eq;
+    return;
+}
+function @or() {
+    [ uint 0xABC000; uint 0xDEF; $lauf.bits.or; ] uint 0xABCDEF; $lauf.test.assert_eq;
+    return;
+}
+function @xor() {
+    [ uint 0xFFF00; uint 0xFFF; $lauf.bits.xor; ] uint 0xFF0FF; $lauf.test.assert_eq;
+    return;
+}
+
+function @main() {
+    call @and;
+    call @or;
+    call @xor;
+
+    return;
+}
+
