@@ -43,6 +43,12 @@ extern const lauf_runtime_builtin lauf_lib_bits_ushr;
 /// Signature: x:sint n:uint => (x >> n):sint
 extern const lauf_runtime_builtin lauf_lib_bits_sshr;
 
+//=== queries ===//
+/// Signature: x:uint => x:bool
+extern const lauf_runtime_builtin lauf_lib_bits_none_set;
+extern const lauf_runtime_builtin lauf_lib_bits_any_set;
+extern const lauf_runtime_builtin lauf_lib_bits_all_set;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_BITS_H_INCLUDED

@@ -32,6 +32,25 @@ function @sshr() {
     return;
 }
 
+function @none_set() {
+    [ uint 0; $lauf.bits.none_set; ] uint 1; $lauf.test.assert_eq;
+    [ uint 11; $lauf.bits.none_set; ] uint 0; $lauf.test.assert_eq;
+    [ sint -1; $lauf.bits.none_set; ] uint 0; $lauf.test.assert_eq;
+    return;
+}
+function @any_set() {
+    [ uint 0; $lauf.bits.any_set; ] uint 0; $lauf.test.assert_eq;
+    [ uint 11; $lauf.bits.any_set; ] uint 1; $lauf.test.assert_eq;
+    [ sint -1; $lauf.bits.any_set; ] uint 1; $lauf.test.assert_eq;
+    return;
+}
+function @all_set() {
+    [ uint 0; $lauf.bits.all_set; ] uint 0; $lauf.test.assert_eq;
+    [ uint 11; $lauf.bits.all_set; ] uint 0; $lauf.test.assert_eq;
+    [ sint -1; $lauf.bits.all_set; ] uint 1; $lauf.test.assert_eq;
+    return;
+}
+
 function @main() {
     call @not;
 
@@ -42,6 +61,10 @@ function @main() {
     call @shl;
     call @ushr;
     call @sshr;
+
+    call @none_set;
+    call @any_set;
+    call @all_set;
 
     return;
 }
