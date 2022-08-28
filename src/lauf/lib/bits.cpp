@@ -15,7 +15,13 @@ constexpr auto no_panic_flags = LAUF_RUNTIME_BUILTIN_NO_PANIC | LAUF_RUNTIME_BUI
 constexpr auto panic_flags = LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD;
 } // namespace
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_bits_and, 2, 1, no_panic_flags, "and", nullptr)
+LAUF_RUNTIME_BUILTIN(lauf_lib_bits_not, 1, 1, no_panic_flags, "not", nullptr)
+{
+    vstack_ptr[0].as_uint = ~vstack_ptr[0].as_uint;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_bits_and, 2, 1, no_panic_flags, "and", &lauf_lib_bits_not)
 {
     auto lhs = vstack_ptr[1].as_uint;
     auto rhs = vstack_ptr[0].as_uint;

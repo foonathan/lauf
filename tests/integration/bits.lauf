@@ -1,5 +1,10 @@
 module @bits;
 
+function @not() {
+    [ uint 0xFFFF_0000_FFFF_0000; $lauf.bits.not; ] uint 0x0000_FFFF_0000_FFFF; $lauf.test.assert_eq;
+    return;
+}
+
 function @and() {
     [ uint 0xABCDEF; uint 0x00F000; $lauf.bits.and; ] uint 0x00C000; $lauf.test.assert_eq;
     return;
@@ -28,6 +33,8 @@ function @sshr() {
 }
 
 function @main() {
+    call @not;
+
     call @and;
     call @or;
     call @xor;

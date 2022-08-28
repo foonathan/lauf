@@ -13,6 +13,10 @@ typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 
 extern const lauf_runtime_builtin_library lauf_lib_bits;
 
+//=== primitie bit operations ===//
+/// Signature: x:uint => (~x):uint
+extern const lauf_runtime_builtin lauf_lib_bits_not;
+
 /// Signature: a:uint b:uint => (a op b):uint
 extern const lauf_runtime_builtin lauf_lib_bits_and;
 extern const lauf_runtime_builtin lauf_lib_bits_or;
