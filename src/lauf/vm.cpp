@@ -26,7 +26,10 @@ const lauf_vm_allocator lauf_vm_malloc_allocator
        [](void*, void* memory, size_t) { std::free(memory); }};
 
 const lauf_vm_options lauf_default_vm_options
-    = {512 * 1024ull, 16 * 1024ull, 0,
+    = {512 * 1024ull, // max_cstack_size_in_bytes
+       16 * 1024ull,  // initial_cstack_size_in-bytes
+       16 * 1024ull,  // vstack_size_in_elements
+       0,             // step_limit
        [](lauf_runtime_process* process, const char* msg) {
            std::fprintf(stderr, "[lauf] panic: %s\n",
                         msg == nullptr ? "(invalid message pointer)" : msg);

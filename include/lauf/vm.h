@@ -28,8 +28,10 @@ extern const lauf_vm_allocator lauf_vm_malloc_allocator;
 
 typedef struct lauf_vm_options
 {
-    /// The fixed size of the call stack.
-    size_t cstack_size_in_bytes;
+    /// The maximum size of the call stack.
+    size_t max_cstack_size_in_bytes;
+    /// The initial size of the call stack, it can grow bigger if necessary.
+    size_t initial_cstack_size_in_bytes;
     /// The fixed size of the value stack.
     size_t vstack_size_in_elements;
     /// The initial max step value (see lauf_lib_limits_set_step_limit).
