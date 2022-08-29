@@ -6,6 +6,7 @@
 
 #include <lauf/runtime/process.h>
 
+#include <cstdlib>
 #include <lauf/asm/instruction.hpp>
 #include <lauf/asm/type.h>
 #include <lauf/runtime/value.h>
@@ -15,6 +16,40 @@ typedef struct lauf_asm_function lauf_asm_function;
 typedef union lauf_asm_inst      lauf_asm_inst;
 typedef struct lauf_asm_global   lauf_asm_global;
 typedef struct lauf_vm           lauf_vm;
+
+//=== stack chunk ===//
+namespace lauf
+{
+struct stack_chunk
+{
+    static constexpr auto alignment        = 4096;
+    static constexpr auto stack_chunk_size = alignment - sizeof(void*);
+
+    stack_chunk*  next;
+    unsigned char memory[stack_chunk_size]; // don't initialize
+
+    stack_chunk() : next(nullptr) {}
+
+    static stack_chunk* allocate()
+    {
+        static_assert(sizeof(stack_chunk) == alignment);
+        auto memory = std::aligned_alloc(alignment, sizeof(stack_chunk));
+        return ::new (memory) stack_chunk;
+    }
+
+    static stack_chunk* free(stack_chunk* cur)
+    {
+        auto next = cur->next;
+        std::free(cur);
+        return next;
+    }
+
+    unsigned char* end()
+    {
+        return memory + stack_chunk_size;
+    }
+};
+} // namespace lauf
 
 //=== stack frame ===//
 struct lauf_runtime_stack_frame
@@ -62,6 +97,20 @@ struct lauf_runtime_stack_frame
     void* next_frame()
     {
         return reinterpret_cast<unsigned char*>(this) + next_offset;
+    }
+    lauf::stack_chunk* chunk()
+    {
+        auto address       = reinterpret_cast<std::uintptr_t>(this);
+        auto chunk_address = address & ~std::uintptr_t(lauf::stack_chunk::alignment - 1u);
+        return reinterpret_cast<lauf::stack_chunk*>(chunk_address); // NOLINT
+    }
+    unsigned char* chunk_end()
+    {
+        return chunk()->end();
+    }
+    std::size_t chunk_size_remaining()
+    {
+        return static_cast<std::size_t>(chunk_end() - static_cast<unsigned char*>(next_frame()));
     }
 };
 static_assert(alignof(lauf_runtime_stack_frame) == alignof(void*));
@@ -182,9 +231,9 @@ constexpr lauf::allocation make_heap_alloc(void* memory, std::size_t size, std::
 struct lauf_runtime_process
 {
     // The VM that is executing the process.
-    lauf_vm*            vm         = nullptr;
-    lauf_runtime_value* vstack_end = nullptr;
-    unsigned char*      cstack_end = nullptr;
+    lauf_vm*            vm                      = nullptr;
+    lauf_runtime_value* vstack_end              = nullptr;
+    std::size_t         remaining_cstack_chunks = 0;
 
     // The dummy frame for call stacks -- this is only lazily updated
     // It needs to be valid when calling a builtin or panicing.

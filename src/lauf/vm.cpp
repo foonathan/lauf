@@ -94,10 +94,10 @@ lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm
 
 void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program)
 {
-    process->vm         = vm;
-    process->vstack_end = vm->vstack_end();
-    process->cstack_end = vm->cstack_end();
-    process->program    = program;
+    process->vm                      = vm;
+    process->vstack_end              = vm->vstack_end();
+    process->remaining_cstack_chunks = vm->max_cstack_chunks;
+    process->program                 = program;
 
     process->allocations.resize_uninitialized(*vm, program->mod->globals_count);
     for (auto global = program->mod->globals; global != nullptr; global = global->next)
@@ -128,8 +128,9 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        lauf_runtime_value* vstack_ptr)
 {
-    auto leaf                     = process->callstack_leaf_frame;
-    auto result                   = root_call(process, vstack_ptr, leaf.prev + 1, fn);
+    auto leaf = process->callstack_leaf_frame;
+
+    auto result                   = root_call(process, vstack_ptr, leaf.prev->next_frame(), fn);
     process->callstack_leaf_frame = leaf;
     return result;
 }
@@ -159,7 +160,7 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
         vstack_ptr[0] = input[i];
     }
 
-    auto success = root_call(&process, vstack_ptr, vm->cstack_base, fn);
+    auto success = root_call(&process, vstack_ptr, vm->cstack->memory, fn);
     if (success)
     {
         // Pop output values from the value stack.

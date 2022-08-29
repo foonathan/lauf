@@ -16,24 +16,24 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
     lauf_vm_panic_handler panic_handler;
     lauf_vm_allocator     allocator;
 
-    // Grows up.
-    unsigned char* cstack_base;
-    std::size_t    cstack_size;
-
     // Grows down.
     lauf_runtime_value* vstack_base;
     std::size_t         vstack_size;
+
+    lauf::stack_chunk* cstack;
+    std::size_t        max_cstack_chunks;
 
     std::size_t step_limit;
 
     explicit lauf_vm(lauf::arena_key key, lauf_vm_options options)
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
-      allocator(options.allocator), cstack_size(options.cstack_size_in_bytes),
-      vstack_size(options.vstack_size_in_elements), step_limit(options.step_limit)
+      allocator(options.allocator), vstack_size(options.vstack_size_in_elements),
+      max_cstack_chunks(options.cstack_size_in_bytes / sizeof(lauf::stack_chunk)),
+      step_limit(options.step_limit)
     {
         // We allocate the stacks using new, as unlike the arena, their memory should not be freed
         // between executions.
-        cstack_base = static_cast<unsigned char*>(::operator new(cstack_size));
+        cstack = lauf::stack_chunk::allocate();
 
         // It grows down, so the base is at the end.
         vstack_base = static_cast<lauf_runtime_value*>(
@@ -43,7 +43,9 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 
     ~lauf_vm()
     {
-        ::operator delete(cstack_base);
+        for (auto cur = cstack; cur != nullptr;)
+            cur = lauf::stack_chunk::free(cur);
+
         ::operator delete(vstack_base - vstack_size);
     }
 
@@ -52,11 +54,6 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
         // We keep a buffer of UINT8_MAX.
         // This ensures that we can always call a builtin, which can push at most that many values.
         return vstack_base - vstack_size + UINT8_MAX;
-    }
-
-    unsigned char* cstack_end() const
-    {
-        return cstack_base + cstack_size;
     }
 };
 
