@@ -59,9 +59,9 @@ struct lauf_runtime_stack_frame
     // The return address to jump to when the call finishes.
     const lauf_asm_inst* return_ip;
     // The allocation of the first local_alloc (only meaningful if the function has any)
-    uint16_t first_local_alloc;
+    uint32_t first_local_alloc : 30;
     // The generation of the local variables.
-    uint8_t local_generation;
+    uint32_t local_generation : 2;
     // The offset from this where the next frame can be put, i.e. after the local allocs.
     uint32_t next_offset;
     // The previous stack frame.

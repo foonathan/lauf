@@ -420,7 +420,7 @@ LAUF_VM_EXECUTE(setup_local_alloc)
         LAUF_TAIL_CALL return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
 
     // Setup the necessary metadata.
-    frame_ptr->first_local_alloc = std::uint16_t(process->allocations.size());
+    frame_ptr->first_local_alloc = std::uint32_t(process->allocations.size());
     frame_ptr->local_generation  = process->alloc_generation;
 
     ++ip;
