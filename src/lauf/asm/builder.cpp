@@ -307,6 +307,12 @@ void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block)
     b->cur = block;
 }
 
+size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b)
+{
+    LAUF_BUILD_ASSERT_CUR;
+    return b->cur->vstack.size();
+}
+
 void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location loc)
 {
     LAUF_BUILD_ASSERT_CUR;

@@ -81,6 +81,9 @@ lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, uint8_t input_count)
 /// Blocks don't need to be built at once; the builder can switch between them at will.
 void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block);
 
+/// Returns the current size of the vstack for the active block.
+size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b);
+
 /// Specifies a debug location for a basic block.
 ///
 /// It remains active for all locations added until overriden by a later point.
