@@ -342,6 +342,7 @@ LAUF_VM_EXECUTE(cc)
         break;
     }
 
+    ++ip;
     LAUF_VM_DISPATCH;
 }
 
