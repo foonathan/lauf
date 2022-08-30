@@ -74,7 +74,7 @@ typedef struct lauf_asm_block lauf_asm_block;
 ///
 /// It is only valid inside the current function.
 /// If it's the first block, it becomes the entry block.
-lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, lauf_asm_signature sig);
+lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, uint8_t input_count);
 
 /// Sets the insertion point of the builder to append instruction to the end of the block.
 ///

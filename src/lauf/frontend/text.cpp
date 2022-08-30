@@ -217,7 +217,7 @@ struct block_ref
             if (auto block = state.blocks.try_lookup(name))
                 return *block;
 
-            auto block = lauf_asm_declare_block(state.builder, sig);
+            auto block = lauf_asm_declare_block(state.builder, sig.input_count);
             state.blocks.insert(name, block);
             return block;
         });
@@ -576,7 +576,7 @@ struct block
                 }
                 else
                 {
-                    block = lauf_asm_declare_block(state.builder, sig);
+                    block = lauf_asm_declare_block(state.builder, sig.input_count);
                     state.blocks.insert(name, block);
                 }
 
@@ -629,8 +629,8 @@ struct function_decl
         static constexpr auto rule  = LEXY_LIT("");
         static constexpr auto value = callback([](const parse_state& state) {
             // Create an entry block.
-            auto block
-                = lauf_asm_declare_block(state.builder, lauf_asm_function_signature(state.fn));
+            auto block = lauf_asm_declare_block(state.builder,
+                                                lauf_asm_function_signature(state.fn).input_count);
             lauf_asm_build_block(state.builder, block);
             state.blocks.insert("", block);
         });

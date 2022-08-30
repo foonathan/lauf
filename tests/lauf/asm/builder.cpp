@@ -30,7 +30,7 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
             return opts;
         }());
         lauf_asm_build(builder, mod, fn);
-        auto block = lauf_asm_declare_block(builder, {sig.input_count, sig.output_count});
+        auto block = lauf_asm_declare_block(builder, sig.input_count);
         lauf_asm_build_block(builder, block);
 
         builder_fn(mod, builder);
@@ -67,7 +67,7 @@ TEST_CASE("lauf_asm_inst_return")
 {
     auto result = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         lauf_asm_inst_return(b);
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, {0, 0}));
+        lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     });
     REQUIRE(result.size() == 1);
     CHECK(result[0].op() == lauf::asm_op::return_);
@@ -76,7 +76,7 @@ TEST_CASE("lauf_asm_inst_return")
 TEST_CASE("lauf_asm_inst_jump")
 {
     auto nop = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto block = lauf_asm_declare_block(b, {0, 0});
+        auto block = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_jump(b, block);
         lauf_asm_build_block(b, block);
     });
@@ -84,8 +84,8 @@ TEST_CASE("lauf_asm_inst_jump")
     CHECK(nop[0].op() == lauf::asm_op::nop);
 
     auto forward = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto block = lauf_asm_declare_block(b, {0, 0});
-        auto dest  = lauf_asm_declare_block(b, {0, 0});
+        auto block = lauf_asm_declare_block(b, 0);
+        auto dest  = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_jump(b, dest);
 
         lauf_asm_build_block(b, block);
@@ -98,12 +98,12 @@ TEST_CASE("lauf_asm_inst_jump")
     CHECK(forward[0].jump.offset == 2);
 
     auto self = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto block = lauf_asm_declare_block(b, {0, 0});
+        auto block = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_jump(b, block);
         lauf_asm_build_block(b, block);
         lauf_asm_inst_jump(b, block); // This is the one we're trying to test.
 
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, {0, 0}));
+        lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     });
     REQUIRE(self.size() == 2);
     CHECK(self[1].op() == lauf::asm_op::jump);
@@ -112,14 +112,14 @@ TEST_CASE("lauf_asm_inst_jump")
     auto backward = build({0, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
         auto fn = lauf_asm_add_function(mod, "foo", {0, 1});
 
-        auto block = lauf_asm_declare_block(b, {0, 0});
+        auto block = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_jump(b, block);
         lauf_asm_build_block(b, block);
         lauf_asm_inst_call(b, fn);
         lauf_asm_inst_pop(b, 0);
         lauf_asm_inst_jump(b, block); // This is the one we're trying to test.
 
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, {0, 0}));
+        lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     });
     REQUIRE(backward.size() == 4);
     CHECK(backward[3].op() == lauf::asm_op::jump);
@@ -129,8 +129,8 @@ TEST_CASE("lauf_asm_inst_jump")
 TEST_CASE("lauf_asm_inst_branch2")
 {
     auto br_nop = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto if_true  = lauf_asm_declare_block(b, {0, 0});
-        auto if_false = lauf_asm_declare_block(b, {0, 0});
+        auto if_true  = lauf_asm_declare_block(b, 0);
+        auto if_false = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_branch2(b, if_true, if_false);
 
         lauf_asm_build_block(b, if_true);
@@ -144,8 +144,8 @@ TEST_CASE("lauf_asm_inst_branch2")
     CHECK(br_nop[1].op() == lauf::asm_op::nop);
 
     auto br_jump = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto if_false = lauf_asm_declare_block(b, {0, 0});
-        auto if_true  = lauf_asm_declare_block(b, {0, 0});
+        auto if_false = lauf_asm_declare_block(b, 0);
+        auto if_true  = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_branch2(b, if_true, if_false);
 
         lauf_asm_build_block(b, if_true);
@@ -160,7 +160,7 @@ TEST_CASE("lauf_asm_inst_branch2")
     CHECK(br_jump[1].jump.offset == 2);
 
     auto same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto block = lauf_asm_declare_block(b, {0, 0});
+        auto block = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_branch2(b, block, block);
         lauf_asm_build_block(b, block);
     });
@@ -173,9 +173,9 @@ TEST_CASE("lauf_asm_inst_branch2")
 TEST_CASE("lauf_asm_inst_branch3")
 {
     auto br_nop = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto if_lt = lauf_asm_declare_block(b, {0, 0});
-        auto if_eq = lauf_asm_declare_block(b, {0, 0});
-        auto if_gt = lauf_asm_declare_block(b, {0, 0});
+        auto if_lt = lauf_asm_declare_block(b, 0);
+        auto if_eq = lauf_asm_declare_block(b, 0);
+        auto if_gt = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_branch3(b, if_lt, if_eq, if_gt);
 
         lauf_asm_build_block(b, if_lt);
@@ -194,9 +194,9 @@ TEST_CASE("lauf_asm_inst_branch3")
     CHECK(br_nop[2].op() == lauf::asm_op::nop);
 
     auto br_jump = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto if_eq = lauf_asm_declare_block(b, {0, 0});
-        auto if_gt = lauf_asm_declare_block(b, {0, 0});
-        auto if_lt = lauf_asm_declare_block(b, {0, 0});
+        auto if_eq = lauf_asm_declare_block(b, 0);
+        auto if_gt = lauf_asm_declare_block(b, 0);
+        auto if_lt = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_branch3(b, if_lt, if_eq, if_gt);
 
         lauf_asm_build_block(b, if_lt);
@@ -216,8 +216,8 @@ TEST_CASE("lauf_asm_inst_branch3")
     CHECK(br_jump[2].jump.offset == 3);
 
     auto cond_same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto if_lt = lauf_asm_declare_block(b, {0, 0});
-        auto if_eq = lauf_asm_declare_block(b, {0, 0});
+        auto if_lt = lauf_asm_declare_block(b, 0);
+        auto if_eq = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_branch3(b, if_lt, if_eq, if_eq);
 
         lauf_asm_build_block(b, if_lt);
@@ -233,7 +233,7 @@ TEST_CASE("lauf_asm_inst_branch3")
     CHECK(cond_same[2].op() == lauf::asm_op::nop);
 
     auto all_same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto block = lauf_asm_declare_block(b, {0, 0});
+        auto block = lauf_asm_declare_block(b, 0);
         lauf_asm_inst_branch3(b, block, block, block);
 
         lauf_asm_build_block(b, block);
@@ -248,7 +248,7 @@ TEST_CASE("lauf_asm_inst_panic")
 {
     auto result = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         lauf_asm_inst_panic(b);
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, {0, 0}));
+        lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     });
     REQUIRE(result.size() == 1);
     CHECK(result[0].op() == lauf::asm_op::panic);

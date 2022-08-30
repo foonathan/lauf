@@ -290,13 +290,13 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
     return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset});
 }
 
-lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, lauf_asm_signature sig)
+lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, uint8_t input_count)
 {
     if (b->blocks.size() == 1u)
-        LAUF_BUILD_ASSERT(sig.input_count == b->fn->sig.input_count,
+        LAUF_BUILD_ASSERT(input_count == b->fn->sig.input_count,
                           "requested entry block has different input count from function");
 
-    return &b->blocks.emplace_back(*b, *b, sig);
+    return &b->blocks.emplace_back(*b, *b, input_count);
 }
 
 void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block)
@@ -323,7 +323,7 @@ void lauf_asm_inst_return(lauf_asm_builder* b)
     LAUF_BUILD_ASSERT_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
-                      "block's output count does not match vstack size on exit");
+                      "block output count overflow");
     LAUF_BUILD_ASSERT(b->cur->sig.output_count == b->fn->sig.output_count,
                       "requested exit block has different output count from function");
 
@@ -336,7 +336,7 @@ void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest)
     LAUF_BUILD_ASSERT_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
-                      "block's output count does not match vstack size on exit");
+                      "block output count overflow");
 
     LAUF_BUILD_ASSERT(b->cur->sig.output_count == dest->sig.input_count,
                       "jump target's input count not compatible with current block's output count");
@@ -352,7 +352,7 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing condition");
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
-                      "block's output count does not match vstack size on exit");
+                      "block output count overflow");
 
     LAUF_BUILD_ASSERT(
         b->cur->sig.output_count == if_true->sig.input_count,
@@ -383,7 +383,7 @@ void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing condition");
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
-                      "block's output count does not match vstack size on exit");
+                      "block output count overflow");
 
     LAUF_BUILD_ASSERT(
         b->cur->sig.output_count == if_lt->sig.input_count,

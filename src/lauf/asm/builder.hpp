@@ -121,9 +121,13 @@ public:
         *cur = save;
     }
 
-    bool finish(std::size_t output_count)
+    bool finish(uint8_t& output_count)
     {
-        return size() == output_count;
+        if (size() > UCHAR_MAX)
+            return false;
+
+        output_count = uint8_t(size());
+        return true;
     }
 
 private:
@@ -154,8 +158,8 @@ struct lauf_asm_block
     } terminator;
     const lauf_asm_block* next[3];
 
-    explicit lauf_asm_block(lauf::arena_base& arena, lauf_asm_signature sig)
-    : sig(sig), vstack(arena, sig.input_count), terminator(unterminated), next{}
+    explicit lauf_asm_block(lauf::arena_base& arena, uint8_t input_count)
+    : sig{input_count, 0}, vstack(arena, input_count), terminator(unterminated), next{}
     {}
 };
 
@@ -200,9 +204,7 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
         this->clear();
 
-        prologue
-            = &blocks.emplace_back(*this, *this,
-                                   lauf_asm_signature{fn->sig.input_count, fn->sig.input_count});
+        prologue             = &blocks.emplace_back(*this, *this, fn->sig.input_count);
         prologue->terminator = lauf_asm_block::fallthrough;
     }
 };
