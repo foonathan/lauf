@@ -290,13 +290,14 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
     return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset});
 }
 
-lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, uint8_t input_count)
+lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, size_t input_count)
 {
+    LAUF_BUILD_ASSERT(input_count <= UINT8_MAX, "too many input values for block");
     if (b->blocks.size() == 1u)
         LAUF_BUILD_ASSERT(input_count == b->fn->sig.input_count,
                           "requested entry block has different input count from function");
 
-    return &b->blocks.emplace_back(*b, *b, input_count);
+    return &b->blocks.emplace_back(*b, *b, std::uint8_t(input_count));
 }
 
 void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block)
