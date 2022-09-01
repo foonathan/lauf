@@ -10,11 +10,13 @@
 #include <lauf/runtime/process.hpp>
 #include <lauf/runtime/value.h>
 #include <lauf/support/arena.hpp>
+#include <lauf/support/page_allocator.hpp>
 
 struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 {
     lauf_vm_panic_handler panic_handler;
-    lauf_vm_allocator     allocator;
+    lauf_vm_allocator     heap_allocator;
+    lauf::page_allocator  page_allocator;
 
     // Grows down.
     lauf_runtime_value* vstack_base;
@@ -27,7 +29,7 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 
     explicit lauf_vm(lauf::arena_key key, lauf_vm_options options)
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
-      allocator(options.allocator), vstack_size(options.vstack_size_in_elements),
+      heap_allocator(options.allocator), vstack_size(options.vstack_size_in_elements),
       max_cstack_chunks(options.max_cstack_size_in_bytes / sizeof(lauf::stack_chunk)),
       step_limit(options.step_limit)
     {

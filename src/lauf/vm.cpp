@@ -56,14 +56,14 @@ lauf_vm_panic_handler lauf_vm_set_panic_handler(lauf_vm* vm, lauf_vm_panic_handl
 
 lauf_vm_allocator lauf_vm_set_allocator(lauf_vm* vm, lauf_vm_allocator a)
 {
-    auto old      = vm->allocator;
-    vm->allocator = a;
+    auto old           = vm->heap_allocator;
+    vm->heap_allocator = a;
     return old;
 }
 
 lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm)
 {
-    return vm->allocator;
+    return vm->heap_allocator;
 }
 
 namespace
@@ -102,7 +102,7 @@ void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_pr
     process->remaining_cstack_chunks = vm->max_cstack_chunks;
     process->program                 = program;
 
-    process->allocations.resize_uninitialized(*vm, program->mod->globals_count);
+    process->allocations.resize_uninitialized(vm->page_allocator, program->mod->globals_count);
     for (auto global = program->mod->globals; global != nullptr; global = global->next)
         process->allocations[global->allocation_idx] = allocate_global(vm, *global);
 
@@ -181,14 +181,15 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
             && alloc.status != lauf::allocation_status::freed)
         {
             if (alloc.split == lauf::allocation_split::unsplit)
-                vm->allocator.free_alloc(vm->allocator.user_data, alloc.ptr, alloc.size);
+                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, alloc.size);
             else if (alloc.split == lauf::allocation_split::split_first)
                 // We don't know the full size.
-                vm->allocator.free_alloc(vm->allocator.user_data, alloc.ptr, 0);
+                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, 0);
             else
                 ; // We don't know the starting address of the allocation.
         }
 
+    process.allocations.clear(vm->page_allocator);
     return success;
 }
 

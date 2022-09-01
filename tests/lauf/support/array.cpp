@@ -21,14 +21,14 @@ void check_range(const Array& arr, const T... t)
 
 TEST_CASE("array")
 {
-    auto arena = lauf::arena::create();
+    lauf::array<int> array;
+    CHECK(array.empty());
+    CHECK(array.size() == 0);
+    CHECK(array.begin() == array.end());
 
-    SUBCASE("int")
+    SUBCASE("arena")
     {
-        lauf::array<int> array;
-        CHECK(array.empty());
-        CHECK(array.size() == 0);
-        CHECK(array.begin() == array.end());
+        auto arena = lauf::arena::create();
 
         SUBCASE("single push_back")
         {
@@ -56,7 +56,7 @@ TEST_CASE("array")
                 array.push_back(*arena, 11);
             CHECK(array.size() == 1024);
 
-            array.clear();
+            array.clear(*arena);
 
             for (auto i = 0; i != 2048; ++i)
                 array.push_back(*arena, 42);
@@ -71,7 +71,7 @@ TEST_CASE("array")
                 array.push_back(*arena, 11);
             CHECK(array.size() == 1024);
 
-            array.clear();
+            array.clear(*arena);
             arena->clear();
 
             for (auto i = 0; i != 2048; ++i)
@@ -81,8 +81,48 @@ TEST_CASE("array")
             for (auto elem : array)
                 CHECK(elem == 42);
         }
-    }
 
-    lauf::arena::destroy(arena);
+        lauf::arena::destroy(arena);
+    }
+    SUBCASE("page_allocator")
+    {
+        lauf::page_allocator alloc;
+
+        SUBCASE("single push_back")
+        {
+            array.push_back(alloc, 0);
+            check_range(array, 0);
+
+            array.push_back(alloc, 1);
+            check_range(array, 0, 1);
+
+            array.emplace_back(alloc, 2);
+            check_range(array, 0, 1, 2);
+        }
+        SUBCASE("big push_back")
+        {
+            for (auto i = 0; i != 10 * 1024; ++i)
+                array.push_back(alloc, 42);
+
+            CHECK(array.size() == 10 * 1024);
+            for (auto elem : array)
+                CHECK(elem == 42);
+        }
+        SUBCASE("re-use after clear")
+        {
+            for (auto i = 0; i != 10 * 1024; ++i)
+                array.push_back(alloc, 11);
+            CHECK(array.size() == 10 * 1024);
+
+            array.clear(alloc);
+
+            for (auto i = 0; i != 10 * 1024; ++i)
+                array.push_back(alloc, 42);
+
+            CHECK(array.size() == 10 * 1024);
+            for (auto elem : array)
+                CHECK(elem == 42);
+        }
+    }
 }
 

@@ -243,6 +243,7 @@ struct lauf_runtime_process
     const lauf_asm_program* program = nullptr;
 
     // The allocations of the process.
+    // They are allocated using the page_allocator of the VM.
     lauf::array<lauf::allocation> allocations;
     std::uint8_t                  alloc_generation = 0;
 

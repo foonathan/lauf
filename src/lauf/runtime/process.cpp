@@ -10,7 +10,7 @@
 lauf_runtime_address lauf_runtime_process::add_allocation(lauf::allocation alloc)
 {
     auto index = allocations.size();
-    allocations.push_back(*vm, alloc);
+    allocations.push_back(vm->page_allocator, alloc);
     return {std::uint32_t(index), alloc.generation, 0};
 }
 
@@ -250,7 +250,7 @@ size_t lauf_runtime_gc(lauf_runtime_process* p, const lauf_runtime_value* vstack
     }
 
     // Free unreachable heap memory.
-    auto allocator   = p->vm->allocator;
+    auto allocator   = p->vm->heap_allocator;
     auto bytes_freed = std::size_t(0);
     for (auto& alloc : p->allocations)
     {

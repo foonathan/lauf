@@ -7,11 +7,19 @@
 #include <cassert>
 #include <lauf/config.h>
 #include <lauf/support/arena.hpp>
+#include <lauf/support/page_allocator.hpp>
 #include <type_traits>
 
 namespace lauf
 {
-/// Essentially a `std::vector<T>` that uses an arena when possible.
+/// Essentially a `std::vector<T>`.
+///
+/// It can use either an arena or a page_allocator for allocation.
+/// It does not store a pointer to them, and it needs to be passed on the functions that allocate.
+/// The calller needs to be consistent and always use the same arena or page allocator.
+/// In the case of an arena, it may fallback to heap memory.
+/// If it does so, it will deallocate the heap memory in the destructor,
+/// but not arena memory or pages.
 template <typename T>
 class array
 {
@@ -92,7 +100,7 @@ public:
     }
 
     //=== modifiers ===//
-    void clear()
+    void clear(arena_base&)
     {
         _size = 0;
         if (!_is_heap)
@@ -103,15 +111,23 @@ public:
             _capacity = 0;
         }
     }
+    void clear(page_allocator& allocator)
+    {
+        assert(!_is_heap);
+        _size = 0;
+        if (_capacity > 0)
+            allocator.deallocate(pages());
+    }
 
     void reserve(arena_base& arena, std::size_t new_size)
     {
-        if (new_size < _capacity)
+        if (new_size <= _capacity)
             return;
 
         constexpr auto initial_capacity = 64;
         if (_capacity == 0 && new_size <= initial_capacity)
         {
+            assert(_size == 0);
             _ptr      = arena.template allocate<T>(initial_capacity);
             _capacity = initial_capacity;
             return;
@@ -137,15 +153,43 @@ public:
             _is_heap  = true;
         }
     }
+    void reserve(page_allocator& allocator, std::size_t new_size)
+    {
+        if (new_size <= _capacity)
+            return;
+
+        auto new_capacity = 2 * _capacity;
+        if (new_capacity < new_size)
+            new_capacity = new_size;
+        auto new_page_count = page_allocator::page_count_for(new_capacity * sizeof(T));
+
+        if (_capacity == 0)
+        {
+            assert(_size == 0);
+            auto pages = allocator.allocate(new_page_count);
+            set_pages(pages);
+        }
+        else
+        {
+            auto new_pages = pages();
+            if (!allocator.try_extend(new_pages, new_page_count))
+            {
+                new_pages = allocator.allocate(new_page_count);
+                std::memcpy(new_pages.ptr, _ptr, _size * sizeof(T));
+            }
+            set_pages(new_pages);
+        }
+    }
 
     void push_back_unchecked(const T& obj)
     {
         _ptr[_size] = obj;
         ++_size;
     }
-    void push_back(arena_base& arena, const T& obj)
+    template <typename Allocator>
+    void push_back(Allocator& alloc, const T& obj)
     {
-        reserve(arena, _size + 1);
+        reserve(alloc, _size + 1);
         push_back_unchecked(obj);
     }
 
@@ -155,10 +199,10 @@ public:
         ::new (&_ptr[_size]) T(static_cast<Args&&>(args)...);
         ++_size;
     }
-    template <typename... Args>
-    void emplace_back(arena_base& arena, Args&&... args)
+    template <typename Allocator, typename... Args>
+    void emplace_back(Allocator& alloc, Args&&... args)
     {
-        reserve(arena, _size + 1);
+        reserve(alloc, _size + 1);
         emplace_back_unchecked(static_cast<Args&&>(args)...);
     }
 
@@ -168,7 +212,8 @@ public:
         _size = new_size;
     }
 
-    void resize_uninitialized(arena_base& arena, std::size_t new_size)
+    template <typename Allocator>
+    void resize_uninitialized(Allocator& alloc, std::size_t new_size)
     {
         if (new_size < _size)
         {
@@ -176,7 +221,7 @@ public:
         }
         else
         {
-            reserve(arena, new_size);
+            reserve(alloc, new_size);
             _size = new_size;
         }
     }
@@ -187,6 +232,16 @@ public:
     }
 
 private:
+    page_block pages() const
+    {
+        return {_ptr, page_allocator::page_count_for(_capacity * sizeof(T))};
+    }
+    void set_pages(page_block& block)
+    {
+        _ptr      = static_cast<T*>(block.ptr);
+        _capacity = (block.page_count * page_allocator::page_size) / sizeof(T);
+    }
+
     T*          _ptr;
     std::size_t _size;
     std::size_t _capacity : 63;

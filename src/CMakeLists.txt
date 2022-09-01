@@ -100,7 +100,9 @@ target_sources(lauf_core PRIVATE
                 ${src_dir}/support/align.hpp
                 ${src_dir}/support/array.hpp
                 ${src_dir}/support/array_list.hpp
-                ${src_dir}/support/arena.hpp)
+                ${src_dir}/support/arena.hpp
+                ${src_dir}/support/page_allocator.hpp
+                ${src_dir}/support/page_allocator.cpp)
 
 #=== Text frontend ===#
 add_library(lauf_text)

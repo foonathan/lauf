@@ -59,7 +59,7 @@ LAUF_NOINLINE bool grow_allocation_array(const lauf_asm_inst* ip, lauf_runtime_v
                                          lauf_runtime_stack_frame* frame_ptr,
                                          lauf_runtime_process*     process)
 {
-    process->allocations.reserve(*process->vm, process->allocations.size() + 1);
+    process->allocations.reserve(process->vm->page_allocator, process->allocations.size() + 1);
     LAUF_VM_DISPATCH;
 }
 } // namespace
