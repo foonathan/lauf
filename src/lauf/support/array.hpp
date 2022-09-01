@@ -176,6 +176,7 @@ public:
             {
                 new_pages = allocator.allocate(new_page_count);
                 std::memcpy(new_pages.ptr, _ptr, _size * sizeof(T));
+                allocator.deallocate(pages());
             }
             set_pages(new_pages);
         }

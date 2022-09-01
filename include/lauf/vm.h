@@ -28,15 +28,20 @@ extern const lauf_vm_allocator lauf_vm_malloc_allocator;
 
 typedef struct lauf_vm_options
 {
+    /// The initial size of the value stack in elements.
+    size_t initial_vstack_size_in_elements;
+    /// The maximum size of the value stack in elements.
+    size_t max_vstack_size_in_elements;
+
     /// The maximum size of the call stack.
     size_t max_cstack_size_in_bytes;
     /// The initial size of the call stack, it can grow bigger if necessary.
     size_t initial_cstack_size_in_bytes;
-    /// The fixed size of the value stack.
-    size_t vstack_size_in_elements;
+
     /// The initial max step value (see lauf_lib_limits_set_step_limit).
     /// A value of zero means unlimited.
     size_t step_limit;
+
     /// A handler that is called when a process panics.
     lauf_vm_panic_handler panic_handler;
     /// The allocator used when the program wants to allocate heap memory.

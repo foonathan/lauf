@@ -8,6 +8,7 @@
 
 #include <lauf/asm/module.hpp>
 #include <lauf/config.h>
+#include <lauf/runtime/value.h>
 #include <lauf/support/page_allocator.hpp>
 
 //=== stack frame ===//
@@ -107,6 +108,7 @@ public:
     {
         auto page_count = page_allocator::page_count_for(initial_stack_size_in_bytes);
         _first          = chunk::allocate(alloc, page_count);
+        _capacity       = page_count * page_allocator::page_size;
     }
 
     void clear(page_allocator& alloc)
@@ -159,15 +161,79 @@ public:
                                      frame_ptr};
     }
 
-    std::size_t allocate_more_stack_space(page_allocator& alloc, void* frame_ptr)
+    void grow(page_allocator& alloc, void* frame_ptr)
     {
         auto cur_chunk  = chunk::chunk_of(frame_ptr);
         cur_chunk->next = chunk::allocate(alloc, 1);
-        return page_allocator::page_size;
+        _capacity += page_allocator::page_size;
+    }
+
+    std::size_t capacity() const
+    {
+        return _capacity;
     }
 
 private:
-    chunk* _first = nullptr;
+    chunk*      _first    = nullptr;
+    std::size_t _capacity = 0;
+};
+} // namespace lauf
+
+//=== vstack ===//
+namespace lauf
+{
+class vstack
+{
+public:
+    void init(page_allocator& alloc, std::size_t initial_size)
+    {
+        auto page_count = page_allocator::page_count_for(initial_size * sizeof(lauf_runtime_value));
+        _block          = alloc.allocate(page_count);
+    }
+
+    void clear(page_allocator& alloc)
+    {
+        alloc.deallocate(_block);
+    }
+
+    lauf_runtime_value* base() const
+    {
+        // vstack grows down
+        return reinterpret_cast<lauf_runtime_value*>(_block.ptr) + capacity();
+    }
+    lauf_runtime_value* limit() const
+    {
+        // vstack grows down
+        // We keep a buffer of UINT8_MAX, so we can always call a builtin.
+        return static_cast<lauf_runtime_value*>(_block.ptr) + UINT8_MAX;
+    }
+
+    std::size_t capacity() const
+    {
+        return _block.page_count * page_allocator::page_size / sizeof(lauf_runtime_value);
+    }
+
+    void grow(page_allocator& alloc, lauf_runtime_value*& vstack_ptr)
+    {
+        auto cur_size = std::size_t(base() - vstack_ptr);
+
+        auto new_page_count = 2 * _block.page_count;
+        auto new_block      = alloc.allocate(new_page_count);
+
+        // We have filled [vstack_ptr, base) with cur_size values.
+        // Need to copy them into [new_block.end - cur_size, new_block.end)
+        auto dest = static_cast<lauf_runtime_value*>(new_block.ptr)
+                    + new_block.page_count * page_allocator::page_size / sizeof(lauf_runtime_value)
+                    - cur_size;
+        std::memcpy(dest, vstack_ptr, cur_size * sizeof(lauf_runtime_value));
+        alloc.deallocate(_block);
+
+        _block     = new_block;
+        vstack_ptr = base() - cur_size;
+    }
+
+private:
+    page_block _block;
 };
 } // namespace lauf
 

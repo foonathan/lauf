@@ -25,17 +25,27 @@ const lauf_vm_allocator lauf_vm_malloc_allocator
        },
        [](void*, void* memory, size_t) { std::free(memory); }};
 
-const lauf_vm_options lauf_default_vm_options
-    = {512 * 1024ull, // max_cstack_size_in_bytes
-       16 * 1024ull,  // initial_cstack_size_in-bytes
-       16 * 1024ull,  // vstack_size_in_elements
-       0,             // step_limit
-       [](lauf_runtime_process* process, const char* msg) {
-           std::fprintf(stderr, "[lauf] panic: %s\n",
-                        msg == nullptr ? "(invalid message pointer)" : msg);
-           lauf::debug_print_cstack(process);
-       },
-       lauf_vm_malloc_allocator};
+const lauf_vm_options lauf_default_vm_options = [] {
+    lauf_vm_options result;
+
+    result.initial_vstack_size_in_elements = 1024ull;
+    result.max_vstack_size_in_elements     = 16 * 1024ull;
+
+    result.initial_cstack_size_in_bytes = 16 * 1024ull;
+    result.max_cstack_size_in_bytes     = 512 * 1024ull;
+
+    result.step_limit = 0;
+
+    result.panic_handler = [](lauf_runtime_process* process, const char* msg) {
+        std::fprintf(stderr, "[lauf] panic: %s\n",
+                     msg == nullptr ? "(invalid message pointer)" : msg);
+        lauf::debug_print_cstack(process);
+    };
+
+    result.allocator = lauf_vm_malloc_allocator;
+
+    return result;
+}();
 
 lauf_vm* lauf_create_vm(lauf_vm_options options)
 {
@@ -97,11 +107,10 @@ lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm
 
 void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program)
 {
-    process->vm         = vm;
-    process->vstack_end = vm->vstack_end();
+    process->vm = vm;
+    process->vstack.init(vm->page_allocator, vm->initial_vstack_size);
     process->cstack.init(vm->page_allocator, vm->initial_cstack_size);
-    process->remaining_cstack_size = vm->max_cstack_size;
-    process->program               = program;
+    process->program = program;
 
     process->allocations.resize_uninitialized(vm->page_allocator, program->mod->globals_count);
     for (auto global = program->mod->globals; global != nullptr; global = global->next)
@@ -145,6 +154,7 @@ void destroy_process(lauf_runtime_process* process)
                 ; // We don't know the starting address of the allocation.
         }
 
+    process->vstack.clear(vm->page_allocator);
     process->cstack.clear(vm->page_allocator);
     process->allocations.clear(vm->page_allocator);
 }
@@ -178,7 +188,7 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     start_process(&process, vm, program);
 
     // Push input values onto the value stack.
-    auto vstack_ptr = vm->vstack_base;
+    auto vstack_ptr = process.vstack.base();
     for (auto i = 0u; i != sig.input_count; ++i)
     {
         --vstack_ptr;
@@ -189,7 +199,7 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     if (success)
     {
         // Pop output values from the value stack.
-        vstack_ptr = vm->vstack_base - sig.output_count;
+        vstack_ptr = process.vstack.base() - sig.output_count;
         for (auto i = 0u; i != sig.output_count; ++i)
         {
             output[sig.output_count - i - 1] = vstack_ptr[0];

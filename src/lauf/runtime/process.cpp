@@ -26,7 +26,7 @@ const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p)
 
 const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p)
 {
-    return p->vm->vstack_base;
+    return p->vstack.base();
 }
 
 // lauf_runtime_get_stacktrace() implemented in stacktrace.cpp

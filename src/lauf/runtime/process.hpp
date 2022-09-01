@@ -134,10 +134,10 @@ constexpr lauf::allocation make_heap_alloc(void* memory, std::size_t size, std::
 struct lauf_runtime_process
 {
     // The VM that is executing the process.
-    lauf_vm*            vm         = nullptr;
-    lauf_runtime_value* vstack_end = nullptr;
-    lauf::cstack        cstack;
-    std::size_t         remaining_cstack_size = 0;
+    lauf_vm* vm = nullptr;
+
+    lauf::vstack vstack;
+    lauf::cstack cstack;
 
     // The dummy frame for call stacks -- this is only lazily updated
     // It needs to be valid when calling a builtin or panicing.

@@ -18,10 +18,10 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
     lauf_vm_allocator     heap_allocator;
     lauf::page_allocator  page_allocator;
 
-    // Grows down.
-    lauf_runtime_value* vstack_base;
-    std::size_t         vstack_size;
-
+    // In number of elements.
+    std::size_t initial_vstack_size;
+    std::size_t max_vstack_size;
+    // In number of bytes.
     std::size_t initial_cstack_size;
     std::size_t max_cstack_size;
 
@@ -29,27 +29,16 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 
     explicit lauf_vm(lauf::arena_key key, lauf_vm_options options)
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
-      heap_allocator(options.allocator), vstack_size(options.vstack_size_in_elements),
+      heap_allocator(options.allocator),
+      initial_vstack_size(options.initial_vstack_size_in_elements),
+      max_vstack_size(options.max_vstack_size_in_elements),
       initial_cstack_size(options.initial_cstack_size_in_bytes),
       max_cstack_size(options.max_cstack_size_in_bytes), step_limit(options.step_limit)
-    {
-        // It grows down, so the base is at the end.
-        vstack_base = static_cast<lauf_runtime_value*>(
-                          ::operator new(vstack_size * sizeof(lauf_runtime_value)))
-                      + vstack_size;
-    }
+    {}
 
     ~lauf_vm()
     {
         page_allocator.release();
-        ::operator delete(vstack_base - vstack_size);
-    }
-
-    lauf_runtime_value* vstack_end() const
-    {
-        // We keep a buffer of UINT8_MAX.
-        // This ensures that we can always call a builtin, which can push at most that many values.
-        return vstack_base - vstack_size + UINT8_MAX;
     }
 };
 
