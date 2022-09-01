@@ -97,10 +97,11 @@ lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm
 
 void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program)
 {
-    process->vm                      = vm;
-    process->vstack_end              = vm->vstack_end();
-    process->remaining_cstack_chunks = vm->max_cstack_chunks;
-    process->program                 = program;
+    process->vm         = vm;
+    process->vstack_end = vm->vstack_end();
+    process->cstack.init(vm->page_allocator, vm->initial_cstack_size);
+    process->remaining_cstack_size = vm->max_cstack_size;
+    process->program               = program;
 
     process->allocations.resize_uninitialized(vm->page_allocator, program->mod->globals_count);
     for (auto global = program->mod->globals; global != nullptr; global = global->next)
@@ -109,12 +110,11 @@ void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_pr
     process->remaining_steps = vm->step_limit;
 }
 
-bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, void* cstack_base,
-               const lauf_asm_function* fn)
+bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr,
+               lauf_runtime_stack_frame* frame_ptr, const lauf_asm_function* fn)
 {
     // Create the initial stack frame.
-    auto frame_ptr = ::new (cstack_base) auto(lauf_runtime_stack_frame::make_trampoline_frame(fn));
-    assert(frame_ptr->is_trampoline_frame());
+    auto trampoline_frame = process->cstack.new_trampoline_frame(frame_ptr, fn);
 
     // Create the trampoline.
     lauf_asm_inst trampoline[2];
@@ -124,7 +124,29 @@ bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr, vo
     trampoline[1].exit.op     = lauf::asm_op::exit;
 
     // Execute the trampoline.
-    return lauf::execute(trampoline, vstack_ptr, frame_ptr, process);
+    return lauf::execute(trampoline, vstack_ptr, trampoline_frame, process);
+}
+
+void destroy_process(lauf_runtime_process* process)
+{
+    auto vm = process->vm;
+
+    // Free allocated heap memory.
+    for (auto alloc : process->allocations)
+        if (alloc.source == lauf::allocation_source::heap_memory
+            && alloc.status != lauf::allocation_status::freed)
+        {
+            if (alloc.split == lauf::allocation_split::unsplit)
+                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, alloc.size);
+            else if (alloc.split == lauf::allocation_split::split_first)
+                // We don't know the full size.
+                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, 0);
+            else
+                ; // We don't know the starting address of the allocation.
+        }
+
+    process->cstack.clear(vm->page_allocator);
+    process->allocations.clear(vm->page_allocator);
 }
 } // namespace
 
@@ -133,7 +155,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 {
     auto leaf = process->callstack_leaf_frame;
 
-    auto result                   = root_call(process, vstack_ptr, leaf.prev->next_frame(), fn);
+    auto result                   = root_call(process, vstack_ptr, leaf.prev, fn);
     process->callstack_leaf_frame = leaf;
     return result;
 }
@@ -163,7 +185,7 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
         vstack_ptr[0] = input[i];
     }
 
-    auto success = root_call(&process, vstack_ptr, vm->cstack->memory, fn);
+    auto success = root_call(&process, vstack_ptr, nullptr, fn);
     if (success)
     {
         // Pop output values from the value stack.
@@ -175,21 +197,7 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
         }
     }
 
-    // Free allocated heap memory.
-    for (auto alloc : process.allocations)
-        if (alloc.source == lauf::allocation_source::heap_memory
-            && alloc.status != lauf::allocation_status::freed)
-        {
-            if (alloc.split == lauf::allocation_split::unsplit)
-                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, alloc.size);
-            else if (alloc.split == lauf::allocation_split::split_first)
-                // We don't know the full size.
-                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, 0);
-            else
-                ; // We don't know the starting address of the allocation.
-        }
-
-    process.allocations.clear(vm->page_allocator);
+    destroy_process(&process);
     return success;
 }
 

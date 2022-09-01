@@ -42,15 +42,19 @@ LAUF_NOINLINE bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_
 #define LAUF_DO_PANIC(Msg)                                                                         \
     LAUF_TAIL_CALL return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
 
-LAUF_NOINLINE bool allocate_new_stack_chunk(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-                                            lauf_runtime_stack_frame* frame_ptr,
-                                            lauf_runtime_process*     process)
+LAUF_NOINLINE bool allocate_more_cstack_space(const lauf_asm_inst*      ip,
+                                              lauf_runtime_value*       vstack_ptr,
+                                              lauf_runtime_stack_frame* frame_ptr,
+                                              lauf_runtime_process*     process)
 {
-    if (process->remaining_cstack_chunks == 0)
+    if (process->remaining_cstack_size == 0)
         LAUF_DO_PANIC("cstack overflow");
 
-    frame_ptr->chunk()->next = lauf::stack_chunk::allocate();
-    --process->remaining_cstack_chunks;
+    auto size = process->cstack.allocate_more_stack_space(process->vm->page_allocator, frame_ptr);
+    if (size > process->remaining_cstack_size)
+        process->remaining_cstack_size = 0;
+    else
+        process->remaining_cstack_size -= size;
 
     LAUF_VM_DISPATCH;
 }
@@ -169,23 +173,14 @@ LAUF_VM_EXECUTE(call)
         LAUF_UNLIKELY(remaining < callee->max_vstack_size))
         LAUF_DO_PANIC("vstack overflow");
 
-    // Check that we have enough space left on the cstack.
-    auto next_frame = frame_ptr->next_frame();
-    if (LAUF_UNLIKELY(frame_ptr->chunk_size_remaining() < callee->max_cstack_size))
-    {
-        // Grow the cstack if necessary.
-        auto cur_chunk = frame_ptr->chunk();
-        if (cur_chunk->next == nullptr)
-            LAUF_TAIL_CALL return allocate_new_stack_chunk(ip, vstack_ptr, frame_ptr, process);
-        next_frame = cur_chunk->next->memory;
-    }
-
     // Create a new stack frame.
-    frame_ptr
-        = ::new (next_frame) auto(lauf_runtime_stack_frame::make_call_frame(callee, ip, frame_ptr));
+    auto new_frame = process->cstack.new_call_frame(frame_ptr, callee, ip);
+    if (LAUF_UNLIKELY(new_frame == nullptr))
+        LAUF_TAIL_CALL return allocate_more_cstack_space(ip, vstack_ptr, frame_ptr, process);
 
     // And start executing the function.
-    ip = callee->insts;
+    frame_ptr = new_frame;
+    ip        = callee->insts;
     LAUF_VM_DISPATCH;
 }
 
@@ -204,26 +199,17 @@ LAUF_VM_EXECUTE(call_indirect)
         LAUF_UNLIKELY(remaining < callee->max_vstack_size))
         LAUF_DO_PANIC("vstack overflow");
 
-    // Check that we have enough space left on the cstack.
-    auto next_frame = frame_ptr->next_frame();
-    if (LAUF_UNLIKELY(frame_ptr->chunk_size_remaining() < callee->max_cstack_size))
-    {
-        // Grow the cstack if necessary.
-        auto cur_chunk = frame_ptr->chunk();
-        if (cur_chunk->next == nullptr)
-            LAUF_TAIL_CALL return allocate_new_stack_chunk(ip, vstack_ptr, frame_ptr, process);
-        next_frame = cur_chunk->next->memory;
-    }
-
     // Create a new stack frame.
-    frame_ptr
-        = ::new (next_frame) auto(lauf_runtime_stack_frame::make_call_frame(callee, ip, frame_ptr));
+    auto new_frame = process->cstack.new_call_frame(frame_ptr, callee, ip);
+    if (LAUF_UNLIKELY(new_frame == nullptr))
+        LAUF_TAIL_CALL return allocate_more_cstack_space(ip, vstack_ptr, frame_ptr, process);
 
     // Only modify the vstack_ptr now, when we don't recurse back.
     ++vstack_ptr;
 
     // And start executing the function.
-    ip = callee->insts;
+    frame_ptr = new_frame;
+    ip        = callee->insts;
     LAUF_VM_DISPATCH;
 }
 

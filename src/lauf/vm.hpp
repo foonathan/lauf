@@ -22,32 +22,17 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
     lauf_runtime_value* vstack_base;
     std::size_t         vstack_size;
 
-    lauf::stack_chunk* cstack;
-    std::size_t        max_cstack_chunks;
+    std::size_t initial_cstack_size;
+    std::size_t max_cstack_size;
 
     std::size_t step_limit;
 
     explicit lauf_vm(lauf::arena_key key, lauf_vm_options options)
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
       heap_allocator(options.allocator), vstack_size(options.vstack_size_in_elements),
-      max_cstack_chunks(options.max_cstack_size_in_bytes / sizeof(lauf::stack_chunk)),
-      step_limit(options.step_limit)
+      initial_cstack_size(options.initial_cstack_size_in_bytes),
+      max_cstack_size(options.max_cstack_size_in_bytes), step_limit(options.step_limit)
     {
-        // We allocate the stacks using new, as unlike the arena, their memory should not be freed
-        // between executions.
-
-        cstack = lauf::stack_chunk::allocate();
-        if (options.initial_cstack_size_in_bytes > sizeof(lauf::stack_chunk))
-        {
-            auto cur = cstack;
-            do
-            {
-                options.initial_cstack_size_in_bytes -= sizeof(lauf::stack_chunk);
-                cur->next = lauf::stack_chunk::allocate();
-                cur       = cur->next;
-            } while (options.initial_cstack_size_in_bytes > sizeof(lauf::stack_chunk));
-        }
-
         // It grows down, so the base is at the end.
         vstack_base = static_cast<lauf_runtime_value*>(
                           ::operator new(vstack_size * sizeof(lauf_runtime_value)))
@@ -56,9 +41,7 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 
     ~lauf_vm()
     {
-        for (auto cur = cstack; cur != nullptr;)
-            cur = lauf::stack_chunk::free(cur);
-
+        page_allocator.release();
         ::operator delete(vstack_base - vstack_size);
     }
 

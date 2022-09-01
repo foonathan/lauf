@@ -7,7 +7,7 @@
 #include <cstdlib>
 
 #include <lauf/runtime/builtin.h>
-#include <lauf/runtime/process.hpp>
+#include <lauf/runtime/stack.hpp>
 
 void lauf_asm_builder::error(const char* context, const char* msg)
 {

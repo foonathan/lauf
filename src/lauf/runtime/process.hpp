@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <lauf/asm/instruction.hpp>
 #include <lauf/asm/type.h>
+#include <lauf/runtime/stack.hpp>
 #include <lauf/runtime/value.h>
 #include <lauf/support/array.hpp>
 
@@ -16,104 +17,6 @@ typedef struct lauf_asm_function lauf_asm_function;
 typedef union lauf_asm_inst      lauf_asm_inst;
 typedef struct lauf_asm_global   lauf_asm_global;
 typedef struct lauf_vm           lauf_vm;
-
-//=== stack chunk ===//
-namespace lauf
-{
-struct stack_chunk
-{
-    static constexpr auto alignment        = 4096;
-    static constexpr auto stack_chunk_size = alignment - sizeof(void*);
-
-    stack_chunk*  next;
-    unsigned char memory[stack_chunk_size]; // don't initialize
-
-    stack_chunk() : next(nullptr) {}
-
-    static stack_chunk* allocate()
-    {
-        static_assert(sizeof(stack_chunk) == alignment);
-        auto memory = std::aligned_alloc(alignment, sizeof(stack_chunk));
-        return ::new (memory) stack_chunk;
-    }
-
-    static stack_chunk* free(stack_chunk* cur)
-    {
-        auto next = cur->next;
-        std::free(cur);
-        return next;
-    }
-
-    unsigned char* end()
-    {
-        return memory + stack_chunk_size;
-    }
-};
-} // namespace lauf
-
-//=== stack frame ===//
-struct lauf_runtime_stack_frame
-{
-    // The current function.
-    const lauf_asm_function* function;
-    // The return address to jump to when the call finishes.
-    const lauf_asm_inst* return_ip;
-    // The allocation of the first local_alloc (only meaningful if the function has any)
-    uint32_t first_local_alloc : 30;
-    // The generation of the local variables.
-    uint32_t local_generation : 2;
-    // The offset from this where the next frame can be put, i.e. after the local allocs.
-    uint32_t next_offset;
-    // The previous stack frame.
-    lauf_runtime_stack_frame* prev;
-
-    static lauf_runtime_stack_frame make_trampoline_frame(const lauf_asm_function* fn)
-    {
-        return {fn, nullptr, 0, 0, sizeof(lauf_runtime_stack_frame), nullptr};
-    }
-    static lauf_runtime_stack_frame make_call_frame(const lauf_asm_function*  callee,
-                                                    const lauf_asm_inst*      ip,
-                                                    lauf_runtime_stack_frame* frame_ptr)
-    {
-        return {callee, ip + 1, 0, 0, sizeof(lauf_runtime_stack_frame), frame_ptr};
-    }
-
-    void assign_callstack_leaf_frame(const lauf_asm_inst* ip, lauf_runtime_stack_frame* frame_ptr)
-    {
-        return_ip = ip + 1;
-        prev      = frame_ptr;
-    }
-
-    bool is_trampoline_frame() const
-    {
-        return prev == nullptr;
-    }
-
-    bool is_root_frame() const
-    {
-        return prev->is_trampoline_frame();
-    }
-
-    void* next_frame()
-    {
-        return reinterpret_cast<unsigned char*>(this) + next_offset;
-    }
-    lauf::stack_chunk* chunk()
-    {
-        auto address       = reinterpret_cast<std::uintptr_t>(this);
-        auto chunk_address = address & ~std::uintptr_t(lauf::stack_chunk::alignment - 1u);
-        return reinterpret_cast<lauf::stack_chunk*>(chunk_address); // NOLINT
-    }
-    unsigned char* chunk_end()
-    {
-        return chunk()->end();
-    }
-    std::size_t chunk_size_remaining()
-    {
-        return static_cast<std::size_t>(chunk_end() - static_cast<unsigned char*>(next_frame()));
-    }
-};
-static_assert(alignof(lauf_runtime_stack_frame) == alignof(void*));
 
 //=== allocation ===//
 namespace lauf
@@ -231,9 +134,10 @@ constexpr lauf::allocation make_heap_alloc(void* memory, std::size_t size, std::
 struct lauf_runtime_process
 {
     // The VM that is executing the process.
-    lauf_vm*            vm                      = nullptr;
-    lauf_runtime_value* vstack_end              = nullptr;
-    std::size_t         remaining_cstack_chunks = 0;
+    lauf_vm*            vm         = nullptr;
+    lauf_runtime_value* vstack_end = nullptr;
+    lauf::cstack        cstack;
+    std::size_t         remaining_cstack_size = 0;
 
     // The dummy frame for call stacks -- this is only lazily updated
     // It needs to be valid when calling a builtin or panicing.

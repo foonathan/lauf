@@ -88,7 +88,8 @@ struct lauf_asm_function
     std::uint16_t  insts_count = 0;
     std::uint16_t  function_idx;
     std::uint16_t  max_vstack_size = 0;
-    std::uint16_t  max_cstack_size = 0;
+    // Includes size for stack frame as well.
+    std::uint16_t max_cstack_size = 0;
 
     explicit lauf_asm_function(lauf_asm_module* mod, const char* name, lauf_asm_signature sig)
     : next(mod->functions), name(mod->strdup(name)), sig(sig),
