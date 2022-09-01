@@ -54,6 +54,8 @@ lauf::page_block lauf::page_allocator::allocate(std::size_t page_count)
     auto size  = page_count * real_page_size;
     auto pages = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     assert(pages != MAP_FAILED); // NOLINT: macro
+    _allocated_bytes += size;
+
     return {pages, size / page_size};
 }
 
@@ -68,6 +70,8 @@ bool lauf::page_allocator::try_extend(page_block& block, std::size_t new_page_co
     auto ptr      = ::mremap(block.ptr, block.page_count * page_size, new_size, 0);
     if (ptr == MAP_FAILED) // NOLINT: macro
         return false;
+    _allocated_bytes -= block.page_count * page_size;
+    _allocated_bytes += new_size;
 
     assert(ptr == block.ptr);
     block.page_count = new_size / page_size;
@@ -88,14 +92,20 @@ void lauf::page_allocator::deallocate(page_block block)
     _free_list = ::new (block.ptr) free_list_node{block.page_count, _free_list};
 }
 
-void lauf::page_allocator::release()
+std::size_t lauf::page_allocator::release()
 {
     auto cur = _free_list;
     while (cur != nullptr)
     {
+        auto size = cur->page_count * page_size;
         auto next = cur->next;
-        ::munmap(cur, cur->page_count * page_size);
+
+        ::munmap(cur, size);
+        _allocated_bytes -= size;
+
         cur = next;
     }
+
+    return _allocated_bytes;
 }
 

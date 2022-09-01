@@ -68,7 +68,7 @@ class cstack
 
             auto first = ::new (block.ptr) chunk{nullptr};
             auto cur   = first;
-            for (auto i = 1u; i < page_count; ++i)
+            for (auto i = 1u; i < block.page_count; ++i)
             {
                 cur->next = ::new (cur->end()) chunk{nullptr};
                 cur       = cur->next;

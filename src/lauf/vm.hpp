@@ -38,7 +38,8 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 
     ~lauf_vm()
     {
-        page_allocator.release();
+        [[maybe_unused]] auto leaked_bytes = page_allocator.release();
+        assert(leaked_bytes == 0);
     }
 };
 

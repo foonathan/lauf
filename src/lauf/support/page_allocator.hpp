@@ -18,7 +18,7 @@ struct page_block
 class page_allocator
 {
 public:
-    constexpr page_allocator() : _free_list(nullptr) {}
+    constexpr page_allocator() : _free_list(nullptr), _allocated_bytes(0) {}
 
     //=== page query ===//
     // We hardcode the page size to a compile-time constant that is <= and divisible by the actual
@@ -47,13 +47,14 @@ public:
     void deallocate(page_block block);
 
     /// Frees all pages from the cache.
-    void release();
+    std::size_t release();
 
 private:
     // Stored at the beginning of a free page block.
     struct free_list_node;
 
     free_list_node* _free_list;
+    std::size_t     _allocated_bytes;
 };
 } // namespace lauf
 
