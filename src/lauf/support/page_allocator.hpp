@@ -21,7 +21,9 @@ public:
     constexpr page_allocator() : _free_list(nullptr) {}
 
     //=== page query ===//
-    static const std::size_t page_size;
+    // We hardcode the page size to a compile-time constant that is <= and divisible by the actual
+    // page size.
+    static constexpr std::size_t page_size = 4096;
 
     static void* page_of(void* address)
     {

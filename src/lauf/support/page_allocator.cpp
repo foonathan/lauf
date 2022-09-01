@@ -23,8 +23,15 @@ struct lauf::page_allocator::free_list_node
     }
 };
 
-const std::size_t lauf::page_allocator::page_size
-    = static_cast<std::size_t>(::sysconf(_SC_PAGE_SIZE));
+namespace
+{
+const auto real_page_size = [] {
+    auto result = static_cast<std::size_t>(::sysconf(_SC_PAGE_SIZE));
+    assert(lauf::page_allocator::page_size <= result);
+    assert(result % lauf::page_allocator::page_size == 0);
+    return result;
+}();
+}
 
 lauf::page_block lauf::page_allocator::allocate(std::size_t page_count)
 {
@@ -44,10 +51,10 @@ lauf::page_block lauf::page_allocator::allocate(std::size_t page_count)
         }
 
     // Allocate new set of pages.
-    auto pages = ::mmap(nullptr, page_count * page_size, PROT_READ | PROT_WRITE,
-                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    auto size  = page_count * real_page_size;
+    auto pages = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     assert(pages != MAP_FAILED); // NOLINT: macro
-    return {pages, page_count};
+    return {pages, size / page_size};
 }
 
 bool lauf::page_allocator::try_extend(page_block& block, std::size_t new_page_count)
@@ -56,12 +63,14 @@ bool lauf::page_allocator::try_extend(page_block& block, std::size_t new_page_co
     // * upon allocation we return the maximal sequence of contiguous blocks
     // * when deallocating we merge everything to keep it contiguous
     // So the only way to extend it is to ask the OS.
-    auto ptr = ::mremap(block.ptr, block.page_count * page_size, new_page_count * page_size, 0);
+
+    auto new_size = new_page_count * real_page_size;
+    auto ptr      = ::mremap(block.ptr, block.page_count * page_size, new_size, 0);
     if (ptr == MAP_FAILED) // NOLINT: macro
         return false;
 
     assert(ptr == block.ptr);
-    block.page_count += new_page_count;
+    block.page_count = new_size / page_size;
     return true;
 }
 
