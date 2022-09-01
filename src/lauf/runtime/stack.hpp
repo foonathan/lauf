@@ -61,14 +61,14 @@ class cstack
     {
         chunk* next;
 
-        static chunk* allocate(page_allocator& alloc, std::size_t page_count)
+        static chunk* allocate(page_allocator& alloc, std::size_t capacity)
         {
-            assert(page_count >= 1);
-            auto block = alloc.allocate(page_count);
+            assert(capacity > 0);
+            auto block = alloc.allocate(capacity);
 
             auto first = ::new (block.ptr) chunk{nullptr};
             auto cur   = first;
-            for (auto i = 1u; i < block.page_count; ++i)
+            for (auto i = page_allocator::page_size; i < block.size; i += page_allocator::page_size)
             {
                 cur->next = ::new (cur->end()) chunk{nullptr};
                 cur       = cur->next;
@@ -79,7 +79,7 @@ class cstack
         static chunk* deallocate(page_allocator& alloc, chunk* cur)
         {
             auto next = cur->next;
-            alloc.deallocate({cur, 1});
+            alloc.deallocate({cur, page_allocator::page_size});
             return next;
         }
 
@@ -106,9 +106,8 @@ class cstack
 public:
     void init(page_allocator& alloc, std::size_t initial_stack_size_in_bytes)
     {
-        auto page_count = page_allocator::page_count_for(initial_stack_size_in_bytes);
-        _first          = chunk::allocate(alloc, page_count);
-        _capacity       = page_count * page_allocator::page_size;
+        _first    = chunk::allocate(alloc, initial_stack_size_in_bytes);
+        _capacity = initial_stack_size_in_bytes;
     }
 
     void clear(page_allocator& alloc)
@@ -164,7 +163,7 @@ public:
     void grow(page_allocator& alloc, void* frame_ptr)
     {
         auto cur_chunk  = chunk::chunk_of(frame_ptr);
-        cur_chunk->next = chunk::allocate(alloc, 1);
+        cur_chunk->next = chunk::allocate(alloc, page_allocator::page_size);
         _capacity += page_allocator::page_size;
     }
 
@@ -187,8 +186,7 @@ class vstack
 public:
     void init(page_allocator& alloc, std::size_t initial_size)
     {
-        auto page_count = page_allocator::page_count_for(initial_size * sizeof(lauf_runtime_value));
-        _block          = alloc.allocate(page_count);
+        _block = alloc.allocate(initial_size * sizeof(lauf_runtime_value));
     }
 
     void clear(page_allocator& alloc)
@@ -210,21 +208,20 @@ public:
 
     std::size_t capacity() const
     {
-        return _block.page_count * page_allocator::page_size / sizeof(lauf_runtime_value);
+        return _block.size / sizeof(lauf_runtime_value);
     }
 
     void grow(page_allocator& alloc, lauf_runtime_value*& vstack_ptr)
     {
         auto cur_size = std::size_t(base() - vstack_ptr);
 
-        auto new_page_count = 2 * _block.page_count;
-        auto new_block      = alloc.allocate(new_page_count);
+        auto new_size  = 2 * _block.size;
+        auto new_block = alloc.allocate(new_size);
 
         // We have filled [vstack_ptr, base) with cur_size values.
         // Need to copy them into [new_block.end - cur_size, new_block.end)
         auto dest = static_cast<lauf_runtime_value*>(new_block.ptr)
-                    + new_block.page_count * page_allocator::page_size / sizeof(lauf_runtime_value)
-                    - cur_size;
+                    + new_block.size / sizeof(lauf_runtime_value) - cur_size;
         std::memcpy(dest, vstack_ptr, cur_size * sizeof(lauf_runtime_value));
         alloc.deallocate(_block);
 

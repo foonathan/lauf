@@ -12,7 +12,7 @@ namespace lauf
 struct page_block
 {
     void*       ptr;
-    std::size_t page_count;
+    std::size_t size;
 };
 
 class page_allocator
@@ -33,15 +33,10 @@ public:
         return static_cast<unsigned char*>(address) - misaligned;
     }
 
-    static std::size_t page_count_for(std::size_t size_in_bytes)
-    {
-        return size_in_bytes / page_size + (size_in_bytes % page_size > 0 ? 1 : 0);
-    }
-
     //=== allocation ===//
-    page_block allocate(std::size_t page_count);
+    page_block allocate(std::size_t size);
 
-    bool try_extend(page_block& block, std::size_t new_page_count);
+    bool try_extend(page_block& block, std::size_t size);
 
     /// Adds to a cache only.
     void deallocate(page_block block);

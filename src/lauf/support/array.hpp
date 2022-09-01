@@ -161,20 +161,19 @@ public:
         auto new_capacity = 2 * _capacity;
         if (new_capacity < new_size)
             new_capacity = new_size;
-        auto new_page_count = page_allocator::page_count_for(new_capacity * sizeof(T));
 
         if (_capacity == 0)
         {
             assert(_size == 0);
-            auto pages = allocator.allocate(new_page_count);
+            auto pages = allocator.allocate(new_capacity * sizeof(T));
             set_pages(pages);
         }
         else
         {
             auto new_pages = pages();
-            if (!allocator.try_extend(new_pages, new_page_count))
+            if (!allocator.try_extend(new_pages, new_capacity * sizeof(T)))
             {
-                new_pages = allocator.allocate(new_page_count);
+                new_pages = allocator.allocate(new_capacity * sizeof(T));
                 std::memcpy(new_pages.ptr, _ptr, _size * sizeof(T));
                 allocator.deallocate(pages());
             }
@@ -235,12 +234,12 @@ public:
 private:
     page_block pages() const
     {
-        return {_ptr, page_allocator::page_count_for(_capacity * sizeof(T))};
+        return {_ptr, _capacity * sizeof(T)};
     }
     void set_pages(page_block& block)
     {
         _ptr      = static_cast<T*>(block.ptr);
-        _capacity = (block.page_count * page_allocator::page_size) / sizeof(T);
+        _capacity = block.size / sizeof(T);
     }
 
     T*          _ptr;
