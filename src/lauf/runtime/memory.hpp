@@ -4,10 +4,12 @@
 #ifndef LAUF_RUNTIME_MEMORY_HPP_INCLUDED
 #define LAUF_RUNTIME_MEMORY_HPP_INCLUDED
 
+#include <lauf/asm/module.hpp>
 #include <lauf/asm/type.h>
 #include <lauf/config.h>
 #include <lauf/runtime/value.h>
 #include <lauf/support/align.hpp>
+#include <lauf/support/array.hpp>
 
 //=== allocation ===//
 namespace lauf
@@ -120,6 +122,33 @@ constexpr lauf::allocation make_heap_alloc(void* memory, std::size_t size, std::
     alloc.generation = generation;
     return alloc;
 }
+
+inline lauf::allocation make_global_alloc(lauf::arena_base& arena, lauf_asm_global global)
+{
+    lauf::allocation result;
+
+    if (global.memory != nullptr)
+    {
+        result.ptr = arena.memdup(global.memory, global.size, global.alignment);
+    }
+    else
+    {
+        result.ptr = arena.allocate(global.size, global.alignment);
+        std::memset(result.ptr, 0, global.size);
+    }
+
+    // If bigger than 32bit, only the lower parts are addressable.
+    result.size = std::uint32_t(global.size);
+
+    result.source     = global.perms == lauf_asm_global::read_write
+                            ? lauf::allocation_source::static_mut_memory
+                            : lauf::allocation_source::static_const_memory;
+    result.status     = lauf::allocation_status::allocated;
+    result.gc         = lauf::gc_tracking::reachable_explicit;
+    result.generation = 0;
+
+    return result;
+}
 } // namespace lauf
 
 namespace lauf
@@ -150,6 +179,120 @@ inline const void* checked_offset(lauf::allocation alloc, lauf_runtime_address a
 
     return alloc.unchecked_offset(addr.offset);
 }
+} // namespace lauf
+
+namespace lauf
+{
+/// The memory of a process.
+class memory
+{
+public:
+    memory() = default;
+
+    void init(lauf::page_allocator& allocator, lauf::arena_base& arena, const lauf_asm_module* mod)
+    {
+        _allocations.resize_uninitialized(allocator, mod->globals_count);
+        for (auto global = mod->globals; global != nullptr; global = global->next)
+            _allocations[global->allocation_idx] = make_global_alloc(arena, *global);
+    }
+    void clear(lauf::page_allocator& alloc)
+    {
+        _allocations.clear(alloc);
+    }
+
+    //=== container interface ===//
+    auto begin()
+    {
+        return _allocations.begin();
+    }
+    auto end()
+    {
+        return _allocations.end();
+    }
+    auto begin() const
+    {
+        return _allocations.begin();
+    }
+    auto end() const
+    {
+        return _allocations.end();
+    }
+
+    lauf_runtime_address new_allocation(page_allocator& allocator, allocation alloc)
+    {
+        auto index = _allocations.size();
+        _allocations.push_back(allocator, alloc);
+        return {std::uint32_t(index), alloc.generation, 0};
+    }
+    lauf_runtime_address new_allocation_unchecked(allocation alloc)
+    {
+        auto index = _allocations.size();
+        _allocations.push_back_unchecked(alloc);
+        return {std::uint32_t(index), alloc.generation, 0};
+    }
+
+    allocation& operator[](std::size_t index)
+    {
+        return _allocations[index];
+    }
+    const allocation& operator[](std::size_t index) const
+    {
+        return _allocations[index];
+    }
+
+    allocation* try_get(lauf_runtime_address addr)
+    {
+        if (LAUF_UNLIKELY(addr.allocation >= _allocations.size()))
+            return nullptr;
+
+        auto alloc = &_allocations[addr.allocation];
+        if (LAUF_UNLIKELY((alloc->generation & 0b11) != addr.generation))
+            return nullptr;
+
+        return alloc;
+    }
+
+    //=== local allocations ===//
+    bool needs_to_grow(std::size_t additional_allocations) const
+    {
+        return _allocations.size() + additional_allocations > _allocations.capacity();
+    }
+    void grow(page_allocator& allocator)
+    {
+        _allocations.reserve(allocator, _allocations.size() + 1);
+    }
+
+    std::uint32_t next_index() const
+    {
+        return std::uint32_t(_allocations.size());
+    }
+    std::uint8_t cur_generation() const
+    {
+        return _cur_generation;
+    }
+
+    // This function is called on frame entry of functions with local variables.
+    // It will garbage collect allocations that have been freed.
+    void remove_freed()
+    {
+        if (_allocations.empty() || _allocations.back().status != lauf::allocation_status::freed)
+            // We only remove from the back.
+            return;
+
+        do
+        {
+            _allocations.pop_back();
+        } while (!_allocations.empty()
+                 && _allocations.back().status == lauf::allocation_status::freed);
+
+        // Since we changed something, we need to increment the generation.
+        ++_cur_generation;
+    }
+
+private:
+    lauf::array<allocation> _allocations;
+    std::uint8_t            _cur_generation = 0;
+};
 } // namespace lauf
 
 #endif // LAUF_RUNTIME_MEMORY_HPP_INCLUDED

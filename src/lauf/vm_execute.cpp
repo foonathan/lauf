@@ -70,7 +70,7 @@ LAUF_NOINLINE bool grow_allocation_array(const lauf_asm_inst* ip, lauf_runtime_v
                                          lauf_runtime_stack_frame* frame_ptr,
                                          lauf_runtime_process*     process)
 {
-    process->allocations.reserve(process->vm->page_allocator, process->allocations.size() + 1);
+    process->memory.grow(process->vm->page_allocator);
     LAUF_VM_DISPATCH;
 }
 } // namespace
@@ -408,13 +408,12 @@ LAUF_VM_EXECUTE(swap)
 LAUF_VM_EXECUTE(setup_local_alloc)
 {
     // If necessary, grow the allocation array - this will then tail call back here.
-    if (LAUF_UNLIKELY(process->allocations.size() + ip->setup_local_alloc.value
-                      > process->allocations.capacity()))
+    if (LAUF_UNLIKELY(process->memory.needs_to_grow(ip->setup_local_alloc.value)))
         LAUF_TAIL_CALL return grow_allocation_array(ip, vstack_ptr, frame_ptr, process);
 
     // Setup the necessary metadata.
-    frame_ptr->first_local_alloc = std::uint32_t(process->allocations.size());
-    frame_ptr->local_generation  = process->alloc_generation;
+    frame_ptr->first_local_alloc = process->memory.next_index();
+    frame_ptr->local_generation  = process->memory.cur_generation();
 
     ++ip;
     LAUF_VM_DISPATCH;
@@ -428,7 +427,7 @@ LAUF_VM_EXECUTE(local_alloc)
     auto memory = frame_ptr->next_frame();
     frame_ptr->next_offset += ip->local_alloc.size;
 
-    process->allocations.push_back_unchecked(
+    process->memory.new_allocation_unchecked(
         lauf::make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
 
     ++ip;
@@ -443,7 +442,7 @@ LAUF_VM_EXECUTE(local_alloc_aligned)
     // computation in the builder assumes.
     frame_ptr->next_offset += ip->local_alloc_aligned.alignment() + ip->local_alloc.size;
 
-    process->allocations.push_back_unchecked(
+    process->memory.new_allocation_unchecked(
         lauf::make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
 
     ++ip;
@@ -454,14 +453,15 @@ LAUF_VM_EXECUTE(local_free)
 {
     for (auto i = 0u; i != ip->local_free.value; ++i)
     {
-        auto index = frame_ptr->first_local_alloc + i;
+        auto  index = frame_ptr->first_local_alloc + i;
+        auto& alloc = process->memory[index];
 
-        if (LAUF_UNLIKELY(process->allocations[index].split != lauf::allocation_split::unsplit))
+        if (LAUF_UNLIKELY(alloc.split != lauf::allocation_split::unsplit))
             LAUF_DO_PANIC("cannot free split allocation");
 
-        process->allocations[index].status = lauf::allocation_status::freed;
+        alloc.status = lauf::allocation_status::freed;
     }
-    process->try_free_allocations();
+    process->memory.remove_freed();
 
     ++ip;
     LAUF_VM_DISPATCH;
@@ -471,7 +471,7 @@ LAUF_VM_EXECUTE(deref_const)
 {
     auto address = vstack_ptr[0].as_address;
 
-    auto alloc = process->get_allocation(address);
+    auto alloc = process->memory.try_get(address);
     if (LAUF_UNLIKELY(alloc == nullptr))
         goto panic;
 
@@ -495,7 +495,7 @@ LAUF_VM_EXECUTE(deref_mut)
 {
     auto address = vstack_ptr[0].as_address;
 
-    auto alloc = process->get_allocation(address);
+    auto alloc = process->memory.try_get(address);
     if (LAUF_UNLIKELY(alloc == nullptr) || LAUF_UNLIKELY(lauf::is_const(alloc->source)))
         goto panic;
 

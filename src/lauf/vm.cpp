@@ -78,44 +78,13 @@ lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm)
 
 namespace
 {
-lauf::allocation allocate_global(lauf::intrinsic_arena<lauf_vm>* arena, lauf_asm_global global)
-{
-    lauf::allocation result;
-
-    if (global.memory != nullptr)
-    {
-        result.ptr = arena->memdup(global.memory, global.size, global.alignment);
-    }
-    else
-    {
-        result.ptr = arena->allocate(global.size, global.alignment);
-        std::memset(result.ptr, 0, global.size);
-    }
-
-    // If bigger than 32bit, only the lower parts are addressable.
-    result.size = std::uint32_t(global.size);
-
-    result.source     = global.perms == lauf_asm_global::read_write
-                            ? lauf::allocation_source::static_mut_memory
-                            : lauf::allocation_source::static_const_memory;
-    result.status     = lauf::allocation_status::allocated;
-    result.gc         = lauf::gc_tracking::reachable_explicit;
-    result.generation = 0;
-
-    return result;
-}
-
 void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program)
 {
     process->vm = vm;
     process->vstack.init(vm->page_allocator, vm->initial_vstack_size);
     process->cstack.init(vm->page_allocator, vm->initial_cstack_size);
-    process->program = program;
-
-    process->allocations.resize_uninitialized(vm->page_allocator, program->mod->globals_count);
-    for (auto global = program->mod->globals; global != nullptr; global = global->next)
-        process->allocations[global->allocation_idx] = allocate_global(vm, *global);
-
+    process->memory.init(vm->page_allocator, *vm, program->mod);
+    process->program         = program;
     process->remaining_steps = vm->step_limit;
 }
 
@@ -141,7 +110,7 @@ void destroy_process(lauf_runtime_process* process)
     auto vm = process->vm;
 
     // Free allocated heap memory.
-    for (auto alloc : process->allocations)
+    for (auto alloc : process->memory)
         if (alloc.source == lauf::allocation_source::heap_memory
             && alloc.status != lauf::allocation_status::freed)
         {
@@ -156,7 +125,7 @@ void destroy_process(lauf_runtime_process* process)
 
     process->vstack.clear(vm->page_allocator);
     process->cstack.clear(vm->page_allocator);
-    process->allocations.clear(vm->page_allocator);
+    process->memory.clear(vm->page_allocator);
 }
 } // namespace
 

@@ -22,6 +22,7 @@ struct lauf_runtime_process
 
     lauf::vstack vstack;
     lauf::cstack cstack;
+    lauf::memory memory;
 
     // The dummy frame for call stacks -- this is only lazily updated
     // It needs to be valid when calling a builtin or panicing.
@@ -30,44 +31,7 @@ struct lauf_runtime_process
     // The program that is running.
     const lauf_asm_program* program = nullptr;
 
-    // The allocations of the process.
-    // They are allocated using the page_allocator of the VM.
-    lauf::array<lauf::allocation> allocations;
-    std::uint8_t                  alloc_generation = 0;
-
     std::size_t remaining_steps;
-
-    lauf_runtime_address add_allocation(lauf::allocation alloc);
-
-    lauf::allocation* get_allocation(lauf_runtime_address addr)
-    {
-        if (LAUF_UNLIKELY(addr.allocation >= allocations.size()))
-            return nullptr;
-
-        auto alloc = &allocations[addr.allocation];
-        if (LAUF_UNLIKELY((alloc->generation & 0b11) != addr.generation))
-            return nullptr;
-
-        return alloc;
-    }
-
-    // This function is called on frame entry of functions with local variables.
-    // It will garbage collect allocations that have been freed.
-    void try_free_allocations()
-    {
-        if (allocations.empty() || allocations.back().status != lauf::allocation_status::freed)
-            // We only remove from the back.
-            return;
-
-        do
-        {
-            allocations.pop_back();
-        } while (!allocations.empty()
-                 && allocations.back().status == lauf::allocation_status::freed);
-
-        // Since we changed something, we need to increment the generation.
-        ++alloc_generation;
-    }
 };
 
 #endif // SRC_LAUF_RUNTIME_PROCESS_HPP_INCLUDED
