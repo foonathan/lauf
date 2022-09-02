@@ -5,7 +5,7 @@ get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf A
 get_filename_component(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/lauf ABSOLUTE)
 
 include(FetchContent)
-FetchContent_Declare(lexy URL https://github.com/foonathan/lexy/releases/download/v2022.05.1/lexy-src.zip)
+FetchContent_Declare(lexy URL https://lexy.foonathan.net/download/lexy-src.zip)
 FetchContent_MakeAvailable(lexy)
 
 #=== Warnings ===#

@@ -77,14 +77,14 @@ struct parse_state
     symbol_table<const lauf_runtime_builtin_function*> builtins;
     symbol_table<const lauf_asm_type*>                 types;
 
-    mutable lauf_asm_module*                 mod;
-    mutable lauf_asm_function*               fn;
-    mutable symbol_table<lauf_asm_global*>   globals;
-    mutable symbol_table<lauf_asm_function*> functions;
-    mutable symbol_table<lauf_asm_block*>    blocks;
-    mutable symbol_table<lauf_asm_local*>    locals;
+    lauf_asm_module*                 mod;
+    lauf_asm_function*               fn;
+    symbol_table<lauf_asm_global*>   globals;
+    symbol_table<lauf_asm_function*> functions;
+    symbol_table<lauf_asm_block*>    blocks;
+    symbol_table<lauf_asm_local*>    locals;
 
-    mutable lexy::input_location_anchor<lexy::buffer<lexy::utf8_encoding>> anchor;
+    lexy::input_location_anchor<lexy::buffer<lexy::utf8_encoding>> anchor;
 
     parse_state(lexy::buffer<lexy::utf8_encoding>& input, lauf_frontend_text_options opts)
     : input(&input), builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr),
@@ -199,7 +199,7 @@ struct function_ref
         [](const parse_state& state, const std::string& name) {
             return state.functions.lookup(name);
         },
-        [](const parse_state& state, const std::string& name, lauf_asm_signature sig) {
+        [](parse_state& state, const std::string& name, lauf_asm_signature sig) {
             if (auto f = state.functions.try_lookup(name))
                 return *f;
 
@@ -213,7 +213,7 @@ struct block_ref
     static constexpr auto rule  = dsl::p<local_identifier> + dsl::if_(dsl::p<signature>);
     static constexpr auto value = callback<lauf_asm_block*>( //
         [](const parse_state& state, const std::string& name) { return state.blocks.lookup(name); },
-        [](const parse_state& state, const std::string& name, lauf_asm_signature sig) {
+        [](parse_state& state, const std::string& name, lauf_asm_signature sig) {
             if (auto block = state.blocks.try_lookup(name))
                 return *block;
 
@@ -313,13 +313,13 @@ struct global_decl
         }();
 
         static constexpr auto value = callback(
-            [](const parse_state& state, const std::string& name, lauf_asm_layout layout,
+            [](parse_state& state, const std::string& name, lauf_asm_layout layout,
                std::string data) {
                 data.resize(layout.size);
                 auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(), layout);
                 state.globals.insert(name, g);
             },
-            [](const parse_state& state, const std::string& name, lexy::nullopt,
+            [](parse_state& state, const std::string& name, lexy::nullopt,
                const std::string& data) {
                 auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(),
                                                         {data.size(), alignof(void*)});
@@ -336,13 +336,13 @@ struct global_decl
         }();
 
         static constexpr auto value = callback(
-            [](const parse_state& state, const std::string& name, lauf_asm_layout layout,
+            [](parse_state& state, const std::string& name, lauf_asm_layout layout,
                std::string data) {
                 data.resize(layout.size);
                 auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(), layout);
                 state.globals.insert(name, g);
             },
-            [](const parse_state& state, const std::string& name, lexy::nullopt,
+            [](parse_state& state, const std::string& name, lexy::nullopt,
                const std::string& data) {
                 auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(),
                                                       {data.size(), alignof(void*)});
@@ -530,7 +530,7 @@ struct inst_store_field
 struct location
 {
     static constexpr auto rule  = dsl::position;
-    static constexpr auto value = callback([](const parse_state& state, auto pos) {
+    static constexpr auto value = callback([](parse_state& state, auto pos) {
         auto loc = lexy::get_input_location(*state.input, pos, state.anchor);
         lauf_asm_build_debug_location(state.builder, {std::uint16_t(loc.line_nr()),
                                                       std::uint16_t(loc.column_nr()), false});
@@ -567,21 +567,21 @@ struct block
     {
         static constexpr auto rule
             = LAUF_KEYWORD("block") + dsl::p<local_identifier> + dsl::p<signature>;
-        static constexpr auto value = callback(
-            [](const parse_state& state, const std::string& name, lauf_asm_signature sig) {
-                lauf_asm_block* block;
-                if (auto b = state.blocks.try_lookup(name))
-                {
-                    block = *b;
-                }
-                else
-                {
-                    block = lauf_asm_declare_block(state.builder, sig.input_count);
-                    state.blocks.insert(name, block);
-                }
+        static constexpr auto value
+            = callback([](parse_state& state, const std::string& name, lauf_asm_signature sig) {
+                  lauf_asm_block* block;
+                  if (auto b = state.blocks.try_lookup(name))
+                  {
+                      block = *b;
+                  }
+                  else
+                  {
+                      block = lauf_asm_declare_block(state.builder, sig.input_count);
+                      state.blocks.insert(name, block);
+                  }
 
-                lauf_asm_build_block(state.builder, block);
-            });
+                  lauf_asm_build_block(state.builder, block);
+              });
     };
 
     static constexpr auto rule  = dsl::p<header> + dsl::curly_bracketed.list(dsl::p<instruction>);
@@ -594,7 +594,7 @@ struct local_decl
         = LAUF_KEYWORD("local")
           >> dsl::p<local_identifier> + dsl::colon + dsl::p<layout_expr> + dsl::semicolon;
     static constexpr auto value
-        = callback([](const parse_state& state, const std::string& name, lauf_asm_layout layout) {
+        = callback([](parse_state& state, const std::string& name, lauf_asm_layout layout) {
               auto local = lauf_asm_build_local(state.builder, layout);
               state.locals.insert(name, local);
           });
@@ -606,42 +606,38 @@ struct function_decl
     {
         static constexpr auto rule = dsl::p<global_identifier> + dsl::p<signature>;
 
-        static constexpr auto value = callback(
-            [](const parse_state& state, const std::string& name, lauf_asm_signature sig) {
-                if (auto f = state.functions.try_lookup(name))
-                {
-                    state.fn = *f;
-                }
-                else
-                {
-                    state.fn = lauf_asm_add_function(state.mod, name.c_str(), sig);
-                    state.functions.insert(name, state.fn);
-                }
+        static constexpr auto value
+            = callback([](parse_state& state, const std::string& name, lauf_asm_signature sig) {
+                  if (auto f = state.functions.try_lookup(name))
+                  {
+                      state.fn = *f;
+                  }
+                  else
+                  {
+                      state.fn = lauf_asm_add_function(state.mod, name.c_str(), sig);
+                      state.functions.insert(name, state.fn);
+                  }
 
-                lauf_asm_build(state.builder, state.mod, state.fn);
-                state.blocks.clear();
-                state.locals.clear();
-            });
-    };
-
-    struct entry_block
-    {
-        static constexpr auto rule  = LEXY_LIT("");
-        static constexpr auto value = callback([](const parse_state& state) {
-            // Create an entry block.
-            auto block = lauf_asm_declare_block(state.builder,
-                                                lauf_asm_function_signature(state.fn).input_count);
-            lauf_asm_build_block(state.builder, block);
-            state.blocks.insert("", block);
-        });
+                  lauf_asm_build(state.builder, state.mod, state.fn);
+                  state.blocks.clear();
+                  state.locals.clear();
+              });
     };
 
     struct body
     {
+        static void create_entry_block(parse_state& state)
+        {
+            auto block = lauf_asm_declare_block(state.builder,
+                                                lauf_asm_function_signature(state.fn).input_count);
+            lauf_asm_build_block(state.builder, block);
+            state.blocks.insert("", block);
+        }
+
         static constexpr auto rule = [] {
             auto block_list = dsl::peek(LAUF_KEYWORD("block"))
                               >> dsl::curly_bracketed.as_terminator().list(dsl::p<block>);
-            auto inst_list = dsl::p<entry_block> //
+            auto inst_list = dsl::effect<create_entry_block> //
                              + dsl::curly_bracketed.as_terminator().list(dsl::p<instruction>);
 
             auto locals = dsl::if_(dsl::list(dsl::p<local_decl>));
@@ -660,22 +656,22 @@ struct function_decl
 };
 
 //=== module ===//
-struct module_header
-{
-    static constexpr auto rule
-        = LAUF_KEYWORD("module") + dsl::p<global_identifier> + dsl::semicolon;
-    static constexpr auto value = callback([](const parse_state& state, const std::string& name) {
-        state.mod = lauf_asm_create_module(name.c_str());
-    });
-};
-
 struct module_decl
 {
     static constexpr auto whitespace
         = dsl::ascii::space | dsl::hash_sign >> dsl::until(dsl::newline);
 
+    struct header
+    {
+        static constexpr auto rule
+            = LAUF_KEYWORD("module") + dsl::p<global_identifier> + dsl::semicolon;
+        static constexpr auto value = callback([](parse_state& state, const std::string& name) {
+            state.mod = lauf_asm_create_module(name.c_str());
+        });
+    };
+
     static constexpr auto rule
-        = dsl::p<module_header> //
+        = dsl::p<header> //
           + dsl::terminator(dsl::eof).opt_list(dsl::p<global_decl> | dsl::p<function_decl>);
     static constexpr auto value = lexy::forward<void>;
 };
