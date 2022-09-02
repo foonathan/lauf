@@ -41,29 +41,16 @@ public:
         else
             return nullptr;
     }
-    const T& lookup(std::string_view name) const
-    {
-        auto ptr = try_lookup(name);
-        if (!ptr)
-        {
-            std::fprintf(stderr, "[lauf] text: unknown identifier '%s'\n",
-                         std::string(name).c_str());
-            std::abort();
-        }
-        return *ptr;
-    }
 
     void clear()
     {
         map.clear();
     }
 
-    void insert(std::string_view name, const T& data)
+    bool insert(std::string_view name, const T& data)
     {
         auto [pos, inserted] = map.emplace(name, data);
-        if (!inserted)
-            std::fprintf(stderr, "[lauf] text: duplicate declaration '%s'\n",
-                         std::string(name).c_str());
+        return inserted;
     }
 
 private:
@@ -72,7 +59,7 @@ private:
 
 struct parse_state
 {
-    lexy::buffer<lexy::utf8_encoding>*                 input;
+    lauf_reader*                                       input;
     lauf_asm_builder*                                  builder;
     symbol_table<const lauf_runtime_builtin_function*> builtins;
     symbol_table<const lauf_asm_type*>                 types;
@@ -86,9 +73,9 @@ struct parse_state
 
     lexy::input_location_anchor<lexy::buffer<lexy::utf8_encoding>> anchor;
 
-    parse_state(lexy::buffer<lexy::utf8_encoding>& input, lauf_frontend_text_options opts)
-    : input(&input), builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr),
-      anchor(input)
+    explicit parse_state(lauf_reader* input, lauf_frontend_text_options opts)
+    : input(input), builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr),
+      anchor(input->buffer)
     {
         for (auto i = 0u; i != opts.type_count; ++i)
             types.insert(opts.types[i].name, &opts.types[i]);
@@ -98,6 +85,83 @@ struct parse_state
                  builtin      = builtin->next)
                 builtins.insert(opts.builtin_libs[i].prefix + std::string(".") + builtin->name,
                                      builtin);
+    }
+
+    auto report_error() const
+    {
+        return lexy_ext::report_error.opts({lexy::visualize_fancy}).path(input->path);
+    }
+
+    void unknown_identifier(const LEXY_CHAR8_T* position, const char* kind, const char* name) const
+    {
+        auto loc = lexy::get_input_location(input->buffer, position, anchor);
+
+        auto out = lexy::cfile_output_iterator{stderr};
+        lexy_ext::diagnostic_writer<decltype(input->buffer)> writer(input->buffer,
+                                                                    {lexy::visualize_fancy});
+
+        writer.write_message(out, lexy_ext::diagnostic_kind::error,
+                             [&](auto, lexy::visualization_options) {
+                                 std::fprintf(stderr, "unknown %s name '%s'", kind, name);
+                                 return out;
+                             });
+        if (input->path != nullptr)
+            writer.write_path(out, input->path);
+        writer.write_empty_annotation(out);
+        writer.write_annotation(out, lexy_ext::annotation_kind::primary, loc, std::strlen(name) + 1,
+                                [&](auto, lexy::visualization_options) {
+                                    std::fprintf(stderr, "used here");
+                                    return out;
+                                });
+    }
+    void duplicate_declaration(const LEXY_CHAR8_T* position, const char* kind,
+                               const char* name) const
+    {
+        auto loc = lexy::get_input_location(input->buffer, position, anchor);
+
+        auto out = lexy::cfile_output_iterator{stderr};
+        lexy_ext::diagnostic_writer<decltype(input->buffer)> writer(input->buffer,
+                                                                    {lexy::visualize_fancy});
+
+        writer.write_message(out, lexy_ext::diagnostic_kind::error,
+                             [&](auto, lexy::visualization_options) {
+                                 std::fprintf(stderr, "duplicate %s declaration named '%s'", kind,
+                                              name);
+                                 return out;
+                             });
+        if (input->path != nullptr)
+            writer.write_path(out, input->path);
+        writer.write_empty_annotation(out);
+        writer.write_annotation(out, lexy_ext::annotation_kind::primary, loc, std::strlen(name) + 1,
+                                [&](auto, lexy::visualization_options) {
+                                    std::fprintf(stderr, "second declaration here");
+                                    return out;
+                                });
+    }
+    void conflicting_signature(const LEXY_CHAR8_T* position, const char* kind,
+                               const char* name) const
+    {
+        auto loc = lexy::get_input_location(input->buffer, position, anchor);
+
+        auto out = lexy::cfile_output_iterator{stderr};
+        lexy_ext::diagnostic_writer<decltype(input->buffer)> writer(input->buffer,
+                                                                    {lexy::visualize_fancy});
+
+        writer.write_message(out, lexy_ext::diagnostic_kind::error,
+                             [&](auto, lexy::visualization_options) {
+                                 std::fprintf(stderr,
+                                              "conflicting signature in %s declaration named '%s'",
+                                              kind, name);
+                                 return out;
+                             });
+        if (input->path != nullptr)
+            writer.write_path(out, input->path);
+        writer.write_empty_annotation(out);
+        writer.write_annotation(out, lexy_ext::annotation_kind::primary, loc, std::strlen(name) + 1,
+                                [&](auto, lexy::visualization_options) {
+                                    std::fprintf(stderr, "second declaration here");
+                                    return out;
+                                });
     }
 };
 } // namespace
@@ -162,46 +226,67 @@ struct signature
 
 struct builtin_ref
 {
-    static constexpr auto rule  = dsl::p<builtin_identifier>;
+    static constexpr auto rule  = dsl::position(dsl::p<builtin_identifier>);
     static constexpr auto value = callback<lauf_runtime_builtin_function>(
-        [](const parse_state& state, const std::string& name) {
-            return *state.builtins.lookup(name);
+        [](const parse_state& state, auto pos, const std::string& name) {
+            auto result = state.builtins.try_lookup(name);
+            if (result == nullptr)
+                state.unknown_identifier(pos, "builtin", name.c_str());
+            return **result;
         });
 };
 struct type_ref
 {
-    static constexpr auto rule = dsl::p<builtin_identifier>;
+    static constexpr auto rule = dsl::position(dsl::p<builtin_identifier>);
     static constexpr auto value
-        = callback<lauf_asm_type>([](const parse_state& state, const std::string& name) {
-              return *state.types.lookup(name);
+        = callback<lauf_asm_type>([](const parse_state& state, auto pos, const std::string& name) {
+              auto result = state.types.try_lookup(name);
+              if (result == nullptr)
+                  state.unknown_identifier(pos, "type", name.c_str());
+              return **result;
           });
 };
 struct global_ref
 {
-    static constexpr auto rule = dsl::p<global_identifier>;
-    static constexpr auto value
-        = callback<lauf_asm_global*>([](const parse_state& state, const std::string& name) {
-              return state.globals.lookup(name);
-          });
+    static constexpr auto rule  = dsl::position(dsl::p<global_identifier>);
+    static constexpr auto value = callback<lauf_asm_global*>(
+        [](const parse_state& state, auto pos, const std::string& name) {
+            auto result = state.globals.try_lookup(name);
+            if (result == nullptr)
+                state.unknown_identifier(pos, "global", name.c_str());
+            return *result;
+        });
 };
 struct local_ref
 {
-    static constexpr auto rule = dsl::p<local_identifier>;
-    static constexpr auto value
-        = callback<lauf_asm_local*>([](const parse_state& state, const std::string& name) {
-              return state.locals.lookup(name);
-          });
+    static constexpr auto rule  = dsl::position(dsl::p<local_identifier>);
+    static constexpr auto value = callback<lauf_asm_local*>(
+        [](const parse_state& state, auto pos, const std::string& name) {
+            auto result = state.locals.try_lookup(name);
+            if (result == nullptr)
+                state.unknown_identifier(pos, "local", name.c_str());
+            return *result;
+        });
 };
 struct function_ref
 {
-    static constexpr auto rule  = dsl::p<global_identifier> + dsl::if_(dsl::p<signature>);
+    static constexpr auto rule
+        = dsl::position + dsl::p<global_identifier> + dsl::if_(dsl::p<signature>);
     static constexpr auto value = callback<lauf_asm_function*>( //
-        [](const parse_state& state, const std::string& name) {
-            return state.functions.lookup(name);
+        [](const parse_state& state, auto pos, const std::string& name) {
+            auto result = state.functions.try_lookup(name);
+            if (result == nullptr)
+                state.unknown_identifier(pos, "function", name.c_str());
+            return *result;
         },
-        [](parse_state& state, const std::string& name, lauf_asm_signature sig) {
+        [](parse_state& state, auto pos, const std::string& name, lauf_asm_signature sig) {
             if (auto f = state.functions.try_lookup(name))
+            {
+                auto f_sig = lauf_asm_function_signature(*f);
+                if (f_sig.input_count != sig.input_count || f_sig.output_count != sig.output_count)
+                    state.conflicting_signature(pos, "function", name.c_str());
                 return *f;
+            }
 
             auto f = lauf_asm_add_function(state.mod, name.c_str(), sig);
             state.functions.insert(name, f);
@@ -210,10 +295,16 @@ struct function_ref
 };
 struct block_ref
 {
-    static constexpr auto rule  = dsl::p<local_identifier> + dsl::if_(dsl::p<signature>);
+    static constexpr auto rule
+        = dsl::position + dsl::p<local_identifier> + dsl::if_(dsl::p<signature>);
     static constexpr auto value = callback<lauf_asm_block*>( //
-        [](const parse_state& state, const std::string& name) { return state.blocks.lookup(name); },
-        [](parse_state& state, const std::string& name, lauf_asm_signature sig) {
+        [](const parse_state& state, auto pos, const std::string& name) {
+            auto result = state.blocks.try_lookup(name);
+            if (result == nullptr)
+                state.unknown_identifier(pos, "block", name.c_str());
+            return *result;
+        },
+        [](parse_state& state, auto, const std::string& name, lauf_asm_signature sig) {
             if (auto block = state.blocks.try_lookup(name))
                 return *block;
 
@@ -309,21 +400,23 @@ struct global_decl
         static constexpr auto rule = [] {
             auto decl = dsl::p<global_identifier> + dsl::opt(dsl::colon >> dsl::p<layout_expr>)
                         + dsl::equal_sign + dsl::p<data_expr>;
-            return LAUF_KEYWORD("const") >> decl;
+            return LAUF_KEYWORD("const") >> dsl::position + decl;
         }();
 
         static constexpr auto value = callback(
-            [](parse_state& state, const std::string& name, lauf_asm_layout layout,
+            [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout,
                std::string data) {
                 data.resize(layout.size);
                 auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(), layout);
-                state.globals.insert(name, g);
+                if (!state.globals.insert(name, g))
+                    state.duplicate_declaration(pos, "global", name.c_str());
             },
-            [](parse_state& state, const std::string& name, lexy::nullopt,
+            [](parse_state& state, auto pos, const std::string& name, lexy::nullopt,
                const std::string& data) {
                 auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(),
                                                         {data.size(), alignof(void*)});
-                state.globals.insert(name, g);
+                if (!state.globals.insert(name, g))
+                    state.duplicate_declaration(pos, "global", name.c_str());
             });
     };
 
@@ -332,21 +425,23 @@ struct global_decl
         static constexpr auto rule = [] {
             auto decl = dsl::p<global_identifier> + dsl::opt(dsl::colon >> dsl::p<layout_expr>)
                         + dsl::equal_sign + dsl::p<data_expr>;
-            return dsl::else_ >> decl;
+            return dsl::else_ >> dsl::position + decl;
         }();
 
         static constexpr auto value = callback(
-            [](parse_state& state, const std::string& name, lauf_asm_layout layout,
+            [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout,
                std::string data) {
                 data.resize(layout.size);
                 auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(), layout);
-                state.globals.insert(name, g);
+                if (!state.globals.insert(name, g))
+                    state.duplicate_declaration(pos, "global", name.c_str());
             },
-            [](parse_state& state, const std::string& name, lexy::nullopt,
+            [](parse_state& state, auto pos, const std::string& name, lexy::nullopt,
                const std::string& data) {
                 auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(),
                                                       {data.size(), alignof(void*)});
-                state.globals.insert(name, g);
+                if (!state.globals.insert(name, g))
+                    state.duplicate_declaration(pos, "global", name.c_str());
             });
     };
 
@@ -531,7 +626,7 @@ struct location
 {
     static constexpr auto rule  = dsl::position;
     static constexpr auto value = callback([](parse_state& state, auto pos) {
-        auto loc = lexy::get_input_location(*state.input, pos, state.anchor);
+        auto loc = lexy::get_input_location(state.input->buffer, pos, state.anchor);
         lauf_asm_build_debug_location(state.builder, {std::uint16_t(loc.line_nr()),
                                                       std::uint16_t(loc.column_nr()), false});
         state.anchor = loc.anchor();
@@ -591,37 +686,41 @@ struct block
 struct local_decl
 {
     static constexpr auto rule
-        = LAUF_KEYWORD("local")
-          >> dsl::p<local_identifier> + dsl::colon + dsl::p<layout_expr> + dsl::semicolon;
-    static constexpr auto value
-        = callback([](parse_state& state, const std::string& name, lauf_asm_layout layout) {
-              auto local = lauf_asm_build_local(state.builder, layout);
-              state.locals.insert(name, local);
-          });
+        = LAUF_KEYWORD("local") >> dsl::position + dsl::p<local_identifier> + dsl::colon
+                                       + dsl::p<layout_expr> + dsl::semicolon;
+    static constexpr auto value = callback(
+        [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout) {
+            auto local = lauf_asm_build_local(state.builder, layout);
+            if (!state.locals.insert(name, local))
+                state.duplicate_declaration(pos, "local", name.c_str());
+        });
 };
 
 struct function_decl
 {
     struct header
     {
-        static constexpr auto rule = dsl::p<global_identifier> + dsl::p<signature>;
+        static constexpr auto rule = dsl::position + dsl::p<global_identifier> + dsl::p<signature>;
 
-        static constexpr auto value
-            = callback([](parse_state& state, const std::string& name, lauf_asm_signature sig) {
-                  if (auto f = state.functions.try_lookup(name))
-                  {
-                      state.fn = *f;
-                  }
-                  else
-                  {
-                      state.fn = lauf_asm_add_function(state.mod, name.c_str(), sig);
-                      state.functions.insert(name, state.fn);
-                  }
+        static constexpr auto value = callback([](parse_state& state, auto pos,
+                                                  const std::string& name, lauf_asm_signature sig) {
+            if (auto f = state.functions.try_lookup(name))
+            {
+                auto f_sig = lauf_asm_function_signature(*f);
+                if (f_sig.input_count != sig.input_count || f_sig.output_count != sig.output_count)
+                    state.conflicting_signature(pos, "function", name.c_str());
+                state.fn = *f;
+            }
+            else
+            {
+                state.fn = lauf_asm_add_function(state.mod, name.c_str(), sig);
+                state.functions.insert(name, state.fn);
+            }
 
-                  lauf_asm_build(state.builder, state.mod, state.fn);
-                  state.blocks.clear();
-                  state.locals.clear();
-              });
+            lauf_asm_build(state.builder, state.mod, state.fn);
+            state.blocks.clear();
+            state.locals.clear();
+        });
     };
 
     struct body
@@ -679,10 +778,10 @@ struct module_decl
 
 lauf_asm_module* lauf_frontend_text(lauf_reader* reader, lauf_frontend_text_options opts)
 {
-    parse_state state(reader->buffer, opts);
+    parse_state state(reader, opts);
 
-    auto result = lexy::parse<lauf::text_grammar::module_decl>(reader->buffer, state,
-                                                               lexy_ext::report_error);
+    auto callback = state.report_error();
+    auto result   = lexy::parse<lauf::text_grammar::module_decl>(reader->buffer, state, callback);
     if (!result)
     {
         if (state.mod != nullptr)

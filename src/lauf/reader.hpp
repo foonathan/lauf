@@ -11,7 +11,7 @@
 struct lauf_reader
 {
     lexy::buffer<lexy::utf8_encoding> buffer;
-    const char*                       path;
+    const char*                       path = nullptr;
 };
 
 #endif // SRC_LAUF_READER_HPP_INCLUDED
