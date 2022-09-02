@@ -85,7 +85,9 @@ target_sources(lauf_core PRIVATE
 
                 ${src_dir}/backend/dump.cpp
 
+                ${src_dir}/runtime/memory.hpp
                 ${src_dir}/runtime/process.cpp
+                ${src_dir}/runtime/stack.hpp
                 ${src_dir}/runtime/stacktrace.cpp
 
                 ${src_dir}/lib/bits.cpp
