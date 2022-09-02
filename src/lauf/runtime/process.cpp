@@ -19,7 +19,7 @@ const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p)
 
 const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p)
 {
-    return p->vstack.base();
+    return p->cur_fiber->vstack.base();
 }
 
 // lauf_runtime_get_stacktrace() implemented in stacktrace.cpp
@@ -163,6 +163,11 @@ bool lauf_runtime_get_allocation(lauf_runtime_process* p, lauf_runtime_address a
 
     case lauf::allocation_source::heap_memory:
         result->source = LAUF_RUNTIME_HEAP_ALLOCATION;
+        break;
+
+    case lauf::allocation_source::fiber_memory:
+        // Treat it like static memory.
+        result->source = LAUF_RUNTIME_STATIC_ALLOCATION;
         break;
     }
 

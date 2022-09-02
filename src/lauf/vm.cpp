@@ -81,18 +81,20 @@ namespace
 void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program)
 {
     process->vm = vm;
-    process->vstack.init(vm->page_allocator, vm->initial_vstack_size);
-    process->cstack.init(vm->page_allocator, vm->initial_cstack_size);
+
     process->memory.init(vm->page_allocator, *vm, program->mod);
     process->program         = program;
     process->remaining_steps = vm->step_limit;
+
+    process->cur_fiber = lauf::fiber::create(vm->page_allocator, process, vm->initial_vstack_size,
+                                             vm->initial_cstack_size);
 }
 
 bool root_call(lauf_runtime_process* process, lauf_runtime_value* vstack_ptr,
                lauf_runtime_stack_frame* frame_ptr, const lauf_asm_function* fn)
 {
     // Create the initial stack frame.
-    auto trampoline_frame = process->cstack.new_trampoline_frame(frame_ptr, fn);
+    auto trampoline_frame = process->cur_fiber->cstack.new_trampoline_frame(frame_ptr, fn);
 
     // Create the trampoline.
     lauf_asm_inst trampoline[2];
@@ -109,6 +111,10 @@ void destroy_process(lauf_runtime_process* process)
 {
     auto vm = process->vm;
 
+    // Destroy all fibers.
+    for (auto& fiber : process->fibers)
+        fiber.destroy(vm->page_allocator, process);
+
     // Free allocated heap memory.
     for (auto alloc : process->memory)
         if (alloc.source == lauf::allocation_source::heap_memory
@@ -123,9 +129,8 @@ void destroy_process(lauf_runtime_process* process)
                 ; // We don't know the starting address of the allocation.
         }
 
-    process->vstack.clear(vm->page_allocator);
-    process->cstack.clear(vm->page_allocator);
     process->memory.clear(vm->page_allocator);
+    process->fibers.clear(vm->page_allocator);
 }
 } // namespace
 
@@ -157,7 +162,7 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     start_process(&process, vm, program);
 
     // Push input values onto the value stack.
-    auto vstack_ptr = process.vstack.base();
+    auto vstack_ptr = process.cur_fiber->vstack.base();
     for (auto i = 0u; i != sig.input_count; ++i)
     {
         --vstack_ptr;
@@ -168,7 +173,7 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
     if (success)
     {
         // Pop output values from the value stack.
-        vstack_ptr = process.vstack.base() - sig.output_count;
+        vstack_ptr = process.cur_fiber->vstack.base() - sig.output_count;
         for (auto i = 0u; i != sig.output_count; ++i)
         {
             output[sig.output_count - i - 1] = vstack_ptr[0];

@@ -47,8 +47,8 @@ LAUF_NOINLINE bool allocate_more_vstack_space(const lauf_asm_inst*      ip,
                                               lauf_runtime_stack_frame* frame_ptr,
                                               lauf_runtime_process*     process)
 {
-    process->vstack.grow(process->vm->page_allocator, vstack_ptr);
-    if (LAUF_UNLIKELY(process->vstack.capacity() > process->vm->max_vstack_size))
+    process->cur_fiber->vstack.grow(process->vm->page_allocator, vstack_ptr);
+    if (LAUF_UNLIKELY(process->cur_fiber->vstack.capacity() > process->vm->max_vstack_size))
         LAUF_DO_PANIC("vstack overflow");
 
     LAUF_VM_DISPATCH;
@@ -59,8 +59,8 @@ LAUF_NOINLINE bool allocate_more_cstack_space(const lauf_asm_inst*      ip,
                                               lauf_runtime_stack_frame* frame_ptr,
                                               lauf_runtime_process*     process)
 {
-    process->cstack.grow(process->vm->page_allocator, frame_ptr);
-    if (LAUF_UNLIKELY(process->cstack.capacity() > process->vm->max_cstack_size))
+    process->cur_fiber->cstack.grow(process->vm->page_allocator, frame_ptr);
+    if (LAUF_UNLIKELY(process->cur_fiber->cstack.capacity() > process->vm->max_cstack_size))
         LAUF_DO_PANIC("cstack overflow");
 
     LAUF_VM_DISPATCH;
@@ -176,12 +176,12 @@ LAUF_VM_EXECUTE(call)
         = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
 
     // Check that we have enough space left on the vstack.
-    if (auto remaining = vstack_ptr - process->vstack.limit();
+    if (auto remaining = vstack_ptr - process->cur_fiber->vstack.limit();
         LAUF_UNLIKELY(remaining < callee->max_vstack_size))
         LAUF_TAIL_CALL return allocate_more_vstack_space(ip, vstack_ptr, frame_ptr, process);
 
     // Create a new stack frame.
-    auto new_frame = process->cstack.new_call_frame(frame_ptr, callee, ip);
+    auto new_frame = process->cur_fiber->cstack.new_call_frame(frame_ptr, callee, ip);
     if (LAUF_UNLIKELY(new_frame == nullptr))
         LAUF_TAIL_CALL return allocate_more_cstack_space(ip, vstack_ptr, frame_ptr, process);
 
@@ -202,12 +202,12 @@ LAUF_VM_EXECUTE(call_indirect)
         LAUF_DO_PANIC("invalid function address");
 
     // Check that we have enough space left on the vstack.
-    if (auto remaining = vstack_ptr - process->vstack.limit();
+    if (auto remaining = vstack_ptr - process->cur_fiber->vstack.limit();
         LAUF_UNLIKELY(remaining < callee->max_vstack_size))
         LAUF_TAIL_CALL return allocate_more_vstack_space(ip, vstack_ptr, frame_ptr, process);
 
     // Create a new stack frame.
-    auto new_frame = process->cstack.new_call_frame(frame_ptr, callee, ip);
+    auto new_frame = process->cur_fiber->cstack.new_call_frame(frame_ptr, callee, ip);
     if (LAUF_UNLIKELY(new_frame == nullptr))
         LAUF_TAIL_CALL return allocate_more_cstack_space(ip, vstack_ptr, frame_ptr, process);
 

@@ -194,16 +194,17 @@ public:
     }
 
     template <typename... Args>
-    void emplace_back_unchecked(Args&&... args)
+    T& emplace_back_unchecked(Args&&... args)
     {
-        ::new (&_ptr[_size]) T(static_cast<Args&&>(args)...);
+        auto elem = ::new (&_ptr[_size]) T(static_cast<Args&&>(args)...);
         ++_size;
+        return *elem;
     }
     template <typename Allocator, typename... Args>
-    void emplace_back(Allocator& alloc, Args&&... args)
+    T& emplace_back(Allocator& alloc, Args&&... args)
     {
         reserve(alloc, _size + 1);
-        emplace_back_unchecked(static_cast<Args&&>(args)...);
+        return emplace_back_unchecked(static_cast<Args&&>(args)...);
     }
 
     void shrink(std::size_t new_size)

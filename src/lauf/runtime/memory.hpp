@@ -20,6 +20,8 @@ enum class allocation_source : std::uint8_t
     static_mut_memory,
     local_memory,
     heap_memory,
+    // Memory stores metadata of a fiber.
+    fiber_memory,
 };
 
 constexpr bool is_const(allocation_source source)
@@ -27,21 +29,9 @@ constexpr bool is_const(allocation_source source)
     switch (source)
     {
     case allocation_source::static_const_memory:
+    case allocation_source::fiber_memory:
         return true;
     case allocation_source::static_mut_memory:
-    case allocation_source::local_memory:
-    case allocation_source::heap_memory:
-        return false;
-    }
-}
-
-constexpr bool is_static(allocation_source source)
-{
-    switch (source)
-    {
-    case allocation_source::static_const_memory:
-    case allocation_source::static_mut_memory:
-        return true;
     case allocation_source::local_memory:
     case allocation_source::heap_memory:
         return false;
@@ -120,6 +110,18 @@ constexpr lauf::allocation make_heap_alloc(void* memory, std::size_t size, std::
     alloc.source     = lauf::allocation_source::heap_memory;
     alloc.status     = lauf::allocation_status::allocated;
     alloc.generation = generation;
+    return alloc;
+}
+
+constexpr lauf::allocation make_fiber_alloc(struct fiber* f)
+{
+    lauf::allocation alloc;
+    alloc.ptr        = f;
+    alloc.size       = 0;
+    alloc.source     = lauf::allocation_source::fiber_memory;
+    alloc.status     = lauf::allocation_status::poison;
+    alloc.gc         = lauf::gc_tracking::reachable_explicit;
+    alloc.generation = 0;
     return alloc;
 }
 
