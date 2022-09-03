@@ -129,8 +129,9 @@ public:
     {
         auto next_frame = frame_ptr->next_frame();
 
-        if (auto cur_chunk = chunk::chunk_of(next_frame);
-            LAUF_UNLIKELY(callee->max_cstack_size > cur_chunk->remaining_space(next_frame)))
+        if (auto cur_chunk = chunk::chunk_of(frame_ptr);
+            LAUF_UNLIKELY(frame_ptr->next_offset + callee->max_cstack_size
+                          > cur_chunk->remaining_space(next_frame)))
         {
             if (LAUF_UNLIKELY(cur_chunk->next == nullptr))
                 return nullptr;

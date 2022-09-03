@@ -20,6 +20,22 @@ inline bool execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
 {
     LAUF_VM_DISPATCH;
 }
+
+constexpr lauf_asm_inst trampoline_code[2] = {
+    [] {
+        // We first want to call the function specified in the trampoline stack frame.
+        lauf_asm_inst result;
+        result.call.op     = lauf::asm_op::call;
+        result.call.offset = 0;
+        return result;
+    }(),
+    [] {
+        // We then want to exit.
+        lauf_asm_inst result;
+        result.exit.op = lauf::asm_op::exit;
+        return result;
+    }(),
+};
 } // namespace lauf
 
 inline bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,

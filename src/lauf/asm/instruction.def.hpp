@@ -42,6 +42,19 @@ LAUF_ASM_INST(call_indirect, asm_inst_signature)
 LAUF_ASM_INST(call_builtin, asm_inst_offset)
 LAUF_ASM_INST(call_builtin_no_frame, asm_inst_offset)
 
+//=== fibers ===//
+// lauf_asm_inst_fiber_create()
+// The offset is the difference between the address of the current function and the called function
+// divided by sizeof(void*).
+LAUF_ASM_INST(fiber_create, asm_inst_offset)
+
+// lauf_asm_inst_fiber_start()
+LAUF_ASM_INST(fiber_start, asm_inst_none)
+// lauf_asm_inst_fiber_resume()
+LAUF_ASM_INST(fiber_resume, asm_inst_none)
+// lauf_asm_inst_fiber_suspend()
+LAUF_ASM_INST(fiber_suspend, asm_inst_none)
+
 //=== value ===//
 // lauf_asm_inst_Xint(): push 24 bit immediate, zero extended to 64 bit.
 LAUF_ASM_INST(push, asm_inst_value)
@@ -87,7 +100,6 @@ LAUF_ASM_INST(roll, asm_inst_stack_idx)
 LAUF_ASM_INST(swap, asm_inst_stack_idx)
 
 //=== memory ===//
-
 // Setups a call frame for local allocations.
 // Value is the count of local allocations.
 // Invariant: Followed by N local_alloc[_aligned] instructions.

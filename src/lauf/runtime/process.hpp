@@ -22,8 +22,8 @@ struct fiber
     lauf::cstack cstack;
 
     // When not running, nullptr.
-    // When suspended, state at the suspend instruction.
-    // When active, state at the resume instruction.
+    // When suspended, the suspend instruction.
+    // When active, the resume instruction.
     const lauf_asm_inst*      ip         = nullptr;
     lauf_runtime_value*       vstack_ptr = nullptr;
     lauf_runtime_stack_frame* frame_ptr  = nullptr;
@@ -32,13 +32,16 @@ struct fiber
 
     // The very base of the stack frame.
     lauf_runtime_stack_frame trampoline_frame;
+
     // Intrusively linked list of fibers.
+    fiber* prev_fiber = nullptr;
     fiber* next_fiber = nullptr;
 
     //=== operations ===//
     static fiber* create(lauf_runtime_process* process, const lauf_asm_function* fn);
     static void   destroy(lauf_runtime_process* process, fiber* fiber);
 
+    /// Starts a fiber manually from native code; not used when starting it from bytecode!
     bool start(lauf_runtime_process* process, const lauf_runtime_value* input);
     void finish(lauf_runtime_value* output);
 
@@ -46,6 +49,13 @@ struct fiber
     bool is_running() const
     {
         return ip != nullptr;
+    }
+
+    bool is_main_fiber() const
+    {
+        assert(is_running());
+        // The main fiber does not have a resumer since it was started by the VM.
+        return resumer == nullptr;
     }
 
     const lauf_asm_function* root_function() const

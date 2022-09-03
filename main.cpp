@@ -53,6 +53,41 @@ lauf_asm_module* example_module()
                 return;
             }
         }
+
+        function @subfiber(0 => 0) {
+            uint 3;
+            uint 2;
+            uint 1;
+
+            $lauf.debug.print;
+            pop 0;
+            fiber_suspend;
+
+            $lauf.debug.print;
+            pop 0;
+            fiber_suspend;
+
+            $lauf.debug.print;
+            pop 0;
+            fiber_suspend;
+            return;
+        }
+
+        function @main(0 => 1) {
+            fiber_create @subfiber;
+            sint -1; $lauf.debug.print; pop 0;
+            fiber_start;
+            sint -2; $lauf.debug.print; pop 0;
+            fiber_resume;
+            sint -3; $lauf.debug.print; pop 0;
+            fiber_resume;
+            sint -4; $lauf.debug.print; pop 0;
+            fiber_resume;
+            sint -5; $lauf.debug.print; pop 0;
+            pop 0;
+            uint 0;
+            return;
+        }
     )");
     lauf_reader_set_path(reader, "prototype.lauf");
 
@@ -88,7 +123,7 @@ int main()
     auto mod = example_module();
     dump_module(mod);
 
-    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib"));
+    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "main"));
     execute(program, lauf_uint(35));
 
     lauf_asm_destroy_module(mod);

@@ -8,6 +8,7 @@
 #include <lauf/asm/module.hpp>
 #include <lauf/runtime/builtin.h>
 #include <lauf/vm_execute.hpp>
+#include <utility>
 
 //=== execute ===//
 #define LAUF_VM_EXECUTE(Name)                                                                      \
@@ -146,19 +147,32 @@ LAUF_VM_EXECUTE(panic)
 
 LAUF_VM_EXECUTE(exit)
 {
-    // During constant folding, we don't have a process, so check first.
-    if (LAUF_UNLIKELY(process != nullptr))
-    {
-        // Mark the current fiber as finished.
-        process->cur_fiber->ip         = nullptr;
-        process->cur_fiber->vstack_ptr = nullptr;
-        process->cur_fiber->frame_ptr  = nullptr;
-    }
+    if (LAUF_UNLIKELY(process == nullptr))
+        // During constant folding, we don't have a process, so check first.
+        // We also don't have fibers, so just return.
+        return true;
 
-    (void)ip;
-    (void)frame_ptr;
-    (void)vstack_ptr;
-    return true;
+    auto fiber = process->cur_fiber;
+    if (fiber->resumer == nullptr)
+    {
+        // We don't have a resumer, mark as finished and return to lauf_runtime_call().
+        fiber->ip = nullptr;
+        return true;
+    }
+    else
+    {
+        // Switch to resumer fiber.
+        ip                 = fiber->ip;
+        vstack_ptr         = fiber->vstack_ptr;
+        frame_ptr          = fiber->frame_ptr;
+        process->cur_fiber = fiber->resumer;
+
+        // Mark the current fiber as finished.
+        fiber->ip = nullptr;
+
+        ++ip;
+        LAUF_VM_DISPATCH;
+    }
 }
 
 //=== calls ===//
@@ -201,8 +215,7 @@ LAUF_VM_EXECUTE(call)
 
 LAUF_VM_EXECUTE(call_indirect)
 {
-    auto ptr = vstack_ptr[0].as_function_address;
-
+    auto ptr    = vstack_ptr[0].as_function_address;
     auto callee = lauf_runtime_get_function_ptr(process, ptr,
                                                 {ip->call_indirect.input_count,
                                                  ip->call_indirect.output_count});
@@ -225,6 +238,79 @@ LAUF_VM_EXECUTE(call_indirect)
     // And start executing the function.
     frame_ptr = new_frame;
     ip        = callee->insts;
+    LAUF_VM_DISPATCH;
+}
+
+//=== fiber instructions ===//
+LAUF_VM_EXECUTE(fiber_create)
+{
+    auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function,
+                                                                     ip->fiber_create.offset);
+    auto fiber  = lauf::fiber::create(process, callee);
+
+    --vstack_ptr;
+    vstack_ptr[0].as_address = fiber->handle;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(fiber_start)
+{
+    auto handle = vstack_ptr[0].as_address;
+    auto alloc  = process->memory.try_get(handle);
+    if (LAUF_UNLIKELY(alloc == nullptr || alloc->source != lauf::allocation_source::fiber_memory))
+        LAUF_DO_PANIC("invalid fiber handle");
+
+    auto fiber = static_cast<lauf::fiber*>(alloc->ptr);
+    if (LAUF_UNLIKELY(fiber->is_running()))
+        LAUF_DO_PANIC("cannot start fiber");
+
+    fiber->ip         = ip;
+    fiber->vstack_ptr = vstack_ptr;
+    fiber->frame_ptr  = frame_ptr;
+    fiber->resumer    = process->cur_fiber;
+
+    ip                 = lauf::trampoline_code;
+    vstack_ptr         = fiber->vstack.base();
+    frame_ptr          = &fiber->trampoline_frame;
+    process->cur_fiber = fiber;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(fiber_resume)
+{
+    auto handle = vstack_ptr[0].as_address;
+    auto alloc  = process->memory.try_get(handle);
+    if (LAUF_UNLIKELY(alloc == nullptr || alloc->source != lauf::allocation_source::fiber_memory))
+        LAUF_DO_PANIC("invalid fiber handle");
+
+    auto fiber = static_cast<lauf::fiber*>(alloc->ptr);
+    if (LAUF_UNLIKELY(!fiber->is_running() || fiber == process->cur_fiber))
+        LAUF_DO_PANIC("cannot resume fiber");
+
+    std::swap(fiber->ip, ip);
+    std::swap(fiber->vstack_ptr, vstack_ptr);
+    std::swap(fiber->frame_ptr, frame_ptr);
+    fiber->resumer     = process->cur_fiber;
+    process->cur_fiber = fiber;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(fiber_suspend)
+{
+    auto fiber = process->cur_fiber;
+    if (LAUF_UNLIKELY(fiber->is_main_fiber()))
+        LAUF_DO_PANIC("cannot suspend main fiber");
+
+    std::swap(fiber->ip, ip);
+    std::swap(fiber->vstack_ptr, vstack_ptr);
+    std::swap(fiber->frame_ptr, frame_ptr);
+    process->cur_fiber = fiber->resumer;
+
+    ++ip;
     LAUF_VM_DISPATCH;
 }
 

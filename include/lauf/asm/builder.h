@@ -137,6 +137,29 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
 ///
 /// Signature: in_N ... in_0 => out_M ... out_0
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
+
+//=== fiber instructions ===//
+/// Creates a new fiber that will execute the specified function.
+/// The fiber will not start running yet.
+///
+/// Signature: _ => handle:fiber
+void lauf_asm_inst_fiber_create(lauf_asm_builder* b, const lauf_asm_function* callee);
+
+/// Starts a fiber.
+///
+/// Signature: handle:fiber => handle:fiber
+void lauf_asm_inst_fiber_start(lauf_asm_builder* b);
+
+/// Resumes a suspended fiber.
+///
+/// Signature: handle:fiber => handle:fiber
+void lauf_asm_inst_fiber_resume(lauf_asm_builder* b);
+
+/// Suspends the current fiber.
+///
+/// Signature: _ => _
+void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b);
+
 //=== value instructions ===//
 /// Pushes an signed integer onto the stack.
 ///

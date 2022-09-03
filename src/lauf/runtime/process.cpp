@@ -11,9 +11,10 @@ lauf::fiber* lauf::fiber::create(lauf_runtime_process* process, const lauf_asm_f
 {
     auto vm = process->vm;
 
+    // We first need to create the stack, as this also allocates the memory for the fiber itself.
     lauf::cstack stack;
     stack.init(vm->page_allocator, vm->initial_cstack_size);
-
+    // We can then create a fiber in it and use it for the stack.
     auto fiber = ::new (stack.base()) lauf::fiber();
 
     fiber->handle = process->memory.new_allocation(vm->page_allocator, make_fiber_alloc(fiber));
@@ -24,7 +25,11 @@ lauf::fiber* lauf::fiber::create(lauf_runtime_process* process, const lauf_asm_f
     fiber->trampoline_frame.next_offset
         = sizeof(lauf::fiber) - offsetof(lauf::fiber, trampoline_frame);
 
-    fiber->next_fiber   = process->fiber_list;
+    // Add to linked list of fibers.
+    // The order doesn't matter, so insert at front.
+    fiber->next_fiber = process->fiber_list;
+    if (process->fiber_list != nullptr)
+        process->fiber_list->prev_fiber = fiber;
     process->fiber_list = fiber;
 
     return fiber;
@@ -33,29 +38,18 @@ lauf::fiber* lauf::fiber::create(lauf_runtime_process* process, const lauf_asm_f
 void lauf::fiber::destroy(lauf_runtime_process* process, fiber* fiber)
 {
     process->memory[fiber->handle.allocation].status = lauf::allocation_status::freed;
-    process->fiber_list                              = fiber->next_fiber;
+
+    if (fiber->prev_fiber == nullptr)
+        process->fiber_list = fiber->next_fiber;
+    else
+        fiber->prev_fiber->next_fiber = fiber->next_fiber;
+    if (fiber->next_fiber != nullptr)
+        fiber->next_fiber->prev_fiber = fiber->prev_fiber;
 
     fiber->vstack.clear(process->vm->page_allocator);
-    fiber->cstack.clear(process->vm->page_allocator);
-}
 
-namespace
-{
-constexpr lauf_asm_inst trampoline_code[2] = {
-    [] {
-        // We first want to call the function specified in the trampoline stack frame.
-        lauf_asm_inst result;
-        result.call.op     = lauf::asm_op::call;
-        result.call.offset = 0;
-        return result;
-    }(),
-    [] {
-        // We then want to exit.
-        lauf_asm_inst result;
-        result.exit.op = lauf::asm_op::exit;
-        return result;
-    }(),
-};
+    // At this point we're deallocating the memory for the fiber itself.
+    fiber->cstack.clear(process->vm->page_allocator);
 }
 
 bool lauf::fiber::start(lauf_runtime_process* process, const lauf_runtime_value* input)
@@ -72,11 +66,14 @@ bool lauf::fiber::start(lauf_runtime_process* process, const lauf_runtime_value*
     }
 
     // Update the current fiber.
+    // We need to set ip to a non-null value to indicate that it's running.
+    // We use the trampoline code as a proxy.
+    ip                 = lauf::trampoline_code;
     resumer            = process->cur_fiber;
     process->cur_fiber = this;
 
     // Execute the trampoline.
-    return lauf::execute(trampoline_code, vstack_ptr, &trampoline_frame, process);
+    return lauf::execute(lauf::trampoline_code, vstack_ptr, &trampoline_frame, process);
 }
 
 void lauf::fiber::finish(lauf_runtime_value* output)
