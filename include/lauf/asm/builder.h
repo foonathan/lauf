@@ -139,16 +139,15 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
 
 //=== fiber instructions ===//
-/// Creates a new fiber that will execute the specified function.
-/// The fiber will not start running yet.
+/// Creates a new fiber.
 ///
 /// Signature: _ => handle:fiber
-void lauf_asm_inst_fiber_create(lauf_asm_builder* b, const lauf_asm_function* callee);
+void lauf_asm_inst_fiber_create(lauf_asm_builder* b);
 
-/// Starts a fiber.
+/// Starts executing a function on a fiber.
 ///
-/// Signature: handle:fiber => handle:fiber
-void lauf_asm_inst_fiber_start(lauf_asm_builder* b);
+/// Signature: handle:fiber in_N ... in_0 => handle:fiber
+void lauf_asm_inst_fiber_call(lauf_asm_builder* b, const lauf_asm_function* callee);
 
 /// Resumes a suspended fiber.
 ///

@@ -7,7 +7,7 @@
 #include <lauf/vm.hpp>
 #include <lauf/vm_execute.hpp>
 
-lauf::fiber* lauf::fiber::create(lauf_runtime_process* process, const lauf_asm_function* fn)
+lauf::fiber* lauf::fiber::create(lauf_runtime_process* process)
 {
     auto vm = process->vm;
 
@@ -21,7 +21,6 @@ lauf::fiber* lauf::fiber::create(lauf_runtime_process* process, const lauf_asm_f
     fiber->vstack.init(vm->page_allocator, vm->initial_vstack_size);
     fiber->cstack = stack;
 
-    fiber->trampoline_frame.function = fn;
     fiber->trampoline_frame.next_offset
         = sizeof(lauf::fiber) - offsetof(lauf::fiber, trampoline_frame);
 
@@ -52,31 +51,7 @@ void lauf::fiber::destroy(lauf_runtime_process* process, fiber* fiber)
     fiber->cstack.clear(process->vm->page_allocator);
 }
 
-bool lauf::fiber::start(lauf_runtime_process* process, const lauf_runtime_value* input)
-{
-    assert(!is_running());
-    auto vstack_ptr = vstack.base();
-
-    // Copy input values.
-    auto sig = lauf_asm_function_signature(root_function());
-    for (auto i = 0u; i != sig.input_count; ++i)
-    {
-        --vstack_ptr;
-        vstack_ptr[0] = input[i];
-    }
-
-    // Update the current fiber.
-    // We need to set ip to a non-null value to indicate that it's running.
-    // We use the trampoline code as a proxy.
-    ip                 = lauf::trampoline_code;
-    resumer            = process->cur_fiber;
-    process->cur_fiber = this;
-
-    // Execute the trampoline.
-    return lauf::execute(lauf::trampoline_code, vstack_ptr, &trampoline_frame, process);
-}
-
-void lauf::fiber::finish(lauf_runtime_value* output)
+void lauf::fiber::copy_output(lauf_runtime_value* output)
 {
     assert(!is_running());
 
@@ -152,15 +127,32 @@ bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        const lauf_runtime_value* input, lauf_runtime_value* output)
 {
+    auto sig = lauf_asm_function_signature(fn);
+
     // Save current processor state.
     auto leaf      = process->callstack_leaf_frame;
     auto cur_fiber = process->cur_fiber;
 
     // Create, start, and destroy fiber.
-    auto fiber  = lauf::fiber::create(process, fn);
-    auto result = fiber->start(process, input);
+    auto fiber = lauf::fiber::create(process);
+    fiber->init(fn);
+    auto vstack_ptr = fiber->vstack.base();
+    for (auto i = 0u; i != sig.input_count; ++i)
+    {
+        --vstack_ptr;
+        vstack_ptr[0] = input[i];
+    }
+
+    // We need to set ip to a non-null value to indicate that it's running.
+    // We use the trampoline code as a proxy.
+    fiber->ip          = lauf::trampoline_code;
+    process->cur_fiber = fiber;
+
+    // Execute the trampoline.
+    auto result
+        = lauf::execute(lauf::trampoline_code, vstack_ptr, &fiber->trampoline_frame, process);
     if (result)
-        fiber->finish(output);
+        fiber->copy_output(output);
     lauf::fiber::destroy(process, fiber);
 
     // Restore processor state.

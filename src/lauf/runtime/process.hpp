@@ -38,12 +38,14 @@ struct fiber
     fiber* next_fiber = nullptr;
 
     //=== operations ===//
-    static fiber* create(lauf_runtime_process* process, const lauf_asm_function* fn);
+    static fiber* create(lauf_runtime_process* process);
     static void   destroy(lauf_runtime_process* process, fiber* fiber);
 
-    /// Starts a fiber manually from native code; not used when starting it from bytecode!
-    bool start(lauf_runtime_process* process, const lauf_runtime_value* input);
-    void finish(lauf_runtime_value* output);
+    void init(const lauf_asm_function* fn)
+    {
+        trampoline_frame.function = fn;
+    }
+    void copy_output(lauf_runtime_value* output);
 
     //=== access ===//
     bool is_running() const

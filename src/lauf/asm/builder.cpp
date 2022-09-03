@@ -78,7 +78,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::call_builtin:
         case lauf::asm_op::call_builtin_no_frame:
         case lauf::asm_op::fiber_create:
-        case lauf::asm_op::fiber_start:
+        case lauf::asm_op::fiber_call:
         case lauf::asm_op::fiber_resume:
         case lauf::asm_op::fiber_suspend:
         case lauf::asm_op::store_local_value:
@@ -529,25 +529,27 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     }
 }
 
-void lauf_asm_inst_fiber_create(lauf_asm_builder* b, const lauf_asm_function* callee)
+void lauf_asm_inst_fiber_create(lauf_asm_builder* b)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_NONE(fiber_create));
+    b->cur->vstack.push(*b, 1);
+}
+
+void lauf_asm_inst_fiber_call(lauf_asm_builder* b, const lauf_asm_function* callee)
 {
     LAUF_BUILD_ASSERT_CUR;
 
     auto sig = callee->sig;
-    LAUF_BUILD_ASSERT(sig.input_count == 0 && sig.output_count == 0, "current limitation");
+    LAUF_BUILD_ASSERT(sig.output_count == 0, "current limitation");
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values");
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
 
     auto offset = lauf::compress_pointer_offset(b->fn, callee);
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(fiber_create, offset));
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(fiber_call, offset));
 
-    b->cur->vstack.push(*b, 1);
-}
-
-void lauf_asm_inst_fiber_start(lauf_asm_builder* b)
-{
-    LAUF_BUILD_ASSERT_CUR;
-
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_NONE(fiber_start));
     b->cur->vstack.push(*b, 1);
 }
 

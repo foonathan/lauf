@@ -54,11 +54,7 @@ lauf_asm_module* example_module()
             }
         }
 
-        function @subfiber(0 => 0) {
-            uint 3;
-            uint 2;
-            uint 1;
-
+        function @subfiber(3 => 0) {
             $lauf.debug.print;
             pop 0;
             fiber_suspend;
@@ -74,9 +70,9 @@ lauf_asm_module* example_module()
         }
 
         function @main(0 => 1) {
-            fiber_create @subfiber;
+            fiber_create;
             sint -1; $lauf.debug.print; pop 0;
-            fiber_start;
+            uint 3; uint 2; uint 1; fiber_call @subfiber;
             sint -2; $lauf.debug.print; pop 0;
             fiber_resume;
             sint -3; $lauf.debug.print; pop 0;

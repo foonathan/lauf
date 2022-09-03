@@ -244,9 +244,7 @@ LAUF_VM_EXECUTE(call_indirect)
 //=== fiber instructions ===//
 LAUF_VM_EXECUTE(fiber_create)
 {
-    auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function,
-                                                                     ip->fiber_create.offset);
-    auto fiber  = lauf::fiber::create(process, callee);
+    auto fiber = lauf::fiber::create(process);
 
     --vstack_ptr;
     vstack_ptr[0].as_address = fiber->handle;
@@ -255,16 +253,26 @@ LAUF_VM_EXECUTE(fiber_create)
     LAUF_VM_DISPATCH;
 }
 
-LAUF_VM_EXECUTE(fiber_start)
+LAUF_VM_EXECUTE(fiber_call)
 {
-    auto handle = vstack_ptr[0].as_address;
+    auto callee      = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function,
+                                                                     ip->fiber_call.offset);
+    auto input_count = callee->sig.input_count;
+
+    auto handle = vstack_ptr[input_count].as_address;
     auto alloc  = process->memory.try_get(handle);
     if (LAUF_UNLIKELY(alloc == nullptr || alloc->source != lauf::allocation_source::fiber_memory))
         LAUF_DO_PANIC("invalid fiber handle");
 
     auto fiber = static_cast<lauf::fiber*>(alloc->ptr);
     if (LAUF_UNLIKELY(fiber->is_running()))
-        LAUF_DO_PANIC("cannot start fiber");
+        LAUF_DO_PANIC("cannot do a fiber call on running fiber");
+    fiber->init(callee);
+
+    auto fiber_vstack_ptr = fiber->vstack.base();
+    fiber_vstack_ptr -= input_count;
+    std::memcpy(fiber_vstack_ptr, vstack_ptr, input_count * sizeof(lauf_runtime_value));
+    vstack_ptr += input_count;
 
     fiber->ip         = ip;
     fiber->vstack_ptr = vstack_ptr;
@@ -272,7 +280,7 @@ LAUF_VM_EXECUTE(fiber_start)
     fiber->resumer    = process->cur_fiber;
 
     ip                 = lauf::trampoline_code;
-    vstack_ptr         = fiber->vstack.base();
+    vstack_ptr         = fiber_vstack_ptr;
     frame_ptr          = &fiber->trampoline_frame;
     process->cur_fiber = fiber;
     LAUF_VM_DISPATCH;
