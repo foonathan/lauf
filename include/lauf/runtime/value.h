@@ -19,12 +19,17 @@ typedef struct lauf_runtime_address
     uint64_t offset : 32;
 } lauf_runtime_address;
 
+static const lauf_runtime_address lauf_runtime_address_null = {0x3FFFFFFF, 0x3, 0xFFFFFFFF};
+
 typedef struct lauf_runtime_function_address
 {
     uint16_t index;
     uint8_t  input_count;
     uint8_t  output_count;
 } lauf_runtime_function_address;
+
+static const lauf_runtime_function_address lauf_runtime_function_address_null
+    = {0xFFFF, 0xFF, 0xFF};
 
 typedef union lauf_runtime_value
 {

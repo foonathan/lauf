@@ -45,7 +45,7 @@ struct lauf_runtime_fiber
         // Only when suspended.
         lauf::registers suspension_point;
         // Only when running.
-        lauf_runtime_fiber* resumer;
+        lauf_runtime_address resumer;
     };
 
     // The very base of the stack frame.
@@ -80,7 +80,7 @@ struct lauf_runtime_fiber
         auto regs = suspension_point;
 
         state         = running;
-        this->resumer = resumer;
+        this->resumer = resumer == nullptr ? lauf_runtime_address_null : resumer->handle();
 
         return regs;
     }
@@ -89,6 +89,17 @@ struct lauf_runtime_fiber
     const lauf_asm_function* root_function() const
     {
         return trampoline_frame.function;
+    }
+
+    bool has_resumer() const
+    {
+        assert(state == running);
+        return resumer.allocation != lauf_runtime_address_null.allocation;
+    }
+
+    lauf_runtime_address handle() const
+    {
+        return {handle_allocation, handle_generation, 0};
     }
 };
 
@@ -114,6 +125,17 @@ struct lauf_runtime_process
     static lauf_runtime_process create(lauf_vm* vm, const lauf_asm_program* program);
     static void                 destroy(lauf_runtime_process* process);
 };
+
+namespace lauf
+{
+inline lauf_runtime_fiber* get_fiber(lauf_runtime_process* process, lauf_runtime_address handle)
+{
+    auto alloc = process->memory.try_get(handle);
+    if (LAUF_UNLIKELY(alloc == nullptr || alloc->source != lauf::allocation_source::fiber_memory))
+        return nullptr;
+    return static_cast<lauf_runtime_fiber*>(alloc->ptr);
+}
+} // namespace lauf
 
 #endif // SRC_LAUF_RUNTIME_PROCESS_HPP_INCLUDED
 
