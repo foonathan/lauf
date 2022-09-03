@@ -5,6 +5,7 @@
 
 #include <cstring>
 #include <lauf/runtime/builtin.h>
+#include <lauf/runtime/memory.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
 #include <lauf/support/align.hpp>

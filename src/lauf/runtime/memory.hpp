@@ -4,12 +4,16 @@
 #ifndef LAUF_RUNTIME_MEMORY_HPP_INCLUDED
 #define LAUF_RUNTIME_MEMORY_HPP_INCLUDED
 
-#include <lauf/asm/module.hpp>
+#include <lauf/runtime/memory.h>
+
 #include <lauf/asm/type.h>
 #include <lauf/config.h>
 #include <lauf/runtime/value.h>
 #include <lauf/support/align.hpp>
 #include <lauf/support/array.hpp>
+
+typedef struct lauf_asm_module lauf_asm_module;
+typedef struct lauf_vm         lauf_vm;
 
 //=== allocation ===//
 namespace lauf
@@ -125,32 +129,6 @@ constexpr lauf::allocation make_fiber_alloc(struct fiber* f)
     return alloc;
 }
 
-inline lauf::allocation make_global_alloc(lauf::arena_base& arena, lauf_asm_global global)
-{
-    lauf::allocation result;
-
-    if (global.memory != nullptr)
-    {
-        result.ptr = arena.memdup(global.memory, global.size, global.alignment);
-    }
-    else
-    {
-        result.ptr = arena.allocate(global.size, global.alignment);
-        std::memset(result.ptr, 0, global.size);
-    }
-
-    // If bigger than 32bit, only the lower parts are addressable.
-    result.size = std::uint32_t(global.size);
-
-    result.source     = global.perms == lauf_asm_global::read_write
-                            ? lauf::allocation_source::static_mut_memory
-                            : lauf::allocation_source::static_const_memory;
-    result.status     = lauf::allocation_status::allocated;
-    result.gc         = lauf::gc_tracking::reachable_explicit;
-    result.generation = 0;
-
-    return result;
-}
 } // namespace lauf
 
 namespace lauf
@@ -191,16 +169,8 @@ class memory
 public:
     memory() = default;
 
-    void init(lauf::page_allocator& allocator, lauf::arena_base& arena, const lauf_asm_module* mod)
-    {
-        _allocations.resize_uninitialized(allocator, mod->globals_count);
-        for (auto global = mod->globals; global != nullptr; global = global->next)
-            _allocations[global->allocation_idx] = make_global_alloc(arena, *global);
-    }
-    void clear(lauf::page_allocator& alloc)
-    {
-        _allocations.clear(alloc);
-    }
+    void init(lauf_vm* vm, const lauf_asm_module* mod);
+    void clear(lauf_vm* vm);
 
     //=== container interface ===//
     auto begin()

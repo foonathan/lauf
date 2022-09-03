@@ -32,6 +32,23 @@ public:
     array(const array&)            = delete;
     array& operator=(const array&) = delete;
 
+    array(array&& other) noexcept
+    : _ptr(other._ptr), _size(other._size), _capacity(other._capacity), _is_heap(other._is_heap)
+    {
+        other._ptr  = nullptr;
+        other._size = other._capacity = 0;
+        other._is_heap                = false;
+    }
+
+    array& operator=(array&& other) noexcept
+    {
+        std::swap(_ptr, other._ptr);
+        std::swap(_size, other._size);
+        std::swap(_capacity, other._capacity);
+        std::swap(_is_heap, other._is_heap);
+        return *this;
+    }
+
     ~array()
     {
         if (_is_heap)

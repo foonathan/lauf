@@ -9,7 +9,7 @@
 #include <lauf/asm/program.h>
 #include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
-#include <lauf/runtime/process.h>
+#include <lauf/runtime/memory.h>
 #include <lauf/runtime/stacktrace.h>
 #include <lauf/runtime/value.h>
 

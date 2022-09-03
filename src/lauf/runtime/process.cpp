@@ -3,9 +3,78 @@
 
 #include <lauf/runtime/process.hpp>
 
-#include <lauf/asm/module.hpp>
 #include <lauf/asm/program.hpp>
 #include <lauf/vm.hpp>
+#include <lauf/vm_execute.hpp>
+
+lauf::fiber* lauf::fiber::create(lauf_runtime_process* process, const lauf_asm_function* fn,
+                                 std::size_t initial_vstack_size, std::size_t initial_cstack_size)
+{
+    lauf::cstack stack;
+    stack.init(process->vm->page_allocator, initial_cstack_size);
+
+    auto fiber = ::new (stack.base()) lauf::fiber();
+
+    fiber->handle
+        = process->memory.new_allocation(process->vm->page_allocator, make_fiber_alloc(fiber));
+    fiber->vstack.init(process->vm->page_allocator, initial_vstack_size);
+    fiber->cstack = stack;
+
+    fiber->trampoline_frame.function = fn;
+    fiber->trampoline_frame.next_offset
+        = sizeof(lauf::fiber) - offsetof(lauf::fiber, trampoline_frame);
+
+    fiber->next_fiber   = process->fiber_list;
+    process->fiber_list = fiber;
+
+    return fiber;
+}
+
+void lauf::fiber::destroy(lauf_runtime_process* process, fiber* fiber)
+{
+    process->memory[fiber->handle.allocation].status = lauf::allocation_status::freed;
+    process->fiber_list                              = fiber->next_fiber;
+
+    fiber->vstack.clear(process->vm->page_allocator);
+    fiber->cstack.clear(process->vm->page_allocator);
+}
+
+lauf_runtime_process lauf_runtime_process::create(lauf_vm* vm, const lauf_asm_program* program)
+{
+    lauf_runtime_process result;
+    result.vm      = vm;
+    result.program = program;
+
+    result.memory.init(vm, program->mod);
+    result.remaining_steps = vm->step_limit;
+
+    return result;
+}
+
+void lauf_runtime_process::destroy(lauf_runtime_process* process)
+{
+    auto vm = process->vm;
+
+    // Destroy all fibers.
+    while (auto fiber = process->fiber_list)
+        lauf::fiber::destroy(process, fiber);
+
+    // Free allocated heap memory.
+    for (auto alloc : process->memory)
+        if (alloc.source == lauf::allocation_source::heap_memory
+            && alloc.status != lauf::allocation_status::freed)
+        {
+            if (alloc.split == lauf::allocation_split::unsplit)
+                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, alloc.size);
+            else if (alloc.split == lauf::allocation_split::split_first)
+                // We don't know the full size.
+                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, 0);
+            else
+                ; // We don't know the starting address of the allocation.
+        }
+
+    process->memory.clear(vm);
+}
 
 lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* p)
 {
@@ -22,9 +91,67 @@ const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p)
     return p->cur_fiber->vstack.base();
 }
 
-// lauf_runtime_get_stacktrace() implemented in stacktrace.cpp
+bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
+{
+    // The process is nullptr during constant folding.
+    if (process != nullptr)
+        process->vm->panic_handler(process, msg);
+    return false;
+}
 
-// lauf_runtime_call(), lauf_runtime_panic() implemented in vm.cpp
+bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
+                       lauf_runtime_value* vstack_ptr)
+{
+    auto vm  = process->vm;
+    auto sig = lauf_asm_function_signature(fn);
+
+    // Save current processor state.
+    auto leaf      = process->callstack_leaf_frame;
+    auto cur_fiber = process->cur_fiber;
+
+    // Create new fiber.
+    auto fiber = lauf::fiber::create(process, fn, vm->initial_vstack_size, vm->initial_cstack_size);
+    auto fiber_vstack_ptr = fiber->vstack.base();
+
+    // Copy input values.
+    auto input = vstack_ptr - sig.input_count;
+    for (auto i = 0u; i != sig.input_count; ++i)
+    {
+        --fiber_vstack_ptr;
+        fiber_vstack_ptr[0] = input[i];
+    }
+
+    process->cur_fiber = fiber;
+
+    // Create the trampoline.
+    lauf_asm_inst trampoline[2];
+    trampoline[0].call.op = lauf::asm_op::call;
+    // The current function of the stack frame is the one we want to call.
+    trampoline[0].call.offset = 0;
+    trampoline[1].exit.op     = lauf::asm_op::exit;
+
+    // Execute the trampoline.
+    auto result = lauf::execute(trampoline, fiber_vstack_ptr, &fiber->trampoline_frame, process);
+    if (result)
+    {
+        // Copy output.
+        auto output      = vstack_ptr - sig.input_count;
+        fiber_vstack_ptr = fiber->vstack.base() - sig.output_count;
+        for (auto i = 0u; i != sig.output_count; ++i)
+        {
+            output[sig.output_count - i - 1] = vstack_ptr[0];
+            ++vstack_ptr;
+        }
+    }
+
+    // Destroy fiber.
+    lauf::fiber::destroy(process, fiber);
+
+    // Restore processor state.
+    process->callstack_leaf_frame = leaf;
+    process->cur_fiber            = cur_fiber;
+    return result;
+}
 
 bool lauf_runtime_set_step_limit(lauf_runtime_process* p, size_t new_limit)
 {
@@ -50,352 +177,6 @@ bool lauf_runtime_increment_step(lauf_runtime_process* p)
         // has an unlimited step limit.
     }
 
-    return true;
-}
-
-const void* lauf_runtime_get_const_ptr(lauf_runtime_process* p, lauf_runtime_address addr,
-                                       lauf_asm_layout layout)
-{
-    if (auto alloc = p->memory.try_get(addr))
-        return lauf::checked_offset(*alloc, addr, layout);
-    else
-        return nullptr;
-}
-
-void* lauf_runtime_get_mut_ptr(lauf_runtime_process* p, lauf_runtime_address addr,
-                               lauf_asm_layout layout)
-{
-    if (auto alloc = p->memory.try_get(addr); alloc != nullptr && !lauf::is_const(alloc->source))
-        return const_cast<void*>(lauf::checked_offset(*alloc, addr, layout));
-    else
-        return nullptr;
-}
-
-bool lauf_runtime_get_address(lauf_runtime_process* p, lauf_runtime_address* allocation,
-                              const void* ptr)
-{
-    auto alloc = p->memory.try_get(*allocation);
-    if (alloc == nullptr)
-        return false;
-
-    auto offset = static_cast<const unsigned char*>(ptr) - static_cast<unsigned char*>(alloc->ptr);
-    if (offset < 0 || offset >= alloc->size)
-        return false;
-
-    allocation->offset = std::uint32_t(offset);
-    return true;
-}
-
-const char* lauf_runtime_get_cstr(lauf_runtime_process* p, lauf_runtime_address addr)
-{
-    if (auto alloc = p->memory.try_get(addr))
-    {
-        auto str = static_cast<const char*>(checked_offset(*alloc, addr));
-        if (str == nullptr)
-            return nullptr;
-
-        for (auto cur = str; cur < alloc->unchecked_offset(alloc->size); ++cur)
-            if (*cur == '\0')
-                // We found a zero byte within the alloction, so it's a C string.
-                return str;
-
-        // Did not find the null terminator.
-        return nullptr;
-    }
-
-    return nullptr;
-}
-
-const lauf_asm_function* lauf_runtime_get_function_ptr_any(lauf_runtime_process*         p,
-                                                           lauf_runtime_function_address addr)
-{
-    if (addr.index < p->program->functions.size())
-        return p->program->functions[addr.index];
-    else
-        return nullptr;
-}
-
-const lauf_asm_function* lauf_runtime_get_function_ptr(lauf_runtime_process*         p,
-                                                       lauf_runtime_function_address addr,
-                                                       lauf_asm_signature            signature)
-{
-    if (addr.input_count != signature.input_count || addr.output_count != signature.output_count)
-        return nullptr;
-    else
-        return lauf_runtime_get_function_ptr_any(p, addr);
-}
-
-lauf_runtime_address lauf_runtime_add_heap_allocation(lauf_runtime_process* p, void* ptr,
-                                                      size_t size)
-{
-    auto alloc = lauf::make_heap_alloc(ptr, size, p->memory.cur_generation());
-    return p->memory.new_allocation(p->vm->page_allocator, alloc);
-}
-
-bool lauf_runtime_get_allocation(lauf_runtime_process* p, lauf_runtime_address addr,
-                                 lauf_runtime_allocation* result)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr)
-        return false;
-
-    result->ptr  = alloc->ptr;
-    result->size = alloc->size;
-
-    if (lauf::is_usable(alloc->status))
-        result->permission
-            = lauf_runtime_permission(LAUF_RUNTIME_PERM_READ | LAUF_RUNTIME_PERM_WRITE);
-    else
-        result->permission = LAUF_RUNTIME_PERM_NONE;
-
-    switch (alloc->source)
-    {
-    case lauf::allocation_source::static_const_memory:
-        result->permission = lauf_runtime_permission(result->permission & ~LAUF_RUNTIME_PERM_WRITE);
-        // fallthrough
-    case lauf::allocation_source::static_mut_memory:
-        result->source = LAUF_RUNTIME_STATIC_ALLOCATION;
-        break;
-
-    case lauf::allocation_source::local_memory:
-        result->source = LAUF_RUNTIME_LOCAL_ALLOCATION;
-        break;
-
-    case lauf::allocation_source::heap_memory:
-        result->source = LAUF_RUNTIME_HEAP_ALLOCATION;
-        break;
-
-    case lauf::allocation_source::fiber_memory:
-        // Treat it like static memory.
-        result->source = LAUF_RUNTIME_STATIC_ALLOCATION;
-        break;
-    }
-
-    return true;
-}
-
-bool lauf_runtime_leak_heap_allocation(lauf_runtime_process* p, lauf_runtime_address addr)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr || !lauf::can_be_freed(alloc->status)
-        || alloc->source != lauf::allocation_source::heap_memory
-        || alloc->split != lauf::allocation_split::unsplit)
-        return false;
-    alloc->status = lauf::allocation_status::freed;
-    return true;
-}
-
-size_t lauf_runtime_gc(lauf_runtime_process* p, const lauf_runtime_value* vstack_ptr)
-{
-    auto                                marker = p->vm->get_marker();
-    lauf::array_list<lauf::allocation*> pending_allocations;
-
-    auto mark_reachable = [&](lauf::allocation* alloc) {
-        if (alloc->status != lauf::allocation_status::freed
-            && alloc->gc == lauf::gc_tracking::unreachable)
-        {
-            // It is a not freed allocation that we didn't know was reachable yet, add it.
-            alloc->gc = lauf::gc_tracking::reachable;
-            pending_allocations.push_back(*p->vm, alloc);
-        }
-    };
-    auto process_reachable_memory = [&](lauf::allocation* alloc) {
-        if (alloc->size < sizeof(lauf_runtime_address) || alloc->is_gc_weak)
-            return;
-
-        // Assume the allocation contains an array of values.
-        // For that we need to align the pointer properly.
-        // (We've done a size check already, so the initial offset is fine)
-        auto offset = lauf::align_offset(alloc->ptr, alignof(lauf_runtime_value));
-        auto ptr    = reinterpret_cast<lauf_runtime_value*>(static_cast<unsigned char*>(alloc->ptr)
-                                                         + offset);
-
-        for (auto end = ptr + (alloc->size - offset) / sizeof(lauf_runtime_value); ptr != end;
-             ++ptr)
-        {
-            auto alloc = p->memory.try_get(ptr->as_address);
-            if (alloc != nullptr && ptr->as_address.offset <= alloc->size)
-                mark_reachable(alloc);
-        }
-    };
-
-    // Mark allocations reachable by addresses in the vstack as reachable.
-    for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(p); ++cur)
-    {
-        auto alloc = p->memory.try_get(cur->as_address);
-        if (alloc != nullptr && cur->as_address.offset <= alloc->size)
-            mark_reachable(alloc);
-    }
-
-    // Process memory from explicitly reachable allocations.
-    for (auto& alloc : p->memory)
-    {
-        // Non-heap memory should always be reachable.
-        assert(alloc.source == lauf::allocation_source::heap_memory
-               || alloc.gc == lauf::gc_tracking::reachable_explicit);
-
-        if (alloc.gc == lauf::gc_tracking::reachable_explicit
-            && alloc.status != lauf::allocation_status::freed)
-            process_reachable_memory(&alloc);
-    }
-
-    // Recursively mark everything as reachable from reachable allocations.
-    while (!pending_allocations.empty())
-    {
-        auto alloc = pending_allocations.back();
-        pending_allocations.pop_back();
-        process_reachable_memory(alloc);
-    }
-
-    // Free unreachable heap memory.
-    auto allocator   = p->vm->heap_allocator;
-    auto bytes_freed = std::size_t(0);
-    for (auto& alloc : p->memory)
-    {
-        if (alloc.source == lauf::allocation_source::heap_memory
-            && alloc.status != lauf::allocation_status::freed
-            && alloc.split == lauf::allocation_split::unsplit
-            && alloc.gc == lauf::gc_tracking::unreachable)
-        {
-            // It is an unreachable allocation that we can free.
-            allocator.free_alloc(allocator.user_data, alloc.ptr, alloc.size);
-            alloc.status = lauf::allocation_status::freed;
-            bytes_freed += alloc.size;
-        }
-
-        // Need to reset GC tracking for next GC run.
-        if (alloc.gc != lauf::gc_tracking::reachable_explicit)
-            alloc.gc = lauf::gc_tracking::unreachable;
-    }
-
-    p->vm->unwind(marker);
-    return bytes_freed;
-}
-
-bool lauf_runtime_poison_allocation(lauf_runtime_process* p, lauf_runtime_address addr)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr || !lauf::is_usable(alloc->status))
-        return false;
-    alloc->status = lauf::allocation_status::poison;
-    return true;
-}
-
-bool lauf_runtime_unpoison_allocation(lauf_runtime_process* p, lauf_runtime_address addr)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr || alloc->status != lauf::allocation_status::poison)
-        return false;
-    alloc->status = lauf::allocation_status::allocated;
-    return true;
-}
-
-bool lauf_runtime_split_allocation(lauf_runtime_process* p, lauf_runtime_address addr,
-                                   lauf_runtime_address* addr1, lauf_runtime_address* addr2)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr || !lauf::is_usable(alloc->status) || addr.offset >= alloc->size)
-        return false;
-
-    // We create a new allocation as a copy, but with modified pointer and size.
-    // If the original allocation was unsplit or the last split, the new allocation is the end of
-    // the allocation. Otherwise, it is somewhere in the middle.
-    auto new_alloc = *alloc;
-    new_alloc.ptr  = static_cast<unsigned char*>(new_alloc.ptr) + addr.offset;
-    new_alloc.size -= addr.offset;
-    new_alloc.split = alloc->split == lauf::allocation_split::unsplit
-                              || alloc->split == lauf::allocation_split::split_last
-                          ? lauf::allocation_split::split_last
-                          : lauf::allocation_split::split_middle;
-    *addr2          = p->memory.new_allocation(p->vm->page_allocator, new_alloc);
-
-    // We now modify the original allocation, by shrinking it.
-    // If the original allocation was unsplit or the first split, it is the first split.
-    // Otherwise, it is somewhere in the middle.
-    alloc->size  = addr.offset;
-    alloc->split = alloc->split == lauf::allocation_split::unsplit
-                           || alloc->split == lauf::allocation_split::split_first
-                       ? lauf::allocation_split::split_first
-                       : lauf::allocation_split::split_middle;
-    *addr1       = lauf_runtime_address{addr.allocation, addr.generation, 0};
-
-    return true;
-}
-
-bool lauf_runtime_merge_allocation(lauf_runtime_process* p, lauf_runtime_address addr1,
-                                   lauf_runtime_address addr2)
-{
-    auto alloc1 = p->memory.try_get(addr1);
-    auto alloc2 = p->memory.try_get(addr2);
-    if (alloc1 == nullptr
-        || alloc2 == nullptr
-        // Allocations must be usable.
-        || !lauf::is_usable(alloc1->status)
-        || !lauf::is_usable(alloc2->status)
-        // Allocations must be split.
-        || alloc1->split == lauf::allocation_split::unsplit
-        || alloc2->split == lauf::allocation_split::unsplit
-        // And they must be adjacent.
-        || static_cast<unsigned char*>(alloc1->ptr) + alloc1->size != alloc2->ptr)
-        return false;
-
-    // alloc1 grows to cover alloc2.
-    alloc1->size += alloc2->size;
-
-    // Since alloc1 precedes alloc2, the following split configuration are possible:
-    // 1. (first, mid)
-    // 2. (first, last)
-    // 3. (mid, mid)
-    // 4. (mid, last)
-    //
-    // In case 2, we merged everything back and are unsplit.
-    // In case 4, we create a bigger last split.
-    if (alloc2->split == lauf::allocation_split::split_last)
-    {
-        if (alloc1->split == lauf::allocation_split::split_first)
-            alloc1->split = lauf::allocation_split::unsplit; // case 2
-        else
-            alloc1->split = lauf::allocation_split::split_last; // case 4
-    }
-
-    // We don't need alloc2 anymore.
-    alloc2->status = lauf::allocation_status::freed;
-    return true;
-}
-
-bool lauf_runtime_declare_reachable(lauf_runtime_process* p, lauf_runtime_address addr)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory)
-        return false;
-    alloc->gc = lauf::gc_tracking::reachable_explicit;
-    return true;
-}
-
-bool lauf_runtime_undeclare_reachable(lauf_runtime_process* p, lauf_runtime_address addr)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr || alloc->source != lauf::allocation_source::heap_memory)
-        return false;
-    alloc->gc = lauf::gc_tracking::unreachable;
-    return true;
-}
-
-bool lauf_runtime_declare_weak(lauf_runtime_process* p, lauf_runtime_address addr)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr)
-        return false;
-    alloc->is_gc_weak = true;
-    return true;
-}
-
-bool lauf_runtime_undeclare_weak(lauf_runtime_process* p, lauf_runtime_address addr)
-{
-    auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr)
-        return false;
-    alloc->is_gc_weak = false;
     return true;
 }
 

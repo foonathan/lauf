@@ -6,13 +6,8 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
-#include <lauf/asm/module.hpp>
-#include <lauf/asm/program.hpp>
+#include <lauf/asm/program.h>
 #include <lauf/lib/debug.hpp>
-#include <lauf/runtime/builtin.h>
-#include <lauf/runtime/process.h>
-#include <lauf/runtime/stacktrace.h>
-#include <lauf/vm_execute.hpp>
 
 const lauf_vm_allocator lauf_vm_null_allocator
     = {nullptr, [](void*, size_t, size_t) -> void* { return nullptr; },
@@ -76,119 +71,13 @@ lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm)
     return vm->heap_allocator;
 }
 
-namespace
-{
-void start_process(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program)
-{
-    process->vm = vm;
-
-    process->memory.init(vm->page_allocator, *vm, program->mod);
-    process->program         = program;
-    process->remaining_steps = vm->step_limit;
-}
-
-bool root_call(lauf_runtime_process* process, lauf::fiber* fiber, lauf_runtime_value* vstack_ptr)
-{
-    process->cur_fiber = fiber;
-
-    // Create the trampoline.
-    lauf_asm_inst trampoline[2];
-    trampoline[0].call.op = lauf::asm_op::call;
-    // The current function of the stack frame is the one we want to call.
-    trampoline[0].call.offset = 0;
-    trampoline[1].exit.op     = lauf::asm_op::exit;
-
-    // Execute the trampoline.
-    return lauf::execute(trampoline, vstack_ptr, &fiber->trampoline_frame, process);
-}
-
-void destroy_process(lauf_runtime_process* process)
-{
-    auto vm = process->vm;
-
-    // Destroy all fibers.
-    while (auto fiber = process->fiber_list)
-        lauf::fiber::destroy(vm->page_allocator, process, fiber);
-
-    // Free allocated heap memory.
-    for (auto alloc : process->memory)
-        if (alloc.source == lauf::allocation_source::heap_memory
-            && alloc.status != lauf::allocation_status::freed)
-        {
-            if (alloc.split == lauf::allocation_split::unsplit)
-                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, alloc.size);
-            else if (alloc.split == lauf::allocation_split::split_first)
-                // We don't know the full size.
-                vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, 0);
-            else
-                ; // We don't know the starting address of the allocation.
-        }
-
-    process->memory.clear(vm->page_allocator);
-}
-} // namespace
-
-bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
-                       lauf_runtime_value* vstack_ptr)
-{
-    auto vm  = process->vm;
-    auto sig = lauf_asm_function_signature(fn);
-
-    // Save current processor state.
-    auto leaf      = process->callstack_leaf_frame;
-    auto cur_fiber = process->cur_fiber;
-
-    // Create new fiber.
-    auto fiber = lauf::fiber::create(vm->page_allocator, process, fn, vm->initial_vstack_size,
-                                     vm->initial_cstack_size);
-    auto fiber_vstack_ptr = fiber->vstack.base();
-
-    // Copy input values.
-    auto input = vstack_ptr - sig.input_count;
-    for (auto i = 0u; i != sig.input_count; ++i)
-    {
-        --fiber_vstack_ptr;
-        fiber_vstack_ptr[0] = input[i];
-    }
-
-    auto result = root_call(process, fiber, fiber_vstack_ptr);
-    if (result)
-    {
-        // Copy output.
-        auto output      = vstack_ptr - sig.input_count;
-        fiber_vstack_ptr = fiber->vstack.base() - sig.output_count;
-        for (auto i = 0u; i != sig.output_count; ++i)
-        {
-            output[sig.output_count - i - 1] = vstack_ptr[0];
-            ++vstack_ptr;
-        }
-    }
-
-    // Destroy fiber.
-    lauf::fiber::destroy(vm->page_allocator, process, fiber);
-
-    // Restore processor state.
-    process->callstack_leaf_frame = leaf;
-    process->cur_fiber            = cur_fiber;
-    return result;
-}
-
-bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
-{
-    // The process is nullptr during constant folding.
-    if (process != nullptr)
-        process->vm->panic_handler(process, msg);
-    return false;
-}
-
 bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
                      lauf_runtime_value* output)
 {
     auto fn  = lauf_asm_program_entry_function(program);
     auto sig = lauf_asm_function_signature(fn);
 
-    lauf_runtime_process process;
-    start_process(&process, vm, program);
+    auto process = lauf_runtime_process::create(vm, program);
 
     lauf_runtime_value vstack[UCHAR_MAX];
     if (input != nullptr)
@@ -200,7 +89,7 @@ bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_
             std::memcpy(output, vstack, sig.output_count * sizeof(lauf_runtime_value));
     }
 
-    destroy_process(&process);
+    lauf_runtime_process::destroy(&process);
     return success;
 }
 

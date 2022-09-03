@@ -56,6 +56,7 @@ target_sources(lauf_core PUBLIC
                 ${include_dir}/lib/test.h
                 ${include_dir}/lib.h
 
+                ${include_dir}/runtime/memory.h
                 ${include_dir}/runtime/process.h
                 ${include_dir}/runtime/stacktrace.h
                 ${include_dir}/runtime/value.h)
@@ -70,6 +71,7 @@ target_sources(lauf_core PRIVATE
 
                 ${src_dir}/lib/debug.hpp
 
+                ${src_dir}/runtime/memory.hpp
                 ${src_dir}/runtime/process.hpp)
 target_sources(lauf_core PRIVATE
                 ${src_dir}/config.cpp
@@ -85,7 +87,7 @@ target_sources(lauf_core PRIVATE
 
                 ${src_dir}/backend/dump.cpp
 
-                ${src_dir}/runtime/memory.hpp
+                ${src_dir}/runtime/memory.cpp
                 ${src_dir}/runtime/process.cpp
                 ${src_dir}/runtime/stack.hpp
                 ${src_dir}/runtime/stacktrace.cpp

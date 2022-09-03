@@ -34,11 +34,9 @@ struct fiber
     // Intrusively linked list of fibers.
     fiber* next_fiber = nullptr;
 
-    static fiber* create(page_allocator& alloc, lauf_runtime_process* process,
-                         const lauf_asm_function* fn, std::size_t initial_vstack_size,
-                         std::size_t initial_cstack_size);
-
-    static void destroy(page_allocator& alloc, lauf_runtime_process* process, fiber* fiber);
+    static fiber* create(lauf_runtime_process* process, const lauf_asm_function* fn,
+                         std::size_t initial_vstack_size, std::size_t initial_cstack_size);
+    static void   destroy(lauf_runtime_process* process, fiber* fiber);
 };
 } // namespace lauf
 
@@ -54,45 +52,14 @@ struct lauf_runtime_process
     // The dummy frame for call stacks -- this is only lazily updated
     // It needs to be valid when calling a builtin or panicing.
     lauf_runtime_stack_frame callstack_leaf_frame;
-
     // The program that is running.
     const lauf_asm_program* program = nullptr;
 
-    std::size_t remaining_steps;
+    std::size_t remaining_steps = 0;
+
+    static lauf_runtime_process create(lauf_vm* vm, const lauf_asm_program* program);
+    static void                 destroy(lauf_runtime_process* process);
 };
-
-inline lauf::fiber* lauf::fiber::create(page_allocator& alloc, lauf_runtime_process* process,
-                                        const lauf_asm_function* fn,
-                                        std::size_t              initial_vstack_size,
-                                        std::size_t              initial_cstack_size)
-{
-    lauf::cstack stack;
-    stack.init(alloc, initial_cstack_size);
-
-    auto fiber = ::new (stack.base()) lauf::fiber();
-
-    fiber->handle = process->memory.new_allocation(alloc, make_fiber_alloc(fiber));
-    fiber->vstack.init(alloc, initial_vstack_size);
-    fiber->cstack = stack;
-
-    fiber->trampoline_frame.function = fn;
-    fiber->trampoline_frame.next_offset
-        = sizeof(lauf::fiber) - offsetof(lauf::fiber, trampoline_frame);
-
-    fiber->next_fiber   = process->fiber_list;
-    process->fiber_list = fiber;
-
-    return fiber;
-}
-
-inline void lauf::fiber::destroy(page_allocator& alloc, lauf_runtime_process* process, fiber* fiber)
-{
-    process->memory[fiber->handle.allocation].status = lauf::allocation_status::freed;
-    process->fiber_list                              = fiber->next_fiber;
-
-    fiber->vstack.clear(alloc);
-    fiber->cstack.clear(alloc);
-}
 
 #endif // SRC_LAUF_RUNTIME_PROCESS_HPP_INCLUDED
 
