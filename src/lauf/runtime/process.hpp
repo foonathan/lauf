@@ -53,13 +53,6 @@ struct fiber
         return ip != nullptr;
     }
 
-    bool is_main_fiber() const
-    {
-        assert(is_running());
-        // The main fiber does not have a resumer since it was started by the VM.
-        return resumer == nullptr;
-    }
-
     const lauf_asm_function* root_function() const
     {
         return trampoline_frame.function;

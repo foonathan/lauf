@@ -149,16 +149,30 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     process->cur_fiber = fiber;
 
     // Execute the trampoline.
-    auto result
+    auto success
         = lauf::execute(lauf::trampoline_code, vstack_ptr, &fiber->trampoline_frame, process);
-    if (result)
-        fiber->copy_output(output);
+    if (success)
+    {
+        // If the fiber has been suspended, keep resuming it.
+        while (fiber->is_running())
+        {
+            process->cur_fiber = fiber;
+            if (!lauf::execute(fiber->ip + 1, fiber->vstack_ptr, fiber->frame_ptr, process))
+            {
+                success = false;
+                break;
+            }
+        }
+
+        if (success)
+            fiber->copy_output(output);
+    }
     lauf::fiber::destroy(process, fiber);
 
     // Restore processor state.
     process->callstack_leaf_frame = leaf;
     process->cur_fiber            = cur_fiber;
-    return result;
+    return success;
 }
 
 bool lauf_runtime_set_step_limit(lauf_runtime_process* p, size_t new_limit)

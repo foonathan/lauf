@@ -310,16 +310,23 @@ LAUF_VM_EXECUTE(fiber_resume)
 LAUF_VM_EXECUTE(fiber_suspend)
 {
     auto fiber = process->cur_fiber;
-    if (LAUF_UNLIKELY(fiber->is_main_fiber()))
-        LAUF_DO_PANIC("cannot suspend main fiber");
 
     std::swap(fiber->ip, ip);
     std::swap(fiber->vstack_ptr, vstack_ptr);
     std::swap(fiber->frame_ptr, frame_ptr);
     process->cur_fiber = fiber->resumer;
 
-    ++ip;
-    LAUF_VM_DISPATCH;
+    if (LAUF_UNLIKELY(process->cur_fiber == nullptr))
+    {
+        // We've suspended the main fiber, so return instead.
+        process->callstack_leaf_frame.assign_callstack_leaf_frame(fiber->ip, fiber->frame_ptr);
+        return true;
+    }
+    else
+    {
+        ++ip;
+        LAUF_VM_DISPATCH;
+    }
 }
 
 //=== value instructions ===//
