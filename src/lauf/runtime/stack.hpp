@@ -15,17 +15,17 @@
 struct lauf_runtime_stack_frame
 {
     // The current function.
-    const lauf_asm_function* function;
+    const lauf_asm_function* function = nullptr;
     // The return address to jump to when the call finishes.
-    const lauf_asm_inst* return_ip;
+    const lauf_asm_inst* return_ip = nullptr;
     // The allocation of the first local_alloc (only meaningful if the function has any)
-    uint32_t first_local_alloc : 30;
+    uint32_t first_local_alloc : 30 = 0;
     // The generation of the local variables.
-    uint32_t local_generation : 2;
+    uint32_t local_generation : 2 = 0;
     // The offset from this where the next frame can be put, i.e. after the local allocs.
-    uint32_t next_offset;
+    uint32_t next_offset = 0;
     // The previous stack frame.
-    lauf_runtime_stack_frame* prev;
+    lauf_runtime_stack_frame* prev = nullptr;
 
     void assign_callstack_leaf_frame(const lauf_asm_inst* ip, lauf_runtime_stack_frame* frame_ptr)
     {
@@ -118,25 +118,9 @@ public:
         _first = nullptr;
     }
 
-    lauf_runtime_stack_frame* new_trampoline_frame(lauf_runtime_stack_frame* frame_ptr,
-                                                   const lauf_asm_function*  callee)
+    void* base()
     {
-        auto next_frame = frame_ptr == nullptr ? _first->memory() : frame_ptr->next_frame();
-
-        if (auto cur_chunk = chunk::chunk_of(next_frame); //
-            LAUF_UNLIKELY(sizeof(lauf_runtime_stack_frame)
-                          > cur_chunk->remaining_space(next_frame)))
-        {
-            if (LAUF_UNLIKELY(cur_chunk->next == nullptr))
-                return nullptr;
-
-            cur_chunk  = cur_chunk->next;
-            next_frame = cur_chunk->memory();
-        }
-
-        return ::new (next_frame)
-            lauf_runtime_stack_frame{callee, nullptr, 0, 0, sizeof(lauf_runtime_stack_frame),
-                                     nullptr};
+        return _first->memory();
     }
 
     lauf_runtime_stack_frame* new_call_frame(lauf_runtime_stack_frame* frame_ptr,
