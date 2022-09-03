@@ -17,8 +17,9 @@ lauf_runtime_fiber* lauf_runtime_fiber::create(lauf_runtime_process* process)
     // We can then create a fiber in it and use it for the stack.
     auto fiber = ::new (stack.base()) lauf_runtime_fiber();
 
-    fiber->handle
-        = process->memory.new_allocation(vm->page_allocator, lauf::make_fiber_alloc(fiber));
+    auto addr = process->memory.new_allocation(vm->page_allocator, lauf::make_fiber_alloc(fiber));
+    fiber->handle_allocation = addr.allocation;
+    fiber->handle_generation = addr.generation;
     fiber->vstack.init(vm->page_allocator, vm->initial_vstack_size);
     fiber->cstack = stack;
 
@@ -37,7 +38,7 @@ lauf_runtime_fiber* lauf_runtime_fiber::create(lauf_runtime_process* process)
 
 void lauf_runtime_fiber::destroy(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
 {
-    process->memory[fiber->handle.allocation].status = lauf::allocation_status::freed;
+    process->memory[fiber->handle_allocation].status = lauf::allocation_status::freed;
 
     if (fiber->prev_fiber == nullptr)
         process->fiber_list = fiber->next_fiber;
@@ -54,7 +55,7 @@ void lauf_runtime_fiber::destroy(lauf_runtime_process* process, lauf_runtime_fib
 
 void lauf_runtime_fiber::copy_output(lauf_runtime_value* output)
 {
-    assert(!is_running());
+    assert(state == lauf_runtime_fiber::done);
 
     auto sig        = lauf_asm_function_signature(root_function());
     auto vstack_ptr = vstack.base() - sig.output_count;
@@ -114,6 +115,8 @@ const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process)
 
 lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process)
 {
+    assert(process->cur_fiber == nullptr
+           || process->cur_fiber->state == lauf_runtime_fiber::running);
     return process->cur_fiber;
 }
 
@@ -125,6 +128,22 @@ lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* process)
 lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(lauf_runtime_fiber* iter)
 {
     return iter->next_fiber;
+}
+
+lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* fiber)
+{
+    switch (fiber->state)
+    {
+    case lauf_runtime_fiber::done:
+        return LAUF_RUNTIME_FIBER_DONE;
+    case lauf_runtime_fiber::ready:
+        assert(false && "only a temporary state that should not be exposed");
+        break;
+    case lauf_runtime_fiber::suspended:
+        return LAUF_RUNTIME_FIBER_SUSPENDED;
+    case lauf_runtime_fiber::running:
+        return LAUF_RUNTIME_FIBER_RUNNING;
+    }
 }
 
 const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber* fiber)
@@ -159,9 +178,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
         vstack_ptr[0] = input[i];
     }
 
-    // We need to set ip to a non-null value to indicate that it's running.
-    // We use the trampoline code as a proxy.
-    fiber->regs        = {lauf::trampoline_code, nullptr, nullptr};
+    fiber->resume_by(nullptr);
     process->cur_fiber = fiber;
 
     // Execute the trampoline.
@@ -170,7 +187,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     if (success)
     {
         // If the fiber has been suspended, keep resuming it.
-        while (fiber->is_running())
+        while (fiber->state != lauf_runtime_fiber::done)
         {
             if (!lauf_runtime_resume(process, fiber))
             {
@@ -194,11 +211,8 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
 {
     assert(process->cur_fiber == nullptr);
-    auto regs = fiber->regs;
 
-    // We need to set ip to a non-null value to indicate that it's running.
-    // We use the trampoline code as a proxy.
-    fiber->regs        = {lauf::trampoline_code, nullptr, nullptr};
+    auto regs          = fiber->resume_by(nullptr);
     process->cur_fiber = fiber;
 
     return lauf::execute(regs.ip + 1, regs.vstack_ptr, regs.frame_ptr, process);

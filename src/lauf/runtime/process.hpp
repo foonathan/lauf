@@ -15,26 +15,38 @@ namespace lauf
 {
 struct registers
 {
-    const lauf_asm_inst*      ip         = nullptr;
-    lauf_runtime_value*       vstack_ptr = nullptr;
-    lauf_runtime_stack_frame* frame_ptr  = nullptr;
+    const lauf_asm_inst*      ip;
+    lauf_runtime_value*       vstack_ptr;
+    lauf_runtime_stack_frame* frame_ptr;
 };
 } // namespace lauf
 
 struct lauf_runtime_fiber
 {
+    // The state of the fiber.
+    enum state_t : uint8_t
+    {
+        done,
+        ready,
+        suspended,
+        running,
+    } state = done;
+
     // The handle to itself.
-    lauf_runtime_address handle;
+    uint32_t handle_allocation : 30;
+    uint32_t handle_generation : 2;
+
     // The stacks of the fiber.
     lauf::vstack vstack;
     lauf::cstack cstack;
 
-    // When not running, nullptr.
-    // When suspended, the suspend instruction.
-    lauf::registers regs;
-    // When active, the resume instruction.
-    // Only valid when active, fiber that resumed it.
-    lauf_runtime_fiber* resumer = nullptr;
+    union
+    {
+        // Only when suspended.
+        lauf::registers suspension_point;
+        // Only when running.
+        lauf_runtime_fiber* resumer;
+    };
 
     // The very base of the stack frame.
     lauf_runtime_stack_frame trampoline_frame;
@@ -49,16 +61,31 @@ struct lauf_runtime_fiber
 
     void init(const lauf_asm_function* fn)
     {
+        assert(state == done);
         trampoline_frame.function = fn;
+        state                     = ready;
     }
     void copy_output(lauf_runtime_value* output);
 
-    //=== access ===//
-    bool is_running() const
+    void suspend(lauf::registers regs)
     {
-        return regs.ip != nullptr;
+        assert(state == running);
+        state            = suspended;
+        suspension_point = regs;
     }
 
+    lauf::registers resume_by(lauf_runtime_fiber* resumer)
+    {
+        assert(state == suspended || state == ready);
+        auto regs = suspension_point;
+
+        state         = running;
+        this->resumer = resumer;
+
+        return regs;
+    }
+
+    //=== access ===//
     const lauf_asm_function* root_function() const
     {
         return trampoline_frame.function;
@@ -74,11 +101,10 @@ struct lauf_runtime_process
     lauf::memory        memory;
     lauf_runtime_fiber* fiber_list = nullptr;
 
-    // The current instruction pointer.
+    // The state of the current fiber, not set when all fibers suspended.
     // Only lazily updated whenever process is exposed to user code:
     // * before calling a builtin
     // * before panicing
-    // * before suspending the main fiber.
     lauf::registers regs;
     // The program that is running.
     const lauf_asm_program* program = nullptr;

@@ -15,10 +15,21 @@ struct lauf_runtime_stacktrace
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p,
                                                      const lauf_runtime_fiber* fiber)
 {
-    if (fiber == p->cur_fiber)
+    if (fiber->state == lauf_runtime_fiber::running)
+    {
+        assert(p->cur_fiber == fiber);
         return new lauf_runtime_stacktrace{p->regs.frame_ptr, p->regs.ip};
+    }
+    else if (fiber->state == lauf_runtime_fiber::suspended)
+    {
+        return new lauf_runtime_stacktrace{fiber->suspension_point.frame_ptr,
+                                           fiber->suspension_point.ip};
+    }
     else
-        return new lauf_runtime_stacktrace{fiber->regs.frame_ptr, fiber->regs.ip};
+    {
+        // Fiber doesn't have an associated stacktrace.
+        return nullptr;
+    }
 }
 
 const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt)

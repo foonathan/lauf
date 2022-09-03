@@ -21,6 +21,7 @@ typedef struct lauf_runtime_process lauf_runtime_process;
 typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
 
 /// Returns the stacktrace of the fiber.
+/// This returns nullptr if the fiber is neither running nor suspended.
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p,
                                                      const lauf_runtime_fiber* fiber);
 

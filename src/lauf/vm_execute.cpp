@@ -152,11 +152,14 @@ LAUF_VM_EXECUTE(exit)
         // We also don't have fibers, so just return.
         return true;
 
-    auto fiber = process->cur_fiber;
-    if (fiber->resumer == nullptr)
+    auto cur_fiber = process->cur_fiber;
+    auto new_fiber = cur_fiber->resumer;
+
+    cur_fiber->state = lauf_runtime_fiber::done;
+
+    if (new_fiber == nullptr || new_fiber->state == lauf_runtime_fiber::done)
     {
-        // We don't have a resumer, mark as finished and return to lauf_runtime_call().
-        fiber->regs        = {nullptr, nullptr, nullptr};
+        // We don't have a fiber that needs resuming, return to lauf_runtime_call().
         process->regs      = {nullptr, nullptr, nullptr};
         process->cur_fiber = nullptr;
         return true;
@@ -164,13 +167,14 @@ LAUF_VM_EXECUTE(exit)
     else
     {
         // Switch to resumer fiber.
-        ip                 = fiber->regs.ip;
-        vstack_ptr         = fiber->regs.vstack_ptr;
-        frame_ptr          = fiber->regs.frame_ptr;
-        process->cur_fiber = fiber->resumer;
+        assert(new_fiber->state == lauf_runtime_fiber::suspended);
 
-        // Mark the current fiber as finished.
-        fiber->regs.ip = nullptr;
+        auto regs          = new_fiber->resume_by(cur_fiber);
+        process->cur_fiber = new_fiber;
+
+        ip         = regs.ip;
+        vstack_ptr = regs.vstack_ptr;
+        frame_ptr  = regs.frame_ptr;
 
         ++ip;
         LAUF_VM_DISPATCH;
@@ -249,7 +253,7 @@ LAUF_VM_EXECUTE(fiber_create)
     auto fiber = lauf_runtime_fiber::create(process);
 
     --vstack_ptr;
-    vstack_ptr[0].as_address = fiber->handle;
+    vstack_ptr[0].as_address = {fiber->handle_allocation, fiber->handle_generation, 0};
 
     ++ip;
     LAUF_VM_DISPATCH;
@@ -267,8 +271,8 @@ LAUF_VM_EXECUTE(fiber_call)
         LAUF_DO_PANIC("invalid fiber handle");
 
     auto fiber = static_cast<lauf_runtime_fiber*>(alloc->ptr);
-    if (LAUF_UNLIKELY(fiber->is_running()))
-        LAUF_DO_PANIC("cannot do a fiber call on running fiber");
+    if (LAUF_UNLIKELY(fiber->state != lauf_runtime_fiber::done))
+        LAUF_DO_PANIC("cannot do a fiber call on non-empty fiber");
     fiber->init(callee);
 
     auto fiber_vstack_ptr = fiber->vstack.base();
@@ -276,15 +280,14 @@ LAUF_VM_EXECUTE(fiber_call)
     std::memcpy(fiber_vstack_ptr, vstack_ptr, input_count * sizeof(lauf_runtime_value));
     vstack_ptr += input_count;
 
-    fiber->regs.ip         = ip;
-    fiber->regs.vstack_ptr = vstack_ptr;
-    fiber->regs.frame_ptr  = frame_ptr;
-    fiber->resumer         = process->cur_fiber;
-
-    ip                 = lauf::trampoline_code;
-    vstack_ptr         = fiber_vstack_ptr;
-    frame_ptr          = &fiber->trampoline_frame;
+    process->cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
+    fiber->resume_by(process->cur_fiber);
     process->cur_fiber = fiber;
+
+    ip         = lauf::trampoline_code;
+    vstack_ptr = fiber_vstack_ptr;
+    frame_ptr  = &fiber->trampoline_frame;
+
     LAUF_VM_DISPATCH;
 }
 
@@ -296,15 +299,16 @@ LAUF_VM_EXECUTE(fiber_resume)
         LAUF_DO_PANIC("invalid fiber handle");
 
     auto fiber = static_cast<lauf_runtime_fiber*>(alloc->ptr);
-    if (LAUF_UNLIKELY(!fiber->is_running() || fiber == process->cur_fiber))
-        LAUF_DO_PANIC("cannot resume fiber");
+    if (LAUF_UNLIKELY(fiber->state != lauf_runtime_fiber::suspended))
+        LAUF_DO_PANIC("cannot resume non-suspended fiber");
 
-    process->cur_fiber->regs = {ip, vstack_ptr, frame_ptr};
-    std::swap(fiber->regs.ip, ip);
-    std::swap(fiber->regs.vstack_ptr, vstack_ptr);
-    std::swap(fiber->regs.frame_ptr, frame_ptr);
-    fiber->resumer     = process->cur_fiber;
+    process->cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
+    auto regs          = fiber->resume_by(process->cur_fiber);
     process->cur_fiber = fiber;
+
+    ip         = regs.ip;
+    vstack_ptr = regs.vstack_ptr;
+    frame_ptr  = regs.frame_ptr;
 
     ++ip;
     LAUF_VM_DISPATCH;
@@ -312,22 +316,27 @@ LAUF_VM_EXECUTE(fiber_resume)
 
 LAUF_VM_EXECUTE(fiber_suspend)
 {
-    auto fiber = process->cur_fiber;
+    assert(process->cur_fiber->state == lauf_runtime_fiber::running);
+    auto cur_fiber = process->cur_fiber;
+    auto new_fiber = cur_fiber->resumer;
 
-    std::swap(fiber->regs.ip, ip);
-    std::swap(fiber->regs.vstack_ptr, vstack_ptr);
-    std::swap(fiber->regs.frame_ptr, frame_ptr);
-    process->cur_fiber = fiber->resumer;
-
-    if (LAUF_UNLIKELY(process->cur_fiber == nullptr))
+    if (LAUF_UNLIKELY(new_fiber == nullptr))
     {
-        // We've suspended the main fiber, so return instead.
-        process->regs      = {ip, vstack_ptr, frame_ptr};
+        // We're suspending the main fiber, so return instead.
+        cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
         process->cur_fiber = nullptr;
         return true;
     }
     else
     {
+        cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
+        auto regs          = new_fiber->resume_by(cur_fiber);
+        process->cur_fiber = new_fiber;
+
+        ip         = regs.ip;
+        vstack_ptr = regs.vstack_ptr;
+        frame_ptr  = regs.frame_ptr;
+
         ++ip;
         LAUF_VM_DISPATCH;
     }

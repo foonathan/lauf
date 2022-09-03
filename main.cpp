@@ -71,8 +71,9 @@ lauf_asm_module* example_module()
             call @inner;
 
             $lauf.debug.print;
-            pop 0;
             fiber_suspend;
+            $lauf.debug.print;
+            pop 0;
             return;
         }
 
@@ -83,7 +84,7 @@ lauf_asm_module* example_module()
             sint -2; $lauf.debug.print; pop 0;
             fiber_resume;
             sint -3; $lauf.debug.print; pop 0;
-            fiber_suspend;
+            #fiber_suspend;
             fiber_resume;
             sint -4; $lauf.debug.print; pop 0;
             fiber_resume;
