@@ -146,10 +146,18 @@ LAUF_VM_EXECUTE(panic)
 
 LAUF_VM_EXECUTE(exit)
 {
+    // During constant folding, we don't have a process, so check first.
+    if (LAUF_UNLIKELY(process != nullptr))
+    {
+        // Mark the current fiber as finished.
+        process->cur_fiber->ip         = nullptr;
+        process->cur_fiber->vstack_ptr = nullptr;
+        process->cur_fiber->frame_ptr  = nullptr;
+    }
+
     (void)ip;
     (void)frame_ptr;
     (void)vstack_ptr;
-    (void)process;
     return true;
 }
 

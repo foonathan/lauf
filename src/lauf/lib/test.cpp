@@ -62,7 +62,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_panic, 2, 0, LAUF_RUNTIME_BUILTIN_VM_O
         panic_msg = msg;
     });
 
-    auto did_not_panic = lauf_runtime_call(process, fn, vstack_ptr);
+    auto did_not_panic = lauf_runtime_call(process, fn, nullptr, nullptr);
 
     lauf_vm_set_panic_handler(vm, handler);
 

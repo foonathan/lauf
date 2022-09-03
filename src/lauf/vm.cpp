@@ -74,23 +74,13 @@ lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm)
 bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
                      lauf_runtime_value* output)
 {
-    auto fn  = lauf_asm_program_entry_function(program);
-    auto sig = lauf_asm_function_signature(fn);
+    auto fn = lauf_asm_program_entry_function(program);
 
     auto process = lauf_runtime_process::create(vm, program);
-
-    lauf_runtime_value vstack[UCHAR_MAX];
-    if (input != nullptr)
-        std::memcpy(vstack, input, sig.input_count * sizeof(lauf_runtime_value));
-    auto success = lauf_runtime_call(&process, fn, vstack + sig.input_count);
-    if (success)
-    {
-        if (output != nullptr)
-            std::memcpy(output, vstack, sig.output_count * sizeof(lauf_runtime_value));
-    }
-
+    auto result  = lauf_runtime_call(&process, fn, input, output);
     lauf_runtime_process::destroy(&process);
-    return success;
+
+    return result;
 }
 
 bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program* program,

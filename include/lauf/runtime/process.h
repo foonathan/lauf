@@ -34,7 +34,7 @@ const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p);
 /// It behaves like `lauf_vm_execute()` but re-uses the existing VM of the process.
 /// The function must be part of the program.
 bool lauf_runtime_call(lauf_runtime_process* p, const lauf_asm_function* fn,
-                       lauf_runtime_value* vstack_ptr);
+                       const lauf_runtime_value* input, lauf_runtime_value* output);
 
 /// Triggers a panic.
 ///

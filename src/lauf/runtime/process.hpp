@@ -21,6 +21,7 @@ struct fiber
     lauf::vstack vstack;
     lauf::cstack cstack;
 
+    // When not running, nullptr.
     // When suspended, state at the suspend instruction.
     // When active, state at the resume instruction.
     const lauf_asm_inst*      ip         = nullptr;
@@ -34,9 +35,23 @@ struct fiber
     // Intrusively linked list of fibers.
     fiber* next_fiber = nullptr;
 
-    static fiber* create(lauf_runtime_process* process, const lauf_asm_function* fn,
-                         std::size_t initial_vstack_size, std::size_t initial_cstack_size);
+    //=== operations ===//
+    static fiber* create(lauf_runtime_process* process, const lauf_asm_function* fn);
     static void   destroy(lauf_runtime_process* process, fiber* fiber);
+
+    bool start(lauf_runtime_process* process, const lauf_runtime_value* input);
+    void finish(lauf_runtime_value* output);
+
+    //=== access ===//
+    bool is_running() const
+    {
+        return ip != nullptr;
+    }
+
+    const lauf_asm_function* root_function() const
+    {
+        return trampoline_frame.function;
+    }
 };
 } // namespace lauf
 
