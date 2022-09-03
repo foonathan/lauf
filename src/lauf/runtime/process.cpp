@@ -130,7 +130,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     auto sig = lauf_asm_function_signature(fn);
 
     // Save current processor state.
-    auto leaf      = process->callstack_leaf_frame;
+    auto regs      = process->regs;
     auto cur_fiber = process->cur_fiber;
 
     // Create, start, and destroy fiber.
@@ -145,7 +145,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
     // We need to set ip to a non-null value to indicate that it's running.
     // We use the trampoline code as a proxy.
-    fiber->ip          = lauf::trampoline_code;
+    fiber->regs.ip     = lauf::trampoline_code;
     process->cur_fiber = fiber;
 
     // Execute the trampoline.
@@ -157,7 +157,8 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
         while (fiber->is_running())
         {
             process->cur_fiber = fiber;
-            if (!lauf::execute(fiber->ip + 1, fiber->vstack_ptr, fiber->frame_ptr, process))
+            if (!lauf::execute(fiber->regs.ip + 1, fiber->regs.vstack_ptr, fiber->regs.frame_ptr,
+                               process))
             {
                 success = false;
                 break;
@@ -170,8 +171,8 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     lauf::fiber::destroy(process, fiber);
 
     // Restore processor state.
-    process->callstack_leaf_frame = leaf;
-    process->cur_fiber            = cur_fiber;
+    process->regs      = regs;
+    process->cur_fiber = cur_fiber;
     return success;
 }
 

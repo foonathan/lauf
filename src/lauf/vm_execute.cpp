@@ -36,8 +36,8 @@ namespace
 LAUF_NOINLINE bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
                             lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
 {
-    auto msg = reinterpret_cast<const char*>(vstack_ptr);
-    process->callstack_leaf_frame.assign_callstack_leaf_frame(ip, frame_ptr);
+    auto msg      = reinterpret_cast<const char*>(vstack_ptr);
+    process->regs = {ip, vstack_ptr, frame_ptr};
     return lauf_runtime_panic(process, msg);
 }
 #define LAUF_DO_PANIC(Msg)                                                                         \
@@ -156,19 +156,19 @@ LAUF_VM_EXECUTE(exit)
     if (fiber->resumer == nullptr)
     {
         // We don't have a resumer, mark as finished and return to lauf_runtime_call().
-        fiber->ip = nullptr;
+        fiber->regs.ip = nullptr;
         return true;
     }
     else
     {
         // Switch to resumer fiber.
-        ip                 = fiber->ip;
-        vstack_ptr         = fiber->vstack_ptr;
-        frame_ptr          = fiber->frame_ptr;
+        ip                 = fiber->regs.ip;
+        vstack_ptr         = fiber->regs.vstack_ptr;
+        frame_ptr          = fiber->regs.frame_ptr;
         process->cur_fiber = fiber->resumer;
 
         // Mark the current fiber as finished.
-        fiber->ip = nullptr;
+        fiber->regs.ip = nullptr;
 
         ++ip;
         LAUF_VM_DISPATCH;
@@ -178,7 +178,7 @@ LAUF_VM_EXECUTE(exit)
 //=== calls ===//
 LAUF_VM_EXECUTE(call_builtin)
 {
-    process->callstack_leaf_frame.assign_callstack_leaf_frame(ip, frame_ptr);
+    process->regs = {ip, vstack_ptr, frame_ptr};
     LAUF_TAIL_CALL return execute_call_builtin_no_frame(ip, vstack_ptr, frame_ptr, process);
 }
 
@@ -274,10 +274,10 @@ LAUF_VM_EXECUTE(fiber_call)
     std::memcpy(fiber_vstack_ptr, vstack_ptr, input_count * sizeof(lauf_runtime_value));
     vstack_ptr += input_count;
 
-    fiber->ip         = ip;
-    fiber->vstack_ptr = vstack_ptr;
-    fiber->frame_ptr  = frame_ptr;
-    fiber->resumer    = process->cur_fiber;
+    fiber->regs.ip         = ip;
+    fiber->regs.vstack_ptr = vstack_ptr;
+    fiber->regs.frame_ptr  = frame_ptr;
+    fiber->resumer         = process->cur_fiber;
 
     ip                 = lauf::trampoline_code;
     vstack_ptr         = fiber_vstack_ptr;
@@ -297,9 +297,9 @@ LAUF_VM_EXECUTE(fiber_resume)
     if (LAUF_UNLIKELY(!fiber->is_running() || fiber == process->cur_fiber))
         LAUF_DO_PANIC("cannot resume fiber");
 
-    std::swap(fiber->ip, ip);
-    std::swap(fiber->vstack_ptr, vstack_ptr);
-    std::swap(fiber->frame_ptr, frame_ptr);
+    std::swap(fiber->regs.ip, ip);
+    std::swap(fiber->regs.vstack_ptr, vstack_ptr);
+    std::swap(fiber->regs.frame_ptr, frame_ptr);
     fiber->resumer     = process->cur_fiber;
     process->cur_fiber = fiber;
 
@@ -311,15 +311,15 @@ LAUF_VM_EXECUTE(fiber_suspend)
 {
     auto fiber = process->cur_fiber;
 
-    std::swap(fiber->ip, ip);
-    std::swap(fiber->vstack_ptr, vstack_ptr);
-    std::swap(fiber->frame_ptr, frame_ptr);
+    std::swap(fiber->regs.ip, ip);
+    std::swap(fiber->regs.vstack_ptr, vstack_ptr);
+    std::swap(fiber->regs.frame_ptr, frame_ptr);
     process->cur_fiber = fiber->resumer;
 
     if (LAUF_UNLIKELY(process->cur_fiber == nullptr))
     {
         // We've suspended the main fiber, so return instead.
-        process->callstack_leaf_frame.assign_callstack_leaf_frame(fiber->ip, fiber->frame_ptr);
+        process->regs = {ip, vstack_ptr, frame_ptr};
         return true;
     }
     else

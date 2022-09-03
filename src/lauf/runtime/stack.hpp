@@ -27,12 +27,6 @@ struct lauf_runtime_stack_frame
     // The previous stack frame.
     lauf_runtime_stack_frame* prev = nullptr;
 
-    void assign_callstack_leaf_frame(const lauf_asm_inst* ip, lauf_runtime_stack_frame* frame_ptr)
-    {
-        return_ip = ip + 1;
-        prev      = frame_ptr;
-    }
-
     bool is_trampoline_frame() const
     {
         return prev == nullptr;

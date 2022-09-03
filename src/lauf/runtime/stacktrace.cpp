@@ -6,32 +6,39 @@
 #include <lauf/asm/instruction.hpp>
 #include <lauf/runtime/process.hpp>
 
+struct lauf_runtime_stacktrace
+{
+    const lauf_runtime_stack_frame* frame;
+    const lauf_asm_inst*            ip;
+};
+
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p)
 {
-    // A stacktrace is simply the dummy frame reinterpret-casted.
-    // Code that exposes the process needs to set it correctly.
-    return reinterpret_cast<lauf_runtime_stacktrace*>(&p->callstack_leaf_frame);
+    return new lauf_runtime_stacktrace{p->regs.frame_ptr, p->regs.ip};
 }
 
 const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt)
 {
-    // The function is always one level back.
-    return reinterpret_cast<lauf_runtime_stack_frame*>(bt)->prev->function;
+    return bt->frame->function;
 }
 
 const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace* bt)
 {
-    // The return ip is at the current level, it points inside the previous function.
-    // (Since it's the return ip, we subtract one to get the call ip).
-    return reinterpret_cast<lauf_runtime_stack_frame*>(bt)->return_ip - 1;
+    return bt->ip;
 }
 
 lauf_runtime_stacktrace* lauf_runtime_stacktrace_parent(lauf_runtime_stacktrace* bt)
 {
-    auto frame_ptr = reinterpret_cast<lauf_runtime_stack_frame*>(bt)->prev;
-    if (frame_ptr->is_root_frame())
-        // We're done when we've reached the root frame.
+    if (bt->frame->is_root_frame())
+    {
+        delete bt;
         return nullptr;
-    return reinterpret_cast<lauf_runtime_stacktrace*>(frame_ptr);
+    }
+    else
+    {
+        bt->ip    = bt->frame->return_ip - 1;
+        bt->frame = bt->frame->prev;
+        return bt;
+    }
 }
 

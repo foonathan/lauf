@@ -13,6 +13,13 @@ typedef struct lauf_vm lauf_vm;
 
 namespace lauf
 {
+struct registers
+{
+    const lauf_asm_inst*      ip         = nullptr;
+    lauf_runtime_value*       vstack_ptr = nullptr;
+    lauf_runtime_stack_frame* frame_ptr  = nullptr;
+};
+
 struct fiber
 {
     // The handle to itself.
@@ -23,10 +30,8 @@ struct fiber
 
     // When not running, nullptr.
     // When suspended, the suspend instruction.
+    registers regs;
     // When active, the resume instruction.
-    const lauf_asm_inst*      ip         = nullptr;
-    lauf_runtime_value*       vstack_ptr = nullptr;
-    lauf_runtime_stack_frame* frame_ptr  = nullptr;
     // Only valid when active, fiber that resumed it.
     fiber* resumer = nullptr;
 
@@ -50,7 +55,7 @@ struct fiber
     //=== access ===//
     bool is_running() const
     {
-        return ip != nullptr;
+        return regs.ip != nullptr;
     }
 
     const lauf_asm_function* root_function() const
@@ -69,9 +74,12 @@ struct lauf_runtime_process
     lauf::memory memory;
     lauf::fiber* fiber_list = nullptr;
 
-    // The dummy frame for call stacks -- this is only lazily updated
-    // It needs to be valid when calling a builtin or panicing.
-    lauf_runtime_stack_frame callstack_leaf_frame;
+    // The current instruction pointer.
+    // Only lazily updated whenever process is exposed to user code:
+    // * before calling a builtin
+    // * before panicing
+    // * before suspending the main fiber.
+    lauf::registers regs;
     // The program that is running.
     const lauf_asm_program* program = nullptr;
 
