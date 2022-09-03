@@ -54,6 +54,11 @@ lauf_asm_module* example_module()
             }
         }
 
+        function @inner(0 => 0) {
+            uint 0; uint 1; $lauf.int.usub_panic; pop 0;
+            return;
+        }
+
         function @subfiber(3 => 0) {
             $lauf.debug.print;
             pop 0;
@@ -62,6 +67,8 @@ lauf_asm_module* example_module()
             $lauf.debug.print;
             pop 0;
             fiber_suspend;
+
+            call @inner;
 
             $lauf.debug.print;
             pop 0;

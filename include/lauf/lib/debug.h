@@ -28,6 +28,11 @@ extern const lauf_runtime_builtin lauf_lib_debug_print_vstack;
 /// Signature: _ => _
 extern const lauf_runtime_builtin lauf_lib_debug_print_cstack;
 
+/// Prints a stacktrace of all fibers.
+///
+/// Signature: _ => _
+extern const lauf_runtime_builtin lauf_lib_debug_print_all_cstacks;
+
 /// Breaks into the debugger.
 ///
 /// Signature: _ => _

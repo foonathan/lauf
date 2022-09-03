@@ -12,6 +12,7 @@
 #include <lauf/runtime/memory.h>
 #include <lauf/runtime/stacktrace.h>
 #include <lauf/runtime/value.h>
+#include <lauf/support/page_allocator.hpp>
 
 void lauf::debug_print(lauf_runtime_process* process, lauf_runtime_value value)
 {
@@ -60,6 +61,21 @@ void lauf::debug_print_cstack(lauf_runtime_process* process, const lauf_runtime_
     }
 }
 
+void lauf::debug_print_all_cstacks(lauf_runtime_process* process)
+{
+    for (auto fiber = lauf_runtime_iterate_fibers(process); fiber != nullptr;
+         fiber      = lauf_runtime_iterate_fibers_next(fiber))
+    {
+        // Each fiber starts in a separate page, so the lower bits are irrelevant.
+        auto id = reinterpret_cast<std::uintptr_t>(fiber) / lauf::page_allocator::page_size;
+        std::fprintf(stderr, "  fiber <%zx>", id);
+        if (fiber == lauf_runtime_get_current_fiber(process))
+            std::fprintf(stderr, " [active]");
+        std::fprintf(stderr, "\n");
+        debug_print_cstack(process, fiber);
+    }
+}
+
 LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print, 1, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "print", nullptr)
 {
     std::fprintf(stderr, "[lauf] debug print: ");
@@ -96,9 +112,17 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_cstack, 0, 0, LAUF_RUNTIME_BUILTIN_NO_
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
+LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_all_cstacks, 0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC,
+                     "print_all_cstacks", &lauf_lib_debug_print_cstack)
+{
+    std::fprintf(stderr, "[lauf] call stacks\n");
+    lauf::debug_print_all_cstacks(process);
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
 LAUF_RUNTIME_BUILTIN(lauf_lib_debug_break, 0, 0,
                      LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_NO_PANIC, "break",
-                     &lauf_lib_debug_print_cstack)
+                     &lauf_lib_debug_print_all_cstacks)
 {
     __builtin_debugtrap();
     LAUF_RUNTIME_BUILTIN_DISPATCH;
