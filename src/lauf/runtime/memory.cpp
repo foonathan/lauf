@@ -217,12 +217,14 @@ size_t lauf_runtime_gc(lauf_runtime_process* p, const lauf_runtime_value* vstack
     };
 
     // Mark allocations reachable by addresses in the vstack as reachable.
-    for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(p); ++cur)
-    {
-        auto alloc = p->memory.try_get(cur->as_address);
-        if (alloc != nullptr && cur->as_address.offset <= alloc->size)
-            mark_reachable(alloc);
-    }
+    for (auto fiber = lauf_runtime_iterate_fibers(p); fiber != nullptr;
+         fiber      = lauf_runtime_iterate_fibers_next(fiber))
+        for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(fiber); ++cur)
+        {
+                 auto alloc = p->memory.try_get(cur->as_address);
+                 if (alloc != nullptr && cur->as_address.offset <= alloc->size)
+                mark_reachable(alloc);
+        }
 
     // Process memory from explicitly reachable allocations.
     for (auto& alloc : p->memory)

@@ -19,8 +19,9 @@ struct registers
     lauf_runtime_value*       vstack_ptr = nullptr;
     lauf_runtime_stack_frame* frame_ptr  = nullptr;
 };
+} // namespace lauf
 
-struct fiber
+struct lauf_runtime_fiber
 {
     // The handle to itself.
     lauf_runtime_address handle;
@@ -30,21 +31,21 @@ struct fiber
 
     // When not running, nullptr.
     // When suspended, the suspend instruction.
-    registers regs;
+    lauf::registers regs;
     // When active, the resume instruction.
     // Only valid when active, fiber that resumed it.
-    fiber* resumer = nullptr;
+    lauf_runtime_fiber* resumer = nullptr;
 
     // The very base of the stack frame.
     lauf_runtime_stack_frame trampoline_frame;
 
     // Intrusively linked list of fibers.
-    fiber* prev_fiber = nullptr;
-    fiber* next_fiber = nullptr;
+    lauf_runtime_fiber* prev_fiber = nullptr;
+    lauf_runtime_fiber* next_fiber = nullptr;
 
     //=== operations ===//
-    static fiber* create(lauf_runtime_process* process);
-    static void   destroy(lauf_runtime_process* process, fiber* fiber);
+    static lauf_runtime_fiber* create(lauf_runtime_process* process);
+    static void                destroy(lauf_runtime_process* process, lauf_runtime_fiber* fiber);
 
     void init(const lauf_asm_function* fn)
     {
@@ -63,16 +64,15 @@ struct fiber
         return trampoline_frame.function;
     }
 };
-} // namespace lauf
 
 struct lauf_runtime_process
 {
     // The VM that is executing the process.
     lauf_vm* vm = nullptr;
 
-    lauf::fiber* cur_fiber = nullptr;
-    lauf::memory memory;
-    lauf::fiber* fiber_list = nullptr;
+    lauf_runtime_fiber* cur_fiber = nullptr;
+    lauf::memory        memory;
+    lauf_runtime_fiber* fiber_list = nullptr;
 
     // The current instruction pointer.
     // Only lazily updated whenever process is exposed to user code:

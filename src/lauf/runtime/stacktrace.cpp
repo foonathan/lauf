@@ -12,9 +12,13 @@ struct lauf_runtime_stacktrace
     const lauf_asm_inst*            ip;
 };
 
-lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p)
+lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p,
+                                                     const lauf_runtime_fiber* fiber)
 {
-    return new lauf_runtime_stacktrace{p->regs.frame_ptr, p->regs.ip};
+    if (fiber == p->cur_fiber)
+        return new lauf_runtime_stacktrace{p->regs.frame_ptr, p->regs.ip};
+    else
+        return new lauf_runtime_stacktrace{fiber->regs.frame_ptr, fiber->regs.ip};
 }
 
 const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt)

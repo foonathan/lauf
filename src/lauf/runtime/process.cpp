@@ -7,7 +7,7 @@
 #include <lauf/vm.hpp>
 #include <lauf/vm_execute.hpp>
 
-lauf::fiber* lauf::fiber::create(lauf_runtime_process* process)
+lauf_runtime_fiber* lauf_runtime_fiber::create(lauf_runtime_process* process)
 {
     auto vm = process->vm;
 
@@ -15,14 +15,15 @@ lauf::fiber* lauf::fiber::create(lauf_runtime_process* process)
     lauf::cstack stack;
     stack.init(vm->page_allocator, vm->initial_cstack_size);
     // We can then create a fiber in it and use it for the stack.
-    auto fiber = ::new (stack.base()) lauf::fiber();
+    auto fiber = ::new (stack.base()) lauf_runtime_fiber();
 
-    fiber->handle = process->memory.new_allocation(vm->page_allocator, make_fiber_alloc(fiber));
+    fiber->handle
+        = process->memory.new_allocation(vm->page_allocator, lauf::make_fiber_alloc(fiber));
     fiber->vstack.init(vm->page_allocator, vm->initial_vstack_size);
     fiber->cstack = stack;
 
     fiber->trampoline_frame.next_offset
-        = sizeof(lauf::fiber) - offsetof(lauf::fiber, trampoline_frame);
+        = sizeof(lauf_runtime_fiber) - offsetof(lauf_runtime_fiber, trampoline_frame);
 
     // Add to linked list of fibers.
     // The order doesn't matter, so insert at front.
@@ -34,7 +35,7 @@ lauf::fiber* lauf::fiber::create(lauf_runtime_process* process)
     return fiber;
 }
 
-void lauf::fiber::destroy(lauf_runtime_process* process, fiber* fiber)
+void lauf_runtime_fiber::destroy(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
 {
     process->memory[fiber->handle.allocation].status = lauf::allocation_status::freed;
 
@@ -51,7 +52,7 @@ void lauf::fiber::destroy(lauf_runtime_process* process, fiber* fiber)
     fiber->cstack.clear(process->vm->page_allocator);
 }
 
-void lauf::fiber::copy_output(lauf_runtime_value* output)
+void lauf_runtime_fiber::copy_output(lauf_runtime_value* output)
 {
     assert(!is_running());
 
@@ -82,7 +83,7 @@ void lauf_runtime_process::destroy(lauf_runtime_process* process)
 
     // Destroy all fibers.
     while (auto fiber = process->fiber_list)
-        lauf::fiber::destroy(process, fiber);
+        lauf_runtime_fiber::destroy(process, fiber);
 
     // Free allocated heap memory.
     for (auto alloc : process->memory)
@@ -111,9 +112,24 @@ const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p)
     return p->program;
 }
 
-const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p)
+const lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* p)
 {
-    return p->cur_fiber->vstack.base();
+    return p->cur_fiber;
+}
+
+const lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* p)
+{
+    return p->fiber_list;
+}
+
+const lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(const lauf_runtime_fiber* iter)
+{
+    return iter->next_fiber;
+}
+
+const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber* fiber)
+{
+    return fiber->vstack.base();
 }
 
 bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
@@ -133,8 +149,8 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     auto regs      = process->regs;
     auto cur_fiber = process->cur_fiber;
 
-    // Create, start, and destroy fiber.
-    auto fiber = lauf::fiber::create(process);
+    // Create a new fiber.
+    auto fiber = lauf_runtime_fiber::create(process);
     fiber->init(fn);
     auto vstack_ptr = fiber->vstack.base();
     for (auto i = 0u; i != sig.input_count; ++i)
@@ -168,7 +184,8 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
         if (success)
             fiber->copy_output(output);
     }
-    lauf::fiber::destroy(process, fiber);
+
+    lauf_runtime_fiber::destroy(process, fiber);
 
     // Restore processor state.
     process->regs      = regs;

@@ -15,8 +15,11 @@ typedef struct lauf_vm                 lauf_vm;
 typedef union lauf_asm_inst            lauf_asm_inst;
 typedef union lauf_runtime_value       lauf_runtime_value;
 
-/// Represents a currently running lauf program.
+/// Represents a running lauf program.
 typedef struct lauf_runtime_process lauf_runtime_process;
+
+/// Represents a fiber in a process.
+typedef struct lauf_runtime_fiber lauf_runtime_fiber;
 
 //=== queries ===//
 /// The VM that is executing the program.
@@ -25,11 +28,19 @@ lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* p);
 /// The program that is running.
 const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p);
 
-/// Returns the base of the vstack (highest address as it grows down).
-const lauf_runtime_value* lauf_runtime_get_vstack_base(lauf_runtime_process* p);
+/// The currently active fiber.
+const lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* p);
+
+/// Iterates over the fibers in arbitrary order.
+const lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* p);
+const lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(const lauf_runtime_fiber* iter);
+
+//=== fiber queries ===//
+/// Returns the base of the vstack (highest address as it grows down) of the fiber.
+const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber* fiber);
 
 //=== actions ===//
-/// Calls the given function.
+/// Calls the given function on a fresh fiber.
 ///
 /// It behaves like `lauf_vm_execute()` but re-uses the existing VM of the process.
 /// The function must be part of the program.

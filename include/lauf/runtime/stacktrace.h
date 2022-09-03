@@ -10,6 +10,7 @@ LAUF_HEADER_START
 
 typedef struct lauf_asm_function    lauf_asm_function;
 typedef union lauf_asm_inst         lauf_asm_inst;
+typedef struct lauf_runtime_fiber   lauf_runtime_fiber;
 typedef struct lauf_runtime_process lauf_runtime_process;
 
 /// A stacktrace that is built when a panic occurs.
@@ -19,8 +20,9 @@ typedef struct lauf_runtime_process lauf_runtime_process;
 /// Each parent points to the call of the child.
 typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
 
-/// Returns the current stacktrace of the process.
-lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process* p);
+/// Returns the stacktrace of the fiber.
+lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p,
+                                                     const lauf_runtime_fiber* fiber);
 
 /// Returns the function of the current stacktrace entry.
 const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt);

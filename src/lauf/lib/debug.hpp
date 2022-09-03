@@ -12,7 +12,7 @@
 namespace lauf
 {
 void debug_print(lauf_runtime_process* process, lauf_runtime_value value);
-void debug_print_cstack(lauf_runtime_process* process);
+void debug_print_cstack(lauf_runtime_process* process, const lauf_runtime_fiber* fiber);
 } // namespace lauf
 
 #endif // SRC_LAUF_LIB_DEBUG_HPP_INCLUDED

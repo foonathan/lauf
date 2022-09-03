@@ -244,7 +244,7 @@ LAUF_VM_EXECUTE(call_indirect)
 //=== fiber instructions ===//
 LAUF_VM_EXECUTE(fiber_create)
 {
-    auto fiber = lauf::fiber::create(process);
+    auto fiber = lauf_runtime_fiber::create(process);
 
     --vstack_ptr;
     vstack_ptr[0].as_address = fiber->handle;
@@ -264,7 +264,7 @@ LAUF_VM_EXECUTE(fiber_call)
     if (LAUF_UNLIKELY(alloc == nullptr || alloc->source != lauf::allocation_source::fiber_memory))
         LAUF_DO_PANIC("invalid fiber handle");
 
-    auto fiber = static_cast<lauf::fiber*>(alloc->ptr);
+    auto fiber = static_cast<lauf_runtime_fiber*>(alloc->ptr);
     if (LAUF_UNLIKELY(fiber->is_running()))
         LAUF_DO_PANIC("cannot do a fiber call on running fiber");
     fiber->init(callee);
@@ -293,7 +293,7 @@ LAUF_VM_EXECUTE(fiber_resume)
     if (LAUF_UNLIKELY(alloc == nullptr || alloc->source != lauf::allocation_source::fiber_memory))
         LAUF_DO_PANIC("invalid fiber handle");
 
-    auto fiber = static_cast<lauf::fiber*>(alloc->ptr);
+    auto fiber = static_cast<lauf_runtime_fiber*>(alloc->ptr);
     if (LAUF_UNLIKELY(!fiber->is_running() || fiber == process->cur_fiber))
         LAUF_DO_PANIC("cannot resume fiber");
 

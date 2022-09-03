@@ -12,8 +12,9 @@
 #include <lauf/support/align.hpp>
 #include <lauf/support/array.hpp>
 
-typedef struct lauf_asm_module lauf_asm_module;
-typedef struct lauf_vm         lauf_vm;
+typedef struct lauf_asm_module    lauf_asm_module;
+typedef struct lauf_vm            lauf_vm;
+typedef struct lauf_runtime_fiber lauf_runtime_fiber;
 
 //=== allocation ===//
 namespace lauf
@@ -117,7 +118,7 @@ constexpr lauf::allocation make_heap_alloc(void* memory, std::size_t size, std::
     return alloc;
 }
 
-constexpr lauf::allocation make_fiber_alloc(struct fiber* f)
+constexpr lauf::allocation make_fiber_alloc(lauf_runtime_fiber* f)
 {
     lauf::allocation alloc;
     alloc.ptr        = f;

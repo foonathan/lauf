@@ -31,12 +31,12 @@ void lauf::debug_print(lauf_runtime_process* process, lauf_runtime_value value)
     std::fprintf(stderr, ")");
 }
 
-void lauf::debug_print_cstack(lauf_runtime_process* process)
+void lauf::debug_print_cstack(lauf_runtime_process* process, const lauf_runtime_fiber* fiber)
 {
     auto program = lauf_runtime_get_program(process);
 
     auto index = 0;
-    for (auto st = lauf_runtime_get_stacktrace(process); st != nullptr;
+    for (auto st = lauf_runtime_get_stacktrace(process, fiber); st != nullptr;
          st      = lauf_runtime_stacktrace_parent(st))
     {
         auto fn = lauf_runtime_stacktrace_function(st);
@@ -76,7 +76,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_vstack, 0, 0,
     std::fprintf(stderr, "[lauf] value stack:\n");
 
     auto index = 0;
-    for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(process); ++cur)
+    auto fiber = lauf_runtime_get_current_fiber(process);
+    for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(fiber); ++cur)
     {
         std::fprintf(stderr, " %4d. ", index);
         lauf::debug_print(process, *cur);
@@ -91,7 +92,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_cstack, 0, 0, LAUF_RUNTIME_BUILTIN_NO_
                      "print_cstack", &lauf_lib_debug_print_vstack)
 {
     std::fprintf(stderr, "[lauf] call stack\n");
-    lauf::debug_print_cstack(process);
+    lauf::debug_print_cstack(process, lauf_runtime_get_current_fiber(process));
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 

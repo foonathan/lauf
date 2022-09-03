@@ -34,7 +34,7 @@ const lauf_vm_options lauf_default_vm_options = [] {
     result.panic_handler = [](lauf_runtime_process* process, const char* msg) {
         std::fprintf(stderr, "[lauf] panic: %s\n",
                      msg == nullptr ? "(invalid message pointer)" : msg);
-        lauf::debug_print_cstack(process);
+        lauf::debug_print_cstack(process, lauf_runtime_get_current_fiber(process));
     };
 
     result.allocator = lauf_vm_malloc_allocator;

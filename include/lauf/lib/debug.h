@@ -18,12 +18,12 @@ extern const lauf_runtime_builtin_library lauf_lib_debug;
 /// Signature: v => v
 extern const lauf_runtime_builtin lauf_lib_debug_print;
 
-/// Prints the entire vstack for debugging purposes.
+/// Prints the entire vstack of the current fiber for debugging purposes.
 ///
 /// Signature: _ => _
 extern const lauf_runtime_builtin lauf_lib_debug_print_vstack;
 
-/// Prints a stacktrace.
+/// Prints a stacktrace of the current fiber.
 ///
 /// Signature: _ => _
 extern const lauf_runtime_builtin lauf_lib_debug_print_cstack;
