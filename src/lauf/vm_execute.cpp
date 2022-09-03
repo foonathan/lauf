@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Jonathan Müller and lauf contributors
+// Copyright(C) 2022 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
 #include <lauf/vm.hpp>
@@ -156,7 +156,9 @@ LAUF_VM_EXECUTE(exit)
     if (fiber->resumer == nullptr)
     {
         // We don't have a resumer, mark as finished and return to lauf_runtime_call().
-        fiber->regs.ip = nullptr;
+        fiber->regs        = {nullptr, nullptr, nullptr};
+        process->regs      = {nullptr, nullptr, nullptr};
+        process->cur_fiber = nullptr;
         return true;
     }
     else
@@ -297,6 +299,7 @@ LAUF_VM_EXECUTE(fiber_resume)
     if (LAUF_UNLIKELY(!fiber->is_running() || fiber == process->cur_fiber))
         LAUF_DO_PANIC("cannot resume fiber");
 
+    process->cur_fiber->regs = {ip, vstack_ptr, frame_ptr};
     std::swap(fiber->regs.ip, ip);
     std::swap(fiber->regs.vstack_ptr, vstack_ptr);
     std::swap(fiber->regs.frame_ptr, frame_ptr);
@@ -319,7 +322,8 @@ LAUF_VM_EXECUTE(fiber_suspend)
     if (LAUF_UNLIKELY(process->cur_fiber == nullptr))
     {
         // We've suspended the main fiber, so return instead.
-        process->regs = {ip, vstack_ptr, frame_ptr};
+        process->regs      = {ip, vstack_ptr, frame_ptr};
+        process->cur_fiber = nullptr;
         return true;
     }
     else

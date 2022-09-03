@@ -102,27 +102,27 @@ void lauf_runtime_process::destroy(lauf_runtime_process* process)
     process->memory.clear(vm);
 }
 
-lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* p)
+lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* process)
 {
-    return p->vm;
+    return process->vm;
 }
 
-const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p)
+const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process)
 {
-    return p->program;
+    return process->program;
 }
 
-const lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* p)
+lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process)
 {
-    return p->cur_fiber;
+    return process->cur_fiber;
 }
 
-const lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* p)
+lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* process)
 {
-    return p->fiber_list;
+    return process->fiber_list;
 }
 
-const lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(const lauf_runtime_fiber* iter)
+lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(lauf_runtime_fiber* iter)
 {
     return iter->next_fiber;
 }
@@ -161,7 +161,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
     // We need to set ip to a non-null value to indicate that it's running.
     // We use the trampoline code as a proxy.
-    fiber->regs.ip     = lauf::trampoline_code;
+    fiber->regs        = {lauf::trampoline_code, nullptr, nullptr};
     process->cur_fiber = fiber;
 
     // Execute the trampoline.
@@ -172,9 +172,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
         // If the fiber has been suspended, keep resuming it.
         while (fiber->is_running())
         {
-            process->cur_fiber = fiber;
-            if (!lauf::execute(fiber->regs.ip + 1, fiber->regs.vstack_ptr, fiber->regs.frame_ptr,
-                               process))
+            if (!lauf_runtime_resume(process, fiber))
             {
                 success = false;
                 break;
@@ -193,24 +191,37 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     return success;
 }
 
-bool lauf_runtime_set_step_limit(lauf_runtime_process* p, size_t new_limit)
+bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
 {
-    auto vm_limit = p->vm->step_limit;
+    assert(process->cur_fiber == nullptr);
+    auto regs = fiber->regs;
+
+    // We need to set ip to a non-null value to indicate that it's running.
+    // We use the trampoline code as a proxy.
+    fiber->regs        = {lauf::trampoline_code, nullptr, nullptr};
+    process->cur_fiber = fiber;
+
+    return lauf::execute(regs.ip + 1, regs.vstack_ptr, regs.frame_ptr, process);
+}
+
+bool lauf_runtime_set_step_limit(lauf_runtime_process* process, size_t new_limit)
+{
+    auto vm_limit = process->vm->step_limit;
     if (vm_limit != 0 && new_limit > vm_limit)
         return false;
 
-    p->remaining_steps = new_limit;
-    assert(p->remaining_steps != 0);
+    process->remaining_steps = new_limit;
+    assert(process->remaining_steps != 0);
     return true;
 }
 
-bool lauf_runtime_increment_step(lauf_runtime_process* p)
+bool lauf_runtime_increment_step(lauf_runtime_process* process)
 {
     // If the remaining steps are zero, we have no limit.
-    if (p->remaining_steps > 0)
+    if (process->remaining_steps > 0)
     {
-        --p->remaining_steps;
-        if (p->remaining_steps == 0)
+        --process->remaining_steps;
+        if (process->remaining_steps == 0)
             return false;
 
         // Note that if the panic recovers (via `lauf.test.assert_panic`), the process now

@@ -23,29 +23,38 @@ typedef struct lauf_runtime_fiber lauf_runtime_fiber;
 
 //=== queries ===//
 /// The VM that is executing the program.
-lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* p);
+lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* process);
 
 /// The program that is running.
-const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* p);
+const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process);
 
 /// The currently active fiber.
-const lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* p);
+/// Returns nullptr if all fibers are suspended currently.
+lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process);
 
 /// Iterates over the fibers in arbitrary order.
-const lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* p);
-const lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(const lauf_runtime_fiber* iter);
+lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* process);
+lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(lauf_runtime_fiber* iter);
 
 //=== fiber queries ===//
 /// Returns the base of the vstack (highest address as it grows down) of the fiber.
 const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber* fiber);
 
 //=== actions ===//
-/// Calls the given function on a fresh fiber.
+/// Calls the given function on a fresh fiber and keeps resuming it until it finishes.
 ///
 /// It behaves like `lauf_vm_execute()` but re-uses the existing VM of the process.
 /// The function must be part of the program.
-bool lauf_runtime_call(lauf_runtime_process* p, const lauf_asm_function* fn,
+bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        const lauf_runtime_value* input, lauf_runtime_value* output);
+
+/// Resumes the specified fiber.
+///
+/// This activates the fiber and keeps executing it until it suspends again.
+/// It returns false if it panics, true otherwise.
+///
+/// It must only be called when no fiber is currently running.
+bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber);
 
 /// Triggers a panic.
 ///
@@ -53,21 +62,22 @@ bool lauf_runtime_call(lauf_runtime_process* p, const lauf_asm_function* fn,
 /// The builtin needs to do that by returning false.
 ///
 /// The function always returns false for convenience.
-bool lauf_runtime_panic(lauf_runtime_process* p, const char* msg);
+bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg);
 
+//=== steps ===//
 /// Limits the number of execution steps that can be taken before the process panics.
 ///
 /// This has no effect, unless `lauf_lib_limitis_step[s]` is called, which modifies the limit.
 /// The limit cannot be increased beyond the limit provided in the VM config.
 /// It also reaches the existing steps taken.
-bool lauf_runtime_set_step_limit(lauf_runtime_process* p, size_t new_limit);
+bool lauf_runtime_set_step_limit(lauf_runtime_process* process, size_t new_limit);
 
 /// Increments the step count by one.
 ///
 /// If this reaches the step limit, returns false.
 /// It needs to be manually inserted during codegen (e.g. once per function and loop iteratation)
 /// for the step limit to work. If the step limit is unlimited, does nothing.
-bool lauf_runtime_increment_step(lauf_runtime_process* p);
+bool lauf_runtime_increment_step(lauf_runtime_process* process);
 
 LAUF_HEADER_END
 

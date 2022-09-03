@@ -55,7 +55,7 @@ lauf_asm_module* example_module()
         }
 
         function @inner(0 => 0) {
-            uint 0; uint 1; $lauf.int.usub_panic; pop 0;
+            $lauf.debug.print_all_cstacks;
             return;
         }
 

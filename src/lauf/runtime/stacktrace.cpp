@@ -33,6 +33,7 @@ const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace
 
 lauf_runtime_stacktrace* lauf_runtime_stacktrace_parent(lauf_runtime_stacktrace* bt)
 {
+    assert(bt->frame->prev != nullptr);
     if (bt->frame->is_root_frame())
     {
         delete bt;
