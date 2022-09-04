@@ -17,8 +17,6 @@ lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p
 {
     switch (fiber->state)
     {
-    case lauf_runtime_fiber::done:
-        return nullptr;
     case lauf_runtime_fiber::ready:
         return new lauf_runtime_stacktrace{fiber->suspension_point.frame_ptr,
                                            fiber->root_function()->insts};
@@ -28,6 +26,8 @@ lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p
     case lauf_runtime_fiber::running:
         assert(p->cur_fiber == fiber);
         return new lauf_runtime_stacktrace{p->regs.frame_ptr, p->regs.ip};
+    case lauf_runtime_fiber::done:
+        return nullptr;
     }
 }
 

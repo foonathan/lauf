@@ -8,7 +8,6 @@
 
 #include <lauf/runtime/memory.hpp>
 #include <lauf/runtime/stack.hpp>
-#include <lauf/vm_execute.hpp>
 
 typedef struct lauf_vm lauf_vm;
 
@@ -27,11 +26,11 @@ struct lauf_runtime_fiber
     // The state of the fiber.
     enum state_t : uint8_t
     {
-        done,
         ready,
         suspended,
         running,
-    } state = done;
+        done,
+    } state = ready;
 
     // Only when suspended, the number of arguments the resumer is expected to push onto its vstack
     // prior to resuming.
@@ -58,18 +57,8 @@ struct lauf_runtime_fiber
     lauf_runtime_fiber* next_fiber = nullptr;
 
     //=== operations ===//
-    static lauf_runtime_fiber* create(lauf_runtime_process* process);
+    static lauf_runtime_fiber* create(lauf_runtime_process* process, const lauf_asm_function* fn);
     static void                destroy(lauf_runtime_process* process, lauf_runtime_fiber* fiber);
-
-    void init(const lauf_asm_function* fn)
-    {
-        assert(state == done);
-        trampoline_frame.function = fn;
-        suspension_point          = {lauf::trampoline_code, vstack.base(), &trampoline_frame};
-        expected_argument_count   = fn->sig.input_count;
-        state                     = ready;
-    }
-    void copy_output(lauf_runtime_value* output);
 
     void suspend(lauf::registers regs, uint8_t expected_argument_count)
     {

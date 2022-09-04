@@ -7,7 +7,8 @@
 #include <lauf/vm.hpp>
 #include <lauf/vm_execute.hpp>
 
-lauf_runtime_fiber* lauf_runtime_fiber::create(lauf_runtime_process* process)
+lauf_runtime_fiber* lauf_runtime_fiber::create(lauf_runtime_process*    process,
+                                               const lauf_asm_function* fn)
 {
     auto vm = process->vm;
 
@@ -25,6 +26,11 @@ lauf_runtime_fiber* lauf_runtime_fiber::create(lauf_runtime_process* process)
 
     fiber->trampoline_frame.next_offset
         = sizeof(lauf_runtime_fiber) - offsetof(lauf_runtime_fiber, trampoline_frame);
+    fiber->trampoline_frame.function = fn;
+
+    fiber->suspension_point
+        = {lauf::trampoline_code, fiber->vstack.base(), &fiber->trampoline_frame};
+    fiber->expected_argument_count = fn->sig.input_count;
 
     // Add to linked list of fibers.
     // The order doesn't matter, so insert at front.
@@ -51,19 +57,6 @@ void lauf_runtime_fiber::destroy(lauf_runtime_process* process, lauf_runtime_fib
 
     // At this point we're deallocating the memory for the fiber itself.
     fiber->cstack.clear(process->vm->page_allocator);
-}
-
-void lauf_runtime_fiber::copy_output(lauf_runtime_value* output)
-{
-    assert(state == lauf_runtime_fiber::done);
-
-    auto sig        = lauf_asm_function_signature(root_function());
-    auto vstack_ptr = vstack.base() - sig.output_count;
-    for (auto i = 0u; i != sig.output_count; ++i)
-    {
-        output[sig.output_count - i - 1] = vstack_ptr[0];
-        ++vstack_ptr;
-    }
 }
 
 lauf_runtime_process lauf_runtime_process::create(lauf_vm* vm, const lauf_asm_program* program)
@@ -164,39 +157,40 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     auto sig = lauf_asm_function_signature(fn);
 
     // Save current processor state.
-    auto regs      = process->regs;
-    auto cur_fiber = process->cur_fiber;
+    auto regs          = process->regs;
+    auto cur_fiber     = process->cur_fiber;
+    process->cur_fiber = nullptr;
 
     // Create a new fiber.
-    auto fiber = lauf_runtime_fiber::create(process);
-    fiber->init(fn);
-    auto vstack_ptr = fiber->vstack.base();
+    auto fiber = lauf_runtime_fiber::create(process, fn);
+
+    // We need to manually transfer arguments as the order is different.
+    auto& vstack_ptr = fiber->suspension_point.vstack_ptr;
     for (auto i = 0u; i != sig.input_count; ++i)
     {
         --vstack_ptr;
         vstack_ptr[0] = input[i];
     }
 
-    fiber->resume_by(nullptr);
-    process->cur_fiber = fiber;
-
-    // Execute the trampoline.
-    auto success
-        = lauf::execute(lauf::trampoline_code, vstack_ptr, &fiber->trampoline_frame, process);
+    // Execute the fiber until it is done.
+    auto success = true;
+    while (fiber->state != lauf_runtime_fiber::done)
+    {
+        if (!lauf_runtime_resume(process, fiber))
+        {
+            success = false;
+            break;
+        }
+    }
     if (success)
     {
-        // If the fiber has been suspended, keep resuming it.
-        while (fiber->state != lauf_runtime_fiber::done)
+        // Copy the output values over.
+        vstack_ptr = fiber->vstack.base() - sig.output_count;
+        for (auto i = 0u; i != sig.output_count; ++i)
         {
-            if (!lauf_runtime_resume(process, fiber))
-            {
-                success = false;
-                break;
-            }
+            output[sig.output_count - i - 1] = vstack_ptr[0];
+            ++vstack_ptr;
         }
-
-        if (success)
-            fiber->copy_output(output);
     }
 
     lauf_runtime_fiber::destroy(process, fiber);
