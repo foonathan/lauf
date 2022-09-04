@@ -150,11 +150,12 @@ void lauf_asm_inst_fiber_create(lauf_asm_builder* b);
 void lauf_asm_inst_fiber_call(lauf_asm_builder* b, const lauf_asm_function* callee);
 
 /// Resumes a suspended fiber.
+/// It will execute until its suspension point, and then return back to this location.
 ///
 /// Signature: handle:fiber => handle:fiber
 void lauf_asm_inst_fiber_resume(lauf_asm_builder* b);
 
-/// Suspends the current fiber.
+/// Suspends the current fiber and transfer control back to the fiber that resumed it.
 ///
 /// Signature: _ => _
 void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b);

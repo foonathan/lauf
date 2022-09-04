@@ -54,44 +54,29 @@ lauf_asm_module* example_module()
             }
         }
 
-        function @inner(0 => 0) {
+        function @subfiber2(0 => 0) {
+            uint 2; $lauf.debug.print; pop 0;
+            fiber_suspend;
             $lauf.debug.print_all_cstacks;
             return;
         }
 
-        function @subfiber(3 => 0) {
-            $lauf.debug.print;
-            pop 0;
-            fiber_suspend;
-
-            $lauf.debug.print;
-            pop 0;
-            fiber_suspend;
-
-            call @inner;
-
-            $lauf.debug.print;
-            fiber_suspend;
-            $lauf.debug.print;
+        function @subfiber(0 => 0) {
+            uint 1; $lauf.debug.print; pop 0;
+            fiber_create;
+            fiber_call @subfiber2;
             pop 0;
             return;
         }
 
         function @main(0 => 1) {
             fiber_create;
-            sint -1; $lauf.debug.print; pop 0;
-            uint 3; uint 2; uint 1; fiber_call @subfiber;
-            sint -2; $lauf.debug.print; pop 0;
+            uint 0; $lauf.debug.print; pop 0;
+            fiber_call @subfiber; 
+            uint 3; $lauf.debug.print; pop 0;
             fiber_resume;
-            sint -3; $lauf.debug.print; pop 0;
-            #fiber_suspend;
-            fiber_resume;
-            sint -4; $lauf.debug.print; pop 0;
-            fiber_resume;
-            sint -5; $lauf.debug.print; pop 0;
             pop 0;
-            uint 0;
-            return;
+            uint 0; return;
         }
     )");
     lauf_reader_set_path(reader, "prototype.lauf");

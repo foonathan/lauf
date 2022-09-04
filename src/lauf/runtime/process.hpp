@@ -40,13 +40,10 @@ struct lauf_runtime_fiber
     lauf::vstack vstack;
     lauf::cstack cstack;
 
-    union
-    {
-        // Only when suspended.
-        lauf::registers suspension_point;
-        // Only when running.
-        lauf_runtime_address resumer;
-    };
+    // Only when suspended.
+    lauf::registers suspension_point;
+    // The fiber to transfer control back to when it's suspended.
+    lauf_runtime_address parent;
 
     // The very base of the stack frame.
     lauf_runtime_stack_frame trampoline_frame;
@@ -74,15 +71,22 @@ struct lauf_runtime_fiber
         suspension_point = regs;
     }
 
+    // Resumes a fiber without overriding its parent.
+    lauf::registers resume()
+    {
+        assert(state == suspended || state == ready);
+        state = running;
+        return suspension_point;
+    }
+    // Resumes a fiber and sets its parent.
     lauf::registers resume_by(lauf_runtime_fiber* resumer)
     {
         assert(state == suspended || state == ready);
-        auto regs = suspension_point;
 
-        state         = running;
-        this->resumer = resumer == nullptr ? lauf_runtime_address_null : resumer->handle();
+        state  = running;
+        parent = resumer == nullptr ? lauf_runtime_address_null : resumer->handle();
 
-        return regs;
+        return suspension_point;
     }
 
     //=== access ===//
@@ -94,7 +98,7 @@ struct lauf_runtime_fiber
     bool has_resumer() const
     {
         assert(state == running);
-        return resumer.allocation != lauf_runtime_address_null.allocation;
+        return parent.allocation != lauf_runtime_address_null.allocation;
     }
 
     lauf_runtime_address handle() const

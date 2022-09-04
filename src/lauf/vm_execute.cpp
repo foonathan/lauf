@@ -153,23 +153,22 @@ LAUF_VM_EXECUTE(exit)
         return true;
 
     auto cur_fiber = process->cur_fiber;
-    auto new_fiber = lauf::get_fiber(process, cur_fiber->resumer);
+    auto new_fiber = lauf::get_fiber(process, cur_fiber->parent);
 
     cur_fiber->state = lauf_runtime_fiber::done;
 
     if (new_fiber == nullptr || new_fiber->state == lauf_runtime_fiber::done)
     {
-        // We don't have a fiber that needs resuming (anymore?), return to lauf_runtime_call().
+        // We don't have a parent (anymore?), return to lauf_runtime_call().
         process->regs      = {nullptr, nullptr, nullptr};
         process->cur_fiber = nullptr;
         return true;
     }
     else
     {
-        // Switch to resumer fiber.
+        // Switch to parent fiber.
         assert(new_fiber->state == lauf_runtime_fiber::suspended);
-
-        auto regs          = new_fiber->resume_by(cur_fiber);
+        auto regs          = new_fiber->resume();
         process->cur_fiber = new_fiber;
 
         ip         = regs.ip;
@@ -294,6 +293,7 @@ LAUF_VM_EXECUTE(fiber_resume)
     if (LAUF_UNLIKELY(fiber == nullptr || fiber->state != lauf_runtime_fiber::suspended))
         LAUF_DO_PANIC("invalid fiber handle");
 
+    // We resume the fiber and set its parent.
     process->cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
     auto regs          = fiber->resume_by(process->cur_fiber);
     process->cur_fiber = fiber;
@@ -320,12 +320,13 @@ LAUF_VM_EXECUTE(fiber_suspend)
     }
     else
     {
-        auto new_fiber = lauf::get_fiber(process, cur_fiber->resumer);
+        auto new_fiber = lauf::get_fiber(process, cur_fiber->parent);
         if (LAUF_UNLIKELY(new_fiber == nullptr))
-            LAUF_DO_PANIC("cannot suspend to destroyed resumer");
+            LAUF_DO_PANIC("cannot suspend to destroyed parent");
 
+        // We resume the parent but without setting its parent (asymmetric).
         cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
-        auto regs          = new_fiber->resume_by(cur_fiber);
+        auto regs          = new_fiber->resume();
         process->cur_fiber = new_fiber;
 
         ip         = regs.ip;
