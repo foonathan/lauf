@@ -85,19 +85,21 @@ struct lauf_runtime_fiber
     }
 
     // Resumes a fiber without overriding its parent.
-    lauf::registers resume()
+    void resume()
     {
         assert(state == suspended || state == ready);
         state = running;
-        return suspension_point;
     }
     // Resumes a fiber and sets its parent.
-    lauf::registers resume_by(lauf_runtime_fiber* resumer)
+    void resume_by(lauf_runtime_address resumer)
     {
         assert(state == suspended || state == ready);
         state  = running;
-        parent = resumer == nullptr ? lauf_runtime_address_null : resumer->handle();
-        return suspension_point;
+        parent = resumer;
+    }
+    void resume_by(lauf_runtime_fiber* resumer)
+    {
+        resume_by(resumer == nullptr ? lauf_runtime_address_null : resumer->handle());
     }
 
     //=== access ===//
@@ -106,7 +108,7 @@ struct lauf_runtime_fiber
         return trampoline_frame.function;
     }
 
-    bool has_resumer() const
+    bool has_parent() const
     {
         assert(state == running);
         return parent.allocation != lauf_runtime_address_null.allocation;

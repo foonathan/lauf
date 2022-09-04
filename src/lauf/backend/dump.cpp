@@ -136,10 +136,16 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             break;
         }
         case lauf::asm_op::fiber_resume:
-            writer->write("fiber_resume");
+            writer->format("fiber_resume (%u => %u)", ip->fiber_resume.input_count,
+                           ip->fiber_resume.output_count);
+            break;
+        case lauf::asm_op::fiber_transfer:
+            writer->format("fiber_resume (%u => %u)", ip->fiber_transfer.input_count,
+                           ip->fiber_transfer.output_count);
             break;
         case lauf::asm_op::fiber_suspend:
-            writer->write("fiber_suspend");
+            writer->format("fiber_suspend (%u => %u)", ip->fiber_suspend.input_count,
+                           ip->fiber_suspend.output_count);
             break;
 
         case lauf::asm_op::push:

@@ -50,6 +50,8 @@ LAUF_ASM_INST(fiber_create, asm_inst_offset)
 
 // lauf_asm_inst_fiber_resume()
 LAUF_ASM_INST(fiber_resume, asm_inst_signature)
+// lauf_asm_inst_fiber_transfer()
+LAUF_ASM_INST(fiber_transfer, asm_inst_signature)
 // lauf_asm_inst_fiber_suspend()
 LAUF_ASM_INST(fiber_suspend, asm_inst_signature)
 

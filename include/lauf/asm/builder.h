@@ -148,10 +148,19 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
 void lauf_asm_inst_fiber_create(lauf_asm_builder* b, const lauf_asm_function* callee);
 
 /// Resumes a suspended fiber.
-/// It will execute until its suspension point, and then return back to this location.
+///
+/// It will execute it until its next suspension point, and then return back to this location.
 ///
 /// Signature: handle:fiber in_0 ... in_N => handle:fiber out_0 ... out_N
 void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig);
+
+/// Transfers control to a different fiber.
+///
+/// It will execute it until its suspension point, and then returns back to the fiber that last
+/// resumed this fiber. This fiber needs to be resumed manually.
+///
+/// Signature: handle:fiber in_0 ... in_N => handle:fiber out_0 ... out_N
+void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig);
 
 /// Suspends the current fiber and transfer control back to the fiber that resumed it.
 ///

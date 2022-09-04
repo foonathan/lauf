@@ -79,6 +79,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::call_builtin_no_frame:
         case lauf::asm_op::fiber_create:
         case lauf::asm_op::fiber_resume:
+        case lauf::asm_op::fiber_transfer:
         case lauf::asm_op::fiber_suspend:
         case lauf::asm_op::store_local_value:
         // Instructions that we can't remove easily.
@@ -544,6 +545,18 @@ void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_resume, sig.input_count,
+                                                          sig.output_count));
+    b->cur->vstack.push(*b, 1);
+    b->cur->vstack.push(*b, sig.output_count);
+}
+
+void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig)
+{
+    LAUF_BUILD_ASSERT_CUR;
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_transfer, sig.input_count,
                                                           sig.output_count));
     b->cur->vstack.push(*b, 1);
     b->cur->vstack.push(*b, sig.output_count);

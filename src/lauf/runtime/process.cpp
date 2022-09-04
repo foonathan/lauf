@@ -181,9 +181,15 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
             success = false;
             break;
         }
+
+        fiber = process->cur_fiber;
     }
     if (success)
     {
+        // The fiber could have changed, so we need to check that the output count still matches.
+        if (fiber->root_function()->sig.output_count != sig.output_count)
+            return lauf_runtime_panic(process, "invalid output count in call");
+
         // Copy the output values over.
         vstack_ptr = fiber->vstack.base() - sig.output_count;
         for (auto i = 0u; i != sig.output_count; ++i)
@@ -205,10 +211,11 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
 {
     assert(process->cur_fiber == nullptr);
 
-    auto regs          = fiber->resume_by(nullptr);
+    fiber->resume_by(nullptr);
     process->cur_fiber = fiber;
 
-    return lauf::execute(regs.ip + 1, regs.vstack_ptr, regs.frame_ptr, process);
+    return lauf::execute(fiber->suspension_point.ip + 1, fiber->suspension_point.vstack_ptr,
+                         fiber->suspension_point.frame_ptr, process);
 }
 
 bool lauf_runtime_set_step_limit(lauf_runtime_process* process, size_t new_limit)

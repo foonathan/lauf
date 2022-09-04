@@ -598,6 +598,11 @@ struct inst_fiber_resume
     static constexpr auto rule  = LAUF_KEYWORD("fiber_resume") >> dsl::p<signature>;
     static constexpr auto value = inst(&lauf_asm_inst_fiber_resume);
 };
+struct inst_fiber_transfer
+{
+    static constexpr auto rule  = LAUF_KEYWORD("fiber_transfer") >> dsl::p<signature>;
+    static constexpr auto value = inst(&lauf_asm_inst_fiber_transfer);
+};
 struct inst_fiber_suspend
 {
     static constexpr auto rule  = LAUF_KEYWORD("fiber_suspend") >> dsl::p<signature>;
@@ -663,7 +668,8 @@ struct instruction
               | dsl::p<inst_stack_op>                                                      //
               | dsl::p<inst_call> | dsl::p<inst_call_indirect> | dsl::p<inst_call_builtin> //
               | dsl::p<inst_fiber_create>                                                  //
-              | dsl::p<inst_fiber_resume> | dsl::p<inst_fiber_suspend>                     //
+              | dsl::p<inst_fiber_resume> | dsl::p<inst_fiber_transfer>                    //
+              | dsl::p<inst_fiber_suspend>                                                 //
               | dsl::p<inst_array_element> | dsl::p<inst_aggregate_member>                 //
               | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
 

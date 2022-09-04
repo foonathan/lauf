@@ -66,7 +66,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
 /// Resumes the specified fiber.
 ///
-/// This activates the fiber and keeps executing it until it suspends again.
+/// This activates the fiber and executes it until it suspends again.
 /// It returns false if it panics, true otherwise.
 ///
 /// It must only be called when no fiber is currently running.
