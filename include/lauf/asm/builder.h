@@ -141,24 +141,22 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
 //=== fiber instructions ===//
 /// Creates a new fiber.
 ///
-/// Signature: _ => handle:fiber
-void lauf_asm_inst_fiber_create(lauf_asm_builder* b);
-
-/// Starts executing a function on a fiber.
+/// It starts out suspended.
+/// When it is resumed, it starts executing the specified function.
 ///
-/// Signature: handle:fiber in_N ... in_0 => handle:fiber
-void lauf_asm_inst_fiber_call(lauf_asm_builder* b, const lauf_asm_function* callee);
+/// Signature: _ => handle:fiber
+void lauf_asm_inst_fiber_create(lauf_asm_builder* b, const lauf_asm_function* callee);
 
 /// Resumes a suspended fiber.
 /// It will execute until its suspension point, and then return back to this location.
 ///
-/// Signature: handle:fiber => handle:fiber
-void lauf_asm_inst_fiber_resume(lauf_asm_builder* b);
+/// Signature: handle:fiber in_0 ... in_N => handle:fiber out_0 ... out_N
+void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig);
 
 /// Suspends the current fiber and transfer control back to the fiber that resumed it.
 ///
-/// Signature: _ => _
-void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b);
+/// Signature: in_0 ... in_N => out_0 ... out_N
+void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b, lauf_asm_signature sig);
 
 //=== value instructions ===//
 /// Pushes an signed integer onto the stack.

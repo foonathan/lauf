@@ -8,6 +8,7 @@
 
 #include <lauf/runtime/memory.hpp>
 #include <lauf/runtime/stack.hpp>
+#include <lauf/vm_execute.hpp>
 
 typedef struct lauf_vm lauf_vm;
 
@@ -31,6 +32,10 @@ struct lauf_runtime_fiber
         suspended,
         running,
     } state = done;
+
+    // Only when suspended, the number of arguments the resumer is expected to push onto its vstack
+    // prior to resuming.
+    uint8_t expected_argument_count = 0;
 
     // The handle to itself.
     uint32_t handle_allocation : 30;
@@ -60,15 +65,34 @@ struct lauf_runtime_fiber
     {
         assert(state == done);
         trampoline_frame.function = fn;
+        suspension_point          = {lauf::trampoline_code, vstack.base(), &trampoline_frame};
+        expected_argument_count   = fn->sig.input_count;
         state                     = ready;
     }
     void copy_output(lauf_runtime_value* output);
 
-    void suspend(lauf::registers regs)
+    void suspend(lauf::registers regs, uint8_t expected_argument_count)
     {
-        assert(state == running);
-        state            = suspended;
-        suspension_point = regs;
+        assert(state == running || state == ready);
+        state                         = suspended;
+        suspension_point              = regs;
+        this->expected_argument_count = expected_argument_count;
+    }
+
+    bool transfer_arguments(uint8_t argument_count, lauf_runtime_value*& vstack_ptr)
+    {
+        assert(state == suspended || state == ready);
+        if (LAUF_UNLIKELY(argument_count != expected_argument_count))
+            return false;
+
+        if (argument_count > 0)
+        {
+            suspension_point.vstack_ptr -= argument_count;
+            std::memcpy(suspension_point.vstack_ptr, vstack_ptr,
+                        argument_count * sizeof(lauf_runtime_value));
+            vstack_ptr += argument_count;
+        }
+        return true;
     }
 
     // Resumes a fiber without overriding its parent.
@@ -82,10 +106,8 @@ struct lauf_runtime_fiber
     lauf::registers resume_by(lauf_runtime_fiber* resumer)
     {
         assert(state == suspended || state == ready);
-
         state  = running;
         parent = resumer == nullptr ? lauf_runtime_address_null : resumer->handle();
-
         return suspension_point;
     }
 

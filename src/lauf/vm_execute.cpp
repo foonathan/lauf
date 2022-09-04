@@ -166,6 +166,11 @@ LAUF_VM_EXECUTE(exit)
     }
     else
     {
+        // Transfer values from our vstack.
+        if (auto argument_count = std::uint8_t(cur_fiber->vstack.base() - vstack_ptr);
+            LAUF_UNLIKELY(!new_fiber->transfer_arguments(argument_count, vstack_ptr)))
+            LAUF_DO_PANIC("mismatched signature for fiber resume");
+
         // Switch to parent fiber.
         assert(new_fiber->state == lauf_runtime_fiber::suspended);
         auto regs          = new_fiber->resume();
@@ -249,7 +254,11 @@ LAUF_VM_EXECUTE(call_indirect)
 //=== fiber instructions ===//
 LAUF_VM_EXECUTE(fiber_create)
 {
+    auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function,
+                                                                     ip->fiber_create.offset);
+
     auto fiber = lauf_runtime_fiber::create(process);
+    fiber->init(callee);
 
     --vstack_ptr;
     vstack_ptr[0].as_address = fiber->handle();
@@ -258,43 +267,22 @@ LAUF_VM_EXECUTE(fiber_create)
     LAUF_VM_DISPATCH;
 }
 
-LAUF_VM_EXECUTE(fiber_call)
-{
-    auto callee      = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function,
-                                                                     ip->fiber_call.offset);
-    auto input_count = callee->sig.input_count;
-
-    auto handle = vstack_ptr[input_count].as_address;
-    auto fiber  = lauf::get_fiber(process, handle);
-    if (LAUF_UNLIKELY(fiber == nullptr || fiber->state != lauf_runtime_fiber::done))
-        LAUF_DO_PANIC("invalid fiber handle");
-    fiber->init(callee);
-
-    auto fiber_vstack_ptr = fiber->vstack.base();
-    fiber_vstack_ptr -= input_count;
-    std::memcpy(fiber_vstack_ptr, vstack_ptr, input_count * sizeof(lauf_runtime_value));
-    vstack_ptr += input_count;
-
-    process->cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
-    fiber->resume_by(process->cur_fiber);
-    process->cur_fiber = fiber;
-
-    ip         = lauf::trampoline_code;
-    vstack_ptr = fiber_vstack_ptr;
-    frame_ptr  = &fiber->trampoline_frame;
-
-    LAUF_VM_DISPATCH;
-}
-
 LAUF_VM_EXECUTE(fiber_resume)
 {
-    auto handle = vstack_ptr[0].as_address;
+    auto handle = vstack_ptr[ip->fiber_resume.input_count].as_address;
     auto fiber  = lauf::get_fiber(process, handle);
-    if (LAUF_UNLIKELY(fiber == nullptr || fiber->state != lauf_runtime_fiber::suspended))
+    if (LAUF_UNLIKELY(fiber == nullptr
+                      || (fiber->state != lauf_runtime_fiber::suspended
+                          && fiber->state != lauf_runtime_fiber::ready)))
         LAUF_DO_PANIC("invalid fiber handle");
 
+    // Transfer values from our vstack.
+    if (auto argument_count = ip->fiber_resume.input_count;
+        LAUF_UNLIKELY(!fiber->transfer_arguments(argument_count, vstack_ptr)))
+        LAUF_DO_PANIC("mismatched signature for fiber resume");
+
     // We resume the fiber and set its parent.
-    process->cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
+    process->cur_fiber->suspend({ip, vstack_ptr, frame_ptr}, ip->fiber_resume.output_count);
     auto regs          = fiber->resume_by(process->cur_fiber);
     process->cur_fiber = fiber;
 
@@ -314,7 +302,7 @@ LAUF_VM_EXECUTE(fiber_suspend)
     if (LAUF_UNLIKELY(!cur_fiber->has_resumer()))
     {
         // We're suspending the main fiber, so return instead.
-        cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
+        cur_fiber->suspend({ip, vstack_ptr, frame_ptr}, ip->fiber_suspend.output_count);
         process->cur_fiber = nullptr;
         return true;
     }
@@ -324,8 +312,13 @@ LAUF_VM_EXECUTE(fiber_suspend)
         if (LAUF_UNLIKELY(new_fiber == nullptr))
             LAUF_DO_PANIC("cannot suspend to destroyed parent");
 
+        // Transfer values from our vstack.
+        if (auto argument_count = ip->fiber_suspend.input_count;
+            LAUF_UNLIKELY(!new_fiber->transfer_arguments(argument_count, vstack_ptr)))
+            LAUF_DO_PANIC("mismatched signature for fiber resume");
+
         // We resume the parent but without setting its parent (asymmetric).
-        cur_fiber->suspend({ip, vstack_ptr, frame_ptr});
+        cur_fiber->suspend({ip, vstack_ptr, frame_ptr}, ip->fiber_suspend.output_count);
         auto regs          = new_fiber->resume();
         process->cur_fiber = new_fiber;
 

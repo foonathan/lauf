@@ -71,13 +71,16 @@ void lauf::debug_print_all_cstacks(lauf_runtime_process* process)
         std::fprintf(stderr, "  fiber <%zx>", id);
         switch (lauf_runtime_get_fiber_state(fiber))
         {
-        case LAUF_RUNTIME_FIBER_DONE:
-            std::fprintf(stderr, " [done]");
+        case LAUF_RUNTIME_FIBER_READY:
+            std::fprintf(stderr, " [ready]");
             break;
         case LAUF_RUNTIME_FIBER_RUNNING:
             std::fprintf(stderr, " [running]");
             break;
         case LAUF_RUNTIME_FIBER_SUSPENDED:
+            break;
+        case LAUF_RUNTIME_FIBER_DONE:
+            std::fprintf(stderr, " [done]");
             break;
         }
         std::fprintf(stderr, "\n");

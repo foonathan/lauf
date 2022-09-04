@@ -137,8 +137,7 @@ lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* 
     case lauf_runtime_fiber::done:
         return LAUF_RUNTIME_FIBER_DONE;
     case lauf_runtime_fiber::ready:
-        assert(false && "only a temporary state that should not be exposed");
-        break;
+        return LAUF_RUNTIME_FIBER_READY;
     case lauf_runtime_fiber::suspended:
         return LAUF_RUNTIME_FIBER_SUSPENDED;
     case lauf_runtime_fiber::running:

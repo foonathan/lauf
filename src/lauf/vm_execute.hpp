@@ -21,7 +21,10 @@ inline bool execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
     LAUF_VM_DISPATCH;
 }
 
-constexpr lauf_asm_inst trampoline_code[2] = {
+constexpr lauf_asm_inst trampoline_code[3] = {
+    // We need one nop instruction in front, so we can use it for fiber creation.
+    // (Resume will always increment the ip first, which goes to the real call instruction)
+    lauf_asm_inst(),
     [] {
         // We first want to call the function specified in the trampoline stack frame.
         lauf_asm_inst result;

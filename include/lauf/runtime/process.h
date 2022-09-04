@@ -24,12 +24,14 @@ typedef struct lauf_runtime_fiber lauf_runtime_fiber;
 /// The state of a fiber.
 typedef enum lauf_runtime_fiber_state
 {
-    /// The fiber is done, which is also the state of a created fiber that has never been called.
-    LAUF_RUNTIME_FIBER_DONE,
+    /// The fiber has been created but not yet started.
+    LAUF_RUNTIME_FIBER_READY,
     /// The fiber is currently running.
     LAUF_RUNTIME_FIBER_RUNNING,
     /// The fiber is currently suspended.
     LAUF_RUNTIME_FIBER_SUSPENDED,
+    /// The fiber is done.
+    LAUF_RUNTIME_FIBER_DONE,
 } lauf_runtime_fiber_state;
 
 //=== queries ===//

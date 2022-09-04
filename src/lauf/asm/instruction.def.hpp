@@ -44,17 +44,14 @@ LAUF_ASM_INST(call_builtin_no_frame, asm_inst_offset)
 
 //=== fibers ===//
 // lauf_asm_inst_fiber_create()
-LAUF_ASM_INST(fiber_create, asm_inst_none)
-
-// lauf_asm_inst_fiber_call()
 // The offset is the difference between the address of the current function and the called function
 // divided by sizeof(void*).
-LAUF_ASM_INST(fiber_call, asm_inst_offset)
+LAUF_ASM_INST(fiber_create, asm_inst_offset)
 
 // lauf_asm_inst_fiber_resume()
-LAUF_ASM_INST(fiber_resume, asm_inst_none)
+LAUF_ASM_INST(fiber_resume, asm_inst_signature)
 // lauf_asm_inst_fiber_suspend()
-LAUF_ASM_INST(fiber_suspend, asm_inst_none)
+LAUF_ASM_INST(fiber_suspend, asm_inst_signature)
 
 //=== value ===//
 // lauf_asm_inst_Xint(): push 24 bit immediate, zero extended to 64 bit.

@@ -590,22 +590,17 @@ struct inst_call_builtin
 
 struct inst_fiber_create
 {
-    static constexpr auto rule  = LAUF_KEYWORD("fiber_create");
+    static constexpr auto rule  = LAUF_KEYWORD("fiber_create") >> dsl::p<function_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_fiber_create);
-};
-struct inst_fiber_call
-{
-    static constexpr auto rule  = LAUF_KEYWORD("fiber_call") >> dsl::p<function_ref>;
-    static constexpr auto value = inst(&lauf_asm_inst_fiber_call);
 };
 struct inst_fiber_resume
 {
-    static constexpr auto rule  = LAUF_KEYWORD("fiber_resume");
+    static constexpr auto rule  = LAUF_KEYWORD("fiber_resume") >> dsl::p<signature>;
     static constexpr auto value = inst(&lauf_asm_inst_fiber_resume);
 };
 struct inst_fiber_suspend
 {
-    static constexpr auto rule  = LAUF_KEYWORD("fiber_suspend");
+    static constexpr auto rule  = LAUF_KEYWORD("fiber_suspend") >> dsl::p<signature>;
     static constexpr auto value = inst(&lauf_asm_inst_fiber_suspend);
 };
 
@@ -667,7 +662,7 @@ struct instruction
               | dsl::p<inst_function_addr> | dsl::p<inst_layout> | dsl::p<inst_cc>         //
               | dsl::p<inst_stack_op>                                                      //
               | dsl::p<inst_call> | dsl::p<inst_call_indirect> | dsl::p<inst_call_builtin> //
-              | dsl::p<inst_fiber_create> | dsl::p<inst_fiber_call>                        //
+              | dsl::p<inst_fiber_create>                                                  //
               | dsl::p<inst_fiber_resume> | dsl::p<inst_fiber_suspend>                     //
               | dsl::p<inst_array_element> | dsl::p<inst_aggregate_member>                 //
               | dsl::p<inst_load_field> | dsl::p<inst_store_field>;

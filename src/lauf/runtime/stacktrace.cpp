@@ -15,20 +15,19 @@ struct lauf_runtime_stacktrace
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p,
                                                      const lauf_runtime_fiber* fiber)
 {
-    if (fiber->state == lauf_runtime_fiber::running)
+    switch (fiber->state)
     {
-        assert(p->cur_fiber == fiber);
-        return new lauf_runtime_stacktrace{p->regs.frame_ptr, p->regs.ip};
-    }
-    else if (fiber->state == lauf_runtime_fiber::suspended)
-    {
+    case lauf_runtime_fiber::done:
+        return nullptr;
+    case lauf_runtime_fiber::ready:
+        return new lauf_runtime_stacktrace{fiber->suspension_point.frame_ptr,
+                                           fiber->root_function()->insts};
+    case lauf_runtime_fiber::suspended:
         return new lauf_runtime_stacktrace{fiber->suspension_point.frame_ptr,
                                            fiber->suspension_point.ip};
-    }
-    else
-    {
-        // Fiber doesn't have an associated stacktrace.
-        return nullptr;
+    case lauf_runtime_fiber::running:
+        assert(p->cur_fiber == fiber);
+        return new lauf_runtime_stacktrace{p->regs.frame_ptr, p->regs.ip};
     }
 }
 
@@ -44,8 +43,7 @@ const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace
 
 lauf_runtime_stacktrace* lauf_runtime_stacktrace_parent(lauf_runtime_stacktrace* bt)
 {
-    assert(bt->frame->prev != nullptr);
-    if (bt->frame->is_root_frame())
+    if (bt->frame->prev == nullptr || bt->frame->is_root_frame())
     {
         delete bt;
         return nullptr;
