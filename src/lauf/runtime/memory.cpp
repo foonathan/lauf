@@ -303,7 +303,9 @@ bool lauf_runtime_poison_allocation(lauf_runtime_process* p, lauf_runtime_addres
 bool lauf_runtime_unpoison_allocation(lauf_runtime_process* p, lauf_runtime_address addr)
 {
     auto alloc = p->memory.try_get(addr);
-    if (alloc == nullptr || alloc->status != lauf::allocation_status::poison)
+    // Note that we prevent unpoising of fiber memory.
+    if (alloc == nullptr || alloc->source == lauf::allocation_source::fiber_memory
+        || alloc->status != lauf::allocation_status::poison)
         return false;
     alloc->status = lauf::allocation_status::allocated;
     return true;
