@@ -20,24 +20,6 @@ lauf_asm_module* example_module()
     auto reader = lauf_create_cstring_reader(R"(
         module @test;
 
-        function @fac(1 => 1) {
-            block %entry(1 => 1) {
-                pick 0;
-                branch2 %recurse(1 => 1) %simple(1 => 1);
-            }
-            block %simple(1 => 1) {
-                pop 0;
-                sint 1;
-                return;
-            }
-            block %recurse(1 => 1) {
-                pick 0;
-                sint 1; $lauf.int.ssub_wrap; call @fac;
-                $lauf.int.smul_panic;
-                return;
-            }
-        }
-
         function @fib(1 => 1) {
             block %entry(1 => 1) {
                 pick 0; sint 2; $lauf.int.scmp;
@@ -54,19 +36,41 @@ lauf_asm_module* example_module()
             }
         }
 
-        function @subfiber(0 => 1) {
-            uint 1; $lauf.debug.print; pop 0;
-            $lauf.fiber.parent; fiber_resume (0 => 1); pop 0;
-            uint 3; $lauf.debug.print; pop 0;
-            uint 11; return;
+        function @fib_generator(0 => 0) {
+            block %entry(0 => 0) {
+                uint 0;
+                pick 0; fiber_suspend (1 => 0);
+                uint 1;
+                pick 0; fiber_suspend (1 => 0);
+
+                jump %loop(2 => 2);
+            }
+            block %loop(2 => 2) {
+                # a b => b (a+b)
+                pick 0; roll 2; $lauf.int.uadd_panic;
+                pick 0; fiber_suspend (1 => 0);
+
+                jump %loop(2 => 2);
+            }
         }
 
-        function @main(0 => 1) {
-            function_addr @subfiber; $lauf.fiber.create;
-            uint 0; $lauf.debug.print; pop 0;
-            pick 0; fiber_resume ();
-            uint 2; $lauf.debug.print; pop 0;
-            pop 0; uint 42; return;
+        function @print_n_fibs(1 => 1) {
+            block %entry (1 => 2) {
+                function_addr @fib_generator; $lauf.fiber.create;
+                roll 1; pick 0; branch2 %loop(2 => 2) %exit(2 => 1);
+            }
+            block %loop(2 => 2) {
+                # handle n => handle n-1
+                pick 1; fiber_resume (0 => 1); $lauf.debug.print; pop 0;
+                uint 1; $lauf.int.usub_wrap;
+
+                pick 0; branch2 %loop(2 => 2) %exit(2 => 1);
+            }
+            block %exit(2 => 1) {
+                # handle 0 => 0
+                roll 1; $lauf.fiber.destroy;
+                return;
+            }
         }
     )");
     lauf_reader_set_path(reader, "prototype.lauf");
@@ -103,7 +107,8 @@ int main()
     auto mod = example_module();
     dump_module(mod);
 
-    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "main"));
+    auto program
+        = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "print_n_fibs"));
     execute(program, lauf_uint(35));
 
     lauf_asm_destroy_module(mod);

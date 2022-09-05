@@ -13,6 +13,7 @@ It is currently highly unstable, not ready for production use, and does not supp
 * Stack based bytecode API.
 * Designed to quickly generate bytecode and execute it; suitable for e.g. evaluating `constexpr` functions in a C++ compiler.
 * Extensible instruction set via `lauf_builtin`: things like `add` can be defined with your own semantics (e.g. overflow behavior).
+* Support for fibers: cooperative user threads to implement stackful coroutines and generators.
 * Fully sandboxed VM that supports low-level operations like pointer arithmetic.
 
 == FAQ
