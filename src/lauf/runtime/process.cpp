@@ -109,7 +109,7 @@ const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process)
 lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process)
 {
     assert(process->cur_fiber == nullptr
-           || process->cur_fiber->state == lauf_runtime_fiber::running);
+           || process->cur_fiber->status == lauf_runtime_fiber::running);
     return process->cur_fiber;
 }
 
@@ -128,9 +128,9 @@ lauf_runtime_address lauf_runtime_get_fiber_handle(const lauf_runtime_fiber* fib
     return fiber->handle();
 }
 
-lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* fiber)
+lauf_runtime_fiber_status lauf_runtime_get_fiber_status(const lauf_runtime_fiber* fiber)
 {
-    switch (fiber->state)
+    switch (fiber->status)
     {
     case lauf_runtime_fiber::done:
         return LAUF_RUNTIME_FIBER_DONE;
@@ -186,7 +186,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
     // Execute the fiber until it is done.
     auto success = true;
-    while (fiber->state != lauf_runtime_fiber::done)
+    while (fiber->status != lauf_runtime_fiber::done)
     {
         if (!lauf_runtime_resume(process, fiber))
         {

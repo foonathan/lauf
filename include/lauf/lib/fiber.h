@@ -30,8 +30,13 @@ extern const lauf_runtime_builtin lauf_lib_fiber_current;
 
 /// Calls `lauf_runtime_get_fiber_parent()` on the current fiber.
 ///
-/// Signature: _ => parent_handler:fiber
+/// Signature: _ => parent_handle:fiber
 extern const lauf_runtime_builtin lauf_lib_fiber_parent;
+
+/// Returns whether the specified fiber is done.
+///
+/// Signature: handle:fiber => is_done:bool
+extern const lauf_runtime_builtin lauf_lib_fiber_done;
 
 LAUF_HEADER_END
 

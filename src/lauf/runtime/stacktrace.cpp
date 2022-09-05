@@ -15,7 +15,7 @@ struct lauf_runtime_stacktrace
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p,
                                                      const lauf_runtime_fiber* fiber)
 {
-    switch (fiber->state)
+    switch (fiber->status)
     {
     case lauf_runtime_fiber::ready:
         return new lauf_runtime_stacktrace{fiber->suspension_point.frame_ptr,

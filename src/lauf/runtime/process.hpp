@@ -30,7 +30,7 @@ struct lauf_runtime_fiber
         suspended,
         running,
         done,
-    } state = ready;
+    } status = ready;
 
     // Only when suspended, the number of arguments the resumer is expected to push onto its vstack
     // prior to resuming.
@@ -62,15 +62,15 @@ struct lauf_runtime_fiber
 
     void suspend(lauf::registers regs, uint8_t expected_argument_count)
     {
-        assert(state == running || state == ready);
-        state                         = suspended;
+        assert(status == running || status == ready);
+        status                        = suspended;
         suspension_point              = regs;
         this->expected_argument_count = expected_argument_count;
     }
 
     bool transfer_arguments(uint8_t argument_count, lauf_runtime_value*& vstack_ptr)
     {
-        assert(state == suspended || state == ready);
+        assert(status == suspended || status == ready);
         if (LAUF_UNLIKELY(argument_count != expected_argument_count))
             return false;
 
@@ -87,14 +87,14 @@ struct lauf_runtime_fiber
     // Resumes a fiber without overriding its parent.
     void resume()
     {
-        assert(state == suspended || state == ready);
-        state = running;
+        assert(status == suspended || status == ready);
+        status = running;
     }
     // Resumes a fiber and sets its parent.
     void resume_by(lauf_runtime_address resumer)
     {
-        assert(state == suspended || state == ready);
-        state  = running;
+        assert(status == suspended || status == ready);
+        status = running;
         parent = resumer;
     }
     void resume_by(lauf_runtime_fiber* resumer)
@@ -110,7 +110,7 @@ struct lauf_runtime_fiber
 
     bool has_parent() const
     {
-        assert(state == running);
+        assert(status == running);
         return parent.allocation != lauf_runtime_address_null.allocation;
     }
 

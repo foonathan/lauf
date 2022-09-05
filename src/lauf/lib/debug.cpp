@@ -69,7 +69,7 @@ void lauf::debug_print_all_cstacks(lauf_runtime_process* process)
         // Each fiber starts in a separate page, so the lower bits are irrelevant.
         auto id = reinterpret_cast<std::uintptr_t>(fiber) / lauf::page_allocator::page_size;
         std::fprintf(stderr, "  fiber <%zx>", id);
-        switch (lauf_runtime_get_fiber_state(fiber))
+        switch (lauf_runtime_get_fiber_status(fiber))
         {
         case LAUF_RUNTIME_FIBER_READY:
             std::fprintf(stderr, " [ready]");

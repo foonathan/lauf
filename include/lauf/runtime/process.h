@@ -22,8 +22,8 @@ typedef struct lauf_runtime_process lauf_runtime_process;
 /// Represents a fiber in a process.
 typedef struct lauf_runtime_fiber lauf_runtime_fiber;
 
-/// The state of a fiber.
-typedef enum lauf_runtime_fiber_state
+/// The status of a fiber.
+typedef enum lauf_runtime_fiber_status
 {
     /// The fiber has been created but not yet started.
     LAUF_RUNTIME_FIBER_READY,
@@ -33,7 +33,7 @@ typedef enum lauf_runtime_fiber_state
     LAUF_RUNTIME_FIBER_SUSPENDED,
     /// The fiber is done.
     LAUF_RUNTIME_FIBER_DONE,
-} lauf_runtime_fiber_state;
+} lauf_runtime_fiber_status;
 
 //=== queries ===//
 /// The VM that is executing the program.
@@ -54,8 +54,8 @@ lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(lauf_runtime_fiber* iter);
 /// Returns a handle to the specified fiber.
 lauf_runtime_address lauf_runtime_get_fiber_handle(const lauf_runtime_fiber* fiber);
 
-/// Returns the state of the fiber.
-lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* fiber);
+/// Returns the status of the fiber.
+lauf_runtime_fiber_status lauf_runtime_get_fiber_status(const lauf_runtime_fiber* fiber);
 
 /// Returns the parent of the fiber, if it has any.
 lauf_runtime_fiber* lauf_runtime_get_fiber_parent(lauf_runtime_process* process,

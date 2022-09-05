@@ -1,0 +1,58 @@
+module @fiber;
+
+global @fiber_handle : $lauf.Value = 0;
+
+function @inner_suspend(1 => 0) {
+    fiber_suspend (1 => 0);
+    return;
+}
+
+function @generator() {
+    global_addr @fiber_handle; load_field $lauf.Value 0;
+    $lauf.fiber.parent; $lauf.test.assert_eq;
+
+    uint 0; fiber_suspend (1 => 0);
+    uint 1; call @inner_suspend;
+    uint 2; fiber_suspend (1 => 0);
+    return;
+}
+
+function @resume_and_suspend() {
+    $lauf.fiber.current; global_addr @fiber_handle; store_field $lauf.Value 0;
+    function_addr @generator; $lauf.fiber.create;
+
+    pick 0; $lauf.fiber.done; $lauf.bits.not; $lauf.test.assert;
+    pick 0; fiber_resume (0 => 1); uint 0; $lauf.test.assert_eq; 
+
+    pick 0; $lauf.fiber.done; $lauf.bits.not; $lauf.test.assert;
+    pick 0; fiber_resume (0 => 1); uint 1; $lauf.test.assert_eq; 
+
+    pick 0; $lauf.fiber.done; $lauf.bits.not; $lauf.test.assert;
+    pick 0; fiber_resume (0 => 1); uint 2; $lauf.test.assert_eq; 
+    
+    pick 0; $lauf.fiber.done; $lauf.bits.not; $lauf.test.assert;
+    pick 0; fiber_resume (0 => 0); 
+
+    pick 0; $lauf.fiber.done; $lauf.test.assert;
+    $lauf.fiber.destroy; return;
+}
+
+function @transferring_generator() {
+    global_addr @fiber_handle; load_field $lauf.Value 0;
+    uint 11; fiber_transfer (1 => 0);
+    $lauf.test.unreachable; return;
+}
+
+function @transfer_and_back() {
+    $lauf.fiber.current; global_addr @fiber_handle; store_field $lauf.Value 0;
+    function_addr @transferring_generator; $lauf.fiber.create;
+    fiber_transfer (0 => 1); uint 11; $lauf.test.assert_eq;
+    return;
+}
+
+function @main() {
+    call @resume_and_suspend; 
+    call @transfer_and_back;
+    return;
+}
+

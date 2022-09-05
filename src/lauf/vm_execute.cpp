@@ -155,9 +155,9 @@ LAUF_VM_EXECUTE(exit)
     auto cur_fiber = process->cur_fiber;
     auto new_fiber = lauf::get_fiber(process, cur_fiber->parent);
 
-    cur_fiber->state = lauf_runtime_fiber::done;
+    cur_fiber->status = lauf_runtime_fiber::done;
 
-    if (new_fiber == nullptr || new_fiber->state == lauf_runtime_fiber::done)
+    if (new_fiber == nullptr || new_fiber->status == lauf_runtime_fiber::done)
     {
         // We don't have a parent (anymore?), return to lauf_runtime_call().
         // We don't reset cur_fiber.
@@ -172,7 +172,7 @@ LAUF_VM_EXECUTE(exit)
             LAUF_DO_PANIC("mismatched signature for fiber resume");
 
         // Switch to parent fiber.
-        assert(new_fiber->state == lauf_runtime_fiber::suspended);
+        assert(new_fiber->status == lauf_runtime_fiber::suspended);
         new_fiber->resume();
         process->cur_fiber = new_fiber;
 
@@ -257,8 +257,8 @@ LAUF_VM_EXECUTE(fiber_resume)
     auto handle = vstack_ptr[ip->fiber_resume.input_count].as_address;
     auto fiber  = lauf::get_fiber(process, handle);
     if (LAUF_UNLIKELY(fiber == nullptr
-                      || (fiber->state != lauf_runtime_fiber::suspended
-                          && fiber->state != lauf_runtime_fiber::ready)))
+                      || (fiber->status != lauf_runtime_fiber::suspended
+                          && fiber->status != lauf_runtime_fiber::ready)))
         LAUF_DO_PANIC("invalid fiber handle");
 
     // Transfer values from our vstack.
@@ -286,8 +286,8 @@ LAUF_VM_EXECUTE(fiber_transfer)
     auto handle = vstack_ptr[ip->fiber_transfer.input_count].as_address;
     auto fiber  = lauf::get_fiber(process, handle);
     if (LAUF_UNLIKELY(fiber == nullptr
-                      || (fiber->state != lauf_runtime_fiber::suspended
-                          && fiber->state != lauf_runtime_fiber::ready)))
+                      || (fiber->status != lauf_runtime_fiber::suspended
+                          && fiber->status != lauf_runtime_fiber::ready)))
         LAUF_DO_PANIC("invalid fiber handle");
 
     // Transfer values from our vstack.
@@ -312,7 +312,7 @@ LAUF_VM_EXECUTE(fiber_transfer)
 
 LAUF_VM_EXECUTE(fiber_suspend)
 {
-    assert(process->cur_fiber->state == lauf_runtime_fiber::running);
+    assert(process->cur_fiber->status == lauf_runtime_fiber::running);
     auto cur_fiber = process->cur_fiber;
 
     if (LAUF_UNLIKELY(!cur_fiber->has_parent()))
