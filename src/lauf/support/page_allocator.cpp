@@ -28,8 +28,6 @@ const auto real_page_size = [] {
 }();
 }
 
-#include <cstdio>
-
 lauf::page_block lauf::page_allocator::allocate(std::size_t size)
 {
     if (auto remainder = size % real_page_size)

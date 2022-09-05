@@ -18,6 +18,11 @@ extern const lauf_runtime_builtin_library lauf_lib_fiber;
 /// Signature: fn:function_address => handle:fiber
 extern const lauf_runtime_builtin lauf_lib_fiber_create;
 
+/// Calls `lauf_runtime_destroy_fiber()`.
+///
+/// Signature: handle:fiber => _
+extern const lauf_runtime_builtin lauf_lib_fiber_destroy;
+
 /// Calls `lauf_runtime_get_current_fiber()`.
 ///
 /// Signature: _ => handle:fiber

@@ -86,6 +86,11 @@ lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
 /// It must only be called when no fiber is currently running.
 bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber);
 
+/// Destroys a fiber.
+///
+/// If the fiber is not yet done, it will cancel it.
+void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber);
+
 /// Triggers a panic.
 ///
 /// It invokes the panic handler, but does not abort or anything.

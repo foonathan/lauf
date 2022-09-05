@@ -12,6 +12,7 @@ typedef struct lauf_asm_function             lauf_asm_function;
 typedef struct lauf_asm_layout               lauf_asm_layout;
 typedef struct lauf_asm_signature            lauf_asm_signature;
 typedef struct lauf_runtime_address          lauf_runtime_address;
+typedef struct lauf_runtime_fiber            lauf_runtime_fiber;
 typedef struct lauf_runtime_function_address lauf_runtime_function_address;
 typedef struct lauf_runtime_process          lauf_runtime_process;
 typedef union lauf_runtime_value             lauf_runtime_value;
@@ -46,6 +47,10 @@ const lauf_asm_function* lauf_runtime_get_function_ptr_any(lauf_runtime_process*
 const lauf_asm_function* lauf_runtime_get_function_ptr(lauf_runtime_process*         p,
                                                        lauf_runtime_function_address addr,
                                                        lauf_asm_signature            signature);
+
+/// Converts an address into a fiber if it is a valid handle.
+/// Returns nulll otherwise.
+lauf_runtime_fiber* lauf_runtime_get_fiber_ptr(lauf_runtime_process* p, lauf_runtime_address addr);
 
 //=== allocations ===//
 typedef enum lauf_runtime_allocation_source

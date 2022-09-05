@@ -122,6 +122,11 @@ const lauf_asm_function* lauf_runtime_get_function_ptr(lauf_runtime_process*    
         return lauf_runtime_get_function_ptr_any(p, addr);
 }
 
+lauf_runtime_fiber* lauf_runtime_get_fiber_ptr(lauf_runtime_process* p, lauf_runtime_address addr)
+{
+    return lauf::get_fiber(p, addr);
+}
+
 lauf_runtime_address lauf_runtime_add_heap_allocation(lauf_runtime_process* p, void* ptr,
                                                       size_t size)
 {

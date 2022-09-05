@@ -148,7 +148,8 @@ namespace lauf
 inline lauf_runtime_fiber* get_fiber(lauf_runtime_process* process, lauf_runtime_address handle)
 {
     auto alloc = process->memory.try_get(handle);
-    if (LAUF_UNLIKELY(alloc == nullptr || alloc->source != lauf::allocation_source::fiber_memory))
+    if (LAUF_UNLIKELY(alloc == nullptr || alloc->status == lauf::allocation_status::freed
+                      || alloc->source != lauf::allocation_source::fiber_memory))
         return nullptr;
     return static_cast<lauf_runtime_fiber*>(alloc->ptr);
 }

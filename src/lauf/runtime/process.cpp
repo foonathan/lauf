@@ -211,9 +211,9 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
             output[sig.output_count - i - 1] = vstack_ptr[0];
             ++vstack_ptr;
         }
-    }
 
-    lauf_runtime_fiber::destroy(process, fiber);
+        lauf_runtime_fiber::destroy(process, fiber);
+    }
 
     // Restore processor state.
     process->regs      = regs;
@@ -225,6 +225,11 @@ lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
                                               const lauf_asm_function* fn)
 {
     return lauf_runtime_fiber::create(process, fn);
+}
+
+void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
+{
+    lauf_runtime_fiber::destroy(process, fiber);
 }
 
 bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
