@@ -9,6 +9,7 @@
 #include <lauf/support/arena.hpp>
 #include <lauf/support/page_allocator.hpp>
 #include <type_traits>
+#include <utility>
 
 namespace lauf
 {
@@ -44,8 +45,15 @@ public:
     {
         std::swap(_ptr, other._ptr);
         std::swap(_size, other._size);
-        std::swap(_capacity, other._capacity);
-        std::swap(_is_heap, other._is_heap);
+
+        auto tmp_capacity = _capacity;
+        _capacity         = other._capacity;
+        other._capacity   = tmp_capacity;
+
+        auto tmp_is_heap = _is_heap;
+        _is_heap         = other._is_heap;
+        other._is_heap   = tmp_is_heap;
+
         return *this;
     }
 

@@ -43,7 +43,7 @@ lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* process);
 const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process);
 
 /// The currently active fiber.
-/// Returns nullptr if all fibers are suspended currently.
+/// Returns the fiber that was last active if all fibers are currently suspended.
 lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process);
 
 /// Iterates over the fibers in arbitrary order.
@@ -102,6 +102,10 @@ void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fibe
 ///
 /// The function always returns false for convenience.
 bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg);
+
+/// Destroys the process and releases all memory associated with it.
+/// The VM is free to be re-used to start another process.
+void lauf_runtime_destroy_process(lauf_runtime_process* process);
 
 //=== steps ===//
 /// Limits the number of execution steps that can be taken before the process panics.

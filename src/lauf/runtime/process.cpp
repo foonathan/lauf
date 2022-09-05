@@ -163,14 +163,6 @@ const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber*
     return fiber->vstack.base();
 }
 
-bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
-{
-    // The process is nullptr during constant folding.
-    if (process != nullptr)
-        process->vm->panic_handler(process, msg);
-    return false;
-}
-
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        const lauf_runtime_value* input, lauf_runtime_value* output)
 {
@@ -227,17 +219,6 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     return success;
 }
 
-lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
-                                              const lauf_asm_function* fn)
-{
-    return lauf_runtime_fiber::create(process, fn);
-}
-
-void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
-{
-    lauf_runtime_fiber::destroy(process, fiber);
-}
-
 bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
 {
     assert(process->cur_fiber == nullptr);
@@ -247,6 +228,30 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
 
     return lauf::execute(fiber->suspension_point.ip + 1, fiber->suspension_point.vstack_ptr,
                          fiber->suspension_point.frame_ptr, process);
+}
+
+lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
+                                              const lauf_asm_function* fn)
+{
+    return lauf_runtime_fiber::create(process, fn);
+}
+
+bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
+{
+    // The process is nullptr during constant folding.
+    if (process != nullptr)
+        process->vm->panic_handler(process, msg);
+    return false;
+}
+
+void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
+{
+    lauf_runtime_fiber::destroy(process, fiber);
+}
+
+void lauf_runtime_destroy_process(lauf_runtime_process* process)
+{
+    lauf_runtime_process::destroy(process);
 }
 
 bool lauf_runtime_set_step_limit(lauf_runtime_process* process, size_t new_limit)

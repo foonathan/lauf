@@ -71,14 +71,23 @@ lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm)
     return vm->heap_allocator;
 }
 
-bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, const lauf_runtime_value* input,
+lauf_runtime_process* lauf_vm_start_process(lauf_vm* vm, const lauf_asm_program* program)
+{
+    auto fn = lauf_asm_program_entry_function(program);
+
+    vm->process           = lauf_runtime_process::create(vm, program);
+    vm->process.cur_fiber = lauf_runtime_create_fiber(&vm->process, fn);
+    return &vm->process;
+}
+
+bool lauf_vm_execute(lauf_vm* vm, const lauf_asm_program* program, const lauf_runtime_value* input,
                      lauf_runtime_value* output)
 {
     auto fn = lauf_asm_program_entry_function(program);
 
-    auto process = lauf_runtime_process::create(vm, program);
-    auto result  = lauf_runtime_call(&process, fn, input, output);
-    lauf_runtime_process::destroy(&process);
+    vm->process = lauf_runtime_process::create(vm, program);
+    auto result = lauf_runtime_call(&vm->process, fn, input, output);
+    lauf_runtime_destroy_process(&vm->process);
 
     return result;
 }

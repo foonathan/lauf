@@ -64,6 +64,12 @@ lauf_vm_allocator lauf_vm_set_allocator(lauf_vm* vm, lauf_vm_allocator a);
 /// Returns the allocator.
 lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm);
 
+/// Starts a new process for the program.
+///
+/// It creates a fiber for the entry function and turns it into the current fiber,
+/// but does not start running it yet; use `lauf_runtime_resume()` for that.
+lauf_runtime_process* lauf_vm_start_process(lauf_vm* vm, const lauf_asm_program* program);
+
 /// Executes the program on the VM.
 ///
 /// `input` is an array that contains as many values as specified by the input signature of the
@@ -74,9 +80,10 @@ lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm);
 /// the entry function. Those values will be copied from the bottom of the value stack: `output[0]`
 /// is the first output value on the stack bottom, `output[N]` the last output value on the top.
 ///
+/// If a fiber suspends, it will repeatedly resume it until the main fiber finishes.
 /// It returns `true` if execution finished without panicing, `false` otherwise.
 /// If it returns `false`, `output` has not been modified.
-bool lauf_vm_execute(lauf_vm* vm, lauf_asm_program* program, //
+bool lauf_vm_execute(lauf_vm* vm, const lauf_asm_program* program, //
                      const lauf_runtime_value* input, lauf_runtime_value* output);
 
 /// Executes the program on the VM and destroys it afterwards.

@@ -25,6 +25,8 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 
     std::size_t step_limit;
 
+    lauf_runtime_process process;
+
     explicit lauf_vm(lauf::arena_key key, lauf_vm_options options)
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
       heap_allocator(options.allocator),
