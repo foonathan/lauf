@@ -252,19 +252,6 @@ LAUF_VM_EXECUTE(call_indirect)
 }
 
 //=== fiber instructions ===//
-LAUF_VM_EXECUTE(fiber_create)
-{
-    auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function,
-                                                                     ip->fiber_create.offset);
-    auto fiber  = lauf_runtime_fiber::create(process, callee);
-
-    --vstack_ptr;
-    vstack_ptr[0].as_address = fiber->handle();
-
-    ++ip;
-    LAUF_VM_DISPATCH;
-}
-
 LAUF_VM_EXECUTE(fiber_resume)
 {
     auto handle = vstack_ptr[ip->fiber_resume.input_count].as_address;

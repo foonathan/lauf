@@ -123,6 +123,11 @@ lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(lauf_runtime_fiber* iter)
     return iter->next_fiber;
 }
 
+lauf_runtime_address lauf_runtime_get_fiber_handle(const lauf_runtime_fiber* fiber)
+{
+    return fiber->handle();
+}
+
 lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* fiber)
 {
     switch (fiber->state)
@@ -205,6 +210,12 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     process->regs      = regs;
     process->cur_fiber = cur_fiber;
     return success;
+}
+
+lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
+                                              const lauf_asm_function* fn)
+{
+    return lauf_runtime_fiber::create(process, fn);
 }
 
 bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber)

@@ -6,6 +6,7 @@
 
 #include <lauf/lib/bits.h>
 #include <lauf/lib/debug.h>
+#include <lauf/lib/fiber.h>
 #include <lauf/lib/heap.h>
 #include <lauf/lib/int.h>
 #include <lauf/lib/limits.h>

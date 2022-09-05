@@ -11,6 +11,7 @@ LAUF_HEADER_START
 typedef struct lauf_asm_function       lauf_asm_function;
 typedef struct lauf_asm_program        lauf_asm_program;
 typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
+typedef struct lauf_runtime_address    lauf_runtime_address;
 typedef struct lauf_vm                 lauf_vm;
 typedef union lauf_asm_inst            lauf_asm_inst;
 typedef union lauf_runtime_value       lauf_runtime_value;
@@ -50,6 +51,9 @@ lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* process);
 lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(lauf_runtime_fiber* iter);
 
 //=== fiber queries ===//
+/// Returns a handle to the specified fiber.
+lauf_runtime_address lauf_runtime_get_fiber_handle(const lauf_runtime_fiber* fiber);
+
 /// Returns the state of the fiber.
 lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* fiber);
 
@@ -63,6 +67,12 @@ const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber*
 /// The function must be part of the program.
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        const lauf_runtime_value* input, lauf_runtime_value* output);
+
+/// Creates a new fiber.
+///
+/// It will start executing the specified function, which must be part of the process, once resumed.
+lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
+                                              const lauf_asm_function* fn);
 
 /// Resumes the specified fiber.
 ///

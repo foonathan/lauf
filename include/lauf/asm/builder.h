@@ -139,14 +139,6 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
 
 //=== fiber instructions ===//
-/// Creates a new fiber.
-///
-/// It starts out suspended.
-/// When it is resumed, it starts executing the specified function.
-///
-/// Signature: _ => handle:fiber
-void lauf_asm_inst_fiber_create(lauf_asm_builder* b, const lauf_asm_function* callee);
-
 /// Resumes a suspended fiber.
 ///
 /// It will execute it until its next suspension point, and then return back to this location.

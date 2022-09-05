@@ -8,8 +8,8 @@
 namespace
 {
 const lauf_runtime_builtin_library libs[]
-    = {lauf_lib_bits,   lauf_lib_debug,  lauf_lib_heap, lauf_lib_int,
-       lauf_lib_limits, lauf_lib_memory, lauf_lib_test};
+    = {lauf_lib_bits, lauf_lib_debug,  lauf_lib_fiber,  lauf_lib_heap,
+       lauf_lib_int,  lauf_lib_limits, lauf_lib_memory, lauf_lib_test};
 }
 
 const lauf_runtime_builtin_library* lauf_libs = libs;

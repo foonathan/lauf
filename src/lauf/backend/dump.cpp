@@ -130,11 +130,6 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             break;
         }
 
-        case lauf::asm_op::fiber_create: {
-            auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(fn, ip->call.offset);
-            writer->format("fiber_create @'%s'", callee->name);
-            break;
-        }
         case lauf::asm_op::fiber_resume:
             writer->format("fiber_resume (%u => %u)", ip->fiber_resume.input_count,
                            ip->fiber_resume.output_count);

@@ -43,11 +43,6 @@ LAUF_ASM_INST(call_builtin, asm_inst_offset)
 LAUF_ASM_INST(call_builtin_no_frame, asm_inst_offset)
 
 //=== fibers ===//
-// lauf_asm_inst_fiber_create()
-// The offset is the difference between the address of the current function and the called function
-// divided by sizeof(void*).
-LAUF_ASM_INST(fiber_create, asm_inst_offset)
-
 // lauf_asm_inst_fiber_resume()
 LAUF_ASM_INST(fiber_resume, asm_inst_signature)
 // lauf_asm_inst_fiber_transfer()

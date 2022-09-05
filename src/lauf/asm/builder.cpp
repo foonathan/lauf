@@ -77,7 +77,6 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::call_indirect:
         case lauf::asm_op::call_builtin:
         case lauf::asm_op::call_builtin_no_frame:
-        case lauf::asm_op::fiber_create:
         case lauf::asm_op::fiber_resume:
         case lauf::asm_op::fiber_transfer:
         case lauf::asm_op::fiber_suspend:
@@ -527,15 +526,6 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     {
         add_call_builtin(b, callee);
     }
-}
-
-void lauf_asm_inst_fiber_create(lauf_asm_builder* b, const lauf_asm_function* callee)
-{
-    LAUF_BUILD_ASSERT_CUR;
-
-    auto offset = lauf::compress_pointer_offset(b->fn, callee);
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(fiber_create, offset));
-    b->cur->vstack.push(*b, 1);
 }
 
 void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig)

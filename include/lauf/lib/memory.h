@@ -10,7 +10,6 @@ LAUF_HEADER_START
 
 typedef struct lauf_runtime_builtin         lauf_runtime_builtin;
 typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
-typedef struct lauf_runtime_process         lauf_runtime_process;
 
 extern const lauf_runtime_builtin_library lauf_lib_memory;
 
