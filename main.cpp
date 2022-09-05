@@ -54,20 +54,17 @@ lauf_asm_module* example_module()
             }
         }
 
-        global @main_fiber : $lauf.Value = 0;
-
         function @subfiber(0 => 1) {
             uint 1; $lauf.debug.print; pop 0;
-            global_addr @main_fiber; load_field $lauf.Value 0; fiber_resume (0 => 1);
+            $lauf.fiber.parent; fiber_resume (0 => 1);
             pop 0; uint 3; $lauf.debug.print; pop 0;
             pop 0; uint 11; return;
         }
 
         function @main(0 => 1) {
-            $lauf.fiber.current; global_addr @main_fiber; store_field $lauf.Value 0; 
             function_addr @subfiber; $lauf.fiber.create;
             uint 0; $lauf.debug.print; pop 0;
-            fiber_transfer ();
+            fiber_resume ();
             uint 2; $lauf.debug.print; pop 0;
             pop 0; uint 42; return;
         }

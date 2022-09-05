@@ -143,6 +143,12 @@ lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* 
     }
 }
 
+lauf_runtime_fiber* lauf_runtime_get_fiber_parent(lauf_runtime_process* process,
+                                                  lauf_runtime_fiber*   fiber)
+{
+    return fiber->has_parent() ? lauf::get_fiber(process, fiber->parent) : nullptr;
+}
+
 const lauf_runtime_value* lauf_runtime_get_vstack_ptr(lauf_runtime_process*     process,
                                                       const lauf_runtime_fiber* fiber)
 {

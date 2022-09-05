@@ -28,6 +28,11 @@ extern const lauf_runtime_builtin lauf_lib_fiber_destroy;
 /// Signature: _ => handle:fiber
 extern const lauf_runtime_builtin lauf_lib_fiber_current;
 
+/// Calls `lauf_runtime_get_fiber_parent()` on the current fiber.
+///
+/// Signature: _ => parent_handler:fiber
+extern const lauf_runtime_builtin lauf_lib_fiber_parent;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_FIBER_H_INCLUDED

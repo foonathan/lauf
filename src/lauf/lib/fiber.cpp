@@ -48,5 +48,20 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_current, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY,
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_fiber = {"lauf.fiber", &lauf_lib_fiber_current};
+LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_parent, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "parent",
+                     &lauf_lib_fiber_current)
+{
+    auto fiber  = lauf_runtime_get_current_fiber(process);
+    auto parent = lauf_runtime_get_fiber_parent(process, fiber);
+
+    --vstack_ptr;
+    if (parent != nullptr)
+        vstack_ptr[0].as_address = lauf_runtime_get_fiber_handle(parent);
+    else
+        vstack_ptr[0].as_address = lauf_runtime_address_null;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_fiber = {"lauf.fiber", &lauf_lib_fiber_parent};
 
