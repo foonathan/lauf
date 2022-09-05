@@ -9,6 +9,7 @@
 LAUF_HEADER_START
 
 typedef struct lauf_asm_function             lauf_asm_function;
+typedef struct lauf_asm_global               lauf_asm_global;
 typedef struct lauf_asm_layout               lauf_asm_layout;
 typedef struct lauf_asm_signature            lauf_asm_signature;
 typedef struct lauf_runtime_address          lauf_runtime_address;
@@ -36,6 +37,10 @@ const char* lauf_runtime_get_cstr(lauf_runtime_process* p, lauf_runtime_address 
 /// On success, updates `allocation` to the actual address.
 bool lauf_runtime_get_address(lauf_runtime_process* p, lauf_runtime_address* allocation,
                               const void* ptr);
+
+/// Returns the address of a global variable of the process.
+lauf_runtime_address lauf_runtime_get_global_address(lauf_runtime_process*  p,
+                                                     const lauf_asm_global* global);
 
 /// Converts a function address into a function pointer if it is valid.
 /// Returns null otherwise.

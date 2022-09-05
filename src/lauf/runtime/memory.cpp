@@ -83,6 +83,12 @@ bool lauf_runtime_get_address(lauf_runtime_process* p, lauf_runtime_address* all
     return true;
 }
 
+lauf_runtime_address lauf_runtime_get_global_address(lauf_runtime_process*,
+                                                     const lauf_asm_global* global)
+{
+    return {global->allocation_idx, 0, 0};
+}
+
 const char* lauf_runtime_get_cstr(lauf_runtime_process* p, lauf_runtime_address addr)
 {
     if (auto alloc = p->memory.try_get(addr))
