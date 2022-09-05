@@ -56,15 +56,15 @@ lauf_asm_module* example_module()
 
         function @subfiber(0 => 1) {
             uint 1; $lauf.debug.print; pop 0;
-            $lauf.fiber.parent; fiber_resume (0 => 1);
-            pop 0; uint 3; $lauf.debug.print; pop 0;
-            pop 0; uint 11; return;
+            $lauf.fiber.parent; fiber_resume (0 => 1); pop 0;
+            uint 3; $lauf.debug.print; pop 0;
+            uint 11; return;
         }
 
         function @main(0 => 1) {
             function_addr @subfiber; $lauf.fiber.create;
             uint 0; $lauf.debug.print; pop 0;
-            fiber_resume ();
+            pick 0; fiber_resume ();
             uint 2; $lauf.debug.print; pop 0;
             pop 0; uint 42; return;
         }

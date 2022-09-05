@@ -265,6 +265,8 @@ LAUF_VM_EXECUTE(fiber_resume)
     if (auto argument_count = ip->fiber_resume.input_count;
         LAUF_UNLIKELY(!fiber->transfer_arguments(argument_count, vstack_ptr)))
         LAUF_DO_PANIC("mismatched signature for fiber resume");
+    // Remove handle from stack.
+    ++vstack_ptr;
 
     // We resume the fiber and set its parent.
     process->cur_fiber->suspend({ip, vstack_ptr, frame_ptr}, ip->fiber_resume.output_count);
@@ -292,6 +294,8 @@ LAUF_VM_EXECUTE(fiber_transfer)
     if (auto argument_count = ip->fiber_resume.input_count;
         LAUF_UNLIKELY(!fiber->transfer_arguments(argument_count, vstack_ptr)))
         LAUF_DO_PANIC("mismatched signature for fiber resume");
+    // Remove handle from stack.
+    ++vstack_ptr;
 
     // We resume the fiber and set its parent to our parent.
     process->cur_fiber->suspend({ip, vstack_ptr, frame_ptr}, ip->fiber_resume.output_count);

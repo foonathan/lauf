@@ -536,7 +536,6 @@ void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_resume, sig.input_count,
                                                           sig.output_count));
-    b->cur->vstack.push(*b, 1);
     b->cur->vstack.push(*b, sig.output_count);
 }
 
@@ -548,7 +547,6 @@ void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_transfer, sig.input_count,
                                                           sig.output_count));
-    b->cur->vstack.push(*b, 1);
     b->cur->vstack.push(*b, sig.output_count);
 }
 
