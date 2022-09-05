@@ -125,7 +125,6 @@ constexpr lauf::allocation make_fiber_alloc(lauf_runtime_fiber* f)
     alloc.size       = 0;
     alloc.source     = lauf::allocation_source::fiber_memory;
     alloc.status     = lauf::allocation_status::poison;
-    alloc.gc         = lauf::gc_tracking::reachable_explicit;
     alloc.generation = 0;
     return alloc;
 }

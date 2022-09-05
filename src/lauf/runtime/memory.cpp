@@ -163,7 +163,9 @@ bool lauf_runtime_get_allocation(lauf_runtime_process* p, lauf_runtime_address a
         break;
 
     case lauf::allocation_source::fiber_memory:
-        // Treat it like static memory.
+        // We expose it to the user like static memory.
+        // That way, they're not tempted to free it.
+        // (Note that the garbage collector does free it)
         result->source = LAUF_RUNTIME_STATIC_ALLOCATION;
         break;
     }
@@ -182,7 +184,7 @@ bool lauf_runtime_leak_heap_allocation(lauf_runtime_process* p, lauf_runtime_add
     return true;
 }
 
-size_t lauf_runtime_gc(lauf_runtime_process* p, const lauf_runtime_value* vstack_ptr)
+size_t lauf_runtime_gc(lauf_runtime_process* p)
 {
     auto                                marker = p->vm->get_marker();
     lauf::array_list<lauf::allocation*> pending_allocations;
@@ -216,10 +218,17 @@ size_t lauf_runtime_gc(lauf_runtime_process* p, const lauf_runtime_value* vstack
         }
     };
 
+    // Mark the current fiber as reachable.
+    mark_reachable(&p->memory[p->cur_fiber->handle_allocation]);
+
     // Mark allocations reachable by addresses in the vstack as reachable.
+    // We allow the vstacks from all fibers, even unreachable ones.
+    // If the fiber in question turned out to be unreaachable, it will be deallocated now,
+    // and the next GC run will collect everything that became unreferenced as a consequence of it.
     for (auto fiber = lauf_runtime_iterate_fibers(p); fiber != nullptr;
          fiber      = lauf_runtime_iterate_fibers_next(fiber))
-        for (auto cur = vstack_ptr; cur != lauf_runtime_get_vstack_base(fiber); ++cur)
+        for (auto cur = lauf_runtime_get_vstack_ptr(p, fiber);
+             cur != lauf_runtime_get_vstack_base(fiber); ++cur)
         {
                  auto alloc = p->memory.try_get(cur->as_address);
                  if (alloc != nullptr && cur->as_address.offset <= alloc->size)
@@ -229,8 +238,9 @@ size_t lauf_runtime_gc(lauf_runtime_process* p, const lauf_runtime_value* vstack
     // Process memory from explicitly reachable allocations.
     for (auto& alloc : p->memory)
     {
-        // Non-heap memory should always be reachable.
+        // Non-heap non-fiber memory should always be reachable.
         assert(alloc.source == lauf::allocation_source::heap_memory
+               || alloc.source == lauf::allocation_source::fiber_memory
                || alloc.gc == lauf::gc_tracking::reachable_explicit);
 
         if (alloc.gc == lauf::gc_tracking::reachable_explicit
@@ -260,6 +270,16 @@ size_t lauf_runtime_gc(lauf_runtime_process* p, const lauf_runtime_value* vstack
             allocator.free_alloc(allocator.user_data, alloc.ptr, alloc.size);
             alloc.status = lauf::allocation_status::freed;
             bytes_freed += alloc.size;
+        }
+        else if (alloc.source == lauf::allocation_source::fiber_memory
+                 && alloc.status != lauf::allocation_status::freed
+                 && alloc.gc == lauf::gc_tracking::unreachable)
+        {
+            assert(alloc.split == lauf::allocation_split::unsplit);
+
+            // It is a fiber we can destroy.
+            lauf_runtime_fiber::destroy(p, static_cast<lauf_runtime_fiber*>(alloc.ptr));
+            assert(alloc.status == lauf::allocation_status::freed);
         }
 
         // Need to reset GC tracking for next GC run.

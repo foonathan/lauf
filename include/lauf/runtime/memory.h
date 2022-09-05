@@ -83,13 +83,13 @@ lauf_runtime_address lauf_runtime_add_heap_allocation(lauf_runtime_process* p, v
 /// It is marked as freed, but not actually freed.
 bool lauf_runtime_leak_heap_allocation(lauf_runtime_process* p, lauf_runtime_address addr);
 
-/// Frees all heap allocated memory that is not reachable.
+/// Frees all heap allocated memory and fibers that are not reachable.
 ///
 /// It uses a conservative tracing algorithm that assumes anything that could be a valid address is
 /// one. Addresses with invalid offsets do not keep the allocation alive.
 ///
 /// Returns the total number of bytes freed.
-size_t lauf_runtime_gc(lauf_runtime_process* p, const lauf_runtime_value* vstack_ptr);
+size_t lauf_runtime_gc(lauf_runtime_process* p);
 
 /// Poisons the allocation an address is in.
 ///

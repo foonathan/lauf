@@ -101,7 +101,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_VM
 LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
                      &lauf_lib_heap_transfer_local)
 {
-    auto bytes_freed = lauf_runtime_gc(process, vstack_ptr);
+    auto bytes_freed = lauf_runtime_gc(process);
 
     --vstack_ptr;
     vstack_ptr[0].as_uint = bytes_freed;

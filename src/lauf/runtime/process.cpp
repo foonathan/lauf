@@ -143,6 +143,15 @@ lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* 
     }
 }
 
+const lauf_runtime_value* lauf_runtime_get_vstack_ptr(lauf_runtime_process*     process,
+                                                      const lauf_runtime_fiber* fiber)
+{
+    if (process->cur_fiber == fiber)
+        return process->regs.vstack_ptr;
+    else
+        return fiber->suspension_point.vstack_ptr;
+}
+
 const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber* fiber)
 {
     return fiber->vstack.base();

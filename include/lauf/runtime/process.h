@@ -57,6 +57,10 @@ lauf_runtime_address lauf_runtime_get_fiber_handle(const lauf_runtime_fiber* fib
 /// Returns the state of the fiber.
 lauf_runtime_fiber_state lauf_runtime_get_fiber_state(const lauf_runtime_fiber* fiber);
 
+/// Returns the current position of the vstack (lowest address as it grows down) of the fiber.
+const lauf_runtime_value* lauf_runtime_get_vstack_ptr(lauf_runtime_process*     process,
+                                                      const lauf_runtime_fiber* fiber);
+
 /// Returns the base of the vstack (highest address as it grows down) of the fiber.
 const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber* fiber);
 

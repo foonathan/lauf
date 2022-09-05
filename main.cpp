@@ -58,6 +58,7 @@ lauf_asm_module* example_module()
 
         function @subfiber(0 => 0) {
             uint 1; $lauf.debug.print; pop 0;
+            $lauf.heap.gc; pop 0;
             global_addr @main_fiber; load_field $lauf.Value 0; fiber_transfer ();
             pop 0; return;
         }
