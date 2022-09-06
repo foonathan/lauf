@@ -362,7 +362,8 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
 {
     LAUF_BUILD_ASSERT_CUR;
 
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing condition");
+    auto condition = b->cur->vstack.pop();
+    LAUF_BUILD_ASSERT(condition, "missing condition");
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
                       "block output count overflow");
 
@@ -378,6 +379,54 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
         b->cur->terminator = lauf_asm_block::jump;
         b->cur->next[0]    = if_true;
+    }
+    else if (condition->type == condition->constant)
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        b->cur->terminator = lauf_asm_block::jump;
+        b->cur->next[0]    = condition->as_constant.as_uint != 0 ? if_true : if_false;
+    }
+    else if (!b->cur->insts.empty() && b->cur->insts.back().op() == lauf::asm_op::cc)
+    {
+        // Remove the cc instruction.
+        auto cc = b->cur->insts.back().cc.value;
+        b->cur->insts.pop_back();
+
+        // Generate three way branch instead.
+        b->cur->terminator = lauf_asm_block::branch3;
+        switch (cc)
+        {
+        case LAUF_ASM_INST_CC_EQ:
+            b->cur->next[0] = if_false;
+            b->cur->next[1] = if_true;
+            b->cur->next[2] = if_false;
+            break;
+        case LAUF_ASM_INST_CC_NE:
+            b->cur->next[0] = if_true;
+            b->cur->next[1] = if_false;
+            b->cur->next[2] = if_true;
+            break;
+        case LAUF_ASM_INST_CC_LT:
+            b->cur->next[0] = if_true;
+            b->cur->next[1] = if_false;
+            b->cur->next[2] = if_false;
+            break;
+        case LAUF_ASM_INST_CC_LE:
+            b->cur->next[0] = if_true;
+            b->cur->next[1] = if_true;
+            b->cur->next[2] = if_false;
+            break;
+        case LAUF_ASM_INST_CC_GT:
+            b->cur->next[0] = if_false;
+            b->cur->next[1] = if_false;
+            b->cur->next[2] = if_true;
+            break;
+        case LAUF_ASM_INST_CC_GE:
+            b->cur->next[0] = if_false;
+            b->cur->next[1] = if_true;
+            b->cur->next[2] = if_true;
+            break;
+        }
     }
     else
     {

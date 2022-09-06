@@ -106,15 +106,53 @@ block %error2() {
 }
 }
 
+function @branch2_cc_eq(1 => 1) {
+block %entry(1 => 0) {
+    cc eq;
+    branch2 %if_true(0 => 1) %if_false(0 => 1);
+}
+block %if_true(0 => 1) {
+    uint 1;
+    return;
+}
+block %if_false(0 => 1) {
+    uint 0;
+    return;
+}
+}
+
+function @branch2_cc_lt(1 => 1) {
+block %entry(1 => 0) {
+    cc lt;
+    branch2 %if_true(0 => 1) %if_false(0 => 1);
+}
+block %if_true(0 => 1) {
+    uint 1;
+    return;
+}
+block %if_false(0 => 1) {
+    uint 0;
+    return;
+}
+}
+
 function @main() {
-    call @jumps();
+    call @jumps;
 
-    call @branch2_true();
-    call @branch2_false();
+    call @branch2_true;
+    call @branch2_false;
 
-    call @branch3_lt();
-    call @branch3_eq();
-    call @branch3_gt();
+    call @branch3_lt;
+    call @branch3_eq;
+    call @branch3_gt;
+
+    sint -1; call @branch2_cc_eq; uint 0; $lauf.test.assert_eq;
+    sint 0; call @branch2_cc_eq; uint 1; $lauf.test.assert_eq;
+    sint 1; call @branch2_cc_eq; uint 0; $lauf.test.assert_eq;
+
+    sint -1; call @branch2_cc_lt; uint 1; $lauf.test.assert_eq;
+    sint 0; call @branch2_cc_lt; uint 0; $lauf.test.assert_eq;
+    sint 1; call @branch2_cc_lt; uint 0; $lauf.test.assert_eq;
 
     return;
 }
