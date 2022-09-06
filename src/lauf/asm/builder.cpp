@@ -50,6 +50,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::pick:
         case lauf::asm_op::dup:
         case lauf::asm_op::load_local_value:
+        case lauf::asm_op::load_global_value:
             // Signature 0 => 1, actually removed something.
             b->cur->insts.pop_back();
             --count;
@@ -81,6 +82,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::fiber_transfer:
         case lauf::asm_op::fiber_suspend:
         case lauf::asm_op::store_local_value:
+        case lauf::asm_op::store_global_value:
         // Instructions that we can't remove easily.
         case lauf::asm_op::pop:
         case lauf::asm_op::roll:
@@ -847,21 +849,54 @@ void lauf_asm_inst_aggregate_member(lauf_asm_builder* b, size_t member_index,
 
 namespace
 {
-bool is_valid_local_load_store_value(lauf::builder_vstack::value addr, lauf_asm_type type)
+enum load_store_constant
+{
+    load_store_dynamic,
+    load_store_local,
+    load_store_global,
+};
+
+load_store_constant load_store_constant_folding(lauf_asm_module*            mod,
+                                                lauf::builder_vstack::value addr,
+                                                lauf_asm_type type, bool store)
 {
     if (type.load_fn != lauf_asm_type_value.load_fn
         || type.store_fn != lauf_asm_type_value.store_fn)
-        return false;
+        return load_store_dynamic;
 
-    if (addr.type != addr.local_addr)
-        return false;
+    if (addr.type == addr.local_addr)
+    {
+        auto local_layout = addr.as_local->layout;
+        if (local_layout.alignment > alignof(void*))
+            // Don't know the offset for over aligned data yet.
+            return load_store_dynamic;
 
-    auto local_layout = addr.as_local->layout;
-    if (local_layout.alignment > alignof(void*))
-        // Don't know the offset for over aligned data yet.
-        return false;
+        if (local_layout.size < type.layout.size || local_layout.alignment < type.layout.alignment)
+            return load_store_dynamic;
 
-    return local_layout.size >= type.layout.size && local_layout.alignment >= type.layout.alignment;
+        return load_store_local;
+    }
+    else if (addr.type == addr.constant)
+    {
+        auto constant_addr = addr.as_constant.as_address;
+        if (constant_addr.allocation >= mod->globals_count && constant_addr.generation != 0
+            && constant_addr.offset != 0)
+            return load_store_dynamic;
+
+        for (auto global = mod->globals; global != nullptr; global = global->next)
+            if (global->allocation_idx == constant_addr.allocation)
+            {
+                if (store && global->perms == lauf_asm_global::read_only)
+                    return load_store_dynamic;
+
+                if (global->size < type.layout.size || global->alignment < type.layout.alignment)
+                    return load_store_dynamic;
+
+                return load_store_global;
+            }
+    }
+
+    return load_store_dynamic;
 }
 } // namespace
 
@@ -872,11 +907,20 @@ void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t fi
 
     auto addr = b->cur->vstack.pop();
     LAUF_BUILD_ASSERT(addr, "missing address");
-    if (is_valid_local_load_store_value(*addr, type))
+
+    auto constant_folding = load_store_constant_folding(b->mod, *addr, type, false);
+    if (constant_folding == load_store_local)
     {
         add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b,
                                 LAUF_BUILD_INST_VALUE(load_local_value, addr->as_local->offset));
+        b->cur->vstack.push(*b, 1);
+    }
+    else if (constant_folding == load_store_global)
+    {
+        add_pop_top_n(b, 1);
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(load_global_value,
+                                                          addr->as_constant.as_address.allocation));
         b->cur->vstack.push(*b, 1);
     }
     else
@@ -901,11 +945,20 @@ void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t f
 
     auto addr = b->cur->vstack.pop();
     LAUF_BUILD_ASSERT(addr, "missing address");
-    if (is_valid_local_load_store_value(*addr, type))
+
+    auto constant_folding = load_store_constant_folding(b->mod, *addr, type, true);
+    if (constant_folding == load_store_local)
     {
         add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b,
                                 LAUF_BUILD_INST_VALUE(store_local_value, addr->as_local->offset));
+        b->cur->vstack.pop(1);
+    }
+    else if (constant_folding == load_store_global)
+    {
+        add_pop_top_n(b, 1);
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(store_global_value,
+                                                          addr->as_constant.as_address.allocation));
         b->cur->vstack.pop(1);
     }
     else

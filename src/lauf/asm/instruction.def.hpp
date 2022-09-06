@@ -128,3 +128,10 @@ LAUF_ASM_INST(load_local_value, asm_inst_value)
 // Signature: value => _
 LAUF_ASM_INST(store_local_value, asm_inst_value)
 
+// lauf_asm_inst_load/store_field() for globals and the value type.
+// The value is the global allocation index.
+// Signature: _ => value
+LAUF_ASM_INST(load_global_value, asm_inst_value)
+// Signature: value => _
+LAUF_ASM_INST(store_global_value, asm_inst_value)
+

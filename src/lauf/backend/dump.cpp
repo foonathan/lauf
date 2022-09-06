@@ -269,6 +269,14 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::store_local_value:
             writer->format("store_local_value <%x>", ip->load_local_value.value);
             break;
+        case lauf::asm_op::load_global_value:
+            writer->format("load_global_value @%s",
+                           find_global_name(mod, ip->load_global_value.value).c_str());
+            break;
+        case lauf::asm_op::store_global_value:
+            writer->format("store_global_value @%s",
+                           find_global_name(mod, ip->store_global_value.value).c_str());
+            break;
 
         case lauf::asm_op::count:
             assert(false);

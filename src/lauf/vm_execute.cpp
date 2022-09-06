@@ -688,3 +688,25 @@ LAUF_VM_EXECUTE(store_local_value)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(load_global_value)
+{
+    auto memory = process->memory[ip->load_global_value.value].ptr;
+
+    --vstack_ptr;
+    vstack_ptr[0] = *reinterpret_cast<lauf_runtime_value*>(memory);
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
+LAUF_VM_EXECUTE(store_global_value)
+{
+    auto memory = process->memory[ip->store_global_value.value].ptr;
+
+    *reinterpret_cast<lauf_runtime_value*>(memory) = vstack_ptr[0];
+    ++vstack_ptr;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
