@@ -97,6 +97,16 @@ lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* 
                                            lauf_asm_global::read_write);
 }
 
+void lauf_asm_set_global_debug_name(lauf_asm_module* mod, lauf_asm_global* global, const char* name)
+{
+    global->name = mod->strdup(name);
+}
+
+const char* lauf_asm_global_debug_name(const lauf_asm_global* global)
+{
+    return global->name;
+}
+
 lauf_asm_function* lauf_asm_add_function(lauf_asm_module* mod, const char* name,
                                          lauf_asm_signature sig)
 {

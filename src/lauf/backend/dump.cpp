@@ -30,7 +30,11 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
     else
         writer->write("mut ");
 
-    writer->format("@global_%u = ", global->allocation_idx);
+    if (auto name = lauf_asm_global_debug_name(global))
+        writer->format("@'%s'", name);
+    else
+        writer->format("@global_%u", global->allocation_idx);
+    writer->write(" = ");
 
     if (global->memory == nullptr)
     {
@@ -65,6 +69,21 @@ std::string find_builtin_name(lauf_backend_dump_options opts, lauf_runtime_built
              builtin      = builtin->next)
             if (builtin->impl == impl)
                 return opts.builtin_libs[i].prefix + std::string(".") + builtin->name;
+
+    return "";
+}
+
+std::string find_global_name(const lauf_asm_module* mod, unsigned idx)
+{
+    for (auto global = mod->globals; global != nullptr; global = global->next)
+        if (global->allocation_idx == idx)
+        {
+            auto name = lauf_asm_global_debug_name(global);
+            if (name != nullptr)
+                return "'" + std::string(name) + "'";
+
+            return "global_" + std::to_string(idx);
+        }
 
     return "";
 }
@@ -167,7 +186,7 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("pushn 0x%X", ip->pushn.value);
             break;
         case lauf::asm_op::global_addr: {
-            writer->format("global_addr @global_%u", ip->global_addr.value);
+            writer->format("global_addr @%s", find_global_name(mod, ip->global_addr.value).c_str());
             break;
         }
         case lauf::asm_op::function_addr: {

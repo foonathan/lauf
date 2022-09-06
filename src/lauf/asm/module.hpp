@@ -50,6 +50,8 @@ struct lauf_asm_global
         read_write,
     } perms;
 
+    const char* name = nullptr;
+
     explicit lauf_asm_global(lauf_asm_module* mod)
     : next(mod->globals), memory(nullptr), size(0), allocation_idx(mod->globals_count),
       alignment(alignof(lauf_uint)), perms(read_only)

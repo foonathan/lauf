@@ -408,6 +408,7 @@ struct global_decl
                std::string data) {
                 data.resize(layout.size);
                 auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(), layout);
+                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
             },
@@ -415,6 +416,7 @@ struct global_decl
                const std::string& data) {
                 auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(),
                                                         {data.size(), alignof(void*)});
+                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
             });
@@ -433,6 +435,7 @@ struct global_decl
                std::string data) {
                 data.resize(layout.size);
                 auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(), layout);
+                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
             },
@@ -440,6 +443,7 @@ struct global_decl
                const std::string& data) {
                 auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(),
                                                       {data.size(), alignof(void*)});
+                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
             });
