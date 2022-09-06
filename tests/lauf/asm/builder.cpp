@@ -596,6 +596,14 @@ TEST_CASE("lauf_asm_inst_call_indirect")
     CHECK(regular[0].op() == lauf::asm_op::call_indirect);
     CHECK(regular[0].call_indirect.input_count == 3);
     CHECK(regular[0].call_indirect.output_count == 5);
+
+    auto constant = build({0, 5}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
+        auto f = lauf_asm_add_function(mod, "a", {0, 5});
+        lauf_asm_inst_function_addr(b, f);
+        lauf_asm_inst_call_indirect(b, {0, 5});
+    });
+    REQUIRE(constant.size() == 1);
+    CHECK(constant[0].op() == lauf::asm_op::call);
 }
 
 TEST_CASE("lauf_asm_inst_call_builtin")

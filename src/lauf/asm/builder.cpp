@@ -443,15 +443,45 @@ void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
     b->cur->vstack.push(*b, callee->sig.output_count);
 }
 
+namespace
+{
+lauf_asm_function* get_constant_function(lauf_asm_module* mod, lauf::builder_vstack::value value,
+                                         lauf_asm_signature sig)
+{
+    if (value.type != value.constant)
+        return nullptr;
+
+    auto addr = value.as_constant.as_function_address;
+    if (addr.input_count != sig.input_count || addr.output_count != sig.output_count)
+        return nullptr;
+
+    for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
+        if (fn->function_idx == addr.index)
+            return fn;
+
+    return nullptr;
+}
+} // namespace
+
 void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
 {
     LAUF_BUILD_ASSERT_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values for call");
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing function address");
 
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_indirect, sig.input_count,
-                                                          sig.output_count));
+    auto fn_addr = b->cur->vstack.pop();
+    LAUF_BUILD_ASSERT(fn_addr, "missing function address");
+    if (auto callee = get_constant_function(b->mod, *fn_addr, sig))
+    {
+        add_pop_top_n(b, 1);
+        auto offset = lauf::compress_pointer_offset(b->fn, callee);
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call, offset));
+    }
+    else
+    {
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_indirect, sig.input_count,
+                                                              sig.output_count));
+    }
 
     b->cur->vstack.push(*b, sig.output_count);
 }
