@@ -69,7 +69,8 @@ std::string find_builtin_name(lauf_backend_dump_options opts, lauf_runtime_built
     return "";
 }
 
-void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const lauf_asm_function* fn)
+void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const lauf_asm_module* mod,
+                   const lauf_asm_function* fn)
 {
     writer->format("function @'%s'(%d => %d)", fn->name, fn->sig.input_count, fn->sig.output_count);
     if (fn->insts == nullptr)
@@ -80,8 +81,17 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
 
     writer->write("\n{\n");
 
+    auto last_debug_location = lauf_asm_debug_location{0, 0, true};
     for (auto ip = fn->insts; ip != fn->insts + fn->insts_count; ++ip)
     {
+        auto debug_location = lauf_asm_find_debug_location_of_instruction(mod, ip);
+        if (debug_location.line_nr != last_debug_location.line_nr
+            || debug_location.column_nr != last_debug_location.column_nr)
+        {
+            writer->format("  # at %u:%u\n", debug_location.line_nr, debug_location.column_nr);
+            last_debug_location = debug_location;
+        }
+
         writer->format("  <%04zx>: ", ip - fn->insts);
         switch (ip->op())
         {
@@ -268,7 +278,7 @@ void lauf_backend_dump(lauf_writer* writer, lauf_backend_dump_options options,
 
     for (auto function = mod->functions; function != nullptr; function = function->next)
     {
-        dump_function(writer, options, function);
+        dump_function(writer, options, mod, function);
         writer->write("\n");
     }
 }
