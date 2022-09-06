@@ -88,7 +88,8 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         if (debug_location.line_nr != last_debug_location.line_nr
             || debug_location.column_nr != last_debug_location.column_nr)
         {
-            writer->format("  # at %u:%u\n", debug_location.line_nr, debug_location.column_nr);
+            writer->format("  # at %u:%u%s\n", debug_location.line_nr, debug_location.column_nr,
+                           debug_location.is_synthetic ? " [synthetic]" : "");
             last_debug_location = debug_location;
         }
 
