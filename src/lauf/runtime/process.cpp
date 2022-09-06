@@ -209,9 +209,9 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
             output[sig.output_count - i - 1] = vstack_ptr[0];
             ++vstack_ptr;
         }
-
-        lauf_runtime_fiber::destroy(process, fiber);
     }
+
+    lauf_runtime_fiber::destroy(process, fiber);
 
     // Restore processor state.
     process->regs      = regs;
