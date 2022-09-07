@@ -50,6 +50,9 @@ lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process
 lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* process);
 lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(lauf_runtime_fiber* iter);
 
+/// Returns whether there is only a single fiber at the moment.
+bool lauf_runtime_is_single_fibered(lauf_runtime_process* process);
+
 //=== fiber queries ===//
 /// Returns a handle to the specified fiber.
 lauf_runtime_address lauf_runtime_get_fiber_handle(const lauf_runtime_fiber* fiber);

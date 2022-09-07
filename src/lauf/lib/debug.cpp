@@ -63,6 +63,12 @@ void lauf::debug_print_cstack(lauf_runtime_process* process, const lauf_runtime_
 
 void lauf::debug_print_all_cstacks(lauf_runtime_process* process)
 {
+    if (lauf_runtime_is_single_fibered(process))
+    {
+        lauf::debug_print_cstack(process, lauf_runtime_iterate_fibers(process));
+        return;
+    }
+
     for (auto fiber = lauf_runtime_iterate_fibers(process); fiber != nullptr;
          fiber      = lauf_runtime_iterate_fibers_next(fiber))
     {

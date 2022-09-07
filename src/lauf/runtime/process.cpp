@@ -108,8 +108,7 @@ const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process)
 
 lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process)
 {
-    assert(process->cur_fiber == nullptr
-           || process->cur_fiber->status == lauf_runtime_fiber::running);
+    assert(process->cur_fiber->status == lauf_runtime_fiber::running);
     return process->cur_fiber;
 }
 
@@ -121,6 +120,11 @@ lauf_runtime_fiber* lauf_runtime_iterate_fibers(lauf_runtime_process* process)
 lauf_runtime_fiber* lauf_runtime_iterate_fibers_next(lauf_runtime_fiber* iter)
 {
     return iter->next_fiber;
+}
+
+bool lauf_runtime_is_single_fibered(lauf_runtime_process* process)
+{
+    return process->fiber_list->next_fiber == nullptr;
 }
 
 lauf_runtime_address lauf_runtime_get_fiber_handle(const lauf_runtime_fiber* fiber)
