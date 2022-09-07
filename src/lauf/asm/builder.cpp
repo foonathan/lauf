@@ -186,13 +186,57 @@ std::size_t create_prologue(lauf_asm_builder* b)
     return local_allocation_count;
 }
 
+void mark_reachable_blocks(lauf_asm_builder* b)
+{
+    auto mark = [&](auto recurse, const lauf_asm_block* cur) {
+        if (cur->reachable)
+            return;
+
+        const_cast<lauf_asm_block*>(cur)->reachable = true;
+
+        switch (cur->terminator)
+        {
+        case lauf_asm_block::unterminated:
+        case lauf_asm_block::return_:
+        case lauf_asm_block::panic:
+            break;
+        case lauf_asm_block::fallthrough:
+            // Only the prologue uses it, which is already dealt with.
+            assert(false);
+            break;
+
+        case lauf_asm_block::jump:
+            recurse(recurse, cur->next[0]);
+            break;
+        case lauf_asm_block::branch_ne_eq:
+        case lauf_asm_block::branch_lt_ge:
+        case lauf_asm_block::branch_le_gt:
+            recurse(recurse, cur->next[0]);
+            recurse(recurse, cur->next[1]);
+            break;
+        }
+    };
+
+    b->prologue->reachable = true;
+    if (b->blocks.size() == 1)
+        return;
+
+    // The real entry block is reachable.
+    auto entry = b->blocks.begin();
+    ++entry;
+    mark(mark, &*entry);
+}
+
 template <typename Iterator, typename Sink>
 void generate_terminator(const char* context, lauf_asm_builder* b, Iterator block, Iterator end,
                          std::size_t local_allocation_count, Sink sink)
 {
     auto next_block = [&] {
         auto next_iter = block;
-        ++next_iter;
+        do
+        {
+            ++next_iter;
+        } while (next_iter != end && !next_iter->reachable);
         return next_iter == end ? nullptr : &*next_iter;
     }();
 
@@ -275,7 +319,10 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
         auto result = std::size_t(0);
         for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
         {
-            block->offset = std::ptrdiff_t(result);
+            if (!block->reachable)
+                continue;
+
+            block->offset = std::uint16_t(result);
             result += block->insts.size();
             generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
                                 [&](lauf::asm_op, const lauf_asm_block*) { ++result; });
@@ -287,6 +334,9 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
     auto ip    = insts;
     for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
     {
+        if (!block->reachable)
+            continue;
+
         ip = block->insts.copy_to(ip);
 
         generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
@@ -355,6 +405,8 @@ void finalize_function(const char* context, lauf_asm_builder* b)
 bool lauf_asm_build_finish(lauf_asm_builder* b)
 {
     constexpr auto context = LAUF_BUILD_ASSERT_CONTEXT;
+
+    mark_reachable_blocks(b);
 
     auto local_allocation_count = create_prologue(b);
     generate_bytecode(context, b, local_allocation_count);

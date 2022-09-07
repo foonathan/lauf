@@ -63,16 +63,6 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 }
 } // namespace
 
-TEST_CASE("lauf_asm_inst_return")
-{
-    auto result = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        lauf_asm_inst_return(b);
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
-    });
-    REQUIRE(result.size() == 1);
-    CHECK(result[0].op() == lauf::asm_op::return_);
-}
-
 TEST_CASE("lauf_asm_inst_jump")
 {
     auto nop = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
@@ -91,38 +81,11 @@ TEST_CASE("lauf_asm_inst_jump")
         lauf_asm_inst_return(b);
 
         lauf_asm_build_block(b, dest);
+        lauf_asm_inst_jump(b, block);
     });
     REQUIRE(forward.size() >= 1);
     CHECK(forward[0].op() == lauf::asm_op::jump);
     CHECK(forward[0].jump.offset == 2);
-
-    auto self = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto block = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_jump(b, block);
-        lauf_asm_build_block(b, block);
-        lauf_asm_inst_jump(b, block); // This is the one we're trying to test.
-
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
-    });
-    REQUIRE(self.size() == 1);
-    CHECK(self[0].op() == lauf::asm_op::jump);
-    CHECK(self[0].jump.offset == 0);
-
-    auto backward = build({0, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
-        auto fn = lauf_asm_add_function(mod, "foo", {0, 1});
-
-        auto block = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_jump(b, block);
-        lauf_asm_build_block(b, block);
-        lauf_asm_inst_call(b, fn);
-        lauf_asm_inst_pop(b, 0);
-        lauf_asm_inst_jump(b, block); // This is the one we're trying to test.
-
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
-    });
-    REQUIRE(backward.size() == 3);
-    CHECK(backward[2].op() == lauf::asm_op::jump);
-    CHECK(backward[2].jump.offset == -2);
 }
 
 TEST_CASE("lauf_asm_inst_branch2")
@@ -163,16 +126,6 @@ TEST_CASE("lauf_asm_inst_branch2")
     REQUIRE(same.size() >= 1);
     CHECK(same[0].op() == lauf::asm_op::pop_top);
     CHECK(same[0].pop_top.idx == 0);
-}
-
-TEST_CASE("lauf_asm_inst_panic")
-{
-    auto result = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        lauf_asm_inst_panic(b);
-        lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
-    });
-    REQUIRE(result.size() == 1);
-    CHECK(result[0].op() == lauf::asm_op::panic);
 }
 
 TEST_CASE("lauf_asm_inst_sint")
