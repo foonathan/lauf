@@ -128,6 +128,9 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::jump:
             writer->format("jump <%04zx>", ip + ip->jump.offset - fn->insts);
             break;
+        case lauf::asm_op::jump_pop:
+            writer->format("jump_pop <%04zx>", ip + ip->jump.offset - fn->insts);
+            break;
         case lauf::asm_op::branch_false:
             writer->format("branch.false <%04zx>", ip + ip->branch_false.offset - fn->insts);
             break;

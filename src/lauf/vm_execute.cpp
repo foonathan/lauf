@@ -113,6 +113,12 @@ LAUF_VM_EXECUTE(jump)
     ip += ip->jump.offset;
     LAUF_VM_DISPATCH;
 }
+LAUF_VM_EXECUTE(jump_pop)
+{
+    ++vstack_ptr;
+    ip += ip->jump.offset;
+    LAUF_VM_DISPATCH;
+}
 
 LAUF_VM_EXECUTE(branch_false)
 {
@@ -141,14 +147,15 @@ LAUF_VM_EXECUTE(branch_eq)
 
     LAUF_VM_DISPATCH;
 }
-
 LAUF_VM_EXECUTE(branch_gt)
 {
     auto condition = vstack_ptr[0].as_sint;
-    ++vstack_ptr;
 
     if (condition > 0)
+    {
         ip += ip->branch_gt.offset;
+        ++vstack_ptr;
+    }
     else
         ++ip;
 

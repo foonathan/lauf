@@ -31,6 +31,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::return_:
         case lauf::asm_op::return_free:
         case lauf::asm_op::jump:
+        case lauf::asm_op::jump_pop:
         case lauf::asm_op::branch_false:
         case lauf::asm_op::branch_eq:
         case lauf::asm_op::branch_gt:
@@ -297,9 +298,9 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
             ++end_offset;
 
             if (block.next[0]->offset == end_offset + 1)
-                *ip++ = LAUF_BUILD_INST_NONE(nop);
+                *ip++ = LAUF_BUILD_INST_STACK_IDX(pop_top, 0);
             else
-                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - end_offset);
+                *ip++ = LAUF_BUILD_INST_OFFSET(jump_pop, block.next[0]->offset - end_offset);
             break;
 
         case lauf_asm_block::panic:
