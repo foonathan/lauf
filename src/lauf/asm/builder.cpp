@@ -184,12 +184,131 @@ std::size_t create_prologue(lauf_asm_builder* b)
     return local_allocation_count;
 }
 
-void finalize_function(const char* context, lauf_asm_builder* b, lauf_asm_inst* insts,
-                       std::size_t insts_count)
+template <typename Sink>
+void generate_terminator(const char* context, lauf_asm_builder* b, lauf_asm_block& block,
+                         std::size_t local_allocation_count, Sink sink)
 {
+    switch (block.terminator)
+    {
+    case lauf_asm_block::unterminated:
+        // We allow unterminated blocks that we haven't actually built yet.
+        if (!block.insts.empty())
+            b->error(context, "unterminated block");
+        break;
+
+    case lauf_asm_block::fallthrough:
+        break;
+
+    case lauf_asm_block::return_:
+        if (local_allocation_count > 0)
+            sink(lauf::asm_op::return_free, nullptr);
+        else
+            sink(lauf::asm_op::return_, nullptr);
+        break;
+    case lauf_asm_block::panic:
+        sink(lauf::asm_op::panic, nullptr);
+        break;
+
+    case lauf_asm_block::jump:
+        sink(lauf::asm_op::jump, block.next[0]);
+        break;
+    case lauf_asm_block::branch2:
+        sink(lauf::asm_op::branch_false, block.next[1]);
+        sink(lauf::asm_op::jump, block.next[0]);
+        break;
+    case lauf_asm_block::branch3:
+        sink(lauf::asm_op::branch_eq, block.next[1]);
+        sink(lauf::asm_op::branch_gt, block.next[2]);
+        sink(lauf::asm_op::jump_pop, block.next[0]);
+        break;
+    }
+}
+
+void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t local_allocation_count)
+{
+    auto insts_count = [&] {
+        auto result = std::size_t(0);
+        for (auto& block : b->blocks)
+        {
+            block.offset = std::ptrdiff_t(result);
+            result += block.insts.size();
+            generate_terminator(context, b, block, local_allocation_count,
+                                [&](lauf::asm_op, const lauf_asm_block*) { ++result; });
+        }
+        return result;
+    }();
+
+    auto insts = b->mod->allocate<lauf_asm_inst>(insts_count);
+    auto ip    = insts;
+    for (auto& block : b->blocks)
+    {
+        ip = block.insts.copy_to(ip);
+
+        generate_terminator(context, b, block, local_allocation_count,
+                            [&](lauf::asm_op op, const lauf_asm_block* block) {
+                                ip[0].nop.op = op;
+                                switch (op)
+                                {
+                                case lauf::asm_op::return_:
+                                case lauf::asm_op::panic:
+                                    break;
+
+                                case lauf::asm_op::return_free:
+                                    ip[0].return_free.value = std::uint32_t(local_allocation_count);
+                                    break;
+
+                                case lauf::asm_op::jump: {
+                                    assert(block != nullptr);
+                                    auto offset = std::int32_t(block->offset - (ip - insts));
+                                    if (offset == 1)
+                                        ip[0].nop.op = lauf::asm_op::nop;
+                                    else
+                                        ip[0].jump.offset = offset;
+                                    break;
+                                }
+                                case lauf::asm_op::jump_pop: {
+                                    assert(block != nullptr);
+                                    auto offset = std::int32_t(block->offset - (ip - insts));
+                                    if (offset == 1)
+                                    {
+                                        ip[0].pop_top.op  = lauf::asm_op::pop_top;
+                                        ip[0].pop_top.idx = 0;
+                                    }
+                                    else
+                                        ip[0].jump_pop.offset = offset;
+                                    break;
+                                }
+
+                                case lauf::asm_op::branch_false:
+                                case lauf::asm_op::branch_eq:
+                                case lauf::asm_op::branch_gt:
+                                    assert(block != nullptr);
+                                    ip[0].branch_false.offset
+                                        = std::int32_t(block->offset - (ip - insts));
+                                    break;
+
+                                default:
+                                    assert(false);
+                                    break;
+                                }
+                                ++ip;
+                            });
+
+        for (auto loc : block.debug_locations)
+        {
+            loc.inst_idx += block.offset;
+            b->mod->inst_debug_locations.push_back(*b->mod, loc);
+        }
+    }
+
     b->fn->insts       = insts;
     b->fn->insts_count = std::uint16_t(insts_count);
+    if (b->fn->insts_count != insts_count)
+        b->error(context, "too many instructions");
+}
 
+void finalize_function(const char* context, lauf_asm_builder* b)
+{
     b->fn->max_vstack_size = [&] {
         auto result = std::size_t(0);
 
@@ -212,112 +331,8 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
     constexpr auto context = LAUF_BUILD_ASSERT_CONTEXT;
 
     auto local_allocation_count = create_prologue(b);
-
-    auto insts_count = [&] {
-        auto result = std::size_t(0);
-        for (auto& block : b->blocks)
-        {
-            block.offset = std::ptrdiff_t(result);
-
-            result += block.insts.size();
-
-            switch (block.terminator)
-            {
-            case lauf_asm_block::unterminated:
-                // We allow unterminated blocks that we haven't actually built yet.
-                if (!block.insts.empty())
-                    b->error(context, "unterminated block");
-                break;
-
-            case lauf_asm_block::fallthrough:
-                break;
-
-            case lauf_asm_block::return_:
-            case lauf_asm_block::jump:
-            case lauf_asm_block::panic:
-                ++result;
-                break;
-
-            case lauf_asm_block::branch2:
-                result += 2;
-                break;
-            case lauf_asm_block::branch3:
-                result += 3;
-                break;
-            }
-        }
-
-        if (result > UINT16_MAX)
-            b->error(context, "too many instructions in function body");
-
-        return result;
-    }();
-
-    auto insts = b->mod->allocate<lauf_asm_inst>(insts_count);
-
-    auto ip = insts;
-    for (auto& block : b->blocks)
-    {
-        auto begin_offset = ip - insts;
-        ip                = block.insts.copy_to(ip);
-        auto end_offset   = ip - insts;
-
-        switch (block.terminator)
-        {
-        case lauf_asm_block::unterminated:
-        case lauf_asm_block::fallthrough:
-            break;
-
-        case lauf_asm_block::return_:
-            if (local_allocation_count > 0)
-                *ip++ = LAUF_BUILD_INST_VALUE(return_free, local_allocation_count);
-            else
-                *ip++ = LAUF_BUILD_INST_NONE(return_);
-            break;
-
-        case lauf_asm_block::jump:
-            if (block.next[0]->offset == end_offset + 1)
-                *ip++ = LAUF_BUILD_INST_NONE(nop);
-            else
-                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - end_offset);
-            break;
-
-        case lauf_asm_block::branch2:
-            *ip++ = LAUF_BUILD_INST_OFFSET(branch_false, block.next[1]->offset - end_offset);
-            ++end_offset;
-
-            if (block.next[0]->offset == end_offset + 1)
-                *ip++ = LAUF_BUILD_INST_NONE(nop);
-            else
-                *ip++ = LAUF_BUILD_INST_OFFSET(jump, block.next[0]->offset - end_offset);
-            break;
-
-        case lauf_asm_block::branch3:
-            *ip++ = LAUF_BUILD_INST_OFFSET(branch_eq, block.next[1]->offset - end_offset);
-            ++end_offset;
-
-            *ip++ = LAUF_BUILD_INST_OFFSET(branch_gt, block.next[2]->offset - end_offset);
-            ++end_offset;
-
-            if (block.next[0]->offset == end_offset + 1)
-                *ip++ = LAUF_BUILD_INST_STACK_IDX(pop_top, 0);
-            else
-                *ip++ = LAUF_BUILD_INST_OFFSET(jump_pop, block.next[0]->offset - end_offset);
-            break;
-
-        case lauf_asm_block::panic:
-            *ip++ = LAUF_BUILD_INST_NONE(panic);
-            break;
-        }
-
-        for (auto loc : block.debug_locations)
-        {
-            loc.inst_idx += begin_offset;
-            b->mod->inst_debug_locations.push_back(*b->mod, loc);
-        }
-    }
-
-    finalize_function(context, b, insts, insts_count);
+    generate_bytecode(context, b, local_allocation_count);
+    finalize_function(context, b);
     return !b->errored;
 }
 
