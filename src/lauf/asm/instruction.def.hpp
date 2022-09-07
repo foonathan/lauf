@@ -4,6 +4,8 @@ LAUF_ASM_INST(nop, asm_inst_none)
 
 // lauf_asm_inst_return()
 LAUF_ASM_INST(return_, asm_inst_none)
+// Same, but when it also needs to free N local allocations.
+LAUF_ASM_INST(return_free, asm_inst_value)
 
 // lauf_asm_inst_jump()
 LAUF_ASM_INST(jump, asm_inst_offset)
@@ -107,10 +109,6 @@ LAUF_ASM_INST(local_alloc_aligned, asm_inst_layout)
 // Allocate memory for local variable(s) but doesn't setup an allocation for it.
 // Value is the number of bytes to reserve on the cstack.
 LAUF_ASM_INST(reserve_local_alloc, asm_inst_value)
-
-// Frees N local memory allocations.
-// Signature: _ => _
-LAUF_ASM_INST(local_free, asm_inst_value)
 
 // lauf_asm_inst_array_element()
 // Value is multiple.

@@ -89,6 +89,24 @@ LAUF_VM_EXECUTE(return_)
     frame_ptr = frame_ptr->prev;
     LAUF_VM_DISPATCH;
 }
+LAUF_VM_EXECUTE(return_free)
+{
+    for (auto i = 0u; i != ip->return_free.value; ++i)
+    {
+        auto  index = frame_ptr->first_local_alloc + i;
+        auto& alloc = process->memory[index];
+
+        if (LAUF_UNLIKELY(alloc.split != lauf::allocation_split::unsplit))
+            LAUF_DO_PANIC("cannot free split allocation");
+
+        alloc.status = lauf::allocation_status::freed;
+    }
+    process->memory.remove_freed();
+
+    ip        = frame_ptr->return_ip;
+    frame_ptr = frame_ptr->prev;
+    LAUF_VM_DISPATCH;
+}
 
 LAUF_VM_EXECUTE(jump)
 {
@@ -578,24 +596,6 @@ LAUF_VM_EXECUTE(local_alloc_aligned)
 LAUF_VM_EXECUTE(reserve_local_alloc)
 {
     frame_ptr->next_offset += ip->reserve_local_alloc.value;
-
-    ++ip;
-    LAUF_VM_DISPATCH;
-}
-
-LAUF_VM_EXECUTE(local_free)
-{
-    for (auto i = 0u; i != ip->local_free.value; ++i)
-    {
-        auto  index = frame_ptr->first_local_alloc + i;
-        auto& alloc = process->memory[index];
-
-        if (LAUF_UNLIKELY(alloc.split != lauf::allocation_split::unsplit))
-            LAUF_DO_PANIC("cannot free split allocation");
-
-        alloc.status = lauf::allocation_status::freed;
-    }
-    process->memory.remove_freed();
 
     ++ip;
     LAUF_VM_DISPATCH;

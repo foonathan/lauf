@@ -29,6 +29,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::count:
         case lauf::asm_op::nop:
         case lauf::asm_op::return_:
+        case lauf::asm_op::return_free:
         case lauf::asm_op::jump:
         case lauf::asm_op::branch_false:
         case lauf::asm_op::branch_eq:
@@ -39,7 +40,6 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::local_alloc:
         case lauf::asm_op::local_alloc_aligned:
         case lauf::asm_op::reserve_local_alloc:
-        case lauf::asm_op::local_free:
             assert(false && "not added at this point");
             break;
 
@@ -194,11 +194,6 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
                 break;
 
             case lauf_asm_block::return_:
-                ++result;
-                if (local_allocation_count > 0)
-                    ++result;
-                break;
-
             case lauf_asm_block::jump:
             case lauf_asm_block::panic:
                 ++result;
@@ -236,8 +231,9 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 
         case lauf_asm_block::return_:
             if (local_allocation_count > 0)
-                *ip++ = LAUF_BUILD_INST_VALUE(local_free, unsigned(b->locals.size()));
-            *ip++ = LAUF_BUILD_INST_NONE(return_);
+                *ip++ = LAUF_BUILD_INST_VALUE(return_free, local_allocation_count);
+            else
+                *ip++ = LAUF_BUILD_INST_NONE(return_);
             break;
 
         case lauf_asm_block::jump:

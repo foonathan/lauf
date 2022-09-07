@@ -122,6 +122,9 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::return_:
             writer->write("return");
             break;
+        case lauf::asm_op::return_free:
+            writer->format("return_free %d", ip->return_free.value);
+            break;
         case lauf::asm_op::jump:
             writer->format("jump <%04zx>", ip + ip->jump.offset - fn->insts);
             break;
@@ -250,9 +253,6 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             break;
         case lauf::asm_op::reserve_local_alloc:
             writer->format("reserve_local_alloc %u", ip->reserve_local_alloc.value);
-            break;
-        case lauf::asm_op::local_free:
-            writer->format("local_free %d", ip->local_free.value);
             break;
         case lauf::asm_op::deref_const:
             writer->format("deref_const (%u, %zu)", ip->deref_const.size,
