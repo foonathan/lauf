@@ -184,15 +184,21 @@ std::size_t create_prologue(lauf_asm_builder* b)
     return local_allocation_count;
 }
 
-template <typename Sink>
-void generate_terminator(const char* context, lauf_asm_builder* b, lauf_asm_block& block,
+template <typename Iterator, typename Sink>
+void generate_terminator(const char* context, lauf_asm_builder* b, Iterator block, Iterator end,
                          std::size_t local_allocation_count, Sink sink)
 {
-    switch (block.terminator)
+    auto next_block = [&] {
+        auto next_iter = block;
+        ++next_iter;
+        return next_iter == end ? nullptr : &*next_iter;
+    }();
+
+    switch (block->terminator)
     {
     case lauf_asm_block::unterminated:
         // We allow unterminated blocks that we haven't actually built yet.
-        if (!block.insts.empty())
+        if (!block->insts.empty())
             b->error(context, "unterminated block");
         break;
 
@@ -210,16 +216,21 @@ void generate_terminator(const char* context, lauf_asm_builder* b, lauf_asm_bloc
         break;
 
     case lauf_asm_block::jump:
-        sink(lauf::asm_op::jump, block.next[0]);
+        if (block->next[0] != next_block)
+            sink(lauf::asm_op::jump, block->next[0]);
         break;
     case lauf_asm_block::branch2:
-        sink(lauf::asm_op::branch_false, block.next[1]);
-        sink(lauf::asm_op::jump, block.next[0]);
+        sink(lauf::asm_op::branch_false, block->next[1]);
+        if (block->next[0] != next_block)
+            sink(lauf::asm_op::jump, block->next[0]);
         break;
     case lauf_asm_block::branch3:
-        sink(lauf::asm_op::branch_eq, block.next[1]);
-        sink(lauf::asm_op::branch_gt, block.next[2]);
-        sink(lauf::asm_op::jump_pop, block.next[0]);
+        sink(lauf::asm_op::branch_eq, block->next[1]);
+        sink(lauf::asm_op::branch_gt, block->next[2]);
+        if (block->next[0] == next_block)
+            sink(lauf::asm_op::pop_top, nullptr);
+        else
+            sink(lauf::asm_op::jump_pop, block->next[0]);
         break;
     }
 }
@@ -228,11 +239,11 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
 {
     auto insts_count = [&] {
         auto result = std::size_t(0);
-        for (auto& block : b->blocks)
+        for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
         {
-            block.offset = std::ptrdiff_t(result);
-            result += block.insts.size();
-            generate_terminator(context, b, block, local_allocation_count,
+            block->offset = std::ptrdiff_t(result);
+            result += block->insts.size();
+            generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
                                 [&](lauf::asm_op, const lauf_asm_block*) { ++result; });
         }
         return result;
@@ -240,12 +251,12 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
 
     auto insts = b->mod->allocate<lauf_asm_inst>(insts_count);
     auto ip    = insts;
-    for (auto& block : b->blocks)
+    for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
     {
-        ip = block.insts.copy_to(ip);
+        ip = block->insts.copy_to(ip);
 
-        generate_terminator(context, b, block, local_allocation_count,
-                            [&](lauf::asm_op op, const lauf_asm_block* block) {
+        generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
+                            [&](lauf::asm_op op, const lauf_asm_block* dest) {
                                 ip[0].nop.op = op;
                                 switch (op)
                                 {
@@ -256,35 +267,17 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
                                 case lauf::asm_op::return_free:
                                     ip[0].return_free.value = std::uint32_t(local_allocation_count);
                                     break;
-
-                                case lauf::asm_op::jump: {
-                                    assert(block != nullptr);
-                                    auto offset = std::int32_t(block->offset - (ip - insts));
-                                    if (offset == 1)
-                                        ip[0].nop.op = lauf::asm_op::nop;
-                                    else
-                                        ip[0].jump.offset = offset;
+                                case lauf::asm_op::pop_top:
+                                    ip[0].pop_top.idx = 0;
                                     break;
-                                }
-                                case lauf::asm_op::jump_pop: {
-                                    assert(block != nullptr);
-                                    auto offset = std::int32_t(block->offset - (ip - insts));
-                                    if (offset == 1)
-                                    {
-                                        ip[0].pop_top.op  = lauf::asm_op::pop_top;
-                                        ip[0].pop_top.idx = 0;
-                                    }
-                                    else
-                                        ip[0].jump_pop.offset = offset;
-                                    break;
-                                }
 
+                                case lauf::asm_op::jump:
+                                case lauf::asm_op::jump_pop:
                                 case lauf::asm_op::branch_false:
                                 case lauf::asm_op::branch_eq:
                                 case lauf::asm_op::branch_gt:
-                                    assert(block != nullptr);
-                                    ip[0].branch_false.offset
-                                        = std::int32_t(block->offset - (ip - insts));
+                                    assert(dest != nullptr);
+                                    ip[0].jump.offset = std::int32_t(dest->offset - (ip - insts));
                                     break;
 
                                 default:
@@ -294,9 +287,9 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
                                 ++ip;
                             });
 
-        for (auto loc : block.debug_locations)
+        for (auto loc : block->debug_locations)
         {
-            loc.inst_idx += block.offset;
+            loc.inst_idx += block->offset;
             b->mod->inst_debug_locations.push_back(*b->mod, loc);
         }
     }

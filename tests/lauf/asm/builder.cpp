@@ -80,8 +80,7 @@ TEST_CASE("lauf_asm_inst_jump")
         lauf_asm_inst_jump(b, block);
         lauf_asm_build_block(b, block);
     });
-    REQUIRE(nop.size() == 1);
-    CHECK(nop[0].op() == lauf::asm_op::nop);
+    REQUIRE(nop.empty());
 
     auto forward = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto block = lauf_asm_declare_block(b, 0);
@@ -105,9 +104,9 @@ TEST_CASE("lauf_asm_inst_jump")
 
         lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     });
-    REQUIRE(self.size() == 2);
-    CHECK(self[1].op() == lauf::asm_op::jump);
-    CHECK(self[1].jump.offset == 0);
+    REQUIRE(self.size() == 1);
+    CHECK(self[0].op() == lauf::asm_op::jump);
+    CHECK(self[0].jump.offset == 0);
 
     auto backward = build({0, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
         auto fn = lauf_asm_add_function(mod, "foo", {0, 1});
@@ -121,9 +120,9 @@ TEST_CASE("lauf_asm_inst_jump")
 
         lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     });
-    REQUIRE(backward.size() == 4);
-    CHECK(backward[3].op() == lauf::asm_op::jump);
-    CHECK(backward[3].jump.offset == -2);
+    REQUIRE(backward.size() == 3);
+    CHECK(backward[2].op() == lauf::asm_op::jump);
+    CHECK(backward[2].jump.offset == -2);
 }
 
 TEST_CASE("lauf_asm_inst_branch2")
@@ -138,10 +137,9 @@ TEST_CASE("lauf_asm_inst_branch2")
 
         lauf_asm_build_block(b, if_false);
     });
-    REQUIRE(br_nop.size() >= 2);
+    REQUIRE(br_nop.size() >= 1);
     CHECK(br_nop[0].op() == lauf::asm_op::branch_false);
-    CHECK(br_nop[0].branch_false.offset == 3);
-    CHECK(br_nop[1].op() == lauf::asm_op::nop);
+    CHECK(br_nop[0].branch_false.offset == 2);
 
     auto br_jump = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto if_false = lauf_asm_declare_block(b, 0);
@@ -164,10 +162,9 @@ TEST_CASE("lauf_asm_inst_branch2")
         lauf_asm_inst_branch2(b, block, block);
         lauf_asm_build_block(b, block);
     });
-    REQUIRE(same.size() >= 2);
+    REQUIRE(same.size() >= 1);
     CHECK(same[0].op() == lauf::asm_op::pop_top);
     CHECK(same[0].pop_top.idx == 0);
-    CHECK(same[1].op() == lauf::asm_op::nop);
 }
 
 TEST_CASE("lauf_asm_inst_branch3")
@@ -239,10 +236,9 @@ TEST_CASE("lauf_asm_inst_branch3")
 
         lauf_asm_build_block(b, block);
     });
-    REQUIRE(all_same.size() >= 2);
+    REQUIRE(all_same.size() >= 1);
     CHECK(all_same[0].op() == lauf::asm_op::pop_top);
     CHECK(all_same[0].pop_top.idx == 0);
-    CHECK(all_same[1].op() == lauf::asm_op::nop);
 }
 
 TEST_CASE("lauf_asm_inst_panic")
