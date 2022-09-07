@@ -38,15 +38,25 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::setup_local_alloc:
         case lauf::asm_op::local_alloc:
         case lauf::asm_op::local_alloc_aligned:
+        case lauf::asm_op::reserve_local_alloc:
         case lauf::asm_op::local_free:
             assert(false && "not added at this point");
             break;
 
+        case lauf::asm_op::local_addr: {
+            auto inst = b->cur->insts.back();
+            for (auto& local : b->locals)
+                if (local.index == inst.local_addr.value)
+                {
+                    --local.address_count;
+                    break;
+                }
+            // fallthrough
+        }
         case lauf::asm_op::push:
         case lauf::asm_op::pushn:
         case lauf::asm_op::global_addr:
         case lauf::asm_op::function_addr:
-        case lauf::asm_op::local_addr:
         case lauf::asm_op::pick:
         case lauf::asm_op::dup:
         case lauf::asm_op::load_local_value:
@@ -126,6 +136,46 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 {
     constexpr auto context = LAUF_BUILD_ASSERT_CONTEXT;
 
+    auto local_allocation_count = [&] {
+        auto result = 0u;
+        for (auto& local : b->locals)
+            if (local.address_count > 0)
+                ++result;
+        return result;
+    }();
+    if (b->locals.size() > 0)
+    {
+        auto prologue = b->prologue;
+        if (local_allocation_count > 0)
+            prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(setup_local_alloc,
+                                                                local_allocation_count));
+
+        auto bump_space = std::size_t(0);
+        for (auto& local : b->locals)
+        {
+            assert(local.layout.alignment >= alignof(void*));
+            if (local.address_count == 0)
+            {
+                if (local.layout.alignment == alignof(void*))
+                    bump_space += local.layout.size;
+                else
+                    bump_space += local.layout.alignment + local.layout.alignment;
+            }
+            else
+            {
+                if (local.layout.alignment == alignof(void*))
+                    b->prologue->insts.push_back(*b,
+                                                 LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout));
+                else
+                    b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned,
+                                                                            local.layout));
+            }
+        }
+
+        if (bump_space > 0)
+            prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(reserve_local_alloc, bump_space));
+    }
+
     auto insts_count = [&] {
         auto result = std::size_t(0);
         for (auto& block : b->blocks)
@@ -145,7 +195,7 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 
             case lauf_asm_block::return_:
                 ++result;
-                if (b->locals.size() > 0)
+                if (local_allocation_count > 0)
                     ++result;
                 break;
 
@@ -185,7 +235,7 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
             break;
 
         case lauf_asm_block::return_:
-            if (b->locals.size() > 0)
+            if (local_allocation_count > 0)
                 *ip++ = LAUF_BUILD_INST_VALUE(local_free, unsigned(b->locals.size()));
             *ip++ = LAUF_BUILD_INST_NONE(return_);
             break;
@@ -255,11 +305,6 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 
 lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout)
 {
-    if (b->prologue->insts.empty())
-        b->prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(setup_local_alloc, 1));
-    else
-        ++b->prologue->insts.front().setup_local_alloc.value;
-
     layout.size = lauf::round_to_multiple_of_alignment(layout.size, alignof(void*));
 
     std::uint16_t offset;
@@ -268,7 +313,6 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
         // Ensure that the stack frame is always aligned to a pointer.
         // This means we can allocate without worrying about alignment.
         layout.alignment = alignof(void*);
-        b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, layout));
 
         // The offset is the current size, we don't need to worry about alignment.
         offset = std::uint16_t(b->local_allocation_size + sizeof(lauf_runtime_stack_frame));
@@ -276,8 +320,6 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
     }
     else
     {
-        b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned, layout));
-
         // We need to align it, but don't know the base address of the stack frame yet.
         // We only know that we need at most `layout.alignment` padding bytes*, so reserve that much
         // space.
@@ -292,7 +334,7 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
     }
 
     auto index = b->locals.size();
-    return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset});
+    return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset, 0});
 }
 
 lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, size_t input_count)
@@ -711,9 +753,11 @@ void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* globa
     }());
 }
 
-void lauf_asm_inst_local_addr(lauf_asm_builder* b, const lauf_asm_local* local)
+void lauf_asm_inst_local_addr(lauf_asm_builder* b, lauf_asm_local* local)
 {
     LAUF_BUILD_ASSERT_CUR;
+
+    ++local->address_count;
 
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_addr, local->index));
     b->cur->vstack.push(*b, [&] {

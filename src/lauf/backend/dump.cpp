@@ -247,6 +247,9 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("local_alloc_aligned (%u, %zu)", ip->local_alloc_aligned.size,
                            ip->local_alloc_aligned.alignment());
             break;
+        case lauf::asm_op::reserve_local_alloc:
+            writer->format("reserve_local_alloc %u", ip->reserve_local_alloc.value);
+            break;
         case lauf::asm_op::local_free:
             writer->format("local_free %d", ip->local_free.value);
             break;

@@ -185,7 +185,7 @@ void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* globa
 /// Pushes the address of a local variable onto the stack.
 ///
 /// Signature: _ => local:address
-void lauf_asm_inst_local_addr(lauf_asm_builder* b, const lauf_asm_local* local);
+void lauf_asm_inst_local_addr(lauf_asm_builder* b, lauf_asm_local* local);
 
 /// Pushes the address of a function onto the stack.
 ///

@@ -36,6 +36,25 @@ lauf_asm_module* example_module()
             }
         }
 
+        function @fib_local(1 => 1) {
+            local %n : $lauf.Value;
+            block %entry(1 => 0) {
+                pick 0; local_addr %n; store_field $lauf.Value 0;
+                sint 2; $lauf.int.scmp;
+                branch3 %base(0 => 1) %recurse(0 => 1) %recurse(0 => 1);
+            }
+            block %base(0 => 1) {
+                local_addr %n; load_field $lauf.Value 0;
+                return;
+            }
+            block %recurse(0 => 1) {
+                local_addr %n; load_field $lauf.Value 0; sint 1; $lauf.int.ssub_wrap; call @fib_local;
+                local_addr %n; load_field $lauf.Value 0; sint 2; $lauf.int.ssub_wrap; call @fib_local;
+                $lauf.int.sadd_wrap;
+                return;
+            }
+        }
+
         function @fib_generator(0 => 0) {
             block %entry(0 => 0) {
                 uint 0;
@@ -107,8 +126,7 @@ int main()
     auto mod = example_module();
     dump_module(mod);
 
-    auto program
-        = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "print_n_fibs"));
+    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib_local"));
     execute(program, lauf_uint(35));
 
     lauf_asm_destroy_module(mod);

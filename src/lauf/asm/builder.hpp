@@ -167,7 +167,10 @@ struct lauf_asm_local
 {
     lauf_asm_layout layout;
     std::uint16_t   index;
-    std::uint16_t   offset; // UINT16_MAX if unknown for layout.alignment > alignof(void*)
+    // UINT16_MAX if unknown for layout.alignment > alignof(void*)
+    std::uint16_t offset;
+    // How often its address was taken in the function.
+    std::uint16_t address_count;
 };
 
 struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>

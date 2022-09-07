@@ -104,6 +104,9 @@ LAUF_ASM_INST(setup_local_alloc, asm_inst_value)
 // Signature: _ => _
 LAUF_ASM_INST(local_alloc, asm_inst_layout)
 LAUF_ASM_INST(local_alloc_aligned, asm_inst_layout)
+// Allocate memory for local variable(s) but doesn't setup an allocation for it.
+// Value is the number of bytes to reserve on the cstack.
+LAUF_ASM_INST(reserve_local_alloc, asm_inst_value)
 
 // Frees N local memory allocations.
 // Signature: _ => _

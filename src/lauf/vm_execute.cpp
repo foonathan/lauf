@@ -566,11 +566,18 @@ LAUF_VM_EXECUTE(local_alloc_aligned)
     auto memory = static_cast<unsigned char*>(frame_ptr->next_frame());
     memory += lauf::align_offset(memory, ip->local_alloc_aligned.alignment());
     // However, to increment the offset we need both alignment and size, as that was the offset
-    // computation in the builder assumes.
+    // computation assumed in the builder.
     frame_ptr->next_offset += ip->local_alloc_aligned.alignment() + ip->local_alloc.size;
 
     process->memory.new_allocation_unchecked(
         lauf::make_local_alloc(memory, ip->local_alloc.size, frame_ptr->local_generation));
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+LAUF_VM_EXECUTE(reserve_local_alloc)
+{
+    frame_ptr->next_offset += ip->reserve_local_alloc.value;
 
     ++ip;
     LAUF_VM_DISPATCH;

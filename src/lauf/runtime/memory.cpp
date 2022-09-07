@@ -232,21 +232,41 @@ size_t lauf_runtime_gc(lauf_runtime_process* p)
     // Mark the current fiber as reachable.
     mark_reachable(&p->memory[p->cur_fiber->handle_allocation]);
 
-    // Mark allocations reachable by addresses in the vstack as reachable.
-    // We allow the vstacks from all fibers, even unreachable ones.
+    // Mark allocations reachable by addresses in the vstack and call stack as reachable.
+    // We allow the stacks from all fibers, even unreachable ones.
     // If the fiber in question turned out to be unreaachable, it will be deallocated now,
     // and the next GC run will collect everything that became unreferenced as a consequence of it.
     for (auto fiber = lauf_runtime_iterate_fibers(p); fiber != nullptr;
          fiber      = lauf_runtime_iterate_fibers_next(fiber))
+    {
+        // Iterate over the vstack.
         for (auto cur = lauf_runtime_get_vstack_ptr(p, fiber);
              cur != lauf_runtime_get_vstack_base(fiber); ++cur)
         {
-                 auto alloc = p->memory.try_get(cur->as_address);
-                 if (alloc != nullptr && cur->as_address.offset <= alloc->size)
+            auto alloc = p->memory.try_get(cur->as_address);
+            if (alloc != nullptr && cur->as_address.offset <= alloc->size)
                 mark_reachable(alloc);
         }
 
+        // Iterate over memory in the call stack.
+        // This is necessary because we do not generate local allocations if their address is never
+        // taken. However, they're still reachable and can contain pointers.
+        for (auto frame
+             = fiber == p->cur_fiber ? p->regs.frame_ptr : fiber->suspension_point.frame_ptr;
+             !frame->is_trampoline_frame(); frame = frame->prev)
+        {
+            // We create a dummy allocation for the entire stack frame.
+            // It is guaranteed to be properly aligned for pointers, so that's not an issue.
+            auto alloc
+                = lauf::make_local_alloc(frame + 1,
+                                         frame->next_offset - sizeof(lauf_runtime_stack_frame),
+                                         frame->local_generation);
+            process_reachable_memory(&alloc);
+        }
+    }
+
     // Process memory from explicitly reachable allocations.
+    // This covers local allocations again, but it doesn't matter.
     for (auto& alloc : p->memory)
     {
         // Non-heap non-fiber memory should always be reachable.
