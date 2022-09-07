@@ -8,6 +8,7 @@
 #include <lauf/asm/module.hpp>
 #include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
+#include <lauf/runtime/stack.hpp>
 #include <lauf/writer.hpp>
 #include <string>
 
@@ -267,10 +268,12 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("aggregate_member %u", ip->aggregate_member.value);
             break;
         case lauf::asm_op::load_local_value:
-            writer->format("load_local_value <%x>", ip->load_local_value.value);
+            writer->format("load_local_value <%zx>",
+                           ip->load_local_value.value - sizeof(lauf_runtime_stack_frame));
             break;
         case lauf::asm_op::store_local_value:
-            writer->format("store_local_value <%x>", ip->load_local_value.value);
+            writer->format("store_local_value <%zx>",
+                           ip->store_local_value.value - sizeof(lauf_runtime_stack_frame));
             break;
         case lauf::asm_op::load_global_value:
             writer->format("load_global_value @%s",
