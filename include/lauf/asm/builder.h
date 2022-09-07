@@ -97,21 +97,28 @@ void lauf_asm_inst_return(lauf_asm_builder* b);
 void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest);
 
 /// Terminator: two-way jump.
-///
 /// If the top value is non-zero, jumps to `if_true`, otherwise, jumps to `if_false`.
 ///
+/// If the top value is a constant, returns the block that was statically taken.
+/// That way, code generation for the other branch can be avoided.
+/// Otherwise, returns nullptr.
+///
 /// Signature: condition:uint => _
-void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
-                           const lauf_asm_block* if_false);
+const lauf_asm_block* lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
+                                            const lauf_asm_block* if_false);
 
 /// Terminator: three-way jump.
-///
 /// If the top value is < 0, jumps to `if_lt`, if it is `== 0`, jumps to `if_eq`, if it is `> 0`
 /// jumps to `if_gt`.
 ///
+/// If the top value is a constant, returns the block that was statically taken.
+/// That way, code generation for the other branch can be avoided.
+/// Otherwise, returns nullptr.
+///
 /// Signature: condition:sint => _
-void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
-                           const lauf_asm_block* if_eq, const lauf_asm_block* if_gt);
+const lauf_asm_block* lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
+                                            const lauf_asm_block* if_eq,
+                                            const lauf_asm_block* if_gt);
 
 /// Terminator: panic.
 ///

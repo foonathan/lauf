@@ -224,7 +224,9 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
             switch (block.terminator)
             {
             case lauf_asm_block::unterminated:
-                b->error(context, "unterminated block");
+                // We allow unterminated blocks that we haven't actually built yet.
+                if (!block.insts.empty())
+                    b->error(context, "unterminated block");
                 break;
 
             case lauf_asm_block::fallthrough:
@@ -415,8 +417,8 @@ void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest)
     b->cur             = nullptr;
 }
 
-void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
-                           const lauf_asm_block* if_false)
+const lauf_asm_block* lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
+                                            const lauf_asm_block* if_false)
 {
     LAUF_BUILD_ASSERT_CUR;
 
@@ -432,17 +434,22 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
         b->cur->sig.output_count == if_false->sig.input_count,
         "branch target's input count not compatible with current block's output count");
 
+    const lauf_asm_block* next_block = nullptr;
     if (if_true == if_false)
     {
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        add_pop_top_n(b, 1);
         b->cur->terminator = lauf_asm_block::jump;
         b->cur->next[0]    = if_true;
+
+        next_block = b->cur->next[0];
     }
     else if (condition->type == condition->constant)
     {
         add_pop_top_n(b, 1);
         b->cur->terminator = lauf_asm_block::jump;
         b->cur->next[0]    = condition->as_constant.as_uint != 0 ? if_true : if_false;
+
+        next_block = b->cur->next[0];
     }
     else if (!b->cur->insts.empty() && b->cur->insts.back().op() == lauf::asm_op::cc)
     {
@@ -492,11 +499,14 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
         b->cur->next[0]    = if_true;
         b->cur->next[1]    = if_false;
     }
+
     b->cur = nullptr;
+    return next_block;
 }
 
-void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
-                           const lauf_asm_block* if_eq, const lauf_asm_block* if_gt)
+const lauf_asm_block* lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
+                                            const lauf_asm_block* if_eq,
+                                            const lauf_asm_block* if_gt)
 {
     LAUF_BUILD_ASSERT_CUR;
 
@@ -515,11 +525,14 @@ void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
         b->cur->sig.output_count == if_gt->sig.input_count,
         "branch target's input count not compatible with current block's output count");
 
+    const lauf_asm_block* next_block = nullptr;
     if (if_lt == if_eq && if_lt == if_gt)
     {
         add_pop_top_n(b, 1);
         b->cur->terminator = lauf_asm_block::jump;
         b->cur->next[0]    = if_lt;
+
+        next_block = b->cur->next[0];
     }
     else if (condition->type == condition->constant)
     {
@@ -532,6 +545,8 @@ void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
             b->cur->next[0] = if_eq;
         else
             b->cur->next[0] = if_gt;
+
+        next_block = b->cur->next[0];
     }
     else
     {
@@ -540,7 +555,9 @@ void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
         b->cur->next[1]    = if_eq;
         b->cur->next[2]    = if_gt;
     }
+
     b->cur = nullptr;
+    return next_block;
 }
 
 void lauf_asm_inst_panic(lauf_asm_builder* b)
