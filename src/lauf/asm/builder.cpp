@@ -39,7 +39,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::setup_local_alloc:
         case lauf::asm_op::local_alloc:
         case lauf::asm_op::local_alloc_aligned:
-        case lauf::asm_op::reserve_local_alloc:
+        case lauf::asm_op::local_storage:
             assert(false && "not added at this point");
             break;
 
@@ -132,10 +132,14 @@ void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function
     b->reset(mod, fn);
 }
 
-bool lauf_asm_build_finish(lauf_asm_builder* b)
+namespace
 {
-    constexpr auto context = LAUF_BUILD_ASSERT_CONTEXT;
+std::size_t create_prologue(lauf_asm_builder* b)
+{
+    if (b->locals.empty())
+        return 0;
 
+    auto prologue               = b->prologue;
     auto local_allocation_count = [&] {
         auto result = 0u;
         for (auto& local : b->locals)
@@ -143,38 +147,70 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
                 ++result;
         return result;
     }();
-    if (b->locals.size() > 0)
+
+    if (local_allocation_count > 0)
+        prologue->insts.push_back(*b,
+                                  LAUF_BUILD_INST_VALUE(setup_local_alloc, local_allocation_count));
+
+    for (auto& local : b->locals)
     {
-        auto prologue = b->prologue;
-        if (local_allocation_count > 0)
-            prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(setup_local_alloc,
-                                                                local_allocation_count));
-
-        auto bump_space = std::size_t(0);
-        for (auto& local : b->locals)
+        assert(local.layout.alignment >= alignof(void*));
+        if (local.address_count == 0)
         {
-            assert(local.layout.alignment >= alignof(void*));
-            if (local.address_count == 0)
-            {
-                if (local.layout.alignment == alignof(void*))
-                    bump_space += local.layout.size;
-                else
-                    bump_space += local.layout.alignment + local.layout.alignment;
-            }
-            else
-            {
-                if (local.layout.alignment == alignof(void*))
-                    b->prologue->insts.push_back(*b,
-                                                 LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout));
-                else
-                    b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned,
-                                                                            local.layout));
-            }
-        }
+            auto space = local.layout.size;
+            if (local.layout.alignment > alignof(void*))
+                space += local.layout.alignment;
 
-        if (bump_space > 0)
-            prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(reserve_local_alloc, bump_space));
+            // Note that this will simply bump the stack space and not compute the correct
+            // offset for over-aligned data. However, we do not promote over-aligned locals to
+            // load/store_local_value, so if they're accessed, they have their address taken.
+            //
+            // The only way an over-aligned local ends up here is if it's unused,
+            // in which case we need to reserve the space to keep offsets correct,
+            // but don't care where exactly it lives in the memory.
+            prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_storage, space));
+        }
+        else
+        {
+            if (local.layout.alignment == alignof(void*))
+                b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout));
+            else
+                b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned,
+                                                                        local.layout));
+        }
     }
+
+    return local_allocation_count;
+}
+
+void finalize_function(const char* context, lauf_asm_builder* b, lauf_asm_inst* insts,
+                       std::size_t insts_count)
+{
+    b->fn->insts       = insts;
+    b->fn->insts_count = std::uint16_t(insts_count);
+
+    b->fn->max_vstack_size = [&] {
+        auto result = std::size_t(0);
+
+        for (auto& block : b->blocks)
+            if (block.vstack.max_size() > result)
+                result = block.vstack.max_size();
+
+        if (result > UINT16_MAX)
+            b->error(context, "per-function vstack size limit exceeded");
+
+        return std::uint16_t(result);
+    }();
+
+    b->fn->max_cstack_size = sizeof(lauf_runtime_stack_frame) + b->local_allocation_size;
+}
+} // namespace
+
+bool lauf_asm_build_finish(lauf_asm_builder* b)
+{
+    constexpr auto context = LAUF_BUILD_ASSERT_CONTEXT;
+
+    auto local_allocation_count = create_prologue(b);
 
     auto insts_count = [&] {
         auto result = std::size_t(0);
@@ -278,24 +314,7 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
         }
     }
 
-    b->fn->insts       = insts;
-    b->fn->insts_count = std::uint16_t(insts_count);
-
-    b->fn->max_vstack_size = [&] {
-        auto result = std::size_t(0);
-
-        for (auto& block : b->blocks)
-            if (block.vstack.max_size() > result)
-                result = block.vstack.max_size();
-
-        if (result > UINT16_MAX)
-            b->error(context, "per-function vstack size limit exceeded");
-
-        return std::uint16_t(result);
-    }();
-
-    b->fn->max_cstack_size = sizeof(lauf_runtime_stack_frame) + b->local_allocation_size;
-
+    finalize_function(context, b, insts, insts_count);
     return !b->errored;
 }
 

@@ -593,9 +593,9 @@ LAUF_VM_EXECUTE(local_alloc_aligned)
     ++ip;
     LAUF_VM_DISPATCH;
 }
-LAUF_VM_EXECUTE(reserve_local_alloc)
+LAUF_VM_EXECUTE(local_storage)
 {
-    frame_ptr->next_offset += ip->reserve_local_alloc.value;
+    frame_ptr->next_offset += ip->local_storage.value;
 
     ++ip;
     LAUF_VM_DISPATCH;

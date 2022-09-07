@@ -48,9 +48,10 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
     std::vector<lauf_asm_inst> result;
 
     auto start_index = 0;
-    if (fn->insts[start_index].op() == lauf::asm_op::setup_local_alloc)
-        start_index += 1 + fn->insts[start_index].setup_local_alloc.value;
-    if (fn->insts[start_index].op() == lauf::asm_op::reserve_local_alloc)
+    while (fn->insts[start_index].op() == lauf::asm_op::setup_local_alloc
+           || fn->insts[start_index].op() == lauf::asm_op::local_alloc
+           || fn->insts[start_index].op() == lauf::asm_op::local_alloc_aligned
+           || fn->insts[start_index].op() == lauf::asm_op::local_storage)
         ++start_index;
 
     auto end_index = fn->insts_count - 1;
