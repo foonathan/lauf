@@ -22,8 +22,8 @@ lauf_asm_module* example_module()
 
         function @fib(1 => 1) {
             block %entry(1 => 1) {
-                pick 0; sint 2; $lauf.int.scmp;
-                branch3 %base(1 => 1) %recurse(1 => 1) %recurse(1 => 1);
+                pick 0; sint 2; $lauf.int.scmp; cc lt;
+                branch %base(1 => 1) %recurse(1 => 1);
             }
             block %base(1 => 1) {
                 return;
@@ -40,8 +40,8 @@ lauf_asm_module* example_module()
             local %n : $lauf.Value;
             block %entry(1 => 0) {
                 pick 0; local_addr %n; store_field $lauf.Value 0;
-                sint 2; $lauf.int.scmp;
-                branch3 %base(0 => 1) %recurse(0 => 1) %recurse(0 => 1);
+                sint 2; $lauf.int.scmp; cc lt;
+                branch %base(0 => 1) %recurse(0 => 1);
             }
             block %base(0 => 1) {
                 local_addr %n; load_field $lauf.Value 0;
@@ -76,14 +76,14 @@ lauf_asm_module* example_module()
         function @print_n_fibs(1 => 1) {
             block %entry (1 => 2) {
                 function_addr @fib_generator; $lauf.fiber.create;
-                roll 1; pick 0; branch2 %loop(2 => 2) %exit(2 => 1);
+                roll 1; pick 0; branch %loop(2 => 2) %exit(2 => 1);
             }
             block %loop(2 => 2) {
                 # handle n => handle n-1
                 pick 1; fiber_resume (0 => 1); $lauf.debug.print; pop 0;
                 uint 1; $lauf.int.usub_wrap;
 
-                pick 0; branch2 %loop(2 => 2) %exit(2 => 1);
+                pick 0; branch %loop(2 => 2) %exit(2 => 1);
             }
             block %exit(2 => 1) {
                 # handle 0 => 0

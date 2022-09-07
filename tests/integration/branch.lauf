@@ -27,10 +27,10 @@ block %five(1 => 0) {
 }
 }
 
-function @branch2_true() {
+function @branch_true() {
 block %entry() {
     uint 11;
-    branch2 %okay() %error();
+    branch %okay() %error();
 }
 block %okay() {
     return;
@@ -40,10 +40,10 @@ block %error() {
     return;
 }
 }
-function @branch2_false() {
+function @branch_false() {
 block %entry() {
     uint 1;
-    branch2 %okay() %error();
+    branch %okay() %error();
 }
 block %okay() {
     return;
@@ -54,62 +54,10 @@ block %error() {
 }
 }
 
-function @branch3_lt() {
-block %entry() {
-    sint -11;
-    branch3 %okay() %error1() %error2();
-}
-block %okay() {
-    return;
-}
-block %error1() {
-    $lauf.test.unreachable;
-    return;
-}
-block %error2() {
-    $lauf.test.unreachable;
-    return;
-}
-}
-function @branch3_eq() {
-block %entry() {
-    sint 0;
-    branch3 %error1() %okay() %error2();
-}
-block %okay() {
-    return;
-}
-block %error1() {
-    $lauf.test.unreachable;
-    return;
-}
-block %error2() {
-    $lauf.test.unreachable;
-    return;
-}
-}
-function @branch3_gt() {
-block %entry() {
-    sint 11;
-    branch3 %error1() %error2() %okay();
-}
-block %okay() {
-    return;
-}
-block %error1() {
-    $lauf.test.unreachable;
-    return;
-}
-block %error2() {
-    $lauf.test.unreachable;
-    return;
-}
-}
-
-function @branch2_cc_eq(1 => 1) {
+function @branch_cc_eq(1 => 1) {
 block %entry(1 => 0) {
     cc eq;
-    branch2 %if_true(0 => 1) %if_false(0 => 1);
+    branch %if_true(0 => 1) %if_false(0 => 1);
 }
 block %if_true(0 => 1) {
     uint 1;
@@ -121,10 +69,10 @@ block %if_false(0 => 1) {
 }
 }
 
-function @branch2_cc_lt(1 => 1) {
+function @branch_cc_lt(1 => 1) {
 block %entry(1 => 0) {
     cc lt;
-    branch2 %if_true(0 => 1) %if_false(0 => 1);
+    branch %if_true(0 => 1) %if_false(0 => 1);
 }
 block %if_true(0 => 1) {
     uint 1;
@@ -139,20 +87,16 @@ block %if_false(0 => 1) {
 function @main() {
     call @jumps;
 
-    call @branch2_true;
-    call @branch2_false;
+    call @branch_true;
+    call @branch_false;
 
-    call @branch3_lt;
-    call @branch3_eq;
-    call @branch3_gt;
+    sint -1; call @branch_cc_eq; uint 0; $lauf.test.assert_eq;
+    sint 0; call @branch_cc_eq; uint 1; $lauf.test.assert_eq;
+    sint 1; call @branch_cc_eq; uint 0; $lauf.test.assert_eq;
 
-    sint -1; call @branch2_cc_eq; uint 0; $lauf.test.assert_eq;
-    sint 0; call @branch2_cc_eq; uint 1; $lauf.test.assert_eq;
-    sint 1; call @branch2_cc_eq; uint 0; $lauf.test.assert_eq;
-
-    sint -1; call @branch2_cc_lt; uint 1; $lauf.test.assert_eq;
-    sint 0; call @branch2_cc_lt; uint 0; $lauf.test.assert_eq;
-    sint 1; call @branch2_cc_lt; uint 0; $lauf.test.assert_eq;
+    sint -1; call @branch_cc_lt; uint 1; $lauf.test.assert_eq;
+    sint 0; call @branch_cc_lt; uint 0; $lauf.test.assert_eq;
+    sint 1; call @branch_cc_lt; uint 0; $lauf.test.assert_eq;
 
     return;
 }

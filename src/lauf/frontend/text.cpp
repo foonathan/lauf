@@ -481,16 +481,10 @@ struct inst_jump
     static constexpr auto rule  = LAUF_KEYWORD("jump") >> dsl::p<block_ref>;
     static constexpr auto value = inst(&lauf_asm_inst_jump);
 };
-struct inst_branch2
+struct inst_branch
 {
-    static constexpr auto rule  = LAUF_KEYWORD("branch2") >> dsl::p<block_ref> + dsl::p<block_ref>;
-    static constexpr auto value = inst(&lauf_asm_inst_branch2);
-};
-struct inst_branch3
-{
-    static constexpr auto rule
-        = LAUF_KEYWORD("branch3") >> dsl::p<block_ref> + dsl::p<block_ref> + dsl::p<block_ref>;
-    static constexpr auto value = inst(&lauf_asm_inst_branch3);
+    static constexpr auto rule  = LAUF_KEYWORD("branch") >> dsl::p<block_ref> + dsl::p<block_ref>;
+    static constexpr auto value = inst(&lauf_asm_inst_branch);
 };
 
 struct inst_sint
@@ -659,8 +653,8 @@ struct instruction
         auto nested = dsl::square_bracketed.list(dsl::recurse<instruction>);
 
         auto single
-            = dsl::p<inst_return> | dsl::p<inst_jump>                                      //
-              | dsl::p<inst_branch2> | dsl::p<inst_branch3> | dsl::p<inst_panic>           //
+            = dsl::p<inst_return> | dsl::p<inst_panic>                                     //
+              | dsl::p<inst_jump> | dsl::p<inst_branch>                                    //
               | dsl::p<inst_sint> | dsl::p<inst_uint>                                      //
               | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>     //
               | dsl::p<inst_function_addr> | dsl::p<inst_layout> | dsl::p<inst_cc>         //

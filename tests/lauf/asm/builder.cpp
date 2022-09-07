@@ -130,7 +130,7 @@ TEST_CASE("lauf_asm_inst_branch2")
     auto br_nop = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto if_true  = lauf_asm_declare_block(b, 0);
         auto if_false = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_branch2(b, if_true, if_false);
+        lauf_asm_inst_branch(b, if_true, if_false);
 
         lauf_asm_build_block(b, if_true);
         lauf_asm_inst_return(b);
@@ -144,7 +144,7 @@ TEST_CASE("lauf_asm_inst_branch2")
     auto br_jump = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto if_false = lauf_asm_declare_block(b, 0);
         auto if_true  = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_branch2(b, if_true, if_false);
+        lauf_asm_inst_branch(b, if_true, if_false);
 
         lauf_asm_build_block(b, if_true);
         lauf_asm_inst_return(b);
@@ -157,86 +157,12 @@ TEST_CASE("lauf_asm_inst_branch2")
 
     auto same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto block = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_branch2(b, block, block);
+        lauf_asm_inst_branch(b, block, block);
         lauf_asm_build_block(b, block);
     });
     REQUIRE(same.size() >= 1);
     CHECK(same[0].op() == lauf::asm_op::pop_top);
     CHECK(same[0].pop_top.idx == 0);
-}
-
-TEST_CASE("lauf_asm_inst_branch3")
-{
-    auto br_nop = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto if_lt = lauf_asm_declare_block(b, 0);
-        auto if_eq = lauf_asm_declare_block(b, 0);
-        auto if_gt = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_branch3(b, if_lt, if_eq, if_gt);
-
-        lauf_asm_build_block(b, if_lt);
-        lauf_asm_inst_return(b);
-
-        lauf_asm_build_block(b, if_eq);
-        lauf_asm_inst_return(b);
-
-        lauf_asm_build_block(b, if_gt);
-    });
-    REQUIRE(br_nop.size() >= 3);
-    CHECK(br_nop[0].op() == lauf::asm_op::branch_eq);
-    CHECK(br_nop[0].branch_eq.offset == 4);
-    CHECK(br_nop[1].op() == lauf::asm_op::branch_gt);
-    CHECK(br_nop[1].branch_eq.offset == 4);
-    CHECK(br_nop[2].op() == lauf::asm_op::pop_top);
-    CHECK(br_nop[2].pop_top.idx == 0);
-
-    auto br_jump = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto if_eq = lauf_asm_declare_block(b, 0);
-        auto if_gt = lauf_asm_declare_block(b, 0);
-        auto if_lt = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_branch3(b, if_lt, if_eq, if_gt);
-
-        lauf_asm_build_block(b, if_lt);
-        lauf_asm_inst_return(b);
-
-        lauf_asm_build_block(b, if_eq);
-        lauf_asm_inst_return(b);
-
-        lauf_asm_build_block(b, if_gt);
-    });
-    REQUIRE(br_jump.size() >= 3);
-    CHECK(br_jump[0].op() == lauf::asm_op::branch_eq);
-    CHECK(br_jump[0].branch_eq.offset == 3);
-    CHECK(br_jump[1].op() == lauf::asm_op::branch_gt);
-    CHECK(br_jump[1].branch_gt.offset == 3);
-    CHECK(br_jump[2].op() == lauf::asm_op::jump_pop);
-    CHECK(br_jump[2].jump.offset == 3);
-
-    auto cond_same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto if_lt = lauf_asm_declare_block(b, 0);
-        auto if_eq = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_branch3(b, if_lt, if_eq, if_eq);
-
-        lauf_asm_build_block(b, if_lt);
-        lauf_asm_inst_return(b);
-
-        lauf_asm_build_block(b, if_eq);
-    });
-    REQUIRE(cond_same.size() >= 3);
-    CHECK(cond_same[0].op() == lauf::asm_op::branch_eq);
-    CHECK(cond_same[0].branch_eq.offset == 4);
-    CHECK(cond_same[1].op() == lauf::asm_op::branch_gt);
-    CHECK(cond_same[2].op() == lauf::asm_op::pop_top);
-    CHECK(cond_same[2].pop_top.idx == 0);
-
-    auto all_same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
-        auto block = lauf_asm_declare_block(b, 0);
-        lauf_asm_inst_branch3(b, block, block, block);
-
-        lauf_asm_build_block(b, block);
-    });
-    REQUIRE(all_same.size() >= 1);
-    CHECK(all_same[0].op() == lauf::asm_op::pop_top);
-    CHECK(all_same[0].pop_top.idx == 0);
 }
 
 TEST_CASE("lauf_asm_inst_panic")
