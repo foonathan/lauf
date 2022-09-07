@@ -120,6 +120,18 @@ LAUF_VM_EXECUTE(jump_pop)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(branch_true)
+{
+    auto condition = vstack_ptr[0].as_uint;
+    ++vstack_ptr;
+
+    if (condition != 0)
+        ip += ip->jump.offset;
+    else
+        ++ip;
+
+    LAUF_VM_DISPATCH;
+}
 LAUF_VM_EXECUTE(branch_false)
 {
     auto condition = vstack_ptr[0].as_uint;

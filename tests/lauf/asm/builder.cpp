@@ -151,11 +151,9 @@ TEST_CASE("lauf_asm_inst_branch2")
 
         lauf_asm_build_block(b, if_false);
     });
-    REQUIRE(br_jump.size() >= 2);
-    CHECK(br_jump[0].op() == lauf::asm_op::branch_false);
-    CHECK(br_jump[0].branch_false.offset == 2);
-    CHECK(br_jump[1].op() == lauf::asm_op::jump);
-    CHECK(br_jump[1].jump.offset == 2);
+    REQUIRE(br_jump.size() >= 1);
+    CHECK(br_jump[0].op() == lauf::asm_op::branch_true);
+    CHECK(br_jump[0].branch_true.offset == 2);
 
     auto same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto block = lauf_asm_declare_block(b, 0);

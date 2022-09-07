@@ -12,8 +12,9 @@ LAUF_ASM_INST(jump, asm_inst_offset)
 // Same, but also pops top value.
 LAUF_ASM_INST(jump_pop, asm_inst_offset)
 
-// lauf_asm_inst_branch2(): jumps if false, fallthrough otherwise
+// lauf_asm_inst_branch2(): jumps if true/false, fallthrough otherwise
 // Consumes condition in either case.
+LAUF_ASM_INST(branch_true, asm_inst_offset)
 LAUF_ASM_INST(branch_false, asm_inst_offset)
 
 // Jumps if equal, fallthrough otherwise

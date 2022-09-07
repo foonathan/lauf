@@ -32,6 +32,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::return_free:
         case lauf::asm_op::jump:
         case lauf::asm_op::jump_pop:
+        case lauf::asm_op::branch_true:
         case lauf::asm_op::branch_false:
         case lauf::asm_op::branch_eq:
         case lauf::asm_op::branch_gt:
@@ -220,9 +221,21 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
             sink(lauf::asm_op::jump, block->next[0]);
         break;
     case lauf_asm_block::branch2:
-        sink(lauf::asm_op::branch_false, block->next[1]);
-        if (block->next[0] != next_block)
+        if (block->next[0] == next_block)
+        {
+            sink(lauf::asm_op::branch_false, block->next[1]);
+            // otherwise fallthrough to next[0]
+        }
+        else if (block->next[1] == next_block)
+        {
+            sink(lauf::asm_op::branch_true, block->next[0]);
+            // otherwise fallthrough to next[1]
+        }
+        else
+        {
+            sink(lauf::asm_op::branch_false, block->next[1]);
             sink(lauf::asm_op::jump, block->next[0]);
+        }
         break;
     case lauf_asm_block::branch3:
         sink(lauf::asm_op::branch_eq, block->next[1]);
@@ -273,6 +286,7 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
 
                                 case lauf::asm_op::jump:
                                 case lauf::asm_op::jump_pop:
+                                case lauf::asm_op::branch_true:
                                 case lauf::asm_op::branch_false:
                                 case lauf::asm_op::branch_eq:
                                 case lauf::asm_op::branch_gt:
