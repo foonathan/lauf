@@ -440,7 +440,7 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
     }
     else if (condition->type == condition->constant)
     {
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        add_pop_top_n(b, 1);
         b->cur->terminator = lauf_asm_block::jump;
         b->cur->next[0]    = condition->as_constant.as_uint != 0 ? if_true : if_false;
     }
@@ -496,11 +496,12 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
 }
 
 void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
-                           const lauf_asm_block* if_eq, const lauf_asm_block* if_false)
+                           const lauf_asm_block* if_eq, const lauf_asm_block* if_gt)
 {
     LAUF_BUILD_ASSERT_CUR;
 
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing condition");
+    auto condition = b->cur->vstack.pop();
+    LAUF_BUILD_ASSERT(condition, "missing condition");
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
                       "block output count overflow");
 
@@ -511,21 +512,33 @@ void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
         b->cur->sig.output_count == if_eq->sig.input_count,
         "branch target's input count not compatible with current block's output count");
     LAUF_BUILD_ASSERT(
-        b->cur->sig.output_count == if_false->sig.input_count,
+        b->cur->sig.output_count == if_gt->sig.input_count,
         "branch target's input count not compatible with current block's output count");
 
-    if (if_lt == if_eq && if_lt == if_false)
+    if (if_lt == if_eq && if_lt == if_gt)
     {
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop_top, 0));
+        add_pop_top_n(b, 1);
         b->cur->terminator = lauf_asm_block::jump;
         b->cur->next[0]    = if_lt;
+    }
+    else if (condition->type == condition->constant)
+    {
+        add_pop_top_n(b, 1);
+        b->cur->terminator = lauf_asm_block::jump;
+
+        if (condition->as_constant.as_sint < 0)
+            b->cur->next[0] = if_lt;
+        else if (condition->as_constant.as_sint == 0)
+            b->cur->next[0] = if_eq;
+        else
+            b->cur->next[0] = if_gt;
     }
     else
     {
         b->cur->terminator = lauf_asm_block::branch3;
         b->cur->next[0]    = if_lt;
         b->cur->next[1]    = if_eq;
-        b->cur->next[2]    = if_false;
+        b->cur->next[2]    = if_gt;
     }
     b->cur = nullptr;
 }

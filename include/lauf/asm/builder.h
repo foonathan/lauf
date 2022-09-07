@@ -111,7 +111,7 @@ void lauf_asm_inst_branch2(lauf_asm_builder* b, const lauf_asm_block* if_true,
 ///
 /// Signature: condition:sint => _
 void lauf_asm_inst_branch3(lauf_asm_builder* b, const lauf_asm_block* if_lt,
-                           const lauf_asm_block* if_eq, const lauf_asm_block* if_false);
+                           const lauf_asm_block* if_eq, const lauf_asm_block* if_gt);
 
 /// Terminator: panic.
 ///
