@@ -224,7 +224,12 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
             b->error(LAUF_BUILD_ASSERT_CONTEXT, Msg);                                              \
     } while (0)
 
-#define LAUF_BUILD_ASSERT_CUR LAUF_BUILD_ASSERT(b->cur != nullptr, "no current block to build")
+#define LAUF_BUILD_CHECK_CUR                                                                       \
+    do                                                                                             \
+    {                                                                                              \
+        if (b->cur == nullptr)                                                                     \
+            return;                                                                                \
+    } while (0)
 
 //=== instruction building ===//
 #define LAUF_BUILD_INST_NONE(Name)                                                                 \

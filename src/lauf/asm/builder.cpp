@@ -416,13 +416,15 @@ void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block)
 
 size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    if (b->cur == nullptr)
+        return 0;
+
     return b->cur->vstack.size();
 }
 
 void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location loc)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     if (b->cur->debug_locations.empty()
         || b->cur->debug_locations.back().location.line_nr != loc.line_nr
@@ -433,7 +435,7 @@ void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location 
 
 void lauf_asm_inst_return(lauf_asm_builder* b)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
                       "block output count overflow");
@@ -446,7 +448,7 @@ void lauf_asm_inst_return(lauf_asm_builder* b)
 
 void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.finish(b->cur->sig.output_count),
                       "block output count overflow");
@@ -461,7 +463,8 @@ void lauf_asm_inst_jump(lauf_asm_builder* b, const lauf_asm_block* dest)
 const lauf_asm_block* lauf_asm_inst_branch(lauf_asm_builder* b, const lauf_asm_block* if_true,
                                            const lauf_asm_block* if_false)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    if (b->cur == nullptr)
+        return nullptr;
 
     auto condition = b->cur->vstack.pop();
     LAUF_BUILD_ASSERT(condition, "missing condition");
@@ -545,7 +548,7 @@ const lauf_asm_block* lauf_asm_inst_branch(lauf_asm_builder* b, const lauf_asm_b
 
 void lauf_asm_inst_panic(lauf_asm_builder* b)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing message");
 
@@ -555,7 +558,7 @@ void lauf_asm_inst_panic(lauf_asm_builder* b)
 
 void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(callee->sig.input_count), "missing input values for call");
 
@@ -587,7 +590,7 @@ lauf_asm_function* get_constant_function(lauf_asm_module* mod, lauf::builder_vst
 
 void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values for call");
 
@@ -625,7 +628,7 @@ void add_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
 
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     bool               all_constant = true;
     lauf_runtime_value vstack[UINT8_MAX];
@@ -682,7 +685,7 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
 
 void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
@@ -693,7 +696,7 @@ void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig)
 
 void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
@@ -704,7 +707,7 @@ void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig)
 
 void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b, lauf_asm_signature sig)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_suspend, sig.input_count,
@@ -714,7 +717,7 @@ void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b, lauf_asm_signature sig)
 
 void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     // We treat negative values as large positive values.
     lauf_asm_inst_uint(b, lauf_uint(value));
@@ -722,7 +725,7 @@ void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value)
 
 void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     // For each bit pattern, the following is the minimal sequence of instructions to achieve it.
     if ((value & lauf_uint(0xFFFF'FFFF'FF00'0000)) == 0)
@@ -761,7 +764,7 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
 
 void lauf_asm_inst_null(lauf_asm_builder* b)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     // NULL has all bits set.
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(pushn, 0));
@@ -770,7 +773,7 @@ void lauf_asm_inst_null(lauf_asm_builder* b)
 
 void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* global)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(global_addr, global->allocation_idx));
     b->cur->vstack.push(*b, [&] {
@@ -784,7 +787,7 @@ void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* globa
 
 void lauf_asm_inst_local_addr(lauf_asm_builder* b, lauf_asm_local* local)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     ++local->address_count;
 
@@ -799,7 +802,7 @@ void lauf_asm_inst_local_addr(lauf_asm_builder* b, lauf_asm_local* local)
 
 void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* function)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     auto offset = lauf::compress_pointer_offset(b->fn, function);
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(function_addr, offset));
@@ -820,7 +823,7 @@ void lauf_asm_inst_layout(lauf_asm_builder* b, lauf_asm_layout layout)
 
 void lauf_asm_inst_cc(lauf_asm_builder* b, lauf_asm_inst_condition_code cc)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     auto cmp = b->cur->vstack.pop();
     LAUF_BUILD_ASSERT(cmp, "missing cmp");
@@ -881,7 +884,7 @@ void lauf_asm_inst_cc(lauf_asm_builder* b, lauf_asm_inst_condition_code cc)
 
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
 
@@ -895,7 +898,7 @@ void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
 
 void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
 
@@ -909,7 +912,7 @@ void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index)
 
 void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
 
@@ -925,7 +928,7 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
 
 void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_layout)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
 
     auto multiple
         = lauf::round_to_multiple_of_alignment(element_layout.size, element_layout.alignment);
@@ -952,7 +955,7 @@ void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_la
 void lauf_asm_inst_aggregate_member(lauf_asm_builder* b, size_t member_index,
                                     const lauf_asm_layout* member_layouts, size_t member_count)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
     LAUF_BUILD_ASSERT(member_index < member_count, "invalid member");
 
     // The offset is the size of the aggregate that stops at the specified member,
@@ -1024,7 +1027,7 @@ load_store_constant load_store_constant_folding(lauf_asm_module*            mod,
 
 void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
     LAUF_BUILD_ASSERT(field_index < type.field_count, "invalid field index");
 
     auto addr = b->cur->vstack.pop();
@@ -1062,7 +1065,7 @@ void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t fi
 
 void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t field_index)
 {
-    LAUF_BUILD_ASSERT_CUR;
+    LAUF_BUILD_CHECK_CUR;
     LAUF_BUILD_ASSERT(field_index < type.field_count, "invalid field index");
 
     auto addr = b->cur->vstack.pop();
