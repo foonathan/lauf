@@ -128,17 +128,20 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::jump:
             writer->format("jump <%04zx>", ip + ip->jump.offset - fn->insts);
             break;
-        case lauf::asm_op::jump_pop:
-            writer->format("jump_pop <%04zx>", ip + ip->jump.offset - fn->insts);
-            break;
-        case lauf::asm_op::branch_true:
-            writer->format("branch.true <%04zx>", ip + ip->branch_true.offset - fn->insts);
-            break;
-        case lauf::asm_op::branch_false:
-            writer->format("branch.false <%04zx>", ip + ip->branch_false.offset - fn->insts);
-            break;
         case lauf::asm_op::branch_eq:
             writer->format("branch.eq <%04zx>", ip + ip->branch_eq.offset - fn->insts);
+            break;
+        case lauf::asm_op::branch_ne:
+            writer->format("branch.ne <%04zx>", ip + ip->branch_ne.offset - fn->insts);
+            break;
+        case lauf::asm_op::branch_lt:
+            writer->format("branch.lt <%04zx>", ip + ip->branch_lt.offset - fn->insts);
+            break;
+        case lauf::asm_op::branch_le:
+            writer->format("branch.le <%04zx>", ip + ip->branch_le.offset - fn->insts);
+            break;
+        case lauf::asm_op::branch_ge:
+            writer->format("branch.ge <%04zx>", ip + ip->branch_ge.offset - fn->insts);
             break;
         case lauf::asm_op::branch_gt:
             writer->format("branch.gt <%04zx>", ip + ip->branch_gt.offset - fn->insts);

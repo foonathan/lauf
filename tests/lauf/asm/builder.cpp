@@ -138,8 +138,8 @@ TEST_CASE("lauf_asm_inst_branch2")
         lauf_asm_build_block(b, if_false);
     });
     REQUIRE(br_nop.size() >= 1);
-    CHECK(br_nop[0].op() == lauf::asm_op::branch_false);
-    CHECK(br_nop[0].branch_false.offset == 2);
+    CHECK(br_nop[0].op() == lauf::asm_op::branch_eq);
+    CHECK(br_nop[0].branch_eq.offset == 2);
 
     auto br_jump = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto if_false = lauf_asm_declare_block(b, 0);
@@ -152,8 +152,8 @@ TEST_CASE("lauf_asm_inst_branch2")
         lauf_asm_build_block(b, if_false);
     });
     REQUIRE(br_jump.size() >= 1);
-    CHECK(br_jump[0].op() == lauf::asm_op::branch_true);
-    CHECK(br_jump[0].branch_true.offset == 2);
+    CHECK(br_jump[0].op() == lauf::asm_op::branch_ne);
+    CHECK(br_jump[0].branch_ne.offset == 2);
 
     auto same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto block = lauf_asm_declare_block(b, 0);

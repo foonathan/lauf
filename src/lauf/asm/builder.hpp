@@ -152,11 +152,12 @@ struct lauf_asm_block
         fallthrough,
         return_,
         jump,
-        branch2,
-        branch3,
+        branch_ne_eq,
+        branch_lt_ge,
+        branch_le_gt,
         panic,
     } terminator;
-    const lauf_asm_block* next[3];
+    const lauf_asm_block* next[2];
 
     explicit lauf_asm_block(lauf::arena_base& arena, uint8_t input_count)
     : sig{input_count, 0}, vstack(arena, input_count), terminator(unterminated), next{}

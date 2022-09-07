@@ -113,66 +113,27 @@ LAUF_VM_EXECUTE(jump)
     ip += ip->jump.offset;
     LAUF_VM_DISPATCH;
 }
-LAUF_VM_EXECUTE(jump_pop)
-{
-    ++vstack_ptr;
-    ip += ip->jump.offset;
-    LAUF_VM_DISPATCH;
-}
 
-LAUF_VM_EXECUTE(branch_true)
-{
-    auto condition = vstack_ptr[0].as_uint;
-    ++vstack_ptr;
-
-    if (condition != 0)
-        ip += ip->jump.offset;
-    else
-        ++ip;
-
-    LAUF_VM_DISPATCH;
-}
-LAUF_VM_EXECUTE(branch_false)
-{
-    auto condition = vstack_ptr[0].as_uint;
-    ++vstack_ptr;
-
-    if (condition == 0)
-        ip += ip->jump.offset;
-    else
-        ++ip;
-
-    LAUF_VM_DISPATCH;
-}
-
-LAUF_VM_EXECUTE(branch_eq)
-{
-    auto condition = vstack_ptr[0].as_sint;
-
-    if (condition == 0)
-    {
-        ip += ip->branch_eq.offset;
-        ++vstack_ptr;
+#define LAUF_VM_EXECUTE_BRANCH(CC, Comp)                                                           \
+    LAUF_VM_EXECUTE(branch_##CC)                                                                   \
+    {                                                                                              \
+        auto condition = vstack_ptr[0].as_sint;                                                    \
+        ++vstack_ptr;                                                                              \
+                                                                                                   \
+        if (condition Comp 0)                                                                      \
+            ip += ip->branch_##CC.offset;                                                          \
+        else                                                                                       \
+            ++ip;                                                                                  \
+                                                                                                   \
+        LAUF_VM_DISPATCH;                                                                          \
     }
-    else
-        ++ip;
 
-    LAUF_VM_DISPATCH;
-}
-LAUF_VM_EXECUTE(branch_gt)
-{
-    auto condition = vstack_ptr[0].as_sint;
-
-    if (condition > 0)
-    {
-        ip += ip->branch_gt.offset;
-        ++vstack_ptr;
-    }
-    else
-        ++ip;
-
-    LAUF_VM_DISPATCH;
-}
+LAUF_VM_EXECUTE_BRANCH(eq, ==)
+LAUF_VM_EXECUTE_BRANCH(ne, !=)
+LAUF_VM_EXECUTE_BRANCH(lt, <)
+LAUF_VM_EXECUTE_BRANCH(le, <=)
+LAUF_VM_EXECUTE_BRANCH(ge, >=)
+LAUF_VM_EXECUTE_BRANCH(gt, ==)
 
 LAUF_VM_EXECUTE(panic)
 {

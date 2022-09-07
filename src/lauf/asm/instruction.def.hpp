@@ -9,19 +9,14 @@ LAUF_ASM_INST(return_free, asm_inst_value)
 
 // lauf_asm_inst_jump()
 LAUF_ASM_INST(jump, asm_inst_offset)
-// Same, but also pops top value.
-LAUF_ASM_INST(jump_pop, asm_inst_offset)
 
-// lauf_asm_inst_branch2(): jumps if true/false, fallthrough otherwise
+// lauf_asm_inst_branch(): jumps if value matches condition code, fallthrough otherwise.,
 // Consumes condition in either case.
-LAUF_ASM_INST(branch_true, asm_inst_offset)
-LAUF_ASM_INST(branch_false, asm_inst_offset)
-
-// Jumps if equal, fallthrough otherwise
-// Consumes condition if it jumps.
 LAUF_ASM_INST(branch_eq, asm_inst_offset)
-// lauf_asm_inst_branch3(): jumps if greater, fallthrough otherwise
-// Consumes condition if it jumps.
+LAUF_ASM_INST(branch_ne, asm_inst_offset)
+LAUF_ASM_INST(branch_lt, asm_inst_offset)
+LAUF_ASM_INST(branch_le, asm_inst_offset)
+LAUF_ASM_INST(branch_ge, asm_inst_offset)
 LAUF_ASM_INST(branch_gt, asm_inst_offset)
 
 // lauf_asm_inst_panic()

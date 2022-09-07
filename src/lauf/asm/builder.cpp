@@ -31,10 +31,11 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::return_:
         case lauf::asm_op::return_free:
         case lauf::asm_op::jump:
-        case lauf::asm_op::jump_pop:
-        case lauf::asm_op::branch_true:
-        case lauf::asm_op::branch_false:
         case lauf::asm_op::branch_eq:
+        case lauf::asm_op::branch_ne:
+        case lauf::asm_op::branch_lt:
+        case lauf::asm_op::branch_le:
+        case lauf::asm_op::branch_ge:
         case lauf::asm_op::branch_gt:
         case lauf::asm_op::panic:
         case lauf::asm_op::exit:
@@ -220,30 +221,50 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
         if (block->next[0] != next_block)
             sink(lauf::asm_op::jump, block->next[0]);
         break;
-    case lauf_asm_block::branch2:
+    case lauf_asm_block::branch_ne_eq:
         if (block->next[0] == next_block)
         {
-            sink(lauf::asm_op::branch_false, block->next[1]);
-            // otherwise fallthrough to next[0]
+            sink(lauf::asm_op::branch_eq, block->next[1]);
         }
         else if (block->next[1] == next_block)
         {
-            sink(lauf::asm_op::branch_true, block->next[0]);
-            // otherwise fallthrough to next[1]
+            sink(lauf::asm_op::branch_ne, block->next[0]);
         }
         else
         {
-            sink(lauf::asm_op::branch_false, block->next[1]);
+            sink(lauf::asm_op::branch_eq, block->next[1]);
             sink(lauf::asm_op::jump, block->next[0]);
         }
         break;
-    case lauf_asm_block::branch3:
-        sink(lauf::asm_op::branch_eq, block->next[1]);
-        sink(lauf::asm_op::branch_gt, block->next[2]);
+    case lauf_asm_block::branch_lt_ge:
         if (block->next[0] == next_block)
-            sink(lauf::asm_op::pop_top, nullptr);
+        {
+            sink(lauf::asm_op::branch_ge, block->next[1]);
+        }
+        else if (block->next[1] == next_block)
+        {
+            sink(lauf::asm_op::branch_lt, block->next[0]);
+        }
         else
-            sink(lauf::asm_op::jump_pop, block->next[0]);
+        {
+            sink(lauf::asm_op::branch_ge, block->next[1]);
+            sink(lauf::asm_op::jump, block->next[0]);
+        }
+        break;
+    case lauf_asm_block::branch_le_gt:
+        if (block->next[0] == next_block)
+        {
+            sink(lauf::asm_op::branch_gt, block->next[1]);
+        }
+        else if (block->next[1] == next_block)
+        {
+            sink(lauf::asm_op::branch_le, block->next[0]);
+        }
+        else
+        {
+            sink(lauf::asm_op::branch_gt, block->next[1]);
+            sink(lauf::asm_op::jump, block->next[0]);
+        }
         break;
     }
 }
@@ -280,15 +301,13 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
                                 case lauf::asm_op::return_free:
                                     ip[0].return_free.value = std::uint32_t(local_allocation_count);
                                     break;
-                                case lauf::asm_op::pop_top:
-                                    ip[0].pop_top.idx = 0;
-                                    break;
 
                                 case lauf::asm_op::jump:
-                                case lauf::asm_op::jump_pop:
-                                case lauf::asm_op::branch_true:
-                                case lauf::asm_op::branch_false:
                                 case lauf::asm_op::branch_eq:
+                                case lauf::asm_op::branch_ne:
+                                case lauf::asm_op::branch_lt:
+                                case lauf::asm_op::branch_le:
+                                case lauf::asm_op::branch_ge:
                                 case lauf::asm_op::branch_gt:
                                     assert(dest != nullptr);
                                     ip[0].jump.offset = std::int32_t(dest->offset - (ip - insts));
@@ -306,7 +325,7 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
             loc.inst_idx += block->offset;
             b->mod->inst_debug_locations.push_back(*b->mod, loc);
         }
-    }
+    } // namespace
 
     b->fn->insts       = insts;
     b->fn->insts_count = std::uint16_t(insts_count);
@@ -479,47 +498,45 @@ const lauf_asm_block* lauf_asm_inst_branch(lauf_asm_builder* b, const lauf_asm_b
         auto cc = b->cur->insts.back().cc.value;
         b->cur->insts.pop_back();
 
-        // Generate three way branch instead.
-        b->cur->terminator = lauf_asm_block::branch3;
         switch (cc)
         {
         case LAUF_ASM_INST_CC_EQ:
-            b->cur->next[0] = if_false;
-            b->cur->next[1] = if_true;
-            b->cur->next[2] = if_false;
+            b->cur->terminator = lauf_asm_block::branch_ne_eq;
+            b->cur->next[0]    = if_false;
+            b->cur->next[1]    = if_true;
             break;
         case LAUF_ASM_INST_CC_NE:
-            b->cur->next[0] = if_true;
-            b->cur->next[1] = if_false;
-            b->cur->next[2] = if_true;
+            b->cur->terminator = lauf_asm_block::branch_ne_eq;
+            b->cur->next[0]    = if_true;
+            b->cur->next[1]    = if_false;
             break;
         case LAUF_ASM_INST_CC_LT:
-            b->cur->next[0] = if_true;
-            b->cur->next[1] = if_false;
-            b->cur->next[2] = if_false;
+            b->cur->terminator = lauf_asm_block::branch_lt_ge;
+            b->cur->next[0]    = if_true;
+            b->cur->next[1]    = if_false;
             break;
         case LAUF_ASM_INST_CC_LE:
-            b->cur->next[0] = if_true;
-            b->cur->next[1] = if_true;
-            b->cur->next[2] = if_false;
+            b->cur->terminator = lauf_asm_block::branch_le_gt;
+            b->cur->next[0]    = if_true;
+            b->cur->next[1]    = if_false;
             break;
         case LAUF_ASM_INST_CC_GT:
-            b->cur->next[0] = if_false;
-            b->cur->next[1] = if_false;
-            b->cur->next[2] = if_true;
+            b->cur->terminator = lauf_asm_block::branch_le_gt;
+            b->cur->next[0]    = if_false;
+            b->cur->next[1]    = if_true;
             break;
         case LAUF_ASM_INST_CC_GE:
-            b->cur->next[0] = if_false;
-            b->cur->next[1] = if_true;
-            b->cur->next[2] = if_true;
+            b->cur->terminator = lauf_asm_block::branch_lt_ge;
+            b->cur->next[0]    = if_false;
+            b->cur->next[1]    = if_true;
             break;
         }
     }
     else
     {
-        b->cur->terminator = lauf_asm_block::branch2;
-        b->cur->next[0]    = if_true;
-        b->cur->next[1]    = if_false;
+        b->cur->terminator = lauf_asm_block::branch_ne_eq;
+        b->cur->next[0]    = if_true;  // true != 0 means ne
+        b->cur->next[1]    = if_false; // false = 0 means eq
     }
 
     b->cur = nullptr;
