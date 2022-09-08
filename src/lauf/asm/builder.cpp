@@ -644,10 +644,10 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
 {
     LAUF_BUILD_CHECK_CUR;
 
-    LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values for call");
-
     auto fn_addr = b->cur->vstack.pop();
     LAUF_BUILD_ASSERT(fn_addr, "missing function address");
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing input values for call");
+
     if (auto callee = get_constant_function(b->mod, *fn_addr, sig))
     {
         add_pop_top_n(b, 1);
