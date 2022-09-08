@@ -171,13 +171,16 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             break;
         }
         case lauf::asm_op::call_builtin:
-        case lauf::asm_op::call_builtin_no_frame: {
+        case lauf::asm_op::call_builtin_no_regs: {
             auto callee = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl> //
                 (&lauf_runtime_builtin_dispatch, ip->call_builtin.offset);
             if (auto name = find_builtin_name(opts, callee); !name.empty())
                 writer->format("$'%s'", name.c_str());
             else
                 writer->format("$'%p'", reinterpret_cast<void*>(callee));
+
+            if (ip->op() == lauf::asm_op::call_builtin_no_regs)
+                writer->write(" [no regs]");
             break;
         }
 

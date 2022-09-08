@@ -39,7 +39,7 @@ LAUF_ASM_INST(call_indirect, asm_inst_signature)
 // The offset is the difference between the address of the lauf_runtime_builtin_dispatch() and the
 // called builtin divided by sizeof(void*).
 LAUF_ASM_INST(call_builtin, asm_inst_offset)
-LAUF_ASM_INST(call_builtin_no_frame, asm_inst_offset)
+LAUF_ASM_INST(call_builtin_no_regs, asm_inst_offset)
 
 //=== fibers ===//
 // lauf_asm_inst_fiber_resume()

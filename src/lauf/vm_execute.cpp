@@ -187,14 +187,14 @@ LAUF_VM_EXECUTE(exit)
 LAUF_VM_EXECUTE(call_builtin)
 {
     process->regs = {ip, vstack_ptr, frame_ptr};
-    LAUF_TAIL_CALL return execute_call_builtin_no_frame(ip, vstack_ptr, frame_ptr, process);
+    LAUF_TAIL_CALL return execute_call_builtin_no_regs(ip, vstack_ptr, frame_ptr, process);
 }
 
-LAUF_VM_EXECUTE(call_builtin_no_frame)
+LAUF_VM_EXECUTE(call_builtin_no_regs)
 {
     auto callee
         = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl>(&lauf_runtime_builtin_dispatch,
-                                                                     ip->call_builtin_no_frame
+                                                                     ip->call_builtin_no_regs
                                                                          .offset);
 
     LAUF_TAIL_CALL return callee(ip, vstack_ptr, frame_ptr, process);

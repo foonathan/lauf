@@ -90,7 +90,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::call:
         case lauf::asm_op::call_indirect:
         case lauf::asm_op::call_builtin:
-        case lauf::asm_op::call_builtin_no_frame:
+        case lauf::asm_op::call_builtin_no_regs:
         case lauf::asm_op::fiber_resume:
         case lauf::asm_op::fiber_transfer:
         case lauf::asm_op::fiber_suspend:
@@ -670,7 +670,7 @@ void add_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
     auto offset = lauf::compress_pointer_offset(&lauf_runtime_builtin_dispatch, callee.impl);
     if ((callee.flags & LAUF_RUNTIME_BUILTIN_NO_PROCESS) != 0
         && (callee.flags & LAUF_RUNTIME_BUILTIN_NO_PANIC) != 0)
-        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin_no_frame, offset));
+        b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin_no_regs, offset));
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
 
