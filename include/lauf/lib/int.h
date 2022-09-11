@@ -9,6 +9,7 @@
 LAUF_HEADER_START
 
 typedef struct lauf_runtime_builtin         lauf_runtime_builtin;
+typedef struct lauf_asm_type                lauf_asm_type;
 typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 
 extern const lauf_runtime_builtin_library lauf_lib_int;
@@ -60,6 +61,30 @@ lauf_runtime_builtin lauf_lib_sabs(lauf_lib_int_overflow overflow);
 
 /// Signed to absolute unsigned (can't overflow).
 extern const lauf_runtime_builtin lauf_lib_uabs;
+
+//=== types ===//
+/// An integer type with the specified number of bits.
+/// Store only stores the lower parts of the value and discard the rest,
+/// load does a zero/sign extension.
+extern const lauf_asm_type lauf_lib_int_s8;
+extern const lauf_asm_type lauf_lib_int_s16;
+extern const lauf_asm_type lauf_lib_int_s32;
+extern const lauf_asm_type lauf_lib_int_s64;
+extern const lauf_asm_type lauf_lib_int_u8;
+extern const lauf_asm_type lauf_lib_int_u16;
+extern const lauf_asm_type lauf_lib_int_u32;
+extern const lauf_asm_type lauf_lib_int_u64;
+
+/// Checks whether a value has overflown for a particular integer type or if it has overflown.
+/// Signature: value:[u/s]int => value:[u/s]int overflow:true
+extern const lauf_runtime_builtin lauf_lib_int_s8_overflow;
+extern const lauf_runtime_builtin lauf_lib_int_s16_overflow;
+extern const lauf_runtime_builtin lauf_lib_int_s32_overflow;
+extern const lauf_runtime_builtin lauf_lib_int_s64_overflow;
+extern const lauf_runtime_builtin lauf_lib_int_u8_overflow;
+extern const lauf_runtime_builtin lauf_lib_int_u16_overflow;
+extern const lauf_runtime_builtin lauf_lib_int_u32_overflow;
+extern const lauf_runtime_builtin lauf_lib_int_u64_overflow;
 
 LAUF_HEADER_END
 

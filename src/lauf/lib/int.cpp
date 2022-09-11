@@ -3,6 +3,7 @@
 
 #include <lauf/lib/int.h>
 
+#include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
@@ -525,5 +526,148 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_int_uabs, 1, 1, no_panic_flags, "uabs", &sabs_pani
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_int = {"lauf.int", &lauf_lib_int_uabs, nullptr};
+namespace
+{
+template <typename Int>
+LAUF_RUNTIME_BUILTIN_IMPL bool load_int(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                        lauf_runtime_stack_frame* frame_ptr,
+                                        lauf_runtime_process*     process)
+{
+    auto value = *static_cast<Int*>(vstack_ptr[1].as_native_ptr);
+
+    if constexpr (std::is_unsigned_v<Int>)
+        vstack_ptr[1].as_uint = value;
+    else
+        vstack_ptr[1].as_sint = value;
+
+    ++vstack_ptr;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+template <typename Int>
+LAUF_RUNTIME_BUILTIN_IMPL bool store_int(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                         lauf_runtime_stack_frame* frame_ptr,
+                                         lauf_runtime_process*     process)
+{
+    auto dest = static_cast<Int*>(vstack_ptr[1].as_native_ptr);
+
+    if constexpr (std::is_unsigned_v<Int>)
+        *dest = Int(vstack_ptr[2].as_uint);
+    else
+        *dest = Int(vstack_ptr[2].as_sint);
+
+    vstack_ptr += 3;
+
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+} // namespace
+
+const lauf_asm_type lauf_lib_int_s8  = {LAUF_ASM_NATIVE_LAYOUT_OF(std::int8_t),
+                                        1,
+                                        &load_int<std::int8_t>,
+                                        &store_int<std::int8_t>,
+                                        "S8",
+                                        nullptr};
+const lauf_asm_type lauf_lib_int_s16 = {LAUF_ASM_NATIVE_LAYOUT_OF(std::int16_t),
+                                        1,
+                                        &load_int<std::int16_t>,
+                                        &store_int<std::int16_t>,
+                                        "S16",
+                                        &lauf_lib_int_s8};
+const lauf_asm_type lauf_lib_int_s32 = {LAUF_ASM_NATIVE_LAYOUT_OF(std::int32_t),
+                                        1,
+                                        &load_int<std::int32_t>,
+                                        &store_int<std::int32_t>,
+                                        "S32",
+                                        &lauf_lib_int_s16};
+const lauf_asm_type lauf_lib_int_s64
+    = {lauf_asm_type_value.layout,   1,     lauf_asm_type_value.load_fn,
+       lauf_asm_type_value.store_fn, "S64", &lauf_lib_int_s32};
+
+const lauf_asm_type lauf_lib_int_u8  = {LAUF_ASM_NATIVE_LAYOUT_OF(std::uint8_t),
+                                        1,
+                                        &load_int<std::uint8_t>,
+                                        &store_int<std::uint8_t>,
+                                        "U8",
+                                        &lauf_lib_int_s64};
+const lauf_asm_type lauf_lib_int_u16 = {LAUF_ASM_NATIVE_LAYOUT_OF(std::uint8_t),
+                                        1,
+                                        &load_int<std::uint16_t>,
+                                        &store_int<std::uint16_t>,
+                                        "U16",
+                                        &lauf_lib_int_u8};
+const lauf_asm_type lauf_lib_int_u32 = {LAUF_ASM_NATIVE_LAYOUT_OF(std::uint32_t),
+                                        1,
+                                        &load_int<std::uint16_t>,
+                                        &store_int<std::uint16_t>,
+                                        "U32",
+                                        &lauf_lib_int_u16};
+const lauf_asm_type lauf_lib_int_u64
+    = {lauf_asm_type_value.layout,   1,     lauf_asm_type_value.load_fn,
+       lauf_asm_type_value.store_fn, "U64", &lauf_lib_int_u32};
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_s8_overflow, 1, 2, no_panic_flags, "s8_overflow",
+                     &lauf_lib_int_uabs)
+{
+    --vstack_ptr;
+    vstack_ptr[0].as_uint
+        = INT8_MIN <= vstack_ptr[1].as_sint && vstack_ptr[1].as_sint <= INT8_MAX ? 0 : 1;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_s16_overflow, 1, 2, no_panic_flags, "s16_overflow",
+                     &lauf_lib_int_s8_overflow)
+{
+    --vstack_ptr;
+    vstack_ptr[0].as_uint
+        = INT16_MIN <= vstack_ptr[1].as_sint && vstack_ptr[1].as_sint <= INT16_MAX ? 0 : 1;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_s32_overflow, 1, 2, no_panic_flags, "s32_overflow",
+                     &lauf_lib_int_s16_overflow)
+{
+    --vstack_ptr;
+    vstack_ptr[0].as_uint
+        = INT32_MIN <= vstack_ptr[1].as_sint && vstack_ptr[1].as_sint <= INT32_MAX ? 0 : 1;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_s64_overflow, 1, 2, no_panic_flags, "s64_overflow",
+                     &lauf_lib_int_s32_overflow)
+{
+    --vstack_ptr;
+    vstack_ptr[0].as_uint = 0;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_u8_overflow, 1, 2, no_panic_flags, "u8_overflow",
+                     &lauf_lib_int_s64_overflow)
+{
+    --vstack_ptr;
+    vstack_ptr[0].as_uint = vstack_ptr[1].as_uint <= UINT8_MAX ? 0 : 1;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_u16_overflow, 1, 2, no_panic_flags, "u16_overflow",
+                     &lauf_lib_int_u8_overflow)
+{
+    --vstack_ptr;
+    vstack_ptr[0].as_uint = vstack_ptr[1].as_uint <= UINT16_MAX ? 0 : 1;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_u32_overflow, 1, 2, no_panic_flags, "u32_overflow",
+                     &lauf_lib_int_u16_overflow)
+{
+    --vstack_ptr;
+    vstack_ptr[0].as_uint = vstack_ptr[1].as_uint <= UINT32_MAX ? 0 : 1;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(lauf_lib_int_u64_overflow, 1, 2, no_panic_flags, "u64_overflow",
+                     &lauf_lib_int_u32_overflow)
+{
+    --vstack_ptr;
+    vstack_ptr[0].as_uint = 0;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_int
+    = {"lauf.int", &lauf_lib_int_u64_overflow, &lauf_lib_int_u64};
 

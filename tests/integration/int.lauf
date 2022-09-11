@@ -390,6 +390,116 @@ function @uabs() {
     return;
 }
 
+function @s8() {
+    local %i : $lauf.int.S8;
+
+    sint 11; $lauf.int.s8_overflow; uint 0; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S8 0;
+    local_addr %i; load_field $lauf.int.S8 0; sint 11; $lauf.test.assert_eq;
+
+    sint -129; $lauf.int.s8_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S8 0;
+    local_addr %i; load_field $lauf.int.S8 0; sint 127; $lauf.test.assert_eq;
+
+    sint 128; $lauf.int.s8_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S8 0;
+    local_addr %i; load_field $lauf.int.S8 0; sint -128; $lauf.test.assert_eq;
+
+    return;
+}
+function @s16() {
+    local %i : $lauf.int.S16;
+
+    sint 11; $lauf.int.s16_overflow; uint 0; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S16 0;
+    local_addr %i; load_field $lauf.int.S16 0; sint 11; $lauf.test.assert_eq;
+
+    sint -32769; $lauf.int.s16_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S16 0;
+    local_addr %i; load_field $lauf.int.S16 0; sint 32767; $lauf.test.assert_eq;
+
+    sint 32768; $lauf.int.s16_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S16 0;
+    local_addr %i; load_field $lauf.int.S16 0; sint -32768; $lauf.test.assert_eq;
+
+    return;
+}
+function @s32() {
+    local %i : $lauf.int.S32;
+
+    sint 11; $lauf.int.s32_overflow; uint 0; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S32 0;
+    local_addr %i; load_field $lauf.int.S32 0; sint 11; $lauf.test.assert_eq;
+
+    sint -2147483649; $lauf.int.s32_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S32 0;
+    local_addr %i; load_field $lauf.int.S32 0; sint 2147483647; $lauf.test.assert_eq;
+
+    sint 2147483648; $lauf.int.s32_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S32 0;
+    local_addr %i; load_field $lauf.int.S32 0; sint -2147483648; $lauf.test.assert_eq;
+
+    return;
+}
+function @s64() {
+    local %i : $lauf.int.S64;
+
+    sint 11; $lauf.int.s64_overflow; uint 0; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.S64 0;
+    local_addr %i; load_field $lauf.int.S64 0; sint 11; $lauf.test.assert_eq;
+
+    return;
+}
+
+function @u8() {
+    local %i : $lauf.int.U8;
+
+    uint 11; $lauf.int.u8_overflow; uint 0; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.U8 0;
+    local_addr %i; load_field $lauf.int.U8 0; uint 11; $lauf.test.assert_eq;
+
+    uint 0x101; $lauf.int.u8_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.U8 0;
+    local_addr %i; load_field $lauf.int.U8 0; uint 1; $lauf.test.assert_eq;
+
+    return;
+}
+function @u16() {
+    local %i : $lauf.int.U16;
+
+    uint 11; $lauf.int.u16_overflow; uint 0; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.U16 0;
+    local_addr %i; load_field $lauf.int.U16 0; uint 11; $lauf.test.assert_eq;
+
+    uint 0x1_0001; $lauf.int.u16_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.U16 0;
+    local_addr %i; load_field $lauf.int.U16 0; uint 1; $lauf.test.assert_eq;
+
+    return;
+}
+function @u32() {
+    local %i : $lauf.int.U32;
+
+    uint 11; $lauf.int.u32_overflow; uint 0; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.U32 0;
+    local_addr %i; load_field $lauf.int.U32 0; uint 11; $lauf.test.assert_eq;
+
+    uint 0x1_0000_0001; $lauf.int.u32_overflow; uint 1; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.U32 0;
+    local_addr %i; load_field $lauf.int.U32 0; uint 1; $lauf.test.assert_eq;
+
+    return;
+}
+function @u64() {
+    local %i : $lauf.int.U64;
+
+    uint 11; $lauf.int.u32_overflow; uint 0; $lauf.test.assert_eq;
+    local_addr %i; store_field $lauf.int.U32 0;
+    local_addr %i; load_field $lauf.int.U32 0; uint 11; $lauf.test.assert_eq;
+
+    return;
+}
+
 function @main() {
     call @sadd_flag; call @sadd_wrap; call @sadd_sat; call @sadd_panic;
     call @ssub_flag; call @ssub_wrap; call @ssub_sat; call @ssub_panic;
@@ -412,6 +522,9 @@ function @main() {
     call @utos_flag; call @utos_wrap; call @utos_sat; call @utos_panic;
     call @sabs_flag; call @sabs_wrap; call @sabs_sat; call @sabs_panic;
     call @uabs;
+
+    call @s8; call @s16; call @s32; call @s64;
+    call @u8; call @u16; call @u32; call @u64;
 
     return;
 }
