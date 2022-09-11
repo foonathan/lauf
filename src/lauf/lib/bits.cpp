@@ -110,5 +110,5 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_bits_all_set, 1, 1, no_panic_flags, "all_set", &la
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_bits = {"lauf.bits", &lauf_lib_bits_all_set};
+const lauf_runtime_builtin_library lauf_lib_bits = {"lauf.bits", &lauf_lib_bits_all_set, nullptr};
 

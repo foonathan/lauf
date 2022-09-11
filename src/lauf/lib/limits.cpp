@@ -32,5 +32,6 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_limits_step, 0, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_limits = {"lauf.limits", &lauf_lib_limits_step};
+const lauf_runtime_builtin_library lauf_lib_limits
+    = {"lauf.limits", &lauf_lib_limits_step, nullptr};
 

@@ -19,8 +19,6 @@ typedef struct lauf_backend_dump_options
 {
     const lauf_runtime_builtin_library* builtin_libs;
     size_t                              builtin_libs_count;
-    const lauf_asm_type*                types;
-    size_t                              type_count;
 } lauf_backend_dump_options;
 
 /// The default dump options.

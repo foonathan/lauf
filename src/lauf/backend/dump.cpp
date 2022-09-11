@@ -18,8 +18,7 @@ extern "C"
     extern const size_t                        lauf_libs_count;
 }
 
-const lauf_backend_dump_options lauf_backend_default_dump_options
-    = {lauf_libs, lauf_libs_count, &lauf_asm_type_value, 1};
+const lauf_backend_dump_options lauf_backend_default_dump_options = {lauf_libs, lauf_libs_count};
 
 namespace
 {
@@ -59,17 +58,26 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
 
 std::string find_builtin_name(lauf_backend_dump_options opts, lauf_runtime_builtin_impl* impl)
 {
-    for (auto i = 0u; i != opts.type_count; ++i)
-        if (opts.types[i].load_fn == impl)
-            return opts.types[i].name + std::string(".load");
-        else if (opts.types[i].store_fn == impl)
-            return opts.types[i].name + std::string(".store");
+    if (lauf_asm_type_value.load_fn == impl)
+        return lauf_asm_type_value.name + std::string(".load");
+    else if (lauf_asm_type_value.store_fn == impl)
+        return lauf_asm_type_value.name + std::string(".store");
 
     for (auto i = 0u; i != opts.builtin_libs_count; ++i)
+    {
         for (auto builtin = opts.builtin_libs[i].functions; builtin != nullptr;
              builtin      = builtin->next)
             if (builtin->impl == impl)
                 return opts.builtin_libs[i].prefix + std::string(".") + builtin->name;
+
+        for (auto type = opts.builtin_libs[i].types; type != nullptr; type = type->next)
+            if (type->load_fn == impl)
+                return opts.builtin_libs[i].prefix + std::string(".") + type->name
+                       + std::string(".load");
+            else if (type->store_fn == impl)
+                return opts.builtin_libs[i].prefix + std::string(".") + type->name
+                       + std::string(".store");
+    }
 
     return "";
 }

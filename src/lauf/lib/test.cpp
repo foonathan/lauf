@@ -76,5 +76,6 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_panic, 2, 0, LAUF_RUNTIME_BUILTIN_VM_O
         LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_test = {"lauf.test", &lauf_lib_test_assert_panic};
+const lauf_runtime_builtin_library lauf_lib_test
+    = {"lauf.test", &lauf_lib_test_assert_panic, nullptr};
 

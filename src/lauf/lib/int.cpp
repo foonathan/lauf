@@ -525,5 +525,5 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_int_uabs, 1, 1, no_panic_flags, "uabs", &sabs_pani
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_int = {"lauf.int", &lauf_lib_int_uabs};
+const lauf_runtime_builtin_library lauf_lib_int = {"lauf.int", &lauf_lib_int_uabs, nullptr};
 

@@ -157,5 +157,6 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_heap = {"lauf.heap", &lauf_lib_heap_undeclare_weak};
+const lauf_runtime_builtin_library lauf_lib_heap
+    = {"lauf.heap", &lauf_lib_heap_undeclare_weak, nullptr};
 

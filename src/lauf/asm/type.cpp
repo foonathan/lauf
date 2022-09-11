@@ -54,6 +54,10 @@ LAUF_RUNTIME_BUILTIN_IMPL bool store_value(const lauf_asm_inst* ip, lauf_runtime
 }
 } // namespace
 
-const lauf_asm_type lauf_asm_type_value
-    = {LAUF_ASM_NATIVE_LAYOUT_OF(lauf_runtime_value), 1, &load_value, &store_value, "lauf.Value"};
+const lauf_asm_type lauf_asm_type_value = {LAUF_ASM_NATIVE_LAYOUT_OF(lauf_runtime_value),
+                                           1,
+                                           &load_value,
+                                           &store_value,
+                                           "lauf.Value",
+                                           nullptr};
 

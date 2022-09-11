@@ -11,6 +11,7 @@ LAUF_HEADER_START
 #define LAUF_RUNTIME_BUILTIN_IMPL __attribute__((section("text.lauf_builtin"), aligned(8)))
 
 typedef union lauf_asm_inst             lauf_asm_inst;
+typedef struct lauf_asm_type            lauf_asm_type;
 typedef union lauf_runtime_value        lauf_runtime_value;
 typedef struct lauf_runtime_process     lauf_runtime_process;
 typedef struct lauf_runtime_stack_frame lauf_runtime_stack_frame;
@@ -80,6 +81,8 @@ typedef struct lauf_runtime_builtin_library
     const char* prefix;
     /// The first builtin function of the library.
     const lauf_runtime_builtin* functions;
+    /// The first type of the library.
+    const lauf_asm_type* types;
 } lauf_runtime_builtin_library;
 
 LAUF_HEADER_END

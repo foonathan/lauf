@@ -24,8 +24,7 @@ extern "C"
     extern const size_t                        lauf_libs_count;
 }
 
-const lauf_frontend_text_options lauf_frontend_default_text_options
-    = {lauf_libs, lauf_libs_count, &lauf_asm_type_value, 1};
+const lauf_frontend_text_options lauf_frontend_default_text_options = {lauf_libs, lauf_libs_count};
 
 namespace
 {
@@ -77,14 +76,18 @@ struct parse_state
     : input(input), builder(lauf_asm_create_builder(lauf_asm_default_build_options)), mod(nullptr),
       anchor(input->buffer)
     {
-        for (auto i = 0u; i != opts.type_count; ++i)
-            types.insert(opts.types[i].name, &opts.types[i]);
+        types.insert(lauf_asm_type_value.name, &lauf_asm_type_value);
 
         for (auto i = 0u; i != opts.builtin_libs_count; ++i)
+        {
             for (auto builtin = opts.builtin_libs[i].functions; builtin != nullptr;
                  builtin      = builtin->next)
                 builtins.insert(opts.builtin_libs[i].prefix + std::string(".") + builtin->name,
                                      builtin);
+
+            for (auto type = opts.builtin_libs[i].types; type != nullptr; type = type->next)
+                types.insert(opts.builtin_libs[i].prefix + std::string(".") + type->name, type);
+        }
     }
 
     auto report_error() const

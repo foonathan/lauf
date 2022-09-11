@@ -53,6 +53,8 @@ typedef struct lauf_asm_type
     lauf_runtime_builtin_impl* store_fn;
     /// The name, used for debugging and some frontends/backends.
     const char* name;
+    /// The next type of a builtin library; forms a linked list of types.
+    const struct lauf_asm_type* next;
 } lauf_asm_type;
 
 /// The type that corresponds to the value stored on the vstack.

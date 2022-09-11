@@ -137,5 +137,5 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_distance, 2, 1, LAUF_RUNTIME_BUILTIN_D
 }
 
 const lauf_runtime_builtin_library lauf_lib_memory
-    = {"lauf.memory", &lauf_lib_memory_addr_distance};
+    = {"lauf.memory", &lauf_lib_memory_addr_distance, nullptr};
 

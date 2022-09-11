@@ -158,5 +158,5 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_debug_read, 0, 1,
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_debug = {"lauf.debug", &lauf_lib_debug_read};
+const lauf_runtime_builtin_library lauf_lib_debug = {"lauf.debug", &lauf_lib_debug_read, nullptr};
 
