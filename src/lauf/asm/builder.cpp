@@ -945,7 +945,9 @@ void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(pop, stack_index));
 
-    b->cur->vstack.pop();
+    // No need to check again, we already asserted it.
+    b->cur->vstack.roll(stack_index);
+    (void)b->cur->vstack.pop();
 }
 
 void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index)
@@ -1129,14 +1131,14 @@ void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t f
         add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b,
                                 LAUF_BUILD_INST_VALUE(store_local_value, addr->as_local->offset));
-        b->cur->vstack.pop(1);
+        LAUF_BUILD_ASSERT(b->cur->vstack.pop(1), "missing value");
     }
     else if (constant_folding == load_store_global)
     {
         add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(store_global_value,
                                                           addr->as_constant.as_address.allocation));
-        b->cur->vstack.pop(1);
+        LAUF_BUILD_ASSERT(b->cur->vstack.pop(1), "missing value");
     }
     else
     {

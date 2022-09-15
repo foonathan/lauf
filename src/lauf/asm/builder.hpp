@@ -69,7 +69,7 @@ public:
         push(arena, v);
     }
 
-    std::optional<value> pop()
+    [[nodiscard]] std::optional<value> pop()
     {
         if (_stack.empty())
             return std::nullopt;
@@ -78,7 +78,7 @@ public:
         _stack.pop_back();
         return result;
     }
-    bool pop(std::size_t n)
+    [[nodiscard]] bool pop(std::size_t n)
     {
         for (auto i = 0u; i != n; ++i)
         {
