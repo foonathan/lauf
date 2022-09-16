@@ -529,6 +529,22 @@ LAUF_VM_EXECUTE(swap)
     LAUF_VM_DISPATCH;
 }
 
+LAUF_VM_EXECUTE(select)
+{
+    auto idx = vstack_ptr[0].as_uint;
+    ++vstack_ptr;
+
+    if (LAUF_UNLIKELY(idx > ip->select.idx))
+        LAUF_DO_PANIC("invalid select index");
+
+    auto value = vstack_ptr[idx];
+    vstack_ptr += ip->select.idx;
+    vstack_ptr[0] = value;
+
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
 //=== memory ===//
 LAUF_VM_EXECUTE(setup_local_alloc)
 {

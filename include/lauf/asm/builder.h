@@ -214,6 +214,11 @@ void lauf_asm_inst_pick(lauf_asm_builder* b, uint16_t stack_index);
 /// Signature: x_N+1 x_N x_N-1 ... x_0 => x_N+1 x_N-1 ... x_0 x_N
 void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index);
 
+/// Selects one out of `count` values from the top of the stack.
+///
+/// Signature: x_N-1 .. x_0 idx => x_idx
+void lauf_asm_inst_select(lauf_asm_builder* b, uint16_t count);
+
 //=== memory ===//
 /// Computes the address of an array element given the element layout.
 ///

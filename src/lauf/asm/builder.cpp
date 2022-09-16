@@ -100,6 +100,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::pop:
         case lauf::asm_op::roll:
         case lauf::asm_op::swap:
+        case lauf::asm_op::select:
         // We never remove pop_top; it was added because we couldn't pop the last time, so why
         // should it be possible now.
         case lauf::asm_op::pop_top:
@@ -978,6 +979,20 @@ void lauf_asm_inst_roll(lauf_asm_builder* b, uint16_t stack_index)
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(roll, stack_index));
 
     b->cur->vstack.roll(stack_index);
+}
+
+void lauf_asm_inst_select(lauf_asm_builder* b, uint16_t count)
+{
+    LAUF_BUILD_CHECK_CUR;
+    LAUF_BUILD_ASSERT(count >= 2, "invalid count index");
+
+    auto idx = b->cur->vstack.pop();
+    LAUF_BUILD_ASSERT(idx, "missing index");
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(count), "missing alternative values");
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(select, uint16_t(count - 1)));
+    b->cur->vstack.push(*b, 1);
 }
 
 void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_layout)

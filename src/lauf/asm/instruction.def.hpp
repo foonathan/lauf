@@ -93,6 +93,9 @@ LAUF_ASM_INST(dup, asm_inst_stack_idx)
 LAUF_ASM_INST(roll, asm_inst_stack_idx)
 LAUF_ASM_INST(swap, asm_inst_stack_idx)
 
+// lauf_asm_inst_select()
+LAUF_ASM_INST(select, asm_inst_stack_idx)
+
 //=== memory ===//
 // Setups a call frame for local allocations.
 // Value is the number of local_alloc[_aligned] instructions.

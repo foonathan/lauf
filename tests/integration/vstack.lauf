@@ -120,6 +120,16 @@ function @roll2() {
     return;
 }
 
+function @select(1 => 1) {
+    uint 0;
+    uint 1;
+
+    roll 2;
+    select 2;
+
+    return;
+}
+
 function @main() {
     call @pop0;
     call @pop1;
@@ -132,6 +142,9 @@ function @main() {
     call @roll0;
     call @roll1;
     call @roll2;
+
+    [ uint 0; call @select; ] uint 1; $lauf.test.assert_eq;
+    [ uint 1; call @select; ] uint 0; $lauf.test.assert_eq;
 
     return;
 }

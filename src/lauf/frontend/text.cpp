@@ -566,7 +566,8 @@ struct inst_stack_op
     static constexpr auto insts = lexy::symbol_table<void(*)(lauf_asm_builder*, std::uint16_t)>
         .map(LEXY_LIT("pop"), &lauf_asm_inst_pop)
         .map(LEXY_LIT("pick"), &lauf_asm_inst_pick)
-        .map(LEXY_LIT("roll"), &lauf_asm_inst_roll);
+        .map(LEXY_LIT("roll"), &lauf_asm_inst_roll)
+        .map(LEXY_LIT("select"), &lauf_asm_inst_select);
 
     static constexpr auto rule
         = dsl::symbol<insts>(identifier::unquoted) >> dsl::integer<std::uint16_t>;

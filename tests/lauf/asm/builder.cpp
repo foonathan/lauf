@@ -450,6 +450,15 @@ TEST_CASE("lauf_asm_inst_roll")
     CHECK(roll2[0].roll.idx == 2);
 }
 
+TEST_CASE("lauf_asm_inst_select")
+{
+    auto basic
+        = build({3, 1}, [](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_select(b, 2); });
+    REQUIRE(basic.size() == 1);
+    CHECK(basic[0].op() == lauf::asm_op::select);
+    CHECK(basic[0].select.idx == 1);
+}
+
 TEST_CASE("lauf_asm_inst_call")
 {
     auto regular = build({3, 5}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
