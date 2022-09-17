@@ -28,6 +28,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         {
         case lauf::asm_op::count:
         case lauf::asm_op::nop:
+        case lauf::asm_op::block:
         case lauf::asm_op::return_:
         case lauf::asm_op::return_free:
         case lauf::asm_op::jump:
@@ -323,10 +324,23 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
             if (!block->reachable)
                 continue;
 
-            block->offset = std::uint16_t(result);
-            result += block->insts.size();
+            auto inst_count = block->insts.size();
             generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
-                                [&](lauf::asm_op, const lauf_asm_block*) { ++result; });
+                                [&](lauf::asm_op, const lauf_asm_block*) { ++inst_count; });
+
+            if (inst_count > 0)
+            {
+                ++result; // block instruction
+                block->offset = std::uint16_t(result);
+                result += inst_count;
+            }
+            else
+            {
+                // It does not generate any instructions and thus does not need to be considered.
+                // We still need to set the offset, so we can correctly jump there.
+                block->reachable = false;
+                block->offset    = std::uint16_t(result);
+            }
         }
         return result;
     }();
@@ -338,7 +352,8 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
         if (!block->reachable)
             continue;
 
-        ip = block->insts.copy_to(ip);
+        *ip++ = LAUF_BUILD_INST_SIGNATURE(block, block->sig.input_count, block->sig.output_count);
+        ip    = block->insts.copy_to(ip);
 
         generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
                             [&](lauf::asm_op op, const lauf_asm_block* dest) {

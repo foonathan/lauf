@@ -82,6 +82,11 @@ LAUF_VM_EXECUTE(nop)
     ++ip;
     LAUF_VM_DISPATCH;
 }
+LAUF_VM_EXECUTE(block)
+{
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
 
 LAUF_VM_EXECUTE(return_)
 {

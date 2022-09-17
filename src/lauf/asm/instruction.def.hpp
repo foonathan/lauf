@@ -2,6 +2,9 @@
 // Does nothing.
 LAUF_ASM_INST(nop, asm_inst_none)
 
+// Indicates the beginning of a basic block, but does nothing when executed.
+LAUF_ASM_INST(block, asm_inst_signature)
+
 // lauf_asm_inst_return()
 LAUF_ASM_INST(return_, asm_inst_none)
 // Same, but when it also needs to free N local allocations.

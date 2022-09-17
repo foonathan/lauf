@@ -48,7 +48,8 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
     std::vector<lauf_asm_inst> result;
 
     auto start_index = 0;
-    while (fn->insts[start_index].op() == lauf::asm_op::setup_local_alloc
+    while (fn->insts[start_index].op() == lauf::asm_op::block
+           || fn->insts[start_index].op() == lauf::asm_op::setup_local_alloc
            || fn->insts[start_index].op() == lauf::asm_op::local_alloc
            || fn->insts[start_index].op() == lauf::asm_op::local_alloc_aligned
            || fn->insts[start_index].op() == lauf::asm_op::local_storage)
@@ -56,7 +57,8 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 
     auto end_index = fn->insts_count - 1;
     for (auto i = start_index; i != end_index; ++i)
-        result.push_back(fn->insts[i]);
+        if (fn->insts[i].op() != lauf::asm_op::block)
+            result.push_back(fn->insts[i]);
 
     lauf_asm_destroy_module(mod);
     return result;
@@ -85,7 +87,7 @@ TEST_CASE("lauf_asm_inst_jump")
     });
     REQUIRE(forward.size() >= 1);
     CHECK(forward[0].op() == lauf::asm_op::jump);
-    CHECK(forward[0].jump.offset == 2);
+    CHECK(forward[0].jump.offset == 4);
 }
 
 TEST_CASE("lauf_asm_inst_branch2")
@@ -102,7 +104,7 @@ TEST_CASE("lauf_asm_inst_branch2")
     });
     REQUIRE(br_nop.size() >= 1);
     CHECK(br_nop[0].op() == lauf::asm_op::branch_eq);
-    CHECK(br_nop[0].branch_eq.offset == 2);
+    CHECK(br_nop[0].branch_eq.offset == 4);
 
     auto br_jump = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto if_false = lauf_asm_declare_block(b, 0);
@@ -116,7 +118,7 @@ TEST_CASE("lauf_asm_inst_branch2")
     });
     REQUIRE(br_jump.size() >= 1);
     CHECK(br_jump[0].op() == lauf::asm_op::branch_ne);
-    CHECK(br_jump[0].branch_ne.offset == 2);
+    CHECK(br_jump[0].branch_ne.offset == 4);
 
     auto same = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         auto block = lauf_asm_declare_block(b, 0);
