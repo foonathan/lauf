@@ -503,14 +503,17 @@ function @u64() {
 function @main(0 => 1) {
     block %entry() {
         call @sadd_wrap; call @ssub_wrap; call @smul_wrap;
+        call @sadd_panic; call @ssub_panic; call @smul_panic;
         call @uadd_wrap; call @usub_wrap; call @umul_wrap;
+        call @uadd_panic; call @usub_wrap; call @umul_wrap;
 
-        call @sdiv_wrap; call @udiv;
+        call @sdiv_wrap; call @sdiv_panic; call @udiv;
         call @srem; call @urem;
 
         call @scmp; call @ucmp;
         call @stou_wrap; call @utos_wrap;
-        call @sabs_wrap; call @uabs;
+        call @stou_panic; call @utos_panic;
+        call @sabs_wrap; call @sabs_panic; call @uabs;
 
         call @s8; call @s16; call @s32; call @s64;
         call @u8; call @u16; call @u32; call @u64;
@@ -519,19 +522,19 @@ function @main(0 => 1) {
         branch %vm() %exit(0 => 1);
     }
     block %vm() {
-        call @sadd_flag; call @sadd_sat; call @sadd_panic;
-        call @ssub_flag; call @ssub_sat; call @ssub_panic;
-        call @smul_flag; call @smul_sat; call @smul_panic;
+        call @sadd_flag; call @sadd_sat;
+        call @ssub_flag; call @ssub_sat;
+        call @smul_flag; call @smul_sat;
 
-        call @uadd_flag; call @uadd_sat; call @sadd_panic;
-        call @usub_flag; call @usub_sat; call @ssub_panic;
-        call @umul_flag; call @umul_sat; call @smul_sat;
+        call @uadd_flag; call @uadd_sat;
+        call @usub_flag; call @usub_sat;
+        call @umul_flag; call @umul_sat;
 
-        call @sdiv_flag; call @sdiv_sat; call @sdiv_panic;
+        call @sdiv_flag; call @sdiv_sat;
 
-        call @stou_flag; call @stou_sat; call @stou_panic;
-        call @utos_flag; call @utos_sat; call @utos_panic;
-        call @sabs_flag; call @sabs_sat; call @sabs_panic;
+        call @stou_flag; call @stou_sat;
+        call @utos_flag; call @utos_sat;
+        call @sabs_flag; call @sabs_sat;
 
         jump %exit(0 => 1);
     }

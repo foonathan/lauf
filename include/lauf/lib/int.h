@@ -57,10 +57,10 @@ lauf_runtime_builtin lauf_lib_int_stou(lauf_lib_int_overflow overflow);
 lauf_runtime_builtin lauf_lib_int_utos(lauf_lib_int_overflow overflow);
 
 /// Signed to absolute signed.
-lauf_runtime_builtin lauf_lib_sabs(lauf_lib_int_overflow overflow);
+lauf_runtime_builtin lauf_lib_int_sabs(lauf_lib_int_overflow overflow);
 
 /// Signed to absolute unsigned (can't overflow).
-extern const lauf_runtime_builtin lauf_lib_uabs;
+extern const lauf_runtime_builtin lauf_lib_int_uabs;
 
 //=== types ===//
 /// An integer type with the specified number of bits.

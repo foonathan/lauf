@@ -6,6 +6,7 @@
 #include <lauf/asm/module.h>
 #include <lauf/asm/program.h>
 #include <lauf/backend/dump.h>
+#include <lauf/backend/qbe.h>
 #include <lauf/frontend/text.h>
 #include <lauf/lib.h>
 #include <lauf/reader.h>
@@ -103,6 +104,7 @@ void dump_module(lauf_asm_module* mod)
 {
     auto writer = lauf_create_stdout_writer();
     lauf_backend_dump(writer, lauf_backend_default_dump_options, mod);
+    lauf_backend_qbe(writer, lauf_backend_default_qbe_options, mod);
     lauf_destroy_writer(writer);
 }
 

@@ -121,8 +121,18 @@ target_link_libraries(lauf_text PRIVATE lauf_warnings lauf_core foonathan::lexy)
 target_sources(lauf_text PUBLIC ${include_dir}/frontend/text.h)
 target_sources(lauf_text PRIVATE ${src_dir}/frontend/text.cpp)
 
+#=== QBE backend ===#
+add_library(lauf_qbe)
+add_library(foonathan::lauf::qbe ALIAS lauf_qbe)
+target_include_directories(lauf_qbe PRIVATE .)
+target_compile_features(lauf_qbe PRIVATE cxx_std_17)
+target_link_libraries(lauf_qbe PRIVATE lauf_warnings lauf_core)
+
+target_sources(lauf_qbe PUBLIC ${include_dir}/backend/qbe.h)
+target_sources(lauf_qbe PRIVATE ${src_dir}/backend/qbe.hpp ${src_dir}/backend/qbe.cpp)
+
 #=== Umbrella target ===#
 add_library(lauf_umbrella INTERFACE)
 add_library(foonathan::lauf ALIAS lauf_umbrella)
-target_link_libraries(lauf_umbrella INTERFACE lauf_core lauf_text)
+target_link_libraries(lauf_umbrella INTERFACE lauf_core lauf_text lauf_qbe)
 

@@ -12,9 +12,11 @@
 #include <lauf/asm/module.h>
 #include <lauf/asm/program.h>
 
-#include <lauf/backend/dump.h>
-
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/stacktrace.h>
 #include <lauf/runtime/value.h>
+
+#include <lauf/backend/dump.h>
+#include <lauf/backend/qbe.h>
+#include <lauf/frontend/text.h>
 

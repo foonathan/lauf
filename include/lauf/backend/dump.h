@@ -9,7 +9,6 @@
 LAUF_HEADER_START
 
 typedef struct lauf_asm_module              lauf_asm_module;
-typedef struct lauf_asm_type                lauf_asm_types;
 typedef struct lauf_writer                  lauf_writer;
 typedef struct lauf_runtime_builtin         lauf_runtime_builtin_function;
 typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
