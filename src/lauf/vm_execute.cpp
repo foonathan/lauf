@@ -418,7 +418,7 @@ LAUF_VM_EXECUTE(function_addr)
 
 LAUF_VM_EXECUTE(local_addr)
 {
-    auto allocation_idx = frame_ptr->first_local_alloc + ip->local_addr.value;
+    auto allocation_idx = frame_ptr->first_local_alloc + ip->local_addr.index;
 
     --vstack_ptr;
     vstack_ptr[0].as_address.allocation = std::uint32_t(allocation_idx);
@@ -682,7 +682,7 @@ LAUF_VM_EXECUTE(aggregate_member)
 
 LAUF_VM_EXECUTE(load_local_value)
 {
-    auto memory = reinterpret_cast<unsigned char*>(frame_ptr) + ip->load_local_value.value;
+    auto memory = reinterpret_cast<unsigned char*>(frame_ptr) + ip->load_local_value.offset;
 
     --vstack_ptr;
     vstack_ptr[0] = *reinterpret_cast<lauf_runtime_value*>(memory);
@@ -693,7 +693,7 @@ LAUF_VM_EXECUTE(load_local_value)
 
 LAUF_VM_EXECUTE(store_local_value)
 {
-    auto memory = reinterpret_cast<unsigned char*>(frame_ptr) + ip->store_local_value.value;
+    auto memory = reinterpret_cast<unsigned char*>(frame_ptr) + ip->store_local_value.offset;
 
     *reinterpret_cast<lauf_runtime_value*>(memory) = vstack_ptr[0];
     ++vstack_ptr;

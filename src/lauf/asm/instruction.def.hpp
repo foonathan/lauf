@@ -77,7 +77,7 @@ LAUF_ASM_INST(function_addr, asm_inst_offset)
 
 // lauf_asm_inst_local_addr()
 // The value is the index of the local allocation.
-LAUF_ASM_INST(local_addr, asm_inst_value)
+LAUF_ASM_INST(local_addr, asm_inst_local_addr)
 
 // lauf_asm_inst_cc()
 // The value is the condition code.
@@ -124,11 +124,10 @@ LAUF_ASM_INST(deref_const, asm_inst_layout)
 LAUF_ASM_INST(deref_mut, asm_inst_layout)
 
 // lauf_asm_inst_load/store_field() for locals and the value type.
-// The value is the offset after frame_ptr.
 // Signature: _ => value
-LAUF_ASM_INST(load_local_value, asm_inst_value)
+LAUF_ASM_INST(load_local_value, asm_inst_local_addr)
 // Signature: value => _
-LAUF_ASM_INST(store_local_value, asm_inst_value)
+LAUF_ASM_INST(store_local_value, asm_inst_local_addr)
 
 // lauf_asm_inst_load/store_field() for globals and the value type.
 // The value is the global allocation index.

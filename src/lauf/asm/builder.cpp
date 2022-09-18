@@ -50,7 +50,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::local_addr: {
             auto inst = b->cur->insts.back();
             for (auto& local : b->locals)
-                if (local.index == inst.local_addr.value)
+                if (local.index == inst.local_addr.index)
                 {
                     --local.address_count;
                     break;
@@ -859,7 +859,8 @@ void lauf_asm_inst_local_addr(lauf_asm_builder* b, lauf_asm_local* local)
 
     ++local->address_count;
 
-    b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_addr, local->index));
+    b->cur->insts.push_back(*b,
+                            LAUF_BUILD_INST_LOCAL_ADDR(local_addr, local->index, local->offset));
     b->cur->vstack.push(*b, [&] {
         lauf::builder_vstack::value result;
         result.type     = result.local_addr;
@@ -1122,7 +1123,8 @@ void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t fi
     {
         add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b,
-                                LAUF_BUILD_INST_VALUE(load_local_value, addr->as_local->offset));
+                                LAUF_BUILD_INST_LOCAL_ADDR(load_local_value, addr->as_local->index,
+                                                           addr->as_local->offset));
         b->cur->vstack.push(*b, 1);
     }
     else if (constant_folding == load_store_global)
@@ -1160,7 +1162,8 @@ void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t f
     {
         add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b,
-                                LAUF_BUILD_INST_VALUE(store_local_value, addr->as_local->offset));
+                                LAUF_BUILD_INST_LOCAL_ADDR(store_local_value, addr->as_local->index,
+                                                           addr->as_local->offset));
         LAUF_BUILD_ASSERT(b->cur->vstack.pop(1), "missing value");
     }
     else if (constant_folding == load_store_global)

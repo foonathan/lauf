@@ -298,12 +298,12 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             writer->format("aggregate_member %u", ip->aggregate_member.value);
             break;
         case lauf::asm_op::load_local_value:
-            writer->format("load_local_value <%zx>",
-                           ip->load_local_value.value - sizeof(lauf_runtime_stack_frame));
+            writer->format("load_local_value %u <%zx>", ip->load_local_value.index,
+                           ip->load_local_value.offset - sizeof(lauf_runtime_stack_frame));
             break;
         case lauf::asm_op::store_local_value:
-            writer->format("store_local_value <%zx>",
-                           ip->store_local_value.value - sizeof(lauf_runtime_stack_frame));
+            writer->format("store_local_value %u <%zx>", ip->store_local_value.index,
+                           ip->store_local_value.offset - sizeof(lauf_runtime_stack_frame));
             break;
         case lauf::asm_op::load_global_value:
             writer->format("load_global_value @%s",

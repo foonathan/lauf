@@ -99,6 +99,13 @@ struct asm_inst_stack_idx
     asm_op        op;
     std::uint16_t idx;
 };
+
+struct asm_inst_local_addr
+{
+    asm_op        op;
+    std::uint8_t  index;
+    std::uint16_t offset;
+};
 } // namespace lauf
 
 union lauf_asm_inst

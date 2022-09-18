@@ -299,7 +299,7 @@ TEST_CASE("lauf_asm_inst_local_addr")
     });
     REQUIRE(single.size() == 1);
     CHECK(single[0].op() == lauf::asm_op::local_addr);
-    CHECK(single[0].local_addr.value == 0);
+    CHECK(single[0].local_addr.index == 0);
 
     auto multiple = build({0, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
         lauf_asm_build_local(b, {8, 8});
@@ -309,7 +309,7 @@ TEST_CASE("lauf_asm_inst_local_addr")
     });
     REQUIRE(multiple.size() == 1);
     CHECK(multiple[0].op() == lauf::asm_op::local_addr);
-    CHECK(multiple[0].local_addr.value == 1);
+    CHECK(multiple[0].local_addr.index == 1);
 }
 
 TEST_CASE("lauf_asm_inst_cc")

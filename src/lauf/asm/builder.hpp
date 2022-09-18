@@ -282,5 +282,14 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         return result;                                                                             \
     }(LAUF_BUILD_ASSERT_CONTEXT, Value)
 
+#define LAUF_BUILD_INST_LOCAL_ADDR(Name, Index, Offset)                                            \
+    [&](const char* context, std::size_t index) {                                                  \
+        lauf_asm_inst result;                                                                      \
+        result.Name = {lauf::asm_op::Name, std::uint8_t(index), Offset};                           \
+        if (index != result.Name.index)                                                            \
+            b->error(context, "too many local variables");                                         \
+        return result;                                                                             \
+    }(LAUF_BUILD_ASSERT_CONTEXT, Index)
+
 #endif // SRC_LAUF_ASM_BUILDER_HPP_INCLUDED
 
