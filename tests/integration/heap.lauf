@@ -99,7 +99,7 @@ function @heap_use_after_free() {
 global const @msg_invalid_address = "invalid address", 0;
 global const @msg_invalid_heap_address = "invalid heap address", 0;
 
-function @main() {
+function @main(0 => 1) {
     call @heap_alloc;
     call @heap_transfer_local;
     call @heap_transfer_local_from_heap;
@@ -110,6 +110,6 @@ function @main() {
     function_addr @heap_free_local; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
     function_addr @heap_use_after_free; global_addr @msg_invalid_address; $lauf.test.assert_panic;
 
-    return;
+    uint 0; return;
 }
 

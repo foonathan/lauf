@@ -51,7 +51,7 @@ function @all_set() {
     return;
 }
 
-function @main() {
+function @main(0 => 1) {
     call @not;
 
     call @and;
@@ -66,6 +66,6 @@ function @main() {
     call @any_set;
     call @all_set;
 
-    return;
+    uint 0; return;
 }
 

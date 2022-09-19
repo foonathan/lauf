@@ -36,12 +36,12 @@ function @local_aggregate() {
     return;
 }
 
-function @main() {
+function @main(0 => 1) {
     call @local_array;
     call @array_zero_element;
 
     call @local_aggregate;
 
-    return;
+    uint 0; return;
 }
 

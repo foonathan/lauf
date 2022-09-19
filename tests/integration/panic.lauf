@@ -18,12 +18,12 @@ function @not_null_terminated() {
     panic;
 }
 
-function @main() {
+function @main(0 => 1) {
     function_addr @panic; global_addr @error; $lauf.test.assert_panic;
 
     function_addr @invalid_addr; null; $lauf.test.assert_panic;
     function_addr @not_null_terminated; null; $lauf.test.assert_panic;
 
-    return;
+    uint 0; return;
 }
 

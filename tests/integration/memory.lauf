@@ -162,7 +162,7 @@ global const @msg_invalid_address = "invalid address", 0;
 global const @msg_invalid_heap_address = "invalid heap address", 0;
 global const @msg_invalid_free = "cannot free split allocation", 0;
 
-function @main() {
+function @main(0 => 1) {
     call @poison_unpoison_memory;
     function_addr @double_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
     function_addr @unpoison_non_poisoned; global_addr @msg_invalid_address; $lauf.test.assert_panic;
@@ -178,6 +178,6 @@ function @main() {
     call @addr_to_ptr;
     call @addr_arithmetic;
 
-    return;
+    uint 0; return;
 }
 

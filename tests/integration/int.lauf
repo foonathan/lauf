@@ -500,7 +500,7 @@ function @u64() {
     return;
 }
 
-function @main() {
+function @main(0 => 1) {
     call @sadd_flag; call @sadd_wrap; call @sadd_sat; call @sadd_panic;
     call @ssub_flag; call @ssub_wrap; call @ssub_sat; call @ssub_panic;
     call @smul_flag; call @smul_wrap; call @smul_sat; call @smul_panic;
@@ -526,6 +526,6 @@ function @main() {
     call @s8; call @s16; call @s32; call @s64;
     call @u8; call @u16; call @u32; call @u64;
 
-    return;
+    uint 0; return;
 }
 

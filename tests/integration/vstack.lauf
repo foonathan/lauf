@@ -130,7 +130,7 @@ function @select(1 => 1) {
     return;
 }
 
-function @main() {
+function @main(0 => 1) {
     call @pop0;
     call @pop1;
     call @pop2;
@@ -146,6 +146,6 @@ function @main() {
     [ uint 0; call @select; ] uint 1; $lauf.test.assert_eq;
     [ uint 1; call @select; ] uint 0; $lauf.test.assert_eq;
 
-    return;
+    uint 0; return;
 }
 

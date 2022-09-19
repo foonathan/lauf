@@ -50,9 +50,9 @@ function @transfer_and_back() {
     return;
 }
 
-function @main() {
+function @main(0 => 1) {
     call @resume_and_suspend; 
     call @transfer_and_back;
-    return;
+    uint 0; return;
 }
 

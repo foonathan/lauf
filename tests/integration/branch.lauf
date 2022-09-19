@@ -84,7 +84,7 @@ block %if_false(0 => 1) {
 }
 }
 
-function @main() {
+function @main(0 => 1) {
     call @jumps;
 
     call @branch_true;
@@ -98,6 +98,6 @@ function @main() {
     sint 0; call @branch_cc_lt; uint 0; $lauf.test.assert_eq;
     sint 1; call @branch_cc_lt; uint 0; $lauf.test.assert_eq;
 
-    return;
+    uint 0; return;
 }
 

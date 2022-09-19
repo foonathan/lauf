@@ -57,7 +57,7 @@ function @cstack_overflow_local() {
 global const @msg_vstack_overflow = "vstack overflow", 0;
 global const @msg_cstack_overflow = "cstack overflow", 0;
 
-function @main() {
+function @main(0 => 1) {
     [
         call @produce_value;
         uint 11; $lauf.test.assert_eq;
@@ -100,6 +100,6 @@ function @main() {
         function_addr @cstack_overflow_local; global_addr @msg_cstack_overflow; $lauf.test.assert_panic;
     ]
 
-    return;
+    uint 0; return;
 }
 

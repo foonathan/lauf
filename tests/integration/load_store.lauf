@@ -84,7 +84,7 @@ function @reuse_dangling() {
 
 global const @msg_invalid_address = "invalid address", 0;
 
-function @main() {
+function @main(0 => 1) {
     [
         call @load_store_field_global();
         call @load_store_field_local();
@@ -100,6 +100,6 @@ function @main() {
         function_addr @reuse_dangling; global_addr @msg_invalid_address; $lauf.test.assert_panic;
     ]
 
-    return;
+    uint 0; return;
 }
 

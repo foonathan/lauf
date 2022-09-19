@@ -39,12 +39,12 @@ function @step_limit_exceeded_loop() {
 global const @msg_step_limit_remove = "cannot remove step limit", 0;
 global const @msg_step_limit_exceeded = "step limit exceeded", 0;
 
-function @main() {
+function @main(0 => 1) {
     call @step_limit_passes;
     function_addr @step_limit_remove; global_addr @msg_step_limit_remove; $lauf.test.assert_panic;
     function_addr @step_limit_exceeded_small; global_addr @msg_step_limit_exceeded; $lauf.test.assert_panic;
     function_addr @step_limit_exceeded_loop; global_addr @msg_step_limit_exceeded; $lauf.test.assert_panic;
 
-    return;
+    uint 0; return;
 }
 
