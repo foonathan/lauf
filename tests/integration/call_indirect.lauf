@@ -69,11 +69,11 @@ global const @msg_invalid_addr = "invalid function address", 0;
 
 function @main(0 => 1) {
     [
-        function_addr @produce_value; call_indirect (0 => 1);
+        function_addr @produce_value; $lauf.test.dynamic; call_indirect (0 => 1);
         uint 11; $lauf.test.assert_eq;
     ]
     [
-        function_addr @produce_values; call_indirect (0 => 3);
+        function_addr @produce_values; $lauf.test.dynamic; call_indirect (0 => 3);
         uint 66; $lauf.test.assert_eq;
         uint 42; $lauf.test.assert_eq;
         uint 11; $lauf.test.assert_eq;
@@ -81,25 +81,25 @@ function @main(0 => 1) {
 
     [
         uint 11;
-        function_addr @identity; call_indirect (1 => 1);
+        function_addr @identity; $lauf.test.dynamic; call_indirect (1 => 1);
         uint 11; $lauf.test.assert_eq;
     ]
     [
         uint 42;
-        function_addr @replace_value; call_indirect (1 => 1);
+        function_addr @replace_value; $lauf.test.dynamic; call_indirect (1 => 1);
         uint 11; $lauf.test.assert_eq;
     ]
 
     [
         uint 11;
         uint 42;
-        function_addr @consume_value; call_indirect (1 => 0);
+        function_addr @consume_value; $lauf.test.dynamic; call_indirect (1 => 0);
         uint 11; $lauf.test.assert_eq;
     ]
 
     [
         uint 11;
-        function_addr @consume_and_produce_values; call_indirect (1 => 2);
+        function_addr @consume_and_produce_values; $lauf.test.dynamic; call_indirect (1 => 2);
         uint 42; $lauf.test.assert_eq;
         uint 11; $lauf.test.assert_eq;
     ]

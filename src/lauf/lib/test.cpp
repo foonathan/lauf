@@ -11,8 +11,19 @@
 #include <lauf/runtime/value.h>
 #include <lauf/vm.h>
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_test_unreachable, 0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC, "unreachable",
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_dynamic, 1, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "dynamic",
                      nullptr)
+{
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_dynamic2, 2, 2, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "dynamic2",
+                     &lauf_lib_test_dynamic)
+{
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_unreachable, 0, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS,
+                     "unreachable", &lauf_lib_test_dynamic2)
 {
     (void)ip;
     (void)vstack_ptr;

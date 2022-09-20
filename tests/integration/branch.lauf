@@ -29,7 +29,7 @@ block %five(1 => 0) {
 
 function @branch_true() {
 block %entry() {
-    uint 11;
+    uint 11; $lauf.test.dynamic;
     branch %okay() %error();
 }
 block %okay() {
@@ -42,7 +42,7 @@ block %error() {
 }
 function @branch_false() {
 block %entry() {
-    uint 1;
+    uint 1; $lauf.test.dynamic;
     branch %okay() %error();
 }
 block %okay() {

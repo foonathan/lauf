@@ -14,6 +14,13 @@ typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 /// A collection of functions especially designed for writing tests for lauf in lauf.
 extern const lauf_runtime_builtin_library lauf_lib_test;
 
+/// Returns the value unchanged, but prevents constant folding.
+///
+/// Signature: v => v
+extern const lauf_runtime_builtin lauf_lib_test_dynamic;
+/// Signature: a b => a b
+extern const lauf_runtime_builtin lauf_lib_test_dynamic2;
+
 /// Asserts that something is not reachable.
 /// Panics otherwise.
 ///

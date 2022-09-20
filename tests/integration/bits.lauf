@@ -1,53 +1,53 @@
 module @bits;
 
 function @not() {
-    [ uint 0xFFFF_0000_FFFF_0000; $lauf.bits.not; ] uint 0x0000_FFFF_0000_FFFF; $lauf.test.assert_eq;
+    [ uint 0xFFFF_0000_FFFF_0000; $lauf.test.dynamic; $lauf.bits.not; ] uint 0x0000_FFFF_0000_FFFF; $lauf.test.assert_eq;
     return;
 }
 
 function @and() {
-    [ uint 0xABCDEF; uint 0x00F000; $lauf.bits.and; ] uint 0x00C000; $lauf.test.assert_eq;
+    [ uint 0xABCDEF; uint 0x00F000; $lauf.test.dynamic2; $lauf.bits.and; ] uint 0x00C000; $lauf.test.assert_eq;
     return;
 }
 function @or() {
-    [ uint 0xABC000; uint 0xDEF; $lauf.bits.or; ] uint 0xABCDEF; $lauf.test.assert_eq;
+    [ uint 0xABC000; uint 0xDEF; $lauf.test.dynamic2; $lauf.bits.or; ] uint 0xABCDEF; $lauf.test.assert_eq;
     return;
 }
 function @xor() {
-    [ uint 0xFFF00; uint 0xFFF; $lauf.bits.xor; ] uint 0xFF0FF; $lauf.test.assert_eq;
+    [ uint 0xFFF00; uint 0xFFF; $lauf.test.dynamic2; $lauf.bits.xor; ] uint 0xFF0FF; $lauf.test.assert_eq;
     return;
 }
 
 function @shl() {
-    [ uint 0x1234_5678_9ABC_DEF0; uint 4; $lauf.bits.shl; ] uint 0x2345_6789_ABCD_EF00; $lauf.test.assert_eq;
+    [ uint 0x1234_5678_9ABC_DEF0; uint 4; $lauf.test.dynamic2; $lauf.bits.shl; ] uint 0x2345_6789_ABCD_EF00; $lauf.test.assert_eq;
     return;
 }
 function @ushr() {
-    [ uint 0x1234; uint 4; $lauf.bits.ushr; ] uint 0x123; $lauf.test.assert_eq;
+    [ uint 0x1234; uint 4; $lauf.test.dynamic2; $lauf.bits.ushr; ] uint 0x123; $lauf.test.assert_eq;
     return;
 }
 function @sshr() {
-    [ sint 0x1234; uint 4; $lauf.bits.sshr; ] sint 0x123; $lauf.test.assert_eq;
-    [ sint -2; uint 1; $lauf.bits.sshr; ] sint -1; $lauf.test.assert_eq;
+    [ sint 0x1234; uint 4; $lauf.test.dynamic2; $lauf.bits.sshr; ] sint 0x123; $lauf.test.assert_eq;
+    [ sint -2; uint 1; $lauf.test.dynamic2; $lauf.bits.sshr; ] sint -1; $lauf.test.assert_eq;
     return;
 }
 
 function @none_set() {
-    [ uint 0; $lauf.bits.none_set; ] uint 1; $lauf.test.assert_eq;
-    [ uint 11; $lauf.bits.none_set; ] uint 0; $lauf.test.assert_eq;
-    [ sint -1; $lauf.bits.none_set; ] uint 0; $lauf.test.assert_eq;
+    [ uint 0; $lauf.test.dynamic; $lauf.bits.none_set; ] uint 1; $lauf.test.assert_eq;
+    [ uint 11; $lauf.test.dynamic; $lauf.bits.none_set; ] uint 0; $lauf.test.assert_eq;
+    [ sint -1; $lauf.test.dynamic; $lauf.bits.none_set; ] uint 0; $lauf.test.assert_eq;
     return;
 }
 function @any_set() {
-    [ uint 0; $lauf.bits.any_set; ] uint 0; $lauf.test.assert_eq;
-    [ uint 11; $lauf.bits.any_set; ] uint 1; $lauf.test.assert_eq;
-    [ sint -1; $lauf.bits.any_set; ] uint 1; $lauf.test.assert_eq;
+    [ uint 0; $lauf.test.dynamic; $lauf.bits.any_set; ] uint 0; $lauf.test.assert_eq;
+    [ uint 11; $lauf.test.dynamic; $lauf.bits.any_set; ] uint 1; $lauf.test.assert_eq;
+    [ sint -1; $lauf.test.dynamic; $lauf.bits.any_set; ] uint 1; $lauf.test.assert_eq;
     return;
 }
 function @all_set() {
-    [ uint 0; $lauf.bits.all_set; ] uint 0; $lauf.test.assert_eq;
-    [ uint 11; $lauf.bits.all_set; ] uint 0; $lauf.test.assert_eq;
-    [ sint -1; $lauf.bits.all_set; ] uint 1; $lauf.test.assert_eq;
+    [ uint 0; $lauf.test.dynamic; $lauf.bits.all_set; ] uint 0; $lauf.test.assert_eq;
+    [ uint 11; $lauf.test.dynamic; $lauf.bits.all_set; ] uint 0; $lauf.test.assert_eq;
+    [ sint -1; $lauf.test.dynamic; $lauf.bits.all_set; ] uint 1; $lauf.test.assert_eq;
     return;
 }
 

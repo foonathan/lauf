@@ -1,391 +1,391 @@
 module @int;
 
 function @sadd_flag() {
-    [ sint 11; sint 42; $lauf.int.sadd_flag; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.sadd_flag; ]
     sint 0; $lauf.test.assert_eq; sint 53; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.sadd_flag; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.sadd_flag; ]
     sint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_FFFF; $lauf.test.assert_eq;
 
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.sadd_flag; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.test.dynamic2; $lauf.int.sadd_flag; ]
     sint 1; $lauf.test.assert_eq; uint 0x7FFF_FFFF_FFFF_0001; $lauf.test.assert_eq;
 
     return;
 }
 function @sadd_wrap() {
-    [ sint 11; sint 42; $lauf.int.sadd_wrap; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.sadd_wrap; ]
     sint 53; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.sadd_wrap; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.sadd_wrap; ]
     uint 0x8000_0000_0000_FFFF; $lauf.test.assert_eq;
 
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.sadd_wrap; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.test.dynamic2; $lauf.int.sadd_wrap; ]
     uint 0x7FFF_FFFF_FFFF_0001; $lauf.test.assert_eq;
 
     return;
 }
 function @sadd_sat() {
-    [ sint 11; sint 42; $lauf.int.sadd_sat; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.sadd_sat; ]
     sint 53; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.sadd_sat; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.sadd_sat; ]
     uint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
 
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.sadd_sat; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.test.dynamic2; $lauf.int.sadd_sat; ]
     uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @sadd_panic() {
-    [ sint 11; sint 42; $lauf.int.sadd_panic; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.sadd_panic; ]
     sint 53; $lauf.test.assert_eq;
 
     return;
 }
 
 function @ssub_flag() {
-    [ sint 11; sint 42; $lauf.int.ssub_flag; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.ssub_flag; ]
     sint 0; $lauf.test.assert_eq; sint -31; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.ssub_flag; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.test.dynamic2; $lauf.int.ssub_flag; ]
     sint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_FFFF; $lauf.test.assert_eq;
 
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.ssub_flag; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.ssub_flag; ]
     sint 1; $lauf.test.assert_eq; uint 0x7FFF_FFFF_FFFF_0001; $lauf.test.assert_eq;
 
     return;
 }
 function @ssub_wrap() {
-    [ sint 11; sint 42; $lauf.int.ssub_wrap; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.ssub_wrap; ]
     sint -31; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.ssub_wrap; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.test.dynamic2; $lauf.int.ssub_wrap; ]
     uint 0x8000_0000_0000_FFFF; $lauf.test.assert_eq;
 
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.ssub_wrap; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.ssub_wrap; ]
     uint 0x7FFF_FFFF_FFFF_0001; $lauf.test.assert_eq;
 
     return;
 }
 function @ssub_sat() {
-    [ sint 11; sint 42; $lauf.int.ssub_sat; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.ssub_sat; ]
     sint -31; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.int.ssub_sat; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -0x1_FFFF; $lauf.test.dynamic2; $lauf.int.ssub_sat; ]
     uint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
 
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.int.ssub_sat; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.ssub_sat; ]
     uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @ssub_panic() {
-    [ sint 11; sint 42; $lauf.int.ssub_panic; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.ssub_panic; ]
     sint -31; $lauf.test.assert_eq;
 
     return;
 }
 
 function @smul_flag() {
-    [ sint 11; sint 42; $lauf.int.smul_flag; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.smul_flag; ]
     sint 0; $lauf.test.assert_eq; sint 462; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_flag; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.test.dynamic2; $lauf.int.smul_flag; ]
     sint 1; $lauf.test.assert_eq; uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_flag; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.test.dynamic2; $lauf.int.smul_flag; ]
     sint 1; $lauf.test.assert_eq; uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_flag; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.test.dynamic2; $lauf.int.smul_flag; ]
     sint 1; $lauf.test.assert_eq; uint 0x2_0000; $lauf.test.assert_eq;
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_flag; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.test.dynamic2; $lauf.int.smul_flag; ]
     sint 1; $lauf.test.assert_eq; uint 0x2_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @smul_wrap() {
-    [ sint 11; sint 42; $lauf.int.smul_wrap; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.smul_wrap; ]
     sint 462; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_wrap; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.test.dynamic2; $lauf.int.smul_wrap; ]
     uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_wrap; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.test.dynamic2; $lauf.int.smul_wrap; ]
     uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_wrap; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.test.dynamic2; $lauf.int.smul_wrap; ]
     uint 0x2_0000; $lauf.test.assert_eq;
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_wrap; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.test.dynamic2; $lauf.int.smul_wrap; ]
     uint 0x2_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @smul_sat() {
-    [ sint 11; sint 42; $lauf.int.smul_sat; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.smul_sat; ]
     sint 462; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_sat; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.test.dynamic2; $lauf.int.smul_sat; ]
     uint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_sat; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.test.dynamic2; $lauf.int.smul_sat; ]
     uint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
 
-    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.int.smul_sat; ]
+    [ sint 0x7FFF_FFFF_FFFF_0000; sint -2; $lauf.test.dynamic2; $lauf.int.smul_sat; ]
     uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
-    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.int.smul_sat; ]
+    [ sint -0x7FFF_FFFF_FFFF_0000; sint 2; $lauf.test.dynamic2; $lauf.int.smul_sat; ]
     uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @smul_panic() {
-    [ sint 11; sint 42; $lauf.int.smul_panic; ]
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.smul_panic; ]
     sint 462; $lauf.test.assert_eq;
 
     return;
 }
 
 function @uadd_flag() {
-    [ uint 11; uint 42; $lauf.int.uadd_flag; ]
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.uadd_flag; ]
     uint 0; $lauf.test.assert_eq; uint 53; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.int.uadd_flag; ]
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.uadd_flag; ]
     uint 1; $lauf.test.assert_eq; uint 0xFFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @uadd_wrap() {
-    [ uint 11; uint 42; $lauf.int.uadd_wrap; ]
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.uadd_wrap; ]
     uint 53; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.int.uadd_wrap; ]
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.uadd_wrap; ]
     uint 0xFFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @uadd_sat() {
-    [ uint 11; uint 42; $lauf.int.uadd_sat; ]
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.uadd_sat; ]
     uint 53; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.int.uadd_sat; ]
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 0x1_FFFF; $lauf.test.dynamic2; $lauf.int.uadd_sat; ]
     uint 0xFFFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @uadd_panic() {
-    [ uint 11; uint 42; $lauf.int.uadd_panic; ]
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.uadd_panic; ]
     uint 53; $lauf.test.assert_eq;
 
     return;
 }
 
 function @usub_flag() {
-    [ uint 42; uint 11; $lauf.int.usub_flag; ]
+    [ uint 42; uint 11; $lauf.test.dynamic2; $lauf.int.usub_flag; ]
     uint 0; $lauf.test.assert_eq; uint 31; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.int.usub_flag; ]
+    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.test.dynamic2; $lauf.int.usub_flag; ]
     uint 1; $lauf.test.assert_eq; uint 0x1_FFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @usub_wrap() {
-    [ uint 42; uint 11; $lauf.int.usub_wrap; ]
+    [ uint 42; uint 11; $lauf.test.dynamic2; $lauf.int.usub_wrap; ]
     uint 31; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.int.usub_wrap; ]
+    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.test.dynamic2; $lauf.int.usub_wrap; ]
     uint 0x1_FFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @usub_sat() {
-    [ uint 42; uint 11; $lauf.int.usub_sat; ]
+    [ uint 42; uint 11; $lauf.test.dynamic2; $lauf.int.usub_sat; ]
     uint 31; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.int.usub_sat; ]
+    [ uint 0xFFFF; uint 0xFFFF_FFFF_FFFF_0000; $lauf.test.dynamic2; $lauf.int.usub_sat; ]
     uint 0; $lauf.test.assert_eq;
 
     return;
 }
 function @usub_panic() {
-    [ uint 42; uint 11; $lauf.int.usub_panic; ]
+    [ uint 42; uint 11; $lauf.test.dynamic2; $lauf.int.usub_panic; ]
     uint 31; $lauf.test.assert_eq;
 
     return;
 }
 
 function @umul_flag() {
-    [ uint 11; uint 42; $lauf.int.umul_flag; ]
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.umul_flag; ]
     uint 0; $lauf.test.assert_eq; uint 462; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.int.umul_flag; ]
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.test.dynamic2; $lauf.int.umul_flag; ]
     uint 1; $lauf.test.assert_eq; uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @umul_wrap() {
-    [ uint 11; uint 42; $lauf.int.umul_wrap; ]
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.umul_wrap; ]
     uint 462; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.int.umul_wrap; ]
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.test.dynamic2; $lauf.int.umul_wrap; ]
     uint 0xFFFF_FFFF_FFFE_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @umul_sat() {
-    [ uint 11; uint 42; $lauf.int.umul_sat; ]
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.umul_sat; ]
     uint 462; $lauf.test.assert_eq;
 
-    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.int.umul_sat; ]
+    [ uint 0xFFFF_FFFF_FFFF_0000; uint 2; $lauf.test.dynamic2; $lauf.int.umul_sat; ]
     uint 0xFFFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @umul_panic() {
-    [ uint 11; uint 42; $lauf.int.umul_panic; ]
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.umul_panic; ]
     uint 462; $lauf.test.assert_eq;
 
     return;
 }
 
 function @sdiv_flag() {
-    [ sint 11; sint 3; $lauf.int.sdiv_flag; ] sint 0; $lauf.test.assert_eq; sint 3; $lauf.test.assert_eq;
-    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.int.sdiv_flag; ] sint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+    [ sint 11; sint 3; $lauf.test.dynamic2; $lauf.int.sdiv_flag; ] sint 0; $lauf.test.assert_eq; sint 3; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.test.dynamic2; $lauf.int.sdiv_flag; ] sint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @sdiv_wrap() {
-    [ sint 11; sint 3; $lauf.int.sdiv_wrap; ] sint 3; $lauf.test.assert_eq;
-    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.int.sdiv_wrap; ] uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+    [ sint 11; sint 3; $lauf.test.dynamic2; $lauf.int.sdiv_wrap; ] sint 3; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.test.dynamic2; $lauf.int.sdiv_wrap; ] uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @sdiv_sat() {
-    [ sint 11; sint 3; $lauf.int.sdiv_sat; ] sint 3; $lauf.test.assert_eq;
-    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.int.sdiv_sat; ] sint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+    [ sint 11; sint 3; $lauf.test.dynamic2; $lauf.int.sdiv_sat; ] sint 3; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; sint -1; $lauf.test.dynamic2; $lauf.int.sdiv_sat; ] sint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @sdiv_panic() {
-    [ sint 11; sint 3; $lauf.int.sdiv_panic; ] sint 3; $lauf.test.assert_eq;
+    [ sint 11; sint 3; $lauf.test.dynamic2; $lauf.int.sdiv_panic; ] sint 3; $lauf.test.assert_eq;
 
     return;
 }
 
 function @udiv() {
-    [ uint 11; uint 3; $lauf.int.udiv; ] uint 3; $lauf.test.assert_eq;
+    [ uint 11; uint 3; $lauf.test.dynamic2; $lauf.int.udiv; ] uint 3; $lauf.test.assert_eq;
 
     return;
 }
 
 function @srem() {
-    [ sint 11; sint 3; $lauf.int.srem; ] sint 2; $lauf.test.assert_eq;
-    [ sint -11; sint 3; $lauf.int.srem; ] sint -2; $lauf.test.assert_eq;
-    [ sint 11; sint -3; $lauf.int.srem; ] sint 2; $lauf.test.assert_eq;
-    [ sint -11; sint -3; $lauf.int.srem; ] sint -2; $lauf.test.assert_eq;
+    [ sint 11; sint 3; $lauf.test.dynamic2; $lauf.int.srem; ] sint 2; $lauf.test.assert_eq;
+    [ sint -11; sint 3; $lauf.test.dynamic2; $lauf.int.srem; ] sint -2; $lauf.test.assert_eq;
+    [ sint 11; sint -3; $lauf.test.dynamic2; $lauf.int.srem; ] sint 2; $lauf.test.assert_eq;
+    [ sint -11; sint -3; $lauf.test.dynamic2; $lauf.int.srem; ] sint -2; $lauf.test.assert_eq;
 
     return;
 }
 function @urem() {
-    [ uint 11; uint 3; $lauf.int.srem; ] uint 2; $lauf.test.assert_eq;
+    [ uint 11; uint 3; $lauf.test.dynamic2; $lauf.int.srem; ] uint 2; $lauf.test.assert_eq;
 
     return;
 }
 
 function @scmp() {
-    [ sint 11; sint 42; $lauf.int.scmp; ] cc lt; $lauf.test.assert;
-    [ sint 42; sint 11; $lauf.int.scmp; ] cc gt; $lauf.test.assert;
-    [ sint 42; sint 42; $lauf.int.scmp; ] cc eq; $lauf.test.assert;
+    [ sint 11; sint 42; $lauf.test.dynamic2; $lauf.int.scmp; ] cc lt; $lauf.test.assert;
+    [ sint 42; sint 11; $lauf.test.dynamic2; $lauf.int.scmp; ] cc gt; $lauf.test.assert;
+    [ sint 42; sint 42; $lauf.test.dynamic2; $lauf.int.scmp; ] cc eq; $lauf.test.assert;
 
-    [ sint -11; sint 42; $lauf.int.scmp; ] cc lt; $lauf.test.assert;
-    [ sint 42; sint -11; $lauf.int.scmp; ] cc gt; $lauf.test.assert;
-    [ sint -42; sint -42; $lauf.int.scmp; ] cc eq; $lauf.test.assert;
+    [ sint -11; sint 42; $lauf.test.dynamic2; $lauf.int.scmp; ] cc lt; $lauf.test.assert;
+    [ sint 42; sint -11; $lauf.test.dynamic2; $lauf.int.scmp; ] cc gt; $lauf.test.assert;
+    [ sint -42; sint -42; $lauf.test.dynamic2; $lauf.int.scmp; ] cc eq; $lauf.test.assert;
 
     return;
 }
 function @ucmp() {
-    [ uint 11; uint 42; $lauf.int.ucmp; ] cc lt; $lauf.test.assert;
-    [ uint 42; uint 11; $lauf.int.ucmp; ] cc gt; $lauf.test.assert;
-    [ uint 42; uint 42; $lauf.int.ucmp; ] cc eq; $lauf.test.assert;
+    [ uint 11; uint 42; $lauf.test.dynamic2; $lauf.int.ucmp; ] cc lt; $lauf.test.assert;
+    [ uint 42; uint 11; $lauf.test.dynamic2; $lauf.int.ucmp; ] cc gt; $lauf.test.assert;
+    [ uint 42; uint 42; $lauf.test.dynamic2; $lauf.int.ucmp; ] cc eq; $lauf.test.assert;
 
     return;
 }
 
 function @stou_flag() {
-    [ sint 11; $lauf.int.stou_flag; ] uint 0; $lauf.test.assert_eq;  uint 11; $lauf.test.assert_eq;
-    [ sint -42; $lauf.int.stou_flag; ] uint 1; $lauf.test.assert_eq; uint 0xFFFF_FFFF_FFFF_FFD6; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.stou_flag; ] uint 0; $lauf.test.assert_eq;  uint 11; $lauf.test.assert_eq;
+    [ sint -42; $lauf.test.dynamic; $lauf.int.stou_flag; ] uint 1; $lauf.test.assert_eq; uint 0xFFFF_FFFF_FFFF_FFD6; $lauf.test.assert_eq;
 
     return;
 }
 function @stou_wrap() {
-    [ sint 11; $lauf.int.stou_wrap; ] uint 11; $lauf.test.assert_eq;
-    [ sint -42; $lauf.int.stou_wrap; ] uint 0xFFFF_FFFF_FFFF_FFD6; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.stou_wrap; ] uint 11; $lauf.test.assert_eq;
+    [ sint -42; $lauf.test.dynamic; $lauf.int.stou_wrap; ] uint 0xFFFF_FFFF_FFFF_FFD6; $lauf.test.assert_eq;
 
     return;
 }
 function @stou_sat() {
-    [ sint 11; $lauf.int.stou_sat; ] uint 11; $lauf.test.assert_eq;
-    [ sint -42; $lauf.int.stou_sat; ] uint 0; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.stou_sat; ] uint 11; $lauf.test.assert_eq;
+    [ sint -42; $lauf.test.dynamic; $lauf.int.stou_sat; ] uint 0; $lauf.test.assert_eq;
 
     return;
 }
 function @stou_panic() {
-    [ sint 11; $lauf.int.stou_panic; ] uint 11; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.stou_panic; ] uint 11; $lauf.test.assert_eq;
 
     return;
 }
 
 function @utos_flag() {
-    [ uint 11; $lauf.int.utos_flag; ] uint 0; $lauf.test.assert_eq;  sint 11; $lauf.test.assert_eq;
-    [ uint 0xFFFF_FFFF_FFFF_FFFE; $lauf.int.utos_flag; ] uint 1; $lauf.test.assert_eq; sint -2; $lauf.test.assert_eq;
+    [ uint 11; $lauf.test.dynamic; $lauf.int.utos_flag; ] uint 0; $lauf.test.assert_eq;  sint 11; $lauf.test.assert_eq;
+    [ uint 0xFFFF_FFFF_FFFF_FFFE; $lauf.test.dynamic; $lauf.int.utos_flag; ] uint 1; $lauf.test.assert_eq; sint -2; $lauf.test.assert_eq;
 
     return;
 }
 function @utos_wrap() {
-    [ uint 11; $lauf.int.utos_wrap; ] sint 11; $lauf.test.assert_eq;
-    [ uint 0xFFFF_FFFF_FFFF_FFFE; $lauf.int.utos_wrap; ] sint -2; $lauf.test.assert_eq;
+    [ uint 11; $lauf.test.dynamic; $lauf.int.utos_wrap; ] sint 11; $lauf.test.assert_eq;
+    [ uint 0xFFFF_FFFF_FFFF_FFFE; $lauf.test.dynamic; $lauf.int.utos_wrap; ] sint -2; $lauf.test.assert_eq;
 
     return;
 }
 function @utos_sat() {
-    [ uint 11; $lauf.int.utos_sat; ] sint 11; $lauf.test.assert_eq;
-    [ uint 0xFFFF_FFFF_FFFF_FFFE; $lauf.int.utos_sat; ] sint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+    [ uint 11; $lauf.test.dynamic; $lauf.int.utos_sat; ] sint 11; $lauf.test.assert_eq;
+    [ uint 0xFFFF_FFFF_FFFF_FFFE; $lauf.test.dynamic; $lauf.int.utos_sat; ] sint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @utos_panic() {
-    [ uint 11; $lauf.int.utos_panic; ] sint 11; $lauf.test.assert_eq;
+    [ uint 11; $lauf.test.dynamic; $lauf.int.utos_panic; ] sint 11; $lauf.test.assert_eq;
 
     return;
 }
 
 function @sabs_flag() {
-    [ sint 11; $lauf.int.sabs_flag; ] uint 0; $lauf.test.assert_eq;  sint 11; $lauf.test.assert_eq;
-    [ sint -42; $lauf.int.sabs_flag; ] uint 0; $lauf.test.assert_eq; sint 42; $lauf.test.assert_eq;
-    [ uint 0x8000_0000_0000_0000; $lauf.int.sabs_flag; ] uint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.sabs_flag; ] uint 0; $lauf.test.assert_eq;  sint 11; $lauf.test.assert_eq;
+    [ sint -42; $lauf.test.dynamic; $lauf.int.sabs_flag; ] uint 0; $lauf.test.assert_eq; sint 42; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; $lauf.test.dynamic; $lauf.int.sabs_flag; ] uint 1; $lauf.test.assert_eq; uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @sabs_wrap() {
-    [ sint 11; $lauf.int.sabs_wrap; ] sint 11; $lauf.test.assert_eq;
-    [ sint -42; $lauf.int.sabs_wrap; ] sint 42; $lauf.test.assert_eq;
-    [ uint 0x8000_0000_0000_0000; $lauf.int.sabs_wrap; ] uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.sabs_wrap; ] sint 11; $lauf.test.assert_eq;
+    [ sint -42; $lauf.test.dynamic; $lauf.int.sabs_wrap; ] sint 42; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; $lauf.test.dynamic; $lauf.int.sabs_wrap; ] uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
 
     return;
 }
 function @sabs_sat() {
-    [ sint 11; $lauf.int.sabs_sat; ] sint 11; $lauf.test.assert_eq;
-    [ sint -42; $lauf.int.sabs_sat; ] sint 42; $lauf.test.assert_eq;
-    [ uint 0x8000_0000_0000_0000; $lauf.int.sabs_sat; ] sint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.sabs_sat; ] sint 11; $lauf.test.assert_eq;
+    [ sint -42; $lauf.test.dynamic; $lauf.int.sabs_sat; ] sint 42; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; $lauf.test.dynamic; $lauf.int.sabs_sat; ] sint 0x7FFF_FFFF_FFFF_FFFF; $lauf.test.assert_eq;
 
     return;
 }
 function @sabs_panic() {
-    [ sint 11; $lauf.int.sabs_panic; ] sint 11; $lauf.test.assert_eq;
-    [ sint -42; $lauf.int.sabs_panic; ] sint 42; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.sabs_panic; ] sint 11; $lauf.test.assert_eq;
+    [ sint -42; $lauf.test.dynamic; $lauf.int.sabs_panic; ] sint 42; $lauf.test.assert_eq;
 
     return;
 }
 
 function @uabs() {
-    [ sint 11; $lauf.int.sabs_wrap; ] uint 11; $lauf.test.assert_eq;
-    [ sint -42; $lauf.int.sabs_wrap; ] uint 42; $lauf.test.assert_eq;
-    [ uint 0x8000_0000_0000_0000; $lauf.int.sabs_wrap; ] uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
+    [ sint 11; $lauf.test.dynamic; $lauf.int.sabs_wrap; ] uint 11; $lauf.test.assert_eq;
+    [ sint -42; $lauf.test.dynamic; $lauf.int.sabs_wrap; ] uint 42; $lauf.test.assert_eq;
+    [ uint 0x8000_0000_0000_0000; $lauf.test.dynamic; $lauf.int.sabs_wrap; ] uint 0x8000_0000_0000_0000; $lauf.test.assert_eq;
 
     return;
 }
@@ -393,15 +393,15 @@ function @uabs() {
 function @s8() {
     local %i : $lauf.int.S8;
 
-    sint 11; $lauf.int.s8_overflow; uint 0; $lauf.test.assert_eq;
+    sint 11; $lauf.test.dynamic; $lauf.int.s8_overflow; uint 0; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S8 0;
     local_addr %i; load_field $lauf.int.S8 0; sint 11; $lauf.test.assert_eq;
 
-    sint -129; $lauf.int.s8_overflow; uint 1; $lauf.test.assert_eq;
+    sint -129; $lauf.test.dynamic; $lauf.int.s8_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S8 0;
     local_addr %i; load_field $lauf.int.S8 0; sint 127; $lauf.test.assert_eq;
 
-    sint 128; $lauf.int.s8_overflow; uint 1; $lauf.test.assert_eq;
+    sint 128; $lauf.test.dynamic; $lauf.int.s8_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S8 0;
     local_addr %i; load_field $lauf.int.S8 0; sint -128; $lauf.test.assert_eq;
 
@@ -410,15 +410,15 @@ function @s8() {
 function @s16() {
     local %i : $lauf.int.S16;
 
-    sint 11; $lauf.int.s16_overflow; uint 0; $lauf.test.assert_eq;
+    sint 11; $lauf.test.dynamic; $lauf.int.s16_overflow; uint 0; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S16 0;
     local_addr %i; load_field $lauf.int.S16 0; sint 11; $lauf.test.assert_eq;
 
-    sint -32769; $lauf.int.s16_overflow; uint 1; $lauf.test.assert_eq;
+    sint -32769; $lauf.test.dynamic; $lauf.int.s16_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S16 0;
     local_addr %i; load_field $lauf.int.S16 0; sint 32767; $lauf.test.assert_eq;
 
-    sint 32768; $lauf.int.s16_overflow; uint 1; $lauf.test.assert_eq;
+    sint 32768; $lauf.test.dynamic; $lauf.int.s16_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S16 0;
     local_addr %i; load_field $lauf.int.S16 0; sint -32768; $lauf.test.assert_eq;
 
@@ -427,15 +427,15 @@ function @s16() {
 function @s32() {
     local %i : $lauf.int.S32;
 
-    sint 11; $lauf.int.s32_overflow; uint 0; $lauf.test.assert_eq;
+    sint 11; $lauf.test.dynamic; $lauf.int.s32_overflow; uint 0; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S32 0;
     local_addr %i; load_field $lauf.int.S32 0; sint 11; $lauf.test.assert_eq;
 
-    sint -2147483649; $lauf.int.s32_overflow; uint 1; $lauf.test.assert_eq;
+    sint -2147483649; $lauf.test.dynamic; $lauf.int.s32_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S32 0;
     local_addr %i; load_field $lauf.int.S32 0; sint 2147483647; $lauf.test.assert_eq;
 
-    sint 2147483648; $lauf.int.s32_overflow; uint 1; $lauf.test.assert_eq;
+    sint 2147483648; $lauf.test.dynamic; $lauf.int.s32_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S32 0;
     local_addr %i; load_field $lauf.int.S32 0; sint -2147483648; $lauf.test.assert_eq;
 
@@ -444,7 +444,7 @@ function @s32() {
 function @s64() {
     local %i : $lauf.int.S64;
 
-    sint 11; $lauf.int.s64_overflow; uint 0; $lauf.test.assert_eq;
+    sint 11; $lauf.test.dynamic; $lauf.int.s64_overflow; uint 0; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.S64 0;
     local_addr %i; load_field $lauf.int.S64 0; sint 11; $lauf.test.assert_eq;
 
@@ -454,11 +454,11 @@ function @s64() {
 function @u8() {
     local %i : $lauf.int.U8;
 
-    uint 11; $lauf.int.u8_overflow; uint 0; $lauf.test.assert_eq;
+    uint 11; $lauf.test.dynamic; $lauf.int.u8_overflow; uint 0; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.U8 0;
     local_addr %i; load_field $lauf.int.U8 0; uint 11; $lauf.test.assert_eq;
 
-    uint 0x101; $lauf.int.u8_overflow; uint 1; $lauf.test.assert_eq;
+    uint 0x101; $lauf.test.dynamic; $lauf.int.u8_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.U8 0;
     local_addr %i; load_field $lauf.int.U8 0; uint 1; $lauf.test.assert_eq;
 
@@ -467,11 +467,11 @@ function @u8() {
 function @u16() {
     local %i : $lauf.int.U16;
 
-    uint 11; $lauf.int.u16_overflow; uint 0; $lauf.test.assert_eq;
+    uint 11; $lauf.test.dynamic; $lauf.int.u16_overflow; uint 0; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.U16 0;
     local_addr %i; load_field $lauf.int.U16 0; uint 11; $lauf.test.assert_eq;
 
-    uint 0x1_0001; $lauf.int.u16_overflow; uint 1; $lauf.test.assert_eq;
+    uint 0x1_0001; $lauf.test.dynamic; $lauf.int.u16_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.U16 0;
     local_addr %i; load_field $lauf.int.U16 0; uint 1; $lauf.test.assert_eq;
 
@@ -480,11 +480,11 @@ function @u16() {
 function @u32() {
     local %i : $lauf.int.U32;
 
-    uint 11; $lauf.int.u32_overflow; uint 0; $lauf.test.assert_eq;
+    uint 11; $lauf.test.dynamic; $lauf.int.u32_overflow; uint 0; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.U32 0;
     local_addr %i; load_field $lauf.int.U32 0; uint 11; $lauf.test.assert_eq;
 
-    uint 0x1_0000_0001; $lauf.int.u32_overflow; uint 1; $lauf.test.assert_eq;
+    uint 0x1_0000_0001; $lauf.test.dynamic; $lauf.int.u32_overflow; uint 1; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.U32 0;
     local_addr %i; load_field $lauf.int.U32 0; uint 1; $lauf.test.assert_eq;
 
@@ -493,7 +493,7 @@ function @u32() {
 function @u64() {
     local %i : $lauf.int.U64;
 
-    uint 11; $lauf.int.u32_overflow; uint 0; $lauf.test.assert_eq;
+    uint 11; $lauf.test.dynamic; $lauf.int.u32_overflow; uint 0; $lauf.test.assert_eq;
     local_addr %i; store_field $lauf.int.U32 0;
     local_addr %i; load_field $lauf.int.U32 0; uint 11; $lauf.test.assert_eq;
 

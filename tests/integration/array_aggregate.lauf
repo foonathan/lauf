@@ -3,11 +3,11 @@ module @array_aggregate;
 function @local_array() {
     local %array : [2]$lauf.Value;
 
-    uint 11; [ local_addr %array; uint 0; array_element $lauf.Value; ] store_field $lauf.Value 0;
-    uint 42; [ local_addr %array; uint 1; array_element $lauf.Value; ] store_field $lauf.Value 0;
+    uint 11; [ local_addr %array; uint 0; array_element $lauf.Value; ] $lauf.test.dynamic; store_field $lauf.Value 0;
+    uint 42; [ local_addr %array; uint 1; array_element $lauf.Value; ] $lauf.test.dynamic; store_field $lauf.Value 0;
 
-    [ local_addr %array; uint 0; array_element $lauf.Value; ] load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
-    [ local_addr %array; uint 1; array_element $lauf.Value; ] load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+    [ local_addr %array; uint 0; array_element $lauf.Value; ] $lauf.test.dynamic; load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+    [ local_addr %array; uint 1; array_element $lauf.Value; ] $lauf.test.dynamic; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
 
     return;
 }
@@ -16,9 +16,9 @@ function @array_zero_element() {
     local %array : [2]$lauf.Value;
 
     uint 11; local_addr %array; store_field $lauf.Value 0;
-    [ local_addr %array; uint 0; array_element $lauf.Value; ] load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+    [ local_addr %array; uint 0; array_element $lauf.Value; ] $lauf.test.dynamic; load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
 
-    uint 42; [ local_addr %array; uint 0; array_element $lauf.Value; ] store_field $lauf.Value 0;
+    uint 42; [ local_addr %array; uint 0; array_element $lauf.Value; ] $lauf.test.dynamic; store_field $lauf.Value 0;
     local_addr %array; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
 
     return;
@@ -27,11 +27,11 @@ function @array_zero_element() {
 function @local_aggregate() {
     local %agg : {$lauf.Value, $lauf.Value};
 
-    uint 11; [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 0; ] store_field $lauf.Value 0;
-    uint 42; [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 1; ] store_field $lauf.Value 0;
+    uint 11; [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 0; ] $lauf.test.dynamic; store_field $lauf.Value 0;
+    uint 42; [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 1; ] $lauf.test.dynamic; store_field $lauf.Value 0;
 
-    [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 0; ] load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
-    [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 1; ] load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
+    [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 0; ] $lauf.test.dynamic; load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+    [ local_addr %agg; aggregate_member { $lauf.Value, $lauf.Value } 1; ] $lauf.test.dynamic; load_field $lauf.Value 0; uint 42; $lauf.test.assert_eq;
 
     return;
 }
