@@ -11,6 +11,7 @@
 #include <lauf/lib/int.h>
 #include <lauf/lib/limits.h>
 #include <lauf/lib/memory.h>
+#include <lauf/lib/platform.h>
 #include <lauf/lib/test.h>
 
 LAUF_HEADER_START

@@ -51,8 +51,17 @@ function @transfer_and_back() {
 }
 
 function @main(0 => 1) {
-    call @resume_and_suspend; 
-    call @transfer_and_back;
-    uint 0; return;
+    block %entry() {
+        $lauf.platform.vm;
+        branch %vm() %exit(0 => 1);
+    }
+    block %vm() {
+        call @resume_and_suspend; 
+        call @transfer_and_back;
+        jump %exit(0 => 1);
+    }
+    block %exit(0 => 1){
+        uint 0; return;
+    }
 }
 

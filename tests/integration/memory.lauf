@@ -163,21 +163,30 @@ global const @msg_invalid_heap_address = "invalid heap address", 0;
 global const @msg_invalid_free = "cannot free split allocation", 0;
 
 function @main(0 => 1) {
-    call @poison_unpoison_memory;
-    function_addr @double_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
-    function_addr @unpoison_non_poisoned; global_addr @msg_invalid_address; $lauf.test.assert_panic;
-    function_addr @access_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+    block %entry() {
+        call @poison_unpoison_memory;
+        function_addr @double_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+        function_addr @unpoison_non_poisoned; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+        function_addr @access_poison; global_addr @msg_invalid_address; $lauf.test.assert_panic;
 
-    call @split_unsplit;
-    call @split4;
-    call @split_local;
-    function_addr @split_overflow; global_addr @msg_invalid_address; $lauf.test.assert_panic;
-    function_addr @split_heap_free; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
-    function_addr @split_local_free; global_addr @msg_invalid_free; $lauf.test.assert_panic;
+        call @addr_to_ptr;
+        call @addr_arithmetic;
 
-    call @addr_to_ptr;
-    call @addr_arithmetic;
+        $lauf.platform.vm;
+        branch %vm() %exit(0 => 1);
+    }
+    block %vm() {
+        call @split_unsplit;
+        call @split4;
+        call @split_local;
+        function_addr @split_overflow; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+        function_addr @split_heap_free; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
+        function_addr @split_local_free; global_addr @msg_invalid_free; $lauf.test.assert_panic;
 
-    uint 0; return;
+        jump %exit(0 => 1);
+    }
+    block %exit(0 => 1){
+        uint 0; return;
+    }
 }
 

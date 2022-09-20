@@ -501,31 +501,42 @@ function @u64() {
 }
 
 function @main(0 => 1) {
-    call @sadd_flag; call @sadd_wrap; call @sadd_sat; call @sadd_panic;
-    call @ssub_flag; call @ssub_wrap; call @ssub_sat; call @ssub_panic;
-    call @smul_flag; call @smul_wrap; call @smul_sat; call @smul_panic;
+    block %entry() {
+        call @sadd_wrap; call @ssub_wrap; call @smul_wrap;
+        call @uadd_wrap; call @usub_wrap; call @umul_wrap;
 
-    call @uadd_flag; call @uadd_wrap; call @uadd_sat; call @sadd_panic;
-    call @usub_flag; call @usub_wrap; call @usub_sat; call @ssub_panic;
-    call @umul_flag; call @umul_wrap; call @umul_sat; call @smul_sat;
+        call @sdiv_wrap; call @udiv;
+        call @srem; call @urem;
 
-    call @sdiv_flag; call @sdiv_wrap; call @sdiv_sat; call @sdiv_panic;
-    call @udiv;
+        call @scmp; call @ucmp;
+        call @stou_wrap; call @utos_wrap;
+        call @sabs_wrap; call @uabs;
 
-    call @srem;
-    call @urem;
+        call @s8; call @s16; call @s32; call @s64;
+        call @u8; call @u16; call @u32; call @u64;
 
-    call @scmp;
-    call @ucmp;
+        $lauf.platform.vm;
+        branch %vm() %exit(0 => 1);
+    }
+    block %vm() {
+        call @sadd_flag; call @sadd_sat; call @sadd_panic;
+        call @ssub_flag; call @ssub_sat; call @ssub_panic;
+        call @smul_flag; call @smul_sat; call @smul_panic;
 
-    call @stou_flag; call @stou_wrap; call @stou_sat; call @stou_panic;
-    call @utos_flag; call @utos_wrap; call @utos_sat; call @utos_panic;
-    call @sabs_flag; call @sabs_wrap; call @sabs_sat; call @sabs_panic;
-    call @uabs;
+        call @uadd_flag; call @uadd_sat; call @sadd_panic;
+        call @usub_flag; call @usub_sat; call @ssub_panic;
+        call @umul_flag; call @umul_sat; call @smul_sat;
 
-    call @s8; call @s16; call @s32; call @s64;
-    call @u8; call @u16; call @u32; call @u64;
+        call @sdiv_flag; call @sdiv_sat; call @sdiv_panic;
 
-    uint 0; return;
+        call @stou_flag; call @stou_sat; call @stou_panic;
+        call @utos_flag; call @utos_sat; call @utos_panic;
+        call @sabs_flag; call @sabs_sat; call @sabs_panic;
+
+        jump %exit(0 => 1);
+    }
+    block %exit(0 => 1){
+        uint 0; return;
+    }
 }
 

@@ -100,16 +100,26 @@ global const @msg_invalid_address = "invalid address", 0;
 global const @msg_invalid_heap_address = "invalid heap address", 0;
 
 function @main(0 => 1) {
-    call @heap_alloc;
-    call @heap_transfer_local;
-    call @heap_transfer_local_from_heap;
+    block %entry() {
+        call @heap_alloc;
 
-    call @heap_gc;
+        function_addr @heap_double_free; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
+        function_addr @heap_free_local; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
+        function_addr @heap_use_after_free; global_addr @msg_invalid_address; $lauf.test.assert_panic;
 
-    function_addr @heap_double_free; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
-    function_addr @heap_free_local; global_addr @msg_invalid_heap_address; $lauf.test.assert_panic;
-    function_addr @heap_use_after_free; global_addr @msg_invalid_address; $lauf.test.assert_panic;
+        $lauf.platform.vm;
+        branch %vm() %exit(0 => 1);
+    }
+    block %vm() {
+        call @heap_transfer_local;
+        call @heap_transfer_local_from_heap;
 
-    uint 0; return;
+        call @heap_gc;
+
+        jump %exit(0 => 1);
+    }
+    block %exit(0 => 1){
+        uint 0; return;
+    }
 }
 
