@@ -16,11 +16,21 @@
 #include <lauf/lib/platform.h>
 #include <lauf/lib/test.h>
 
-const lauf_backend_qbe_options lauf_backend_default_qbe_options = {0};
+namespace
+{
+constexpr lauf_backend_qbe_extern_function default_externs[]
+    = {{"lauf_heap_alloc", &lauf_lib_heap_alloc},
+       {"lauf_heap_alloc_array", &lauf_lib_heap_alloc_array},
+       {"lauf_heap_free", &lauf_lib_heap_free},
+       {"lauf_heap_gc", &lauf_lib_heap_gc}};
+}
+
+const lauf_backend_qbe_options lauf_backend_default_qbe_options
+    = {default_externs, sizeof(default_externs) / sizeof(default_externs[0])};
 
 namespace
 {
-void codegen_global(lauf::qbe_writer&      writer, lauf_backend_qbe_options,
+void codegen_global(lauf::qbe_writer&      writer, const lauf_backend_qbe_options&,
                     const lauf_asm_global* global)
 {
     writer.begin_data(lauf::qbe_data(global->allocation_idx), global->alignment);
@@ -39,16 +49,17 @@ void codegen_global(lauf::qbe_writer&      writer, lauf_backend_qbe_options,
     writer.end_data();
 }
 
-void codegen_function_return_type(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
-                                  const lauf_asm_function* fn)
+const char* extern_function_name(const lauf_backend_qbe_options& opts,
+                                 lauf_runtime_builtin_impl*      impl)
 {
-    if (fn->sig.output_count <= 1)
-        return;
+    for (auto i = 0u; i != opts.extern_fns_count; ++i)
+        if (opts.extern_fns[i].builtin->impl == impl)
+            return opts.extern_fns[i].name;
 
-    writer.tuple(fn->sig.output_count);
+    return nullptr;
 }
 
-void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
+void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& opts,
                       const lauf_asm_function* fn)
 {
     if (fn->exported)
@@ -218,6 +229,10 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
                 for (auto i = 0u; i != metadata.input_count; ++i)
                     pop_reg();
             }
+            else if (auto extern_fn = extern_function_name(opts, callee))
+            {
+                write_call(extern_fn, metadata.input_count, metadata.output_count);
+            }
             //=== type ===//
             else if (callee == lauf_asm_type_value.load_fn)
             {
@@ -298,44 +313,6 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
                 auto value = pop_reg();
                 writer.comparison(push_reg(), lauf::qbe_cc::ieq, lauf::qbe_type::value, value,
                                   std::uintmax_t(-1));
-            }
-            //=== heap ===//
-            else if (callee == lauf_lib_heap_alloc.impl)
-            {
-                auto size      = pop_reg();
-                auto alignment = pop_reg();
-
-                writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_type::value, "lauf_heap_alloc");
-                writer.argument(lauf::qbe_type::value, size);
-                writer.argument(lauf::qbe_type::value, alignment);
-                writer.end_call();
-                writer.copy(push_reg(), lauf::qbe_type::value, lauf::qbe_reg::tmp);
-            }
-            else if (callee == lauf_lib_heap_alloc_array.impl)
-            {
-                auto count     = pop_reg();
-                auto size      = pop_reg();
-                auto alignment = pop_reg();
-
-                writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_type::value,
-                                  "lauf_heap_alloc_array");
-                writer.argument(lauf::qbe_type::value, count);
-                writer.argument(lauf::qbe_type::value, size);
-                writer.argument(lauf::qbe_type::value, alignment);
-                writer.end_call();
-                writer.copy(push_reg(), lauf::qbe_type::value, lauf::qbe_reg::tmp);
-            }
-            else if (callee == lauf_lib_heap_free.impl)
-            {
-                auto ptr = pop_reg();
-
-                writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_void(), "lauf_heap_free");
-                writer.argument(lauf::qbe_type::value, ptr);
-                writer.end_call();
-            }
-            else if (callee == lauf_lib_heap_gc.impl)
-            { // NOLINT: allow repeated branch for clarity
-                writer.copy(push_reg(), lauf::qbe_type::value, std::uintmax_t(0));
             }
             //=== int ===//
             else if (callee == lauf_lib_int_sadd(LAUF_LIB_INT_OVERFLOW_WRAP).impl
@@ -532,7 +509,7 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
             }
             else if (callee == lauf_lib_int_s64_overflow.impl
                      || callee == lauf_lib_int_u64_overflow.impl)
-            {
+            { // NOLINT: repeated branch for clarity
                 writer.copy(push_reg(), lauf::qbe_type::value, std::uintmax_t(0));
             }
             //=== memory ===//
@@ -854,9 +831,6 @@ void lauf_backend_qbe(lauf_writer* _writer, lauf_backend_qbe_options options,
 
     if (mod->functions != nullptr)
     {
-        for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
-            codegen_function_return_type(writer, options, fn);
-
         for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
             codegen_function(writer, options, fn);
     }

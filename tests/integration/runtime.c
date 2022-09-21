@@ -24,3 +24,8 @@ void lauf_heap_free(void* ptr)
     free(ptr);
 }
 
+size_t lauf_heap_gc(void)
+{
+    return 0;
+}
+

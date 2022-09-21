@@ -13,10 +13,25 @@ typedef struct lauf_writer                  lauf_writer;
 typedef struct lauf_runtime_builtin         lauf_runtime_builtin_function;
 typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 
+/// Generates a function call in order to implement this builtin.
+///
+/// Each input value maps to a pointer-sized argument in order from left to right.
+/// The return value depends on the output count:
+/// * For 0, it returns void.
+/// * For 1, it returns a single pointer-sized value.
+/// * Otherwise, it returns a struct containing N pointer-size objects, filled from lower to higher
+/// addresses.
+typedef struct lauf_backend_qbe_extern_function
+{
+    const char*                 name;
+    const lauf_runtime_builtin* builtin;
+} lauf_backend_qbe_extern_function;
+
 /// Options for the QBE backend.
 typedef struct lauf_backend_qbe_options
 {
-    int _dummy;
+    const lauf_backend_qbe_extern_function* extern_fns;
+    size_t                                  extern_fns_count;
 } lauf_backend_qbe_options;
 
 /// The default QBE options.
