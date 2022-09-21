@@ -10,6 +10,7 @@
 #include <lauf/writer.hpp>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 
 namespace lauf
@@ -29,7 +30,11 @@ enum class qbe_type
 struct qbe_void
 {};
 
-using qbe_abi_type = std::variant<qbe_void, qbe_type, const char*>;
+enum class qbe_tuple : unsigned
+{
+};
+
+using qbe_abi_type = std::variant<qbe_void, qbe_type, qbe_tuple>;
 
 enum class qbe_data : unsigned
 {
@@ -76,40 +81,37 @@ enum class qbe_cc
 class qbe_writer
 {
 public:
-    explicit qbe_writer(lauf_writer* writer) : _writer(writer) {}
+    qbe_writer() : _writer(lauf_create_string_writer()) {}
 
     qbe_writer(const qbe_writer&)            = delete;
     qbe_writer& operator=(const qbe_writer&) = delete;
 
-    void finish()
+    void finish(lauf_writer* out) &&
     {
         for (auto& [str, id] : _literals)
         {
-            _writer->format("data $lit_%u = {", id);
+            out->format("data $lit_%u = {", id);
             for (auto c : str)
-                _writer->format("b %d, ", c);
-            _writer->write("}\n");
+                out->format("b %d, ", c);
+            out->write("}\n");
         }
+
+        for (auto size : _tuples)
+        {
+            out->format("type :tuple_%u = { %s %u }\n", size, type_name(lauf::qbe_type::value),
+                        size);
+        }
+
+        out->write("\n");
+        out->write(lauf_writer_get_string(_writer));
+        lauf_destroy_writer(_writer);
     }
 
     //=== type ===//
-    void begin_type(const char* name)
+    qbe_tuple tuple(unsigned size)
     {
-        _writer->format("type :%s =\n", name);
-        _writer->write("{\n");
-    }
-
-    void member(qbe_type ty, std::size_t count = 1)
-    {
-        if (count > 1)
-            _writer->format("%s %zu,\n", type_name(ty), count);
-        else
-            _writer->format("%s,\n", type_name(ty));
-    }
-
-    void end_type()
-    {
-        _writer->write("}\n\n");
+        _tuples.insert(size);
+        return qbe_tuple{size};
     }
 
     //=== linkage ===//
@@ -155,7 +157,7 @@ public:
         else if (std::holds_alternative<qbe_type>(ty))
             _writer->format("function %s $%s(", type_name(std::get<qbe_type>(ty)), name);
         else
-            _writer->format("function :%s $%s(", std::get<const char*>(ty), name);
+            _writer->format("function :tuple_%u $%s(", std::get<qbe_tuple>(ty), name);
     }
 
     void param(qbe_type ty, std::size_t idx)
@@ -344,7 +346,7 @@ public:
         else
         {
             write_reg(dest);
-            _writer->format(" =:%s call ", std::get<const char*>(ty));
+            _writer->format(" =:tuple_%u call ", std::get<qbe_tuple>(ty));
         }
 
         write_value(fn);
@@ -453,6 +455,7 @@ private:
 
     lauf_writer*                                 _writer;
     std::unordered_map<std::string, qbe_literal> _literals;
+    std::unordered_set<unsigned>                 _tuples;
 };
 } // namespace lauf
 

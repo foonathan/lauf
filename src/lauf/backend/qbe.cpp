@@ -45,9 +45,7 @@ void codegen_function_return_type(lauf::qbe_writer&        writer, lauf_backend_
     if (fn->sig.output_count <= 1)
         return;
 
-    writer.begin_type(fn->name);
-    writer.member(lauf::qbe_type::value, fn->sig.output_count);
-    writer.end_type();
+    writer.tuple(fn->sig.output_count);
 }
 
 void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
@@ -59,7 +57,7 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
     else if (fn->sig.output_count == 1)
         writer.begin_function(fn->name, lauf::qbe_type::value);
     else
-        writer.begin_function(fn->name, fn->name);
+        writer.begin_function(fn->name, writer.tuple(fn->sig.output_count));
 
     for (auto i = 0u; i != fn->sig.input_count; ++i)
         writer.param(lauf::qbe_type::value, i);
@@ -80,6 +78,36 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
 
     auto next_block = [id = fn->insts_count]() mutable { return lauf::qbe_block(id++); };
     auto next_alloc = [id = 0]() mutable { return lauf::qbe_alloc(id++); };
+
+    auto write_call
+        = [&](lauf::qbe_value callee, std::uint8_t input_count, std::uint8_t output_count) {
+              if (output_count == 0)
+                  writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_void{}, callee);
+              else if (output_count == 1)
+                  writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_type::value, callee);
+              else
+                  writer.begin_call(lauf::qbe_reg::tmp, writer.tuple(output_count), callee);
+
+              vstack -= input_count;
+              for (auto i = 0u; i != input_count; ++i)
+                  writer.argument(lauf::qbe_type::value, lauf::qbe_reg(vstack + i));
+
+              writer.end_call();
+              if (output_count == 1)
+              {
+                  writer.copy(push_reg(), lauf::qbe_type::value, lauf::qbe_reg::tmp);
+              }
+              else if (output_count > 1)
+              {
+                  for (auto i = 0u; i != output_count; ++i)
+                  {
+                      if (i > 0)
+                          writer.binary_op(lauf::qbe_reg::tmp, lauf::qbe_type::value, "add",
+                                           lauf::qbe_reg::tmp, std::uintmax_t(8));
+                      writer.load(push_reg(), lauf::qbe_type::value, lauf::qbe_reg::tmp);
+                  }
+              }
+          };
 
     auto dead_code = false;
     for (auto ip = fn->insts; ip != fn->insts + fn->insts_count; ++ip)
@@ -167,57 +195,12 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
 
         case lauf::asm_op::call: {
             auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(fn, ip->call.offset);
-            if (callee->sig.output_count == 0)
-                writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_void{}, callee->name);
-            else if (callee->sig.output_count == 1)
-                writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_type::value, callee->name);
-            else
-                writer.begin_call(lauf::qbe_reg::tmp, callee->name, callee->name);
-
-            vstack -= callee->sig.input_count;
-            for (auto i = 0u; i != callee->sig.input_count; ++i)
-                writer.argument(lauf::qbe_type::value, lauf::qbe_reg(vstack + i));
-
-            writer.end_call();
-            if (callee->sig.output_count == 1)
-            {
-                writer.copy(push_reg(), lauf::qbe_type::value, lauf::qbe_reg::tmp);
-            }
-            else if (callee->sig.output_count > 1)
-            {
-                for (auto i = 0u; i != callee->sig.output_count; ++i)
-                {
-                    if (i > 0)
-                        writer.binary_op(lauf::qbe_reg::tmp, lauf::qbe_type::value, "add",
-                                         lauf::qbe_reg::tmp, std::uintmax_t(8));
-                    writer.load(push_reg(), lauf::qbe_type::value, lauf::qbe_reg::tmp);
-                }
-            }
+            write_call(callee->name, callee->sig.input_count, callee->sig.output_count);
             break;
         }
-        case lauf::asm_op::call_indirect: {
-            if (ip->call_indirect.output_count > 1)
-            {
-                writer.panic(writer.literal(
-                    "unsupported - 'call_indirect' returning more than one argument"));
-                dead_code = true;
-                break;
-            }
-
-            if (ip->call_indirect.output_count == 0)
-                writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_void{}, pop_reg());
-            else
-                writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_type::value, pop_reg());
-
-            vstack -= ip->call_indirect.input_count;
-            for (auto i = 0u; i != ip->call_indirect.input_count; ++i)
-                writer.argument(lauf::qbe_type::value, lauf::qbe_reg(vstack + i));
-
-            writer.end_call();
-            if (ip->call_indirect.output_count > 0)
-                writer.copy(push_reg(), lauf::qbe_type::value, lauf::qbe_reg::tmp);
+        case lauf::asm_op::call_indirect:
+            write_call(pop_reg(), ip->call_indirect.input_count, ip->call_indirect.output_count);
             break;
-        }
 
         case lauf::asm_op::call_builtin:
         case lauf::asm_op::call_builtin_no_regs: {
@@ -859,7 +842,7 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
 void lauf_backend_qbe(lauf_writer* _writer, lauf_backend_qbe_options options,
                       const lauf_asm_module* mod)
 {
-    lauf::qbe_writer writer(_writer);
+    lauf::qbe_writer writer;
 
     if (mod->globals != nullptr)
     {
@@ -876,6 +859,6 @@ void lauf_backend_qbe(lauf_writer* _writer, lauf_backend_qbe_options options,
             codegen_function(writer, options, fn);
     }
 
-    writer.finish();
+    std::move(writer).finish(_writer);
 }
 
