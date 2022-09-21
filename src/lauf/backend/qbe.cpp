@@ -12,7 +12,6 @@
 #include <lauf/lib/bits.h>
 #include <lauf/lib/heap.h>
 #include <lauf/lib/int.h>
-#include <lauf/lib/limits.h>
 #include <lauf/lib/memory.h>
 #include <lauf/lib/platform.h>
 #include <lauf/lib/test.h>
@@ -222,10 +221,20 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
 
         case lauf::asm_op::call_builtin:
         case lauf::asm_op::call_builtin_no_regs: {
+            assert(ip[1].op() == lauf::asm_op::call_builtin_sig);
             auto callee = lauf::uncompress_pointer_offset<lauf_runtime_builtin_impl> //
                 (&lauf_runtime_builtin_dispatch, ip->call_builtin.offset);
+            auto metadata = ip[1].call_builtin_sig;
+
+            //=== VM directives ===//
+            if ((metadata.flags & LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE) != 0)
+            {
+                assert(metadata.output_count == 0);
+                for (auto i = 0u; i != metadata.input_count; ++i)
+                    pop_reg();
+            }
             //=== type ===//
-            if (callee == lauf_asm_type_value.load_fn)
+            else if (callee == lauf_asm_type_value.load_fn)
             {
                 pop_reg(); // field index
                 auto ptr = pop_reg();
@@ -338,14 +347,6 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
                 writer.begin_call(lauf::qbe_reg::tmp, lauf::qbe_void(), "lauf_heap_free");
                 writer.argument(lauf::qbe_type::value, ptr);
                 writer.end_call();
-            }
-            else if (callee == lauf_lib_heap_leak.impl
-                     || callee == lauf_lib_heap_declare_reachable.impl
-                     || callee == lauf_lib_heap_undeclare_reachable.impl
-                     || callee == lauf_lib_heap_declare_weak.impl
-                     || callee == lauf_lib_heap_undeclare_weak.impl)
-            { // NOLINT: allow repeated branch for clarity
-                pop_reg();
             }
             else if (callee == lauf_lib_heap_gc.impl)
             { // NOLINT: allow repeated branch for clarity
@@ -549,19 +550,7 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
             {
                 writer.copy(push_reg(), lauf::qbe_type::value, std::uintmax_t(0));
             }
-            //=== limits ===//
-            else if (callee == lauf_lib_limits_set_step_limit.impl)
-            {
-                pop_reg();
-            }
-            else if (callee == lauf_lib_limits_step.impl)
-            {}
             //=== memory ===//
-            else if (callee == lauf_lib_memory_poison.impl
-                     || callee == lauf_lib_memory_unpoison.impl)
-            {
-                pop_reg();
-            }
             else if (callee == lauf_lib_memory_addr_to_int.impl)
             {
                 auto addr = pop_reg();
