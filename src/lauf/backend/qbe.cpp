@@ -321,9 +321,34 @@ void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& 
                 auto dest = push_reg();
                 writer.binary_op(dest, lauf::qbe_type::value, "mul", lhs, rhs);
             }
-            else if (callee == lauf_lib_int_sdiv(LAUF_LIB_INT_OVERFLOW_WRAP).impl
-                     || callee == lauf_lib_int_sdiv(LAUF_LIB_INT_OVERFLOW_PANIC).impl)
+            else if (callee == lauf_lib_int_sdiv(LAUF_LIB_INT_OVERFLOW_WRAP).impl)
             {
+                // Only do a division if we're not dividing MIN by -1.
+                // Then just keep MIN as-is.
+                auto rhs  = pop_reg();
+                auto lhs  = pop_reg();
+                auto dest = push_reg();
+                assert(lhs == dest);
+
+                writer.comparison(lauf::qbe_reg::tmp, lauf::qbe_cc::ieq, lauf::qbe_type::value, rhs,
+                                  std::uintmax_t(-1));
+                writer.comparison(lauf::qbe_reg::tmp2, lauf::qbe_cc::ieq, lauf::qbe_type::value,
+                                  lhs, std::uintmax_t(INT64_MIN));
+                writer.binary_op(lauf::qbe_reg::tmp, lauf::qbe_type::value, "and",
+                                 lauf::qbe_reg::tmp, lauf::qbe_reg::tmp2);
+
+                auto do_divide = next_block();
+                auto end       = next_block();
+                writer.jnz(lauf::qbe_reg::tmp, end, do_divide);
+                writer.block(do_divide);
+                writer.binary_op(dest, lauf::qbe_type::value, "div", lhs, rhs);
+                writer.jmp(end);
+
+                writer.block(end);
+            }
+            else if (callee == lauf_lib_int_sdiv(LAUF_LIB_INT_OVERFLOW_PANIC).impl)
+            {
+                // This version triggers an FPE exception on overflow, which is kinda like panic.
                 auto rhs  = pop_reg();
                 auto lhs  = pop_reg();
                 auto dest = push_reg();
