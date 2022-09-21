@@ -14,9 +14,6 @@ typedef struct lauf_runtime_builtin_library lauf_runtime_builtin_library;
 extern const lauf_runtime_builtin_library lauf_lib_bits;
 
 //=== primitive bit operations ===//
-/// Signature: x:uint => (~x):uint
-extern const lauf_runtime_builtin lauf_lib_bits_not;
-
 /// Signature: a:uint b:uint => (a op b):uint
 extern const lauf_runtime_builtin lauf_lib_bits_and;
 extern const lauf_runtime_builtin lauf_lib_bits_or;
@@ -42,12 +39,6 @@ extern const lauf_runtime_builtin lauf_lib_bits_ushr;
 ///
 /// Signature: x:sint n:uint => (x >> n):sint
 extern const lauf_runtime_builtin lauf_lib_bits_sshr;
-
-//=== queries ===//
-/// Signature: x:uint => x:bool
-extern const lauf_runtime_builtin lauf_lib_bits_none_set;
-extern const lauf_runtime_builtin lauf_lib_bits_any_set;
-extern const lauf_runtime_builtin lauf_lib_bits_all_set;
 
 LAUF_HEADER_END
 

@@ -248,12 +248,6 @@ void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& 
                 writer.store(lauf::qbe_type::value, value, ptr);
             }
             //=== bits ===//
-            else if (callee == lauf_lib_bits_not.impl)
-            {
-                auto value = pop_reg();
-                writer.binary_op(push_reg(), lauf::qbe_type::value, "xor", value,
-                                 std::uintmax_t(-1));
-            }
             else if (callee == lauf_lib_bits_and.impl)
             {
                 auto rhs  = pop_reg();
@@ -295,24 +289,6 @@ void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& 
                 auto lhs  = pop_reg();
                 auto dest = push_reg();
                 writer.binary_op(dest, lauf::qbe_type::value, "sar", lhs, rhs);
-            }
-            else if (callee == lauf_lib_bits_none_set.impl)
-            {
-                auto value = pop_reg();
-                writer.comparison(push_reg(), lauf::qbe_cc::ieq, lauf::qbe_type::value, value,
-                                  std::uintmax_t(0));
-            }
-            else if (callee == lauf_lib_bits_any_set.impl)
-            {
-                auto value = pop_reg();
-                writer.comparison(push_reg(), lauf::qbe_cc::ine, lauf::qbe_type::value, value,
-                                  std::uintmax_t(0));
-            }
-            else if (callee == lauf_lib_bits_all_set.impl)
-            {
-                auto value = pop_reg();
-                writer.comparison(push_reg(), lauf::qbe_cc::ieq, lauf::qbe_type::value, value,
-                                  std::uintmax_t(-1));
             }
             //=== int ===//
             else if (callee == lauf_lib_int_sadd(LAUF_LIB_INT_OVERFLOW_WRAP).impl

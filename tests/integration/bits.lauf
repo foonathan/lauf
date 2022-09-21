@@ -1,10 +1,5 @@
 module @bits;
 
-function @not() {
-    [ uint 0xFFFF_0000_FFFF_0000; $lauf.test.dynamic; $lauf.bits.not; ] uint 0x0000_FFFF_0000_FFFF; $lauf.test.assert_eq;
-    return;
-}
-
 function @and() {
     [ uint 0xABCDEF; uint 0x00F000; $lauf.test.dynamic2; $lauf.bits.and; ] uint 0x00C000; $lauf.test.assert_eq;
     return;
@@ -32,28 +27,7 @@ function @sshr() {
     return;
 }
 
-function @none_set() {
-    [ uint 0; $lauf.test.dynamic; $lauf.bits.none_set; ] uint 1; $lauf.test.assert_eq;
-    [ uint 11; $lauf.test.dynamic; $lauf.bits.none_set; ] uint 0; $lauf.test.assert_eq;
-    [ sint -1; $lauf.test.dynamic; $lauf.bits.none_set; ] uint 0; $lauf.test.assert_eq;
-    return;
-}
-function @any_set() {
-    [ uint 0; $lauf.test.dynamic; $lauf.bits.any_set; ] uint 0; $lauf.test.assert_eq;
-    [ uint 11; $lauf.test.dynamic; $lauf.bits.any_set; ] uint 1; $lauf.test.assert_eq;
-    [ sint -1; $lauf.test.dynamic; $lauf.bits.any_set; ] uint 1; $lauf.test.assert_eq;
-    return;
-}
-function @all_set() {
-    [ uint 0; $lauf.test.dynamic; $lauf.bits.all_set; ] uint 0; $lauf.test.assert_eq;
-    [ uint 11; $lauf.test.dynamic; $lauf.bits.all_set; ] uint 0; $lauf.test.assert_eq;
-    [ sint -1; $lauf.test.dynamic; $lauf.bits.all_set; ] uint 1; $lauf.test.assert_eq;
-    return;
-}
-
 function @main(0 => 1) export {
-    call @not;
-
     call @and;
     call @or;
     call @xor;
@@ -61,10 +35,6 @@ function @main(0 => 1) export {
     call @shl;
     call @ushr;
     call @sshr;
-
-    call @none_set;
-    call @any_set;
-    call @all_set;
 
     uint 0; return;
 }

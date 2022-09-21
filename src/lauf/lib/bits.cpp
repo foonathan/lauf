@@ -15,13 +15,7 @@ constexpr auto no_panic_flags = LAUF_RUNTIME_BUILTIN_NO_PANIC | LAUF_RUNTIME_BUI
 constexpr auto panic_flags = LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD;
 } // namespace
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_bits_not, 1, 1, no_panic_flags, "not", nullptr)
-{
-    vstack_ptr[0].as_uint = ~vstack_ptr[0].as_uint;
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-
-LAUF_RUNTIME_BUILTIN(lauf_lib_bits_and, 2, 1, no_panic_flags, "and", &lauf_lib_bits_not)
+LAUF_RUNTIME_BUILTIN(lauf_lib_bits_and, 2, 1, no_panic_flags, "and", nullptr)
 {
     auto lhs = vstack_ptr[1].as_uint;
     auto rhs = vstack_ptr[0].as_uint;
@@ -91,24 +85,5 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_bits_sshr, 2, 1, panic_flags, "sshr", &lauf_lib_bi
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_bits_none_set, 1, 1, no_panic_flags, "none_set", &lauf_lib_bits_sshr)
-{
-    vstack_ptr[0].as_uint = vstack_ptr[0].as_uint == 0 ? 1 : 0;
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-
-LAUF_RUNTIME_BUILTIN(lauf_lib_bits_any_set, 1, 1, no_panic_flags, "any_set",
-                     &lauf_lib_bits_none_set)
-{
-    vstack_ptr[0].as_uint = vstack_ptr[0].as_uint != 0 ? 1 : 0;
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-
-LAUF_RUNTIME_BUILTIN(lauf_lib_bits_all_set, 1, 1, no_panic_flags, "all_set", &lauf_lib_bits_any_set)
-{
-    vstack_ptr[0].as_uint = vstack_ptr[0].as_uint == lauf_uint(-1) ? 1 : 0;
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-
-const lauf_runtime_builtin_library lauf_lib_bits = {"lauf.bits", &lauf_lib_bits_all_set, nullptr};
+const lauf_runtime_builtin_library lauf_lib_bits = {"lauf.bits", &lauf_lib_bits_sshr, nullptr};
 
