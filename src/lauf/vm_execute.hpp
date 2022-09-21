@@ -45,7 +45,8 @@ inline bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_
                                           lauf_runtime_stack_frame* frame_ptr,
                                           lauf_runtime_process*     process)
 {
-    ++ip;
+    assert(ip[1].op() == lauf::asm_op::call_builtin_sig);
+    ip += 2;
     LAUF_VM_DISPATCH;
 }
 

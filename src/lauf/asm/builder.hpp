@@ -256,10 +256,10 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         return result;                                                                             \
     }()
 
-#define LAUF_BUILD_INST_SIGNATURE(Name, InputCount, OutputCount)                                   \
+#define LAUF_BUILD_INST_SIGNATURE(Name, InputCount, OutputCount, Flags)                            \
     [&] {                                                                                          \
         lauf_asm_inst result;                                                                      \
-        result.Name = {lauf::asm_op::Name, InputCount, OutputCount};                               \
+        result.Name = {lauf::asm_op::Name, InputCount, OutputCount, std::uint8_t(Flags)};          \
         return result;                                                                             \
     }()
 

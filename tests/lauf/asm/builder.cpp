@@ -496,9 +496,12 @@ TEST_CASE("lauf_asm_inst_call_builtin")
     auto normal = build({1, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {
         lauf_asm_inst_call_builtin(b, lauf_lib_test_assert);
     });
-    REQUIRE(normal.size() == 1);
+    REQUIRE(normal.size() == 2);
     CHECK(normal[0].op() == lauf::asm_op::call_builtin);
     // cannot check offset
+    CHECK(normal[1].op() == lauf::asm_op::call_builtin_sig);
+    CHECK(normal[1].call_builtin_sig.input_count == 1);
+    CHECK(normal[1].call_builtin_sig.output_count == 0);
 }
 
 TEST_CASE("lauf_asm_inst_array_element")

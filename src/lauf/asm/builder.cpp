@@ -92,6 +92,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::call_indirect:
         case lauf::asm_op::call_builtin:
         case lauf::asm_op::call_builtin_no_regs:
+        case lauf::asm_op::call_builtin_sig:
         case lauf::asm_op::fiber_resume:
         case lauf::asm_op::fiber_transfer:
         case lauf::asm_op::fiber_suspend:
@@ -352,8 +353,9 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
         if (!block->reachable)
             continue;
 
-        *ip++ = LAUF_BUILD_INST_SIGNATURE(block, block->sig.input_count, block->sig.output_count);
-        ip    = block->insts.copy_to(ip);
+        *ip++
+            = LAUF_BUILD_INST_SIGNATURE(block, block->sig.input_count, block->sig.output_count, 0);
+        ip = block->insts.copy_to(ip);
 
         generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
                             [&](lauf::asm_op op, const lauf_asm_block* dest) {
@@ -673,7 +675,7 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
     else
     {
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_indirect, sig.input_count,
-                                                              sig.output_count));
+                                                              sig.output_count, 0));
     }
 
     b->cur->vstack.push(*b, sig.output_count);
@@ -689,6 +691,9 @@ void add_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin_no_regs, offset));
     else
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call_builtin, offset));
+
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_builtin_sig, callee.input_count,
+                                                          callee.output_count, callee.flags));
 
     b->cur->vstack.push(*b, callee.output_count);
 }
@@ -758,7 +763,7 @@ void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_resume, sig.input_count,
-                                                          sig.output_count));
+                                                          sig.output_count, 0));
     b->cur->vstack.push(*b, sig.output_count);
 }
 
@@ -769,7 +774,7 @@ void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_transfer, sig.input_count,
-                                                          sig.output_count));
+                                                          sig.output_count, 0));
     b->cur->vstack.push(*b, sig.output_count);
 }
 
@@ -779,7 +784,7 @@ void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b, lauf_asm_signature sig)
 
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_suspend, sig.input_count,
-                                                          sig.output_count));
+                                                          sig.output_count, 0));
     b->cur->vstack.push(*b, sig.output_count);
 }
 

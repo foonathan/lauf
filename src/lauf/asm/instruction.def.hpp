@@ -43,6 +43,8 @@ LAUF_ASM_INST(call_indirect, asm_inst_signature)
 // called builtin divided by sizeof(void*).
 LAUF_ASM_INST(call_builtin, asm_inst_offset)
 LAUF_ASM_INST(call_builtin_no_regs, asm_inst_offset)
+// Immediatelly following a call_builtin instruction, just remembers the signature for backends.
+LAUF_ASM_INST(call_builtin_sig, asm_inst_signature)
 
 //=== fibers ===//
 // lauf_asm_inst_fiber_resume()

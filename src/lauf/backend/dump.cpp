@@ -188,6 +188,8 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
 
             if (ip->op() == lauf::asm_op::call_builtin_no_regs)
                 writer->write(" [no regs]");
+
+            ++ip; // skip signature
             break;
         }
 
@@ -316,6 +318,7 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
 
         case lauf::asm_op::count:
         case lauf::asm_op::block:
+        case lauf::asm_op::call_builtin_sig:
             assert(false);
             break;
         }

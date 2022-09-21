@@ -128,7 +128,7 @@ int main()
     auto mod = example_module();
     dump_module(mod);
 
-    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib_local"));
+    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib"));
     execute(program, lauf_uint(35));
 
     lauf_asm_destroy_module(mod);

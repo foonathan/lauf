@@ -210,6 +210,12 @@ LAUF_VM_EXECUTE(call_builtin_no_regs)
     LAUF_TAIL_CALL return callee(ip, vstack_ptr, frame_ptr, process);
 }
 
+LAUF_VM_EXECUTE(call_builtin_sig)
+{
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
 LAUF_VM_EXECUTE(call)
 {
     auto callee

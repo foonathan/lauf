@@ -656,6 +656,8 @@ void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
             }
             break;
         }
+        case lauf::asm_op::call_builtin_sig:
+            break;
 
         case lauf::asm_op::fiber_resume:
         case lauf::asm_op::fiber_transfer:

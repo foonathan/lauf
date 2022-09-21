@@ -74,6 +74,7 @@ struct asm_inst_signature
     asm_op       op;
     std::uint8_t input_count;
     std::uint8_t output_count;
+    std::uint8_t flags;
 };
 
 struct asm_inst_layout
