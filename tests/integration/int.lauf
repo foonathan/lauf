@@ -500,7 +500,7 @@ function @u64() {
     return;
 }
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     block %entry() {
         call @sadd_wrap; call @ssub_wrap; call @smul_wrap;
         call @sadd_panic; call @ssub_panic; call @smul_panic;

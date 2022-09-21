@@ -18,7 +18,7 @@ function @not_null_terminated() {
     panic;
 }
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     function_addr @panic; global_addr @error; $lauf.test.assert_panic;
 
     function_addr @invalid_addr; null; $lauf.test.assert_panic;

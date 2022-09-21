@@ -1,6 +1,6 @@
 module @empty;
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     uint 0; return;
 }
 

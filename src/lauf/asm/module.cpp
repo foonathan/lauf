@@ -113,6 +113,11 @@ lauf_asm_function* lauf_asm_add_function(lauf_asm_module* mod, const char* name,
     return mod->construct<lauf_asm_function>(mod, name, sig);
 }
 
+void lauf_asm_export_function(lauf_asm_function* fn)
+{
+    fn->exported = true;
+}
+
 const char* lauf_asm_function_name(const lauf_asm_function* fn)
 {
     return fn->name;

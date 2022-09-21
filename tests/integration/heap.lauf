@@ -99,7 +99,7 @@ function @heap_use_after_free() {
 global const @msg_invalid_address = "invalid address", 0;
 global const @msg_invalid_heap_address = "invalid heap address", 0;
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     block %entry() {
         call @heap_alloc;
 

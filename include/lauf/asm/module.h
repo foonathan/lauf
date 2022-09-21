@@ -100,6 +100,10 @@ const char* lauf_asm_global_debug_name(const lauf_asm_global* global);
 lauf_asm_function* lauf_asm_add_function(lauf_asm_module* mod, const char* name,
                                          lauf_asm_signature sig);
 
+/// Exports a function.
+/// This is only relevant for backends that generate assembly.
+void lauf_asm_export_function(lauf_asm_function* fn);
+
 const char*        lauf_asm_function_name(const lauf_asm_function* fn);
 lauf_asm_signature lauf_asm_function_signature(const lauf_asm_function* fn);
 

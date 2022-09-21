@@ -85,6 +85,7 @@ struct lauf_asm_function
 
     const char*        name;
     lauf_asm_signature sig;
+    bool               exported = false;
 
     lauf_asm_inst* insts       = nullptr;
     std::uint16_t  insts_count = 0;

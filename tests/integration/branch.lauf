@@ -84,7 +84,7 @@ block %if_false(0 => 1) {
 }
 }
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     call @jumps;
 
     call @branch_true;

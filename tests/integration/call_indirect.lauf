@@ -67,7 +67,7 @@ global const @msg_vstack_overflow = "vstack overflow", 0;
 global const @msg_cstack_overflow = "cstack overflow", 0;
 global const @msg_invalid_addr = "invalid function address", 0;
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     [
         function_addr @produce_value; $lauf.test.dynamic; call_indirect (0 => 1);
         uint 11; $lauf.test.assert_eq;

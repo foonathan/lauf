@@ -50,7 +50,7 @@ function @transfer_and_back() {
     return;
 }
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     block %entry() {
         $lauf.platform.vm;
         branch %vm() %exit(0 => 1);

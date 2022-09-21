@@ -84,7 +84,7 @@ function @reuse_dangling() {
 
 global const @msg_invalid_address = "invalid address", 0;
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     [
         call @load_store_field_global();
         call @load_store_field_local();

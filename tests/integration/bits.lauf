@@ -51,7 +51,7 @@ function @all_set() {
     return;
 }
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     call @not;
 
     call @and;

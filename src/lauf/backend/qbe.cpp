@@ -51,7 +51,9 @@ void codegen_function_return_type(lauf::qbe_writer&        writer, lauf_backend_
 void codegen_function(lauf::qbe_writer&        writer, lauf_backend_qbe_options,
                       const lauf_asm_function* fn)
 {
-    writer.export_();
+    if (fn->exported)
+        writer.export_();
+
     if (fn->sig.output_count == 0)
         writer.begin_function(fn->name, lauf::qbe_void{});
     else if (fn->sig.output_count == 1)

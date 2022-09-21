@@ -743,6 +743,13 @@ struct function_decl
         });
     };
 
+    struct export_
+    {
+        static constexpr auto rule = LEXY_LIT("export");
+        static constexpr auto value
+            = callback([](const parse_state& state) { lauf_asm_export_function(state.fn); });
+    };
+
     struct body
     {
         static void create_entry_block(parse_state& state)
@@ -770,7 +777,8 @@ struct function_decl
     };
 
     static constexpr auto rule
-        = LAUF_KEYWORD("function") >> dsl::p<header> + (dsl::semicolon | dsl::p<body>);
+        = LAUF_KEYWORD("function")
+          >> dsl::p<header> + dsl::if_(dsl::p<export_>) + (dsl::semicolon | dsl::p<body>);
     static constexpr auto value = lexy::forward<void>;
 };
 

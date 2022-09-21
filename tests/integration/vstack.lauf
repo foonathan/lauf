@@ -130,7 +130,7 @@ function @select(1 => 1) {
     return;
 }
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     call @pop0;
     call @pop1;
     call @pop2;

@@ -36,7 +36,7 @@ function @local_aggregate() {
     return;
 }
 
-function @main(0 => 1) {
+function @main(0 => 1) export {
     call @local_array;
     call @array_zero_element;
 
