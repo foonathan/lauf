@@ -9,7 +9,8 @@
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_memory_poison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "poison", nullptr)
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_poison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE, "poison",
+                     nullptr)
 {
     auto address = vstack_ptr[0].as_address;
     ++vstack_ptr;
@@ -20,7 +21,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_poison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_memory_unpoison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "unpoison",
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_unpoison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE, "unpoison",
                      &lauf_lib_memory_poison)
 {
     auto address = vstack_ptr[0].as_address;
@@ -32,7 +33,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_unpoison, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONL
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_memory_split, 1, 2, LAUF_RUNTIME_BUILTIN_VM_ONLY, "split",
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_split, 1, 2, LAUF_RUNTIME_BUILTIN_DEFAULT, "split",
                      &lauf_lib_memory_unpoison)
 {
     auto addr = vstack_ptr[0].as_address;
@@ -45,7 +46,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_split, 1, 2, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_memory_merge, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "merge",
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_merge, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "merge",
                      &lauf_lib_memory_split)
 {
     auto addr1 = vstack_ptr[1].as_address;

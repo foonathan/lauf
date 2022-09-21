@@ -11,19 +11,22 @@
 #include <lauf/runtime/value.h>
 #include <lauf/vm.h>
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_test_dynamic, 1, 1, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "dynamic",
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_dynamic, 1, 1,
+                     LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_NO_PANIC, "dynamic",
                      nullptr)
 {
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
-LAUF_RUNTIME_BUILTIN(lauf_lib_test_dynamic2, 2, 2, LAUF_RUNTIME_BUILTIN_NO_PROCESS, "dynamic2",
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_dynamic2, 2, 2,
+                     LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_NO_PANIC, "dynamic2",
                      &lauf_lib_test_dynamic)
 {
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_test_unreachable, 0, 0, LAUF_RUNTIME_BUILTIN_NO_PROCESS,
-                     "unreachable", &lauf_lib_test_dynamic2)
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_unreachable, 0, 0,
+                     LAUF_RUNTIME_BUILTIN_NO_PROCESS | LAUF_RUNTIME_BUILTIN_NO_PANIC, "unreachable",
+                     &lauf_lib_test_dynamic2)
 {
     (void)ip;
     (void)vstack_ptr;
@@ -56,7 +59,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_eq, 2, 0, LAUF_RUNTIME_BUILTIN_NO_PROC
         return lauf_runtime_panic(process, "assert_eq failed");
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_panic, 2, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "assert_panic",
+LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_panic, 2, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "assert_panic",
                      &lauf_lib_test_assert_eq)
 {
     auto expected_msg = lauf_runtime_get_cstr(process, vstack_ptr[0].as_address);

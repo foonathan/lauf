@@ -7,7 +7,7 @@
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_limits_set_step_limit, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+LAUF_RUNTIME_BUILTIN(lauf_lib_limits_set_step_limit, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE,
                      "set_step_limit", nullptr)
 {
     auto new_limit = vstack_ptr[0].as_uint;
@@ -21,7 +21,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_limits_set_step_limit, 1, 0, LAUF_RUNTIME_BUILTIN_
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_limits_step, 0, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "step",
+LAUF_RUNTIME_BUILTIN(lauf_lib_limits_step, 0, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE, "step",
                      &lauf_lib_limits_set_step_limit)
 {
     if (!lauf_runtime_increment_step(process))

@@ -8,7 +8,7 @@
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_create, 1, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "create", nullptr)
+LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_create, 1, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "create", nullptr)
 {
     auto address = vstack_ptr[0].as_function_address;
 
@@ -22,7 +22,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_create, 1, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_destroy, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "destroy",
+LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_destroy, 1, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "destroy",
                      &lauf_lib_fiber_create)
 {
     auto handle = vstack_ptr[0].as_address;
@@ -37,7 +37,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_destroy, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_current, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "current",
+LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_current, 0, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "current",
                      &lauf_lib_fiber_destroy)
 {
     auto fiber = lauf_runtime_get_current_fiber(process);
@@ -48,7 +48,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_current, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY,
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_parent, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "parent",
+LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_parent, 0, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "parent",
                      &lauf_lib_fiber_current)
 {
     auto fiber  = lauf_runtime_get_current_fiber(process);
@@ -63,7 +63,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_parent, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_done, 1, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "done",
+LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_done, 1, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "done",
                      &lauf_lib_fiber_parent)
 {
     auto handle = vstack_ptr[0].as_address;

@@ -11,7 +11,7 @@
 #include <lauf/support/align.hpp>
 #include <lauf/vm.h>
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "alloc", nullptr)
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "alloc", nullptr)
 {
     auto size      = vstack_ptr[0].as_uint;
     auto alignment = vstack_ptr[1].as_uint;
@@ -29,7 +29,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc, 2, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "a
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc_array, 3, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "alloc_array",
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc_array, 3, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "alloc_array",
                      &lauf_lib_heap_alloc)
 {
     auto count     = vstack_ptr[0].as_uint;
@@ -44,7 +44,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_alloc_array, 3, 1, LAUF_RUNTIME_BUILTIN_VM_ON
     LAUF_TAIL_CALL return lauf_lib_heap_alloc.impl(ip, vstack_ptr, frame_ptr, process);
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "free",
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "free",
                      &lauf_lib_heap_alloc_array)
 {
     auto address = vstack_ptr[0].as_address;
@@ -61,7 +61,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "fr
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "leak",
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE, "leak",
                      &lauf_lib_heap_free)
 {
     auto address = vstack_ptr[0].as_address;
@@ -73,7 +73,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "le
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_DEFAULT,
                      "transfer_local", &lauf_lib_heap_leak)
 {
     auto address = vstack_ptr[0].as_address;
@@ -98,7 +98,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_VM
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "gc",
                      &lauf_lib_heap_transfer_local)
 {
     auto bytes_freed = lauf_runtime_gc(process);
@@ -109,7 +109,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_gc, 0, 1, LAUF_RUNTIME_BUILTIN_VM_ONLY, "gc",
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE,
                      "declare_reachable", &lauf_lib_heap_gc)
 {
     auto addr = vstack_ptr[0].as_address;
@@ -121,7 +121,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_reachable, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE,
                      "undeclare_reachable", &lauf_lib_heap_declare_reachable)
 {
     auto addr = vstack_ptr[0].as_address;
@@ -133,8 +133,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_reachable, 1, 0, LAUF_RUNTIME_BUILT
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY, "declare_weak",
-                     &lauf_lib_heap_undeclare_reachable)
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE,
+                     "declare_weak", &lauf_lib_heap_undeclare_reachable)
 {
     auto addr = vstack_ptr[0].as_address;
     ++vstack_ptr;
@@ -145,7 +145,7 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_declare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_O
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_ONLY,
+LAUF_RUNTIME_BUILTIN(lauf_lib_heap_undeclare_weak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE,
                      "undeclare_weak", &lauf_lib_heap_declare_weak)
 {
     auto addr = vstack_ptr[0].as_address;

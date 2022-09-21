@@ -26,8 +26,9 @@ typedef enum lauf_runtime_builtin_flags
     /// It may only use the `process` argument to call `lauf_runtime_panic()`.
     LAUF_RUNTIME_BUILTIN_NO_PROCESS = 1 << 1,
 
-    /// The builtin can only be used with the VM and not in other backends.
-    LAUF_RUNTIME_BUILTIN_VM_ONLY = 1 << 2,
+    /// The builtin is a VM directive, with a signature N => 0.
+    /// If used with other backends, it has no effect besides removing the arguments.
+    LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE = 1 << 2,
     /// The builtin can be constant folded.
     /// Builtin can only access `vstack_ptr`; everything else is `nullptr`.
     LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD = 1 << 3,

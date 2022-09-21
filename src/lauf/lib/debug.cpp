@@ -103,9 +103,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print, 1, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_vstack, 0, 0,
-                     LAUF_RUNTIME_BUILTIN_NO_PANIC | LAUF_RUNTIME_BUILTIN_VM_ONLY, "print_vstack",
-                     &lauf_lib_debug_print)
+LAUF_RUNTIME_BUILTIN(lauf_lib_debug_print_vstack, 0, 0, LAUF_RUNTIME_BUILTIN_NO_PANIC,
+                     "print_vstack", &lauf_lib_debug_print)
 {
     std::fprintf(stderr, "[lauf] value stack:\n");
 

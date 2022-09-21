@@ -702,6 +702,9 @@ void add_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
 {
     LAUF_BUILD_CHECK_CUR;
+    LAUF_BUILD_ASSERT((callee.flags & LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE) == 0
+                          || callee.output_count == 0,
+                      "VM directives must not return anything");
 
     bool               all_constant = true;
     lauf_runtime_value vstack[UINT8_MAX];
