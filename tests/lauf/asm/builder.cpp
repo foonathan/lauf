@@ -8,6 +8,7 @@
 #include <lauf/asm/type.h>
 #include <lauf/backend/dump.h>
 #include <lauf/lib/debug.h>
+#include <lauf/lib/int.h>
 #include <lauf/lib/test.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/writer.h>
@@ -502,6 +503,15 @@ TEST_CASE("lauf_asm_inst_call_builtin")
     CHECK(normal[1].op() == lauf::asm_op::call_builtin_sig);
     CHECK(normal[1].call_builtin_sig.input_count == 1);
     CHECK(normal[1].call_builtin_sig.output_count == 0);
+
+    auto constant = build({0, 1}, [](lauf_asm_module*, lauf_asm_builder* b) {
+        lauf_asm_inst_uint(b, 1);
+        lauf_asm_inst_uint(b, 2);
+        lauf_asm_inst_call_builtin(b, lauf_lib_int_uadd(LAUF_LIB_INT_OVERFLOW_WRAP));
+    });
+    REQUIRE(constant.size() == 1);
+    CHECK(constant[0].op() == lauf::asm_op::push);
+    CHECK(constant[0].push.value == 3);
 }
 
 TEST_CASE("lauf_asm_inst_array_element")

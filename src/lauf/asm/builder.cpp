@@ -731,7 +731,10 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
         && (callee.flags & LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD) != 0)
     {
         assert(vstack_ptr == vstack + UINT8_MAX);
-        lauf_asm_inst         code[2] = {LAUF_BUILD_INST_NONE(nop), LAUF_BUILD_INST_NONE(exit)};
+        lauf_asm_inst         code[3] = {LAUF_BUILD_INST_NONE(nop),
+                                         LAUF_BUILD_INST_SIGNATURE(call_builtin_sig, callee.input_count,
+                                                                   callee.output_count, callee.flags),
+                                         LAUF_BUILD_INST_NONE(exit)};
         [[maybe_unused]] auto success
             = callee.impl(code, vstack_ptr - callee.input_count, nullptr, nullptr);
         if (success)
