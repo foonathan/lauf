@@ -126,14 +126,9 @@ LAUF_VM_EXECUTE(jump)
         ++vstack_ptr;                                                                              \
                                                                                                    \
         if (condition Comp 0)                                                                      \
-        {                                                                                          \
             ip += ip->branch_##CC.offset;                                                          \
-        }                                                                                          \
         else                                                                                       \
-        {                                                                                          \
-            assert(ip[1].op() == lauf::asm_op::block);                                             \
-            ip += 2;                                                                               \
-        }                                                                                          \
+            ++ip;                                                                                  \
                                                                                                    \
         LAUF_VM_DISPATCH;                                                                          \
     }
