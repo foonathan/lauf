@@ -24,10 +24,19 @@ typedef struct lauf_asm_layout
     size_t alignment;
 } lauf_asm_layout;
 
-#define LAUF_ASM_NATIVE_LAYOUT_OF(Type)                                                            \
-    {                                                                                              \
-        sizeof(Type), alignof(Type)                                                                \
-    }
+#if defined(__cplusplus)
+#    define LAUF_ASM_NATIVE_LAYOUT_OF(Type)                                                        \
+        lauf_asm_layout                                                                            \
+        {                                                                                          \
+            sizeof(Type), alignof(Type)                                                            \
+        }
+#else
+#    define LAUF_ASM_NATIVE_LAYOUT_OF(Type)                                                        \
+        (lauf_asm_layout)                                                                          \
+        {                                                                                          \
+            sizeof(Type), alignof(Type)                                                            \
+        }
+#endif
 
 /// Layout of an array with the specified element layout.
 lauf_asm_layout lauf_asm_array_layout(lauf_asm_layout element_layout, size_t element_count);
