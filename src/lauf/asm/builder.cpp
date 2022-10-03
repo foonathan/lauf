@@ -136,6 +136,7 @@ void lauf_asm_destroy_builder(lauf_asm_builder* b)
 
 void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function* fn)
 {
+    LAUF_BUILD_ASSERT(!lauf_asm_function_has_definition(fn), "function already has a definition");
     b->reset(mod, fn);
 }
 

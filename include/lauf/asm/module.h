@@ -106,6 +106,7 @@ void lauf_asm_export_function(lauf_asm_function* fn);
 
 const char*        lauf_asm_function_name(const lauf_asm_function* fn);
 lauf_asm_signature lauf_asm_function_signature(const lauf_asm_function* fn);
+bool               lauf_asm_function_has_definition(const lauf_asm_function* fn);
 
 /// Returns the index corresponding to the address of an instruction.
 ///

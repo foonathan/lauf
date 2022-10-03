@@ -128,6 +128,11 @@ lauf_asm_signature lauf_asm_function_signature(const lauf_asm_function* fn)
     return fn->sig;
 }
 
+bool lauf_asm_function_has_definition(const lauf_asm_function* fn)
+{
+    return fn->insts != nullptr;
+}
+
 size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const lauf_asm_inst* ip)
 {
     assert(ip >= fn->insts && ip < fn->insts + fn->insts_count);
