@@ -14,19 +14,20 @@ lauf_asm_program* lauf_asm_create_program(const lauf_asm_module*   mod,
     program->functions.resize_uninitialized(*program, mod->functions_count);
     for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
         program->functions[fn->function_idx] = fn;
-    program->entry = entry->function_idx;
+    program->entry = entry;
 
     return program;
+}
+
+lauf_asm_program* lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
+                                                     const lauf_asm_chunk*  chunk)
+{
+    return lauf_asm_create_program(mod, chunk->fn);
 }
 
 void lauf_asm_destroy_program(lauf_asm_program* program)
 {
     lauf_asm_program::destroy(program);
-}
-
-const lauf_asm_function* lauf_asm_program_entry_function(const lauf_asm_program* program)
-{
-    return program->functions[program->entry];
 }
 
 const char* lauf_asm_program_debug_path(const lauf_asm_program* program, const lauf_asm_function*)

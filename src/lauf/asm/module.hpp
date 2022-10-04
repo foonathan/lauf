@@ -24,6 +24,7 @@ struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
     const char*        name;
     lauf_asm_global*   globals         = nullptr;
     lauf_asm_function* functions       = nullptr;
+    lauf_asm_chunk*    chunks          = nullptr;
     std::uint32_t      globals_count   = 0;
     std::uint32_t      functions_count = 0;
 
@@ -33,6 +34,8 @@ struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
     lauf_asm_module(lauf::arena_key key, const char* name)
     : lauf::intrinsic_arena<lauf_asm_module>(key), name(this->strdup(name))
     {}
+
+    ~lauf_asm_module();
 };
 
 struct lauf_asm_global
@@ -87,9 +90,9 @@ struct lauf_asm_function
     lauf_asm_signature sig;
     bool               exported = false;
 
-    lauf_asm_inst* insts       = nullptr;
-    std::uint16_t  insts_count = 0;
-    std::uint16_t  function_idx;
+    lauf_asm_inst* insts           = nullptr;
+    std::uint16_t  insts_count     = 0;
+    std::uint16_t  function_idx    = UINT16_MAX;
     std::uint16_t  max_vstack_size = 0;
     // Includes size for stack frame as well.
     std::uint16_t max_cstack_size = 0;
@@ -100,6 +103,28 @@ struct lauf_asm_function
     {
         mod->functions = this;
         ++mod->functions_count;
+    }
+
+    explicit lauf_asm_function(const char* name, lauf_asm_signature sig)
+    : next(nullptr), name(name), sig(sig)
+    {}
+};
+
+struct lauf_asm_chunk : lauf::intrinsic_arena<lauf_asm_chunk>
+{
+    lauf_asm_chunk* next;
+
+    // A chunk is internally just a function, but the memory for the instruction is allocated by its
+    // arena, not as part of the module.
+    lauf_asm_function* fn;
+
+    explicit lauf_asm_chunk(lauf::arena_key key, lauf_asm_module* mod)
+    : lauf::intrinsic_arena<lauf_asm_chunk>(key), next(mod->chunks),
+      // We allocate the function as part of the module, to ensure that its address is closer to the
+      // addresses of the functions it calls. This is required by the offsets.
+      fn(mod->construct<lauf_asm_function>("<chunk>", lauf_asm_signature{0, 0}))
+    {
+        mod->chunks = this;
     }
 };
 

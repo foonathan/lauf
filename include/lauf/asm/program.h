@@ -10,6 +10,7 @@ LAUF_HEADER_START
 
 typedef struct lauf_asm_module         lauf_asm_module;
 typedef struct lauf_asm_function       lauf_asm_function;
+typedef struct lauf_asm_chunk          lauf_asm_chunk;
 typedef struct lauf_asm_debug_location lauf_asm_location;
 typedef union lauf_asm_inst            lauf_asm_inst;
 
@@ -24,9 +25,11 @@ typedef struct lauf_asm_program lauf_asm_program;
 lauf_asm_program* lauf_asm_create_program(const lauf_asm_module*   mod,
                                           const lauf_asm_function* entry);
 
-void lauf_asm_destroy_program(lauf_asm_program* program);
+/// Creates a program that executes the given chunk.
+lauf_asm_program* lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
+                                                     const lauf_asm_chunk*  chunk);
 
-const lauf_asm_function* lauf_asm_program_entry_function(const lauf_asm_program* program);
+void lauf_asm_destroy_program(lauf_asm_program* program);
 
 const char* lauf_asm_program_debug_path(const lauf_asm_program*  program,
                                         const lauf_asm_function* fn);

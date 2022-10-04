@@ -6,7 +6,6 @@
 #include <lauf/asm/module.h>
 #include <lauf/asm/program.h>
 #include <lauf/backend/dump.h>
-#include <lauf/backend/qbe.h>
 #include <lauf/frontend/text.h>
 #include <lauf/lib.h>
 #include <lauf/reader.h>
@@ -32,6 +31,7 @@ lauf_asm_module* example_module()
             block %recurse(1 => 1) {
                 pick 0; sint 1; $lauf.int.ssub_wrap; call @fib;
                 roll 1; sint 2; $lauf.int.ssub_wrap; call @fib;
+                uint 0; uint 1; $lauf.int.usub_panic; pop 0;
                 $lauf.int.sadd_wrap;
                 return;
             }
@@ -104,18 +104,15 @@ void dump_module(lauf_asm_module* mod)
 {
     auto writer = lauf_create_stdout_writer();
     lauf_backend_dump(writer, lauf_backend_default_dump_options, mod);
-    lauf_backend_qbe(writer, lauf_backend_default_qbe_options, mod);
     lauf_destroy_writer(writer);
 }
 
-template <typename... Input>
-void execute(lauf_asm_program* program, Input... inputs)
+void execute(lauf_asm_program* program)
 {
     auto vm = lauf_create_vm(lauf_default_vm_options);
 
-    lauf_runtime_value input[] = {inputs..., lauf_runtime_value()};
     lauf_runtime_value output;
-    if (lauf_vm_execute_oneshot(vm, program, input, &output))
+    if (lauf_vm_execute_oneshot(vm, program, nullptr, &output))
         std::printf("result: %lu\n", output.as_sint);
     else
         std::puts("panic!");
@@ -123,14 +120,27 @@ void execute(lauf_asm_program* program, Input... inputs)
     lauf_destroy_vm(vm);
 }
 
+lauf_asm_program* create_program(lauf_asm_module* mod)
+{
+    auto chunk = lauf_asm_create_chunk(mod);
+
+    auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
+    lauf_asm_build_chunk(b, mod, chunk, 1);
+    lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
+    lauf_asm_inst_uint(b, 3);
+    lauf_asm_inst_call(b, lauf_asm_find_function_by_name(mod, "fib"));
+    lauf_asm_inst_return(b);
+    lauf_asm_build_finish(b);
+    lauf_asm_destroy_builder(b);
+
+    return lauf_asm_create_program_from_chunk(mod, chunk);
+}
+
 int main()
 {
     auto mod = example_module();
     dump_module(mod);
-
-    auto program = lauf_asm_create_program(mod, lauf_asm_find_function_by_name(mod, "fib"));
-    execute(program, lauf_uint(35));
-
+    execute(create_program(mod));
     lauf_asm_destroy_module(mod);
 }
 

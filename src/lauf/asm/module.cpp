@@ -6,6 +6,17 @@
 #include <lauf/asm/type.h>
 #include <string_view>
 
+lauf_asm_module::~lauf_asm_module()
+{
+    auto chunk = chunks;
+    while (chunk != nullptr)
+    {
+        auto next = chunk->next;
+        lauf_asm_chunk::destroy(chunk);
+        chunk = next;
+    }
+}
+
 lauf_asm_module* lauf_asm_create_module(const char* name)
 {
     return lauf_asm_module::create(name);
@@ -54,7 +65,9 @@ lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_a
         return {0, 0, false};
 
     auto fn = lauf_asm_find_function_of_instruction(mod, ip);
-    assert(fn != nullptr);
+    if (fn == nullptr)
+        // The instruction is part of a chunk, not actual code.
+        return {0, 0, true};
 
     auto fn_idx = fn->function_idx;
     auto ip_idx = uint16_t(lauf_asm_get_instruction_index(fn, ip));
@@ -137,5 +150,20 @@ size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const lauf_as
 {
     assert(ip >= fn->insts && ip < fn->insts + fn->insts_count);
     return size_t(ip - fn->insts);
+}
+
+lauf_asm_chunk* lauf_asm_create_chunk(lauf_asm_module* mod)
+{
+    return lauf_asm_chunk::create(mod);
+}
+
+lauf_asm_signature lauf_asm_chunk_signature(const lauf_asm_chunk* chunk)
+{
+    return chunk->fn->sig;
+}
+
+bool lauf_asm_chunk_is_empty(const lauf_asm_chunk* chunk)
+{
+    return chunk->fn->insts_count == 0;
 }
 

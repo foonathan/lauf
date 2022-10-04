@@ -11,6 +11,7 @@ LAUF_HEADER_START
 typedef struct lauf_asm_module         lauf_asm_module;
 typedef struct lauf_asm_global         lauf_asm_global;
 typedef struct lauf_asm_function       lauf_asm_function;
+typedef struct lauf_asm_chunk          lauf_asm_chunk;
 typedef struct lauf_asm_signature      lauf_asm_signature;
 typedef struct lauf_asm_debug_location lauf_asm_debug_location;
 typedef struct lauf_asm_type           lauf_asm_type;
@@ -52,9 +53,16 @@ void              lauf_asm_destroy_builder(lauf_asm_builder* b);
 /// If a previous build wasn't finished yet; discards it.
 void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function* fn);
 
-/// Finishes building the currently active function body.
+/// Starts building a chunk of code.
 ///
-/// Only at this point will the body be added to the function.
+/// If the chunk already contains code, it will be cleared first.
+/// If a previous build wasn't finished yet; discards it.
+void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_chunk* chunk,
+                          size_t output_count);
+
+/// Finishes building the currently active function body or chunk.
+///
+/// Only at this point will the body be added to the function or chunk.
 /// Returns true if the body is well-formed, false otherwise.
 bool lauf_asm_build_finish(lauf_asm_builder* b);
 
@@ -97,7 +105,7 @@ size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b);
 void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location loc);
 
 //=== block terminator instructions ===//
-/// Terminator: return from function.
+/// Terminator: return from function or exit from chunk.
 void lauf_asm_inst_return(lauf_asm_builder* b);
 
 /// Terminator: unconditional jump.

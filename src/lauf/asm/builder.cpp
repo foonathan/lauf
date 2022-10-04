@@ -137,7 +137,15 @@ void lauf_asm_destroy_builder(lauf_asm_builder* b)
 void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function* fn)
 {
     LAUF_BUILD_ASSERT(!lauf_asm_function_has_definition(fn), "function already has a definition");
-    b->reset(mod, fn);
+    b->reset(mod, fn, nullptr);
+}
+
+void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_chunk* chunk,
+                          size_t output_count)
+{
+    b->reset(mod, chunk->fn, chunk);
+    chunk->clear();
+    chunk->fn->sig.output_count = uint8_t(output_count);
 }
 
 namespace
@@ -350,8 +358,15 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, bool need_to_fr
         return result;
     }();
 
-    auto insts = b->mod->allocate<lauf_asm_inst>(insts_count);
-    auto ip    = insts;
+    auto insts = [&] {
+        if (b->chunk != nullptr)
+            // If we have a chunk, we allocate the memory for the instructions there.
+            return b->chunk->allocate<lauf_asm_inst>(insts_count);
+        else
+            // For a normal function, we allocate the memory from the module.
+            return b->mod->allocate<lauf_asm_inst>(insts_count);
+    }();
+    auto ip = insts;
     for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
     {
         if (!block->reachable)
@@ -515,6 +530,7 @@ size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b)
 void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location loc)
 {
     LAUF_BUILD_CHECK_CUR;
+    LAUF_BUILD_ASSERT(b->chunk == nullptr, "cannot add debug locations to a chunk of code");
 
     if (b->cur->debug_locations.empty()
         || b->cur->debug_locations.back().location.line_nr != loc.line_nr

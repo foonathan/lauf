@@ -25,7 +25,13 @@ typedef struct lauf_asm_global lauf_asm_global;
 /// It may or may not have a body associated with it.
 typedef struct lauf_asm_function lauf_asm_function;
 
-/// An instruction within a function.
+/// A chunk of code.
+///
+/// It is like a function that takes no arguments, but it can be re-used and cleared.
+/// It is meant for temporary code that isn't used a lot.
+typedef struct lauf_asm_chunk lauf_asm_chunk;
+
+/// An instruction within a function or chunk.
 ///
 /// The exact type is not exposed.
 typedef union lauf_asm_inst lauf_asm_inst;
@@ -113,6 +119,15 @@ bool               lauf_asm_function_has_definition(const lauf_asm_function* fn)
 /// This can be used to translate e.g. the result of `lauf_runtime_stacktrace_address()` into a
 /// persistent value.
 size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const lauf_asm_inst* ip);
+
+//=== chunks ===//
+/// Creates a new chunk for the module.
+///
+/// Each chunk uses a separate arena for memory allocation, so they should be re-used when possible.
+lauf_asm_chunk* lauf_asm_create_chunk(lauf_asm_module* mod);
+
+lauf_asm_signature lauf_asm_chunk_signature(const lauf_asm_chunk* chunk);
+bool               lauf_asm_chunk_is_empty(const lauf_asm_chunk* chunk);
 
 LAUF_HEADER_END
 

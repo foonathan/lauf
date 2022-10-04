@@ -13,7 +13,7 @@ struct lauf_asm_program : lauf::intrinsic_arena<lauf_asm_program>
     const lauf_asm_module* mod = nullptr;
 
     lauf::array<const lauf_asm_function*> functions;
-    uint16_t                              entry = 0;
+    const lauf_asm_function*              entry = nullptr;
 
     explicit lauf_asm_program(lauf::arena_key key) : lauf::intrinsic_arena<lauf_asm_program>(key) {}
 };

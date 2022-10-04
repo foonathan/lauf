@@ -178,8 +178,9 @@ struct lauf_asm_local
 struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 {
     lauf_asm_build_options options;
-    lauf_asm_module*       mod = nullptr;
-    lauf_asm_function*     fn  = nullptr;
+    lauf_asm_module*       mod   = nullptr;
+    lauf_asm_function*     fn    = nullptr;
+    lauf_asm_chunk*        chunk = nullptr;
 
     lauf::array_list<lauf_asm_block> blocks;
     lauf_asm_block*                  prologue = nullptr;
@@ -195,10 +196,11 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
     void error(const char* context, const char* msg);
 
-    void reset(lauf_asm_module* mod, lauf_asm_function* fn)
+    void reset(lauf_asm_module* mod, lauf_asm_function* fn, lauf_asm_chunk* chunk)
     {
-        this->mod = mod;
-        this->fn  = fn;
+        this->mod   = mod;
+        this->fn    = fn;
+        this->chunk = chunk;
 
         blocks.reset();
         cur = nullptr;
