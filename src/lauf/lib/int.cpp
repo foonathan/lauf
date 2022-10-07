@@ -591,7 +591,7 @@ const lauf_asm_type lauf_lib_int_u8  = {LAUF_ASM_NATIVE_LAYOUT_OF(std::uint8_t),
                                         &store_int<std::uint8_t>,
                                         "U8",
                                         &lauf_lib_int_s64};
-const lauf_asm_type lauf_lib_int_u16 = {LAUF_ASM_NATIVE_LAYOUT_OF(std::uint8_t),
+const lauf_asm_type lauf_lib_int_u16 = {LAUF_ASM_NATIVE_LAYOUT_OF(std::uint16_t),
                                         1,
                                         &load_int<std::uint16_t>,
                                         &store_int<std::uint16_t>,
@@ -599,8 +599,8 @@ const lauf_asm_type lauf_lib_int_u16 = {LAUF_ASM_NATIVE_LAYOUT_OF(std::uint8_t),
                                         &lauf_lib_int_u8};
 const lauf_asm_type lauf_lib_int_u32 = {LAUF_ASM_NATIVE_LAYOUT_OF(std::uint32_t),
                                         1,
-                                        &load_int<std::uint16_t>,
-                                        &store_int<std::uint16_t>,
+                                        &load_int<std::uint32_t>,
+                                        &store_int<std::uint32_t>,
                                         "U32",
                                         &lauf_lib_int_u16};
 const lauf_asm_type lauf_lib_int_u64
