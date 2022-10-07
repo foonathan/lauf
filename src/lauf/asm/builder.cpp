@@ -433,6 +433,22 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
     return !b->errored;
 }
 
+lauf_asm_global* lauf_asm_build_string_literal(lauf_asm_builder* b, const char* str)
+{
+    auto str_size = std::strlen(str) + 1; // include null
+    for (auto global = b->mod->globals; global != nullptr; global = global->next)
+    {
+        if (global->perms != lauf_asm_global::read_only)
+            // Can't use a mutable global.
+            continue;
+
+        if (str_size == global->size && std::memcmp(global->memory, str, global->size) == 0)
+            return global;
+    }
+
+    return lauf_asm_add_global_const_data(b->mod, str, {str_size, 1});
+}
+
 lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout)
 {
     layout.size = lauf::round_to_multiple_of_alignment(layout.size, alignof(void*));

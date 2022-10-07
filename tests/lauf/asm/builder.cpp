@@ -66,6 +66,29 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 }
 } // namespace
 
+TEST_CASE("lauf_asm_build_string_literal")
+{
+    auto mod         = lauf_asm_create_module("test");
+    auto mut_abc     = lauf_asm_add_global_mut_data(mod, "abc", {4, 1});
+    auto no_null_abc = lauf_asm_add_global_const_data(mod, "abc", {3, 1});
+
+    auto fn = lauf_asm_add_function(mod, "test", {0, 0});
+    auto b  = lauf_asm_create_builder(lauf_asm_default_build_options);
+    lauf_asm_build(b, mod, fn);
+
+    auto abc = lauf_asm_build_string_literal(b, "abc");
+    CHECK(abc != mut_abc);
+    CHECK(abc != no_null_abc);
+
+    auto ab = lauf_asm_build_string_literal(b, "ab");
+    CHECK(ab != mut_abc);
+    CHECK(ab != no_null_abc);
+    CHECK(ab != abc);
+
+    auto abc2 = lauf_asm_build_string_literal(b, "abc");
+    CHECK(abc2 == abc);
+}
+
 TEST_CASE("lauf_asm_inst_jump")
 {
     auto nop = build({0, 0}, [](lauf_asm_module*, lauf_asm_builder* b) {

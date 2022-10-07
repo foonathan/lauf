@@ -58,6 +58,13 @@ void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function
 /// Returns true if the body is well-formed, false otherwise.
 bool lauf_asm_build_finish(lauf_asm_builder* b);
 
+//=== global data ===//
+/// Adds a constant global containing a null-terminated string literal to the module of the builder.
+///
+/// It will iterate over constant global variables of the module to search for one that contains the
+/// string literal. If it exists, returns it address. Otherwise, adds a new global.
+lauf_asm_global* lauf_asm_build_string_literal(lauf_asm_builder* b, const char* str);
+
 //=== local variables ===//
 /// A local variable within a function.
 typedef struct lauf_asm_local lauf_asm_local;
