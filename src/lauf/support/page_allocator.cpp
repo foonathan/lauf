@@ -7,6 +7,24 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+//#define LAUF_PAGE_ALLOCATOR_LOG
+#ifdef LAUF_PAGE_ALLOCATOR_LOG
+
+#    include <cstdio>
+#    define LAUF_PAGE_ALLOCATOR_DO_LOG(...)                                                        \
+        do                                                                                         \
+        {                                                                                          \
+            std::printf("[lauf] page_allocator: " __VA_ARGS__);                                    \
+            std::putchar('\n');                                                                    \
+        } while (0)
+
+#else
+#    define LAUF_PAGE_ALLOCATOR_DO_LOG(...)                                                        \
+        do                                                                                         \
+        {                                                                                          \
+        } while (0)
+#endif
+
 struct lauf::page_allocator::free_list_node
 {
     std::size_t     size;
@@ -38,6 +56,8 @@ lauf::page_block lauf::page_allocator::allocate(std::size_t size)
     for (auto cur = _free_list; cur != nullptr; prev = cur, cur = cur->next)
         if (cur->size >= size)
         {
+            LAUF_PAGE_ALLOCATOR_DO_LOG("allocate(%zu): found %zu in cache", size, cur->size);
+
             // Remove block from free list.
             if (prev == nullptr)
                 _free_list = cur->next;
@@ -53,6 +73,7 @@ lauf::page_block lauf::page_allocator::allocate(std::size_t size)
     assert(pages != MAP_FAILED); // NOLINT: macro
     _allocated_bytes += size;
 
+    LAUF_PAGE_ALLOCATOR_DO_LOG("allocate(%zu): mmap", size);
     return {pages, size};
 }
 
@@ -68,11 +89,18 @@ bool lauf::page_allocator::try_extend(page_block& block, std::size_t new_size)
 
     auto ptr = ::mremap(block.ptr, block.size, new_size, 0);
     if (ptr == MAP_FAILED) // NOLINT: macro
+    {
+        LAUF_PAGE_ALLOCATOR_DO_LOG("try_extend({%p, %zu}, %zu): failed", block.ptr, block.size,
+                                   new_size);
         return false;
-    _allocated_bytes += new_size - block.size;
+    }
 
+    _allocated_bytes += new_size - block.size;
     assert(ptr == block.ptr);
     block.size = new_size;
+
+    LAUF_PAGE_ALLOCATOR_DO_LOG("try_extend({%p, %zu}, %zu): failed", block.ptr, block.size,
+                               new_size);
     return true;
 }
 
@@ -86,11 +114,13 @@ void lauf::page_allocator::deallocate(page_block block)
         if (cur->end() == block.ptr)
         {
             cur->size += block.size;
+            LAUF_PAGE_ALLOCATOR_DO_LOG("deallocate({%p, %zu}): merged", block.ptr, block.size);
             return;
         }
 
     // Add to free list.
     _free_list = ::new (block.ptr) free_list_node{block.size, _free_list};
+    LAUF_PAGE_ALLOCATOR_DO_LOG("deallocate({%p, %zu}): not merged", block.ptr, block.size);
 }
 
 std::size_t lauf::page_allocator::release()
