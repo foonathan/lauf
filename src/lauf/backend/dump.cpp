@@ -228,7 +228,8 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
             break;
         }
         case lauf::asm_op::local_addr: {
-            writer->format("local_addr %u", ip->global_addr.value);
+            writer->format("local_addr %u <%zx>", ip->local_addr.index,
+                           ip->local_addr.offset - sizeof(lauf_runtime_stack_frame));
             break;
         }
         case lauf::asm_op::cc: {
