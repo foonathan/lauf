@@ -143,9 +143,18 @@ LAUF_VM_EXECUTE_BRANCH(gt, >)
 LAUF_VM_EXECUTE(panic)
 {
     auto msg = lauf_runtime_get_cstr(process, vstack_ptr[0].as_address);
-    ++vstack_ptr;
-
     LAUF_DO_PANIC(msg);
+}
+
+LAUF_VM_EXECUTE(panic_if)
+{
+    auto condition = vstack_ptr[1].as_uint;
+    if (LAUF_UNLIKELY(condition != 0))
+        LAUF_TAIL_CALL return execute_panic(ip, vstack_ptr, frame_ptr, process);
+
+    vstack_ptr += 2;
+    ++ip;
+    LAUF_VM_DISPATCH;
 }
 
 LAUF_VM_EXECUTE(exit)

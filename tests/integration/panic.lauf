@@ -8,6 +8,27 @@ function @panic() {
     panic;
 }
 
+function @panic_if(1 => 1) {
+    global_addr @error;
+    panic_if;
+    uint 11;
+    return;
+}
+function @panic_if_true(0 => 0) {
+    uint 1;
+    call @panic_if;
+    $lauf.test.unreachable;
+    pop 0;
+    return;
+}
+function @panic_if_false(0 => 0) {
+    uint 0;
+    call @panic_if;
+    uint 11;
+    $lauf.test.assert_eq;
+    return;
+}
+
 function @invalid_addr() {
     uint 42;
     panic;
@@ -20,6 +41,9 @@ function @not_null_terminated() {
 
 function @main(0 => 1) export {
     function_addr @panic; global_addr @error; $lauf.test.assert_panic;
+
+    function_addr @panic_if_true; global_addr @error; $lauf.test.assert_panic;
+    call @panic_if_false;
 
     function_addr @invalid_addr; null; $lauf.test.assert_panic;
     function_addr @not_null_terminated; null; $lauf.test.assert_panic;

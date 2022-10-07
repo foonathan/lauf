@@ -164,6 +164,9 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         case lauf::asm_op::panic:
             writer->write("panic");
             break;
+        case lauf::asm_op::panic_if:
+            writer->write("panic_if");
+            break;
         case lauf::asm_op::exit:
             writer->write("exit");
             break;

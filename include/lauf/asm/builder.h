@@ -111,7 +111,7 @@ const lauf_asm_block* lauf_asm_inst_branch(lauf_asm_builder* b, const lauf_asm_b
 ///
 /// Invokes the panic handler with the message at the top of the function, and terminates execution.
 ///
-/// Signature: msg:char* => n/a
+/// Signature: msg:address => n/a
 void lauf_asm_inst_panic(lauf_asm_builder* b);
 
 //=== call instructions ===//
@@ -131,6 +131,11 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
 ///
 /// Signature: in_N ... in_0 => out_M ... out_0
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
+
+/// If a condition is non-zero, invokes the panic handler with a message, and terminates execution.
+///
+/// Signature: condition:bool msg:address => _
+void lauf_asm_inst_panic_if(lauf_asm_builder* b);
 
 //=== fiber instructions ===//
 /// Resumes a suspended fiber.

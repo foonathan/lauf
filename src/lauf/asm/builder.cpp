@@ -93,6 +93,7 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
         case lauf::asm_op::call_builtin:
         case lauf::asm_op::call_builtin_no_regs:
         case lauf::asm_op::call_builtin_sig:
+        case lauf::asm_op::panic_if:
         case lauf::asm_op::fiber_resume:
         case lauf::asm_op::fiber_transfer:
         case lauf::asm_op::fiber_suspend:
@@ -760,6 +761,14 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     {
         add_call_builtin(b, callee);
     }
+}
+
+void lauf_asm_inst_panic_if(lauf_asm_builder* b)
+{
+    LAUF_BUILD_CHECK_CUR;
+
+    LAUF_BUILD_ASSERT(b->cur->vstack.pop(2), "missing inputs");
+    b->cur->insts.push_back(*b, LAUF_BUILD_INST_NONE(panic_if));
 }
 
 void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig)

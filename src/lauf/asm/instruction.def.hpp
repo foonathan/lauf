@@ -24,6 +24,8 @@ LAUF_ASM_INST(branch_gt, asm_inst_offset)
 
 // lauf_asm_inst_panic()
 LAUF_ASM_INST(panic, asm_inst_none)
+// lauf_asm_inst_panic_if()
+LAUF_ASM_INST(panic_if, asm_inst_none)
 
 // Exits VM execution; used by its trampoline only.
 LAUF_ASM_INST(exit, asm_inst_none)

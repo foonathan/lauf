@@ -205,6 +205,20 @@ void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& 
             writer.panic(pop_reg());
             dead_code = true;
             break;
+        case lauf::asm_op::panic_if: {
+            auto message   = pop_reg();
+            auto condition = pop_reg();
+
+            auto do_panic = next_block();
+            auto no_panic = next_block();
+            writer.jnz(condition, do_panic, no_panic);
+
+            writer.block(do_panic);
+            writer.panic(message);
+
+            writer.block(no_panic);
+            break;
+        }
 
         case lauf::asm_op::call: {
             auto callee = lauf::uncompress_pointer_offset<lauf_asm_function>(fn, ip->call.offset);
