@@ -53,18 +53,19 @@ class cstack
     // That way we can easily determine the current check from the frame pointer.
     struct chunk
     {
-        chunk* next;
+        std::size_t block_size; // 0 if not result of an allocation
+        chunk*      next;
 
         static chunk* allocate(page_allocator& alloc, std::size_t capacity)
         {
             assert(capacity > 0);
             auto block = alloc.allocate(capacity);
 
-            auto first = ::new (block.ptr) chunk{nullptr};
+            auto first = ::new (block.ptr) chunk{block.size, nullptr};
             auto cur   = first;
             for (auto i = page_allocator::page_size; i < block.size; i += page_allocator::page_size)
             {
-                cur->next = ::new (cur->end()) chunk{nullptr};
+                cur->next = ::new (cur->end()) chunk{0, nullptr};
                 cur       = cur->next;
             }
 
@@ -72,8 +73,16 @@ class cstack
         }
         static chunk* deallocate(page_allocator& alloc, chunk* cur)
         {
+            if (cur->block_size == 0)
+                // Not the initial block, do nothing.
+                return cur->next;
+
+            // Find the next allocation.
             auto next = cur->next;
-            alloc.deallocate({cur, page_allocator::page_size});
+            while (next != nullptr && next->block_size == 0)
+                next = next->next;
+
+            alloc.deallocate({cur, cur->block_size});
             return next;
         }
 
