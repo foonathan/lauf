@@ -173,9 +173,10 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     auto sig = lauf_asm_function_signature(fn);
 
     // Save current processor state.
-    auto regs          = process->regs;
-    auto cur_fiber     = process->cur_fiber;
-    process->cur_fiber = nullptr;
+    auto regs                 = process->regs;
+    auto cur_fiber            = process->cur_fiber;
+    auto cur_allocation_index = process->memory.next_index();
+    process->cur_fiber        = nullptr;
 
     // Create a new fiber.
     auto fiber = lauf_runtime_fiber::create(process, fn);
@@ -213,6 +214,27 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
             output[sig.output_count - i - 1] = vstack_ptr[0];
             ++vstack_ptr;
         }
+    }
+    else
+    {
+        // We paniced, so we manually need to mark all local memory allocations as freed before we
+        // destroy the fiber. We don't need to worry about the split status, as the fiber is dead
+        // anyway.
+        for (auto alloc_idx = cur_allocation_index; alloc_idx != process->memory.next_index();
+             ++alloc_idx)
+        {
+            auto& alloc = process->memory[alloc_idx];
+            if (alloc.source == lauf::allocation_source::local_memory
+                && alloc.status != lauf::allocation_status::freed)
+            {
+                alloc.status = lauf::allocation_status::freed;
+                alloc.split  = lauf::allocation_split::unsplit;
+                alloc.gc     = lauf::gc_tracking::unreachable;
+            }
+        }
+
+        // We also manually do a cleanup of the allocations now.
+        process->memory.remove_freed();
     }
 
     lauf_runtime_fiber::destroy(process, fiber);
