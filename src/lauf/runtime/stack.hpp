@@ -115,10 +115,9 @@ public:
 
     void clear(page_allocator& alloc)
     {
-        for (auto cur = _first; cur != nullptr; cur = chunk::deallocate(alloc, cur))
+        auto cur = _first;
+        for (_first = nullptr; cur != nullptr; cur = chunk::deallocate(alloc, cur))
         {}
-
-        _first = nullptr;
     }
 
     void* base()
