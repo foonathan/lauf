@@ -223,9 +223,9 @@ size_t lauf_runtime_gc(lauf_runtime_process* p)
         for (auto end = ptr + (alloc->size - offset) / sizeof(lauf_runtime_value); ptr != end;
              ++ptr)
         {
-            auto alloc = p->memory.try_get(ptr->as_address);
-            if (alloc != nullptr && ptr->as_address.offset <= alloc->size)
-                mark_reachable(alloc);
+            auto ptr_alloc = p->memory.try_get(ptr->as_address);
+            if (ptr_alloc != nullptr && ptr->as_address.offset <= ptr_alloc->size)
+                mark_reachable(ptr_alloc);
         }
     };
 
