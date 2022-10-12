@@ -42,6 +42,27 @@ function @load_store_field_local_aligned() {
     return;
 }
 
+function @load_store_local_no_allocation() {
+    local %value : $lauf.Value;
+    uint 42; local_addr %value; store_field $lauf.Value 0;
+    local_addr %value; load_field $lauf.Value 0;
+    uint 42; $lauf.test.assert_eq;
+
+    return;
+}
+function @load_store_local_mixed_allocation() {
+    local %value : $lauf.Value;
+    local %address_taken : $lauf.Value;
+    uint 42; local_addr %value; store_field $lauf.Value 0;
+    local_addr %value; load_field $lauf.Value 0;
+    uint 42; $lauf.test.assert_eq;
+
+    # This prevents the use of the local_storage instruction.
+    local_addr %address_taken; call @set_pointer;
+
+    return;
+}
+
 #== Invalid global addresses ===#
 # Order matters to ensure that the misaligned ends up misaligned.
 # (Globals happen to be allocated in reverse order)
@@ -89,6 +110,9 @@ function @main(0 => 1) export {
         call @load_store_field_global();
         call @load_store_field_local();
         call @load_store_field_local_aligned();
+
+        call @load_store_local_no_allocation();
+        call @load_store_local_mixed_allocation();
     ]
 
     [

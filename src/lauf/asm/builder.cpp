@@ -141,29 +141,39 @@ void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function
 
 namespace
 {
-std::size_t create_prologue(lauf_asm_builder* b)
+bool create_prologue(lauf_asm_builder* b)
 {
     if (b->locals.empty())
-        return 0;
+        return false;
 
-    auto prologue               = b->prologue;
-    auto local_allocation_count = [&] {
-        auto result = 0u;
+    auto prologue                    = b->prologue;
+    auto any_local_has_address_taken = [&] {
         for (auto& local : b->locals)
             if (local.address_count > 0)
-                ++result;
-        return result;
+                return true;
+        return false;
     }();
 
-    if (local_allocation_count > 0)
-        prologue->insts.push_back(*b,
-                                  LAUF_BUILD_INST_VALUE(setup_local_alloc, local_allocation_count));
+    if (any_local_has_address_taken)
+        prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(setup_local_alloc, b->locals.size()));
 
     for (auto& local : b->locals)
     {
         assert(local.layout.alignment >= alignof(void*));
-        if (local.address_count == 0)
+
+        // As soon as we have one variable whose address is taken, we have to setup allocations for
+        // all of them. This is because the index in local_addr is wrong otherwise.
+        if (any_local_has_address_taken)
         {
+            if (local.layout.alignment == alignof(void*))
+                b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout));
+            else
+                b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned,
+                                                                        local.layout));
+        }
+        else
+        {
+            assert(local.address_count == 0);
             auto space = local.layout.size;
             if (local.layout.alignment > alignof(void*))
                 space += local.layout.alignment;
@@ -177,17 +187,9 @@ std::size_t create_prologue(lauf_asm_builder* b)
             // but don't care where exactly it lives in the memory.
             prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_storage, space));
         }
-        else
-        {
-            if (local.layout.alignment == alignof(void*))
-                b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout));
-            else
-                b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned,
-                                                                        local.layout));
-        }
     }
 
-    return local_allocation_count;
+    return any_local_has_address_taken;
 }
 
 void mark_reachable_blocks(lauf_asm_builder* b)
@@ -233,7 +235,7 @@ void mark_reachable_blocks(lauf_asm_builder* b)
 
 template <typename Iterator, typename Sink>
 void generate_terminator(const char* context, lauf_asm_builder* b, Iterator block, Iterator end,
-                         std::size_t local_allocation_count, Sink sink)
+                         bool need_to_free_locals, Sink sink)
 {
     auto next_block = [&] {
         auto next_iter = block;
@@ -256,7 +258,7 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
         break;
 
     case lauf_asm_block::return_:
-        if (local_allocation_count > 0)
+        if (need_to_free_locals)
             sink(lauf::asm_op::return_free, nullptr);
         else
             sink(lauf::asm_op::return_, nullptr);
@@ -317,7 +319,7 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
     }
 }
 
-void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t local_allocation_count)
+void generate_bytecode(const char* context, lauf_asm_builder* b, bool need_to_free_locals)
 {
     auto insts_count = [&] {
         auto result = std::size_t(0);
@@ -327,7 +329,7 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
                 continue;
 
             auto inst_count = block->insts.size();
-            generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
+            generate_terminator(context, b, block, b->blocks.end(), need_to_free_locals,
                                 [&](lauf::asm_op, const lauf_asm_block*) { ++inst_count; });
 
             if (inst_count > 0)
@@ -358,7 +360,7 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
             = LAUF_BUILD_INST_SIGNATURE(block, block->sig.input_count, block->sig.output_count, 0);
         ip = block->insts.copy_to(ip);
 
-        generate_terminator(context, b, block, b->blocks.end(), local_allocation_count,
+        generate_terminator(context, b, block, b->blocks.end(), need_to_free_locals,
                             [&](lauf::asm_op op, const lauf_asm_block* dest) {
                                 ip[0].nop.op = op;
                                 switch (op)
@@ -368,7 +370,7 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t loc
                                     break;
 
                                 case lauf::asm_op::return_free:
-                                    ip[0].return_free.value = std::uint32_t(local_allocation_count);
+                                    ip[0].return_free.value = std::uint32_t(b->locals.size());
                                     break;
 
                                 case lauf::asm_op::jump:
@@ -427,8 +429,8 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 
     mark_reachable_blocks(b);
 
-    auto local_allocation_count = create_prologue(b);
-    generate_bytecode(context, b, local_allocation_count);
+    auto need_to_free_locals = create_prologue(b);
+    generate_bytecode(context, b, need_to_free_locals);
     finalize_function(context, b);
     return !b->errored;
 }
