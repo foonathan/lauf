@@ -127,21 +127,25 @@ public:
     //=== modifiers ===//
     void clear(arena_base&)
     {
-        _size = 0;
-        if (!_is_heap)
+        if (_is_heap)
         {
-            // If we aren't using heap memory, reset pointer and capacity as the arena might have
-            // been cleared as well. (If we are using heap memory, we don't want to free it).
-            _ptr      = nullptr;
-            _capacity = 0;
+            ::operator delete(_ptr);
+            _is_heap = false;
         }
+
+        _ptr      = nullptr;
+        _size     = 0;
+        _capacity = 0;
     }
     void clear(page_allocator& allocator)
     {
         assert(!_is_heap);
-        _size = 0;
         if (_capacity > 0)
             allocator.deallocate(pages());
+
+        _ptr      = nullptr;
+        _size     = 0;
+        _capacity = 0;
     }
 
     void reserve(arena_base& arena, std::size_t new_size)
