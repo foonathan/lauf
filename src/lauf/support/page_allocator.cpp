@@ -106,8 +106,8 @@ bool lauf::page_allocator::try_extend(page_block& block, std::size_t new_size)
 
 void lauf::page_allocator::deallocate(page_block block)
 {
-    if (auto remainder = block.size % page_size)
-        block.size += page_size - remainder;
+    if (auto remainder = block.size % real_page_size)
+        block.size += real_page_size - remainder;
 
     // Merge with an existing page block if possible.
     for (auto cur = _free_list; cur != nullptr; cur = cur->next)
