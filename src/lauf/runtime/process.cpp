@@ -3,7 +3,6 @@
 
 #include <lauf/runtime/process.hpp>
 
-#include <lauf/asm/program.hpp>
 #include <lauf/vm.hpp>
 #include <lauf/vm_execute.hpp>
 
@@ -63,9 +62,9 @@ lauf_runtime_process lauf_runtime_process::create(lauf_vm* vm, const lauf_asm_pr
 {
     lauf_runtime_process result;
     result.vm      = vm;
-    result.program = program;
+    result.program = *program;
 
-    result.memory.init(vm, program->mod);
+    result.memory.init(vm, program->_mod);
     result.remaining_steps = vm->step_limit;
 
     return result;
@@ -103,7 +102,7 @@ lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* process)
 
 const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process)
 {
-    return process->program;
+    return &process->program;
 }
 
 lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process)

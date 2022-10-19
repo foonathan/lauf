@@ -19,17 +19,21 @@ typedef union lauf_asm_inst            lauf_asm_inst;
 /// It consists of one more modules and an entry function.
 /// All referenced external definitions must be resolved before execution.
 /// This is done by matching the names.
-typedef struct lauf_asm_program lauf_asm_program;
+typedef struct lauf_asm_program
+{
+    const lauf_asm_module*   _mod;
+    const lauf_asm_function* _entry;
+} lauf_asm_program;
 
 /// Creates a program that consists of a single module only.
-lauf_asm_program* lauf_asm_create_program(const lauf_asm_module*   mod,
-                                          const lauf_asm_function* entry);
+lauf_asm_program lauf_asm_create_program(const lauf_asm_module*   mod,
+                                         const lauf_asm_function* entry);
 
 /// Creates a program that executes the given chunk.
-lauf_asm_program* lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
-                                                     const lauf_asm_chunk*  chunk);
+lauf_asm_program lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
+                                                    const lauf_asm_chunk*  chunk);
 
-void lauf_asm_destroy_program(lauf_asm_program* program);
+void lauf_asm_destroy_program(lauf_asm_program program);
 
 const char* lauf_asm_program_debug_path(const lauf_asm_program*  program,
                                         const lauf_asm_function* fn);

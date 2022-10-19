@@ -89,7 +89,7 @@ bool lauf_vm_execute(lauf_vm* vm, const lauf_asm_program* program, //
 /// Executes the program on the VM and destroys it afterwards.
 ///
 /// It behaves the same as `lauf_vm_execute()` followed by `lauf_asm_program_destroy()`.
-bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program* program, //
+bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program program, //
                              const lauf_runtime_value* input, lauf_runtime_value* output);
 
 LAUF_HEADER_END

@@ -77,7 +77,6 @@ target_sources(lauf_core PRIVATE
 
                 ${src_dir}/asm/builder.hpp
                 ${src_dir}/asm/module.hpp
-                ${src_dir}/asm/program.hpp
 
                 ${src_dir}/lib/debug.hpp
 

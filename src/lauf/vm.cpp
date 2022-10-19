@@ -6,7 +6,6 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
-#include <lauf/asm/program.hpp>
 #include <lauf/lib/debug.hpp>
 
 const lauf_vm_allocator lauf_vm_null_allocator
@@ -73,7 +72,7 @@ lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm)
 
 lauf_runtime_process* lauf_vm_start_process(lauf_vm* vm, const lauf_asm_program* program)
 {
-    auto fn = program->entry;
+    auto fn = program->_entry;
 
     vm->process           = lauf_runtime_process::create(vm, program);
     vm->process.cur_fiber = lauf_runtime_create_fiber(&vm->process, fn);
@@ -83,7 +82,7 @@ lauf_runtime_process* lauf_vm_start_process(lauf_vm* vm, const lauf_asm_program*
 bool lauf_vm_execute(lauf_vm* vm, const lauf_asm_program* program, const lauf_runtime_value* input,
                      lauf_runtime_value* output)
 {
-    auto fn = program->entry;
+    auto fn = program->_entry;
 
     vm->process = lauf_runtime_process::create(vm, program);
     auto result = lauf_runtime_call(&vm->process, fn, input, output);
@@ -92,10 +91,10 @@ bool lauf_vm_execute(lauf_vm* vm, const lauf_asm_program* program, const lauf_ru
     return result;
 }
 
-bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program* program,
-                             const lauf_runtime_value* input, lauf_runtime_value* output)
+bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program program, const lauf_runtime_value* input,
+                             lauf_runtime_value* output)
 {
-    auto result = lauf_vm_execute(vm, program, input, output);
+    auto result = lauf_vm_execute(vm, &program, input, output);
     lauf_asm_destroy_program(program);
     return result;
 }

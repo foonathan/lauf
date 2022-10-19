@@ -4,7 +4,6 @@
 #include <lauf/runtime/memory.hpp>
 
 #include <lauf/asm/module.hpp>
-#include <lauf/asm/program.hpp>
 #include <lauf/runtime/process.hpp>
 #include <lauf/vm.hpp>
 
@@ -112,7 +111,7 @@ const char* lauf_runtime_get_cstr(lauf_runtime_process* p, lauf_runtime_address 
 const lauf_asm_function* lauf_runtime_get_function_ptr_any(lauf_runtime_process*         p,
                                                            lauf_runtime_function_address addr)
 {
-    for (auto fn = p->program->mod->functions; fn != nullptr; fn = fn->next)
+    for (auto fn = p->program._mod->functions; fn != nullptr; fn = fn->next)
         if (fn->function_idx == addr.index)
             return fn;
 

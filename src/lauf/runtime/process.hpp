@@ -6,6 +6,7 @@
 
 #include <lauf/runtime/process.h>
 
+#include <lauf/asm/program.h>
 #include <lauf/runtime/memory.hpp>
 #include <lauf/runtime/stack.hpp>
 
@@ -135,7 +136,7 @@ struct lauf_runtime_process
     // * before panicing
     lauf::registers regs;
     // The program that is running.
-    const lauf_asm_program* program = nullptr;
+    lauf_asm_program program;
 
     std::size_t remaining_steps = 0;
 
