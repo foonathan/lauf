@@ -58,16 +58,18 @@ void lauf_runtime_fiber::destroy(lauf_runtime_process* process, lauf_runtime_fib
     fiber->cstack.clear(process->vm->page_allocator);
 }
 
-lauf_runtime_process lauf_runtime_process::create(lauf_vm* vm, const lauf_asm_program* program)
+void lauf_runtime_process::create(lauf_runtime_process* process, lauf_vm* vm,
+                                  const lauf_asm_program* program)
 {
-    lauf_runtime_process result;
-    result.vm      = vm;
-    result.program = *program;
+    process->vm      = vm;
+    process->program = *program;
 
-    result.memory.init(vm, program->_mod);
-    result.remaining_steps = vm->step_limit;
+    process->cur_fiber  = nullptr;
+    process->fiber_list = nullptr;
+    process->regs       = {};
 
-    return result;
+    process->memory.init(vm, program->_mod);
+    process->remaining_steps = vm->step_limit;
 }
 
 void lauf_runtime_process::destroy(lauf_runtime_process* process)

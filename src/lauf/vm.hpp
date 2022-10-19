@@ -38,6 +38,8 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
 
     ~lauf_vm()
     {
+        process.memory.destroy(this);
+
         [[maybe_unused]] auto leaked_bytes = page_allocator.release();
         assert(leaked_bytes == 0);
     }

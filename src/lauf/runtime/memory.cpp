@@ -49,6 +49,11 @@ void lauf::memory::clear(lauf_vm* vm)
     _allocations.clear(vm->page_allocator);
 }
 
+void lauf::memory::destroy(lauf_vm* vm)
+{
+    _allocations.shrink_to_fit(vm->page_allocator);
+}
+
 const void* lauf_runtime_get_const_ptr(lauf_runtime_process* p, lauf_runtime_address addr,
                                        lauf_asm_layout layout)
 {

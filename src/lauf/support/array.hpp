@@ -137,7 +137,16 @@ public:
         _size     = 0;
         _capacity = 0;
     }
-    void clear(page_allocator& allocator)
+    void clear(page_allocator&)
+    {
+        _size = 0;
+    }
+
+    void shrink_to_fit(arena_base& arena)
+    {
+        clear(arena);
+    }
+    void shrink_to_fit(page_allocator& allocator)
     {
         assert(!_is_heap);
         if (_capacity > 0)

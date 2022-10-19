@@ -169,8 +169,12 @@ class memory
 public:
     memory() = default;
 
+    memory(const memory&)            = delete;
+    memory& operator=(const memory&) = delete;
+
     void init(lauf_vm* vm, const lauf_asm_module* mod);
     void clear(lauf_vm* vm);
+    void destroy(lauf_vm* vm);
 
     //=== container interface ===//
     auto begin()

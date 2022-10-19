@@ -124,11 +124,11 @@ struct lauf_runtime_fiber
 struct lauf_runtime_process
 {
     // The VM that is executing the process.
-    lauf_vm* vm = nullptr;
+    lauf_vm* vm;
 
-    lauf_runtime_fiber* cur_fiber = nullptr;
+    lauf_runtime_fiber* cur_fiber;
     lauf::memory        memory;
-    lauf_runtime_fiber* fiber_list = nullptr;
+    lauf_runtime_fiber* fiber_list;
 
     // The state of the current fiber, not set when all fibers suspended.
     // Only lazily updated whenever process is exposed to user code:
@@ -138,10 +138,10 @@ struct lauf_runtime_process
     // The program that is running.
     lauf_asm_program program;
 
-    std::size_t remaining_steps = 0;
+    std::size_t remaining_steps;
 
-    static lauf_runtime_process create(lauf_vm* vm, const lauf_asm_program* program);
-    static void                 destroy(lauf_runtime_process* process);
+    static void create(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program);
+    static void destroy(lauf_runtime_process* process);
 };
 
 namespace lauf
