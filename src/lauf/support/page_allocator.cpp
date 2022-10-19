@@ -77,7 +77,7 @@ lauf::page_block lauf::page_allocator::allocate(std::size_t size)
     return {pages, size};
 }
 
-bool lauf::page_allocator::try_extend(page_block& block, std::size_t new_size)
+std::size_t lauf::page_allocator::try_extend(page_block block, std::size_t new_size)
 {
     // We know that we can't extend it using the free list:
     // * upon allocation we return the maximal sequence of contiguous blocks
@@ -92,16 +92,15 @@ bool lauf::page_allocator::try_extend(page_block& block, std::size_t new_size)
     {
         LAUF_PAGE_ALLOCATOR_DO_LOG("try_extend({%p, %zu}, %zu): failed", block.ptr, block.size,
                                    new_size);
-        return false;
+        return 0;
     }
 
     _allocated_bytes += new_size - block.size;
     assert(ptr == block.ptr);
-    block.size = new_size;
 
     LAUF_PAGE_ALLOCATOR_DO_LOG("try_extend({%p, %zu}, %zu): failed", block.ptr, block.size,
                                new_size);
-    return true;
+    return new_size;
 }
 
 void lauf::page_allocator::deallocate(page_block block)

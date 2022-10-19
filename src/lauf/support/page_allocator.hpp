@@ -36,7 +36,8 @@ public:
     //=== allocation ===//
     page_block allocate(std::size_t size);
 
-    bool try_extend(page_block& block, std::size_t size);
+    // Returns the size it could extend to.
+    std::size_t try_extend(page_block block, std::size_t size);
 
     /// Adds to a cache only.
     void deallocate(page_block block);

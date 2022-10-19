@@ -191,6 +191,7 @@ public:
             _is_heap  = true;
         }
     }
+
     void reserve(page_allocator& allocator, std::size_t new_size)
     {
         if (new_size <= _capacity)
@@ -208,14 +209,18 @@ public:
         }
         else
         {
-            auto new_pages = pages();
-            if (!allocator.try_extend(new_pages, new_capacity * sizeof(T)))
+            auto extended_page_size = allocator.try_extend(pages(), new_capacity * sizeof(T));
+            if (extended_page_size < new_size * sizeof(T))
             {
-                new_pages = allocator.allocate(new_capacity * sizeof(T));
+                auto new_pages = allocator.allocate(new_capacity * sizeof(T));
                 std::memcpy(new_pages.ptr, _ptr, _size * sizeof(T));
                 allocator.deallocate(pages());
+                set_pages(new_pages);
             }
-            set_pages(new_pages);
+            else
+            {
+                _capacity = extended_page_size / sizeof(T);
+            }
         }
     }
 
@@ -275,7 +280,7 @@ private:
     {
         return {_ptr, _capacity * sizeof(T)};
     }
-    void set_pages(page_block& block)
+    void set_pages(page_block block)
     {
         _ptr      = static_cast<T*>(block.ptr);
         _capacity = block.size / sizeof(T);
