@@ -10,10 +10,7 @@ lauf_asm_program* lauf_asm_create_program(const lauf_asm_module*   mod,
 {
     auto program = lauf_asm_program::create();
 
-    program->mod = mod;
-    program->functions.resize_uninitialized(*program, mod->functions_count);
-    for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
-        program->functions[fn->function_idx] = fn;
+    program->mod   = mod;
     program->entry = entry;
 
     return program;

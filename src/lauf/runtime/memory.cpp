@@ -112,10 +112,11 @@ const char* lauf_runtime_get_cstr(lauf_runtime_process* p, lauf_runtime_address 
 const lauf_asm_function* lauf_runtime_get_function_ptr_any(lauf_runtime_process*         p,
                                                            lauf_runtime_function_address addr)
 {
-    if (addr.index < p->program->functions.size())
-        return p->program->functions[addr.index];
-    else
-        return nullptr;
+    for (auto fn = p->program->mod->functions; fn != nullptr; fn = fn->next)
+        if (fn->function_idx == addr.index)
+            return fn;
+
+    return nullptr;
 }
 
 const lauf_asm_function* lauf_runtime_get_function_ptr(lauf_runtime_process*         p,
