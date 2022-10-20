@@ -67,7 +67,7 @@ public:
 
     void* allocate(std::size_t size, std::size_t alignment)
     {
-        if (size > block_size)
+        if (LAUF_UNLIKELY(size > block_size))
         {
             auto memory = ::operator new(size, std::align_val_t(alignment));
             _extern_allocs
@@ -77,9 +77,9 @@ public:
 
         auto offset    = align_offset(_cur_pos, alignment);
         auto remaining = std::size_t(_cur_block->end() - _cur_pos);
-        if (offset + size > remaining)
+        if (LAUF_UNLIKELY(offset + size > remaining))
         {
-            if (_cur_block->next == nullptr)
+            if (LAUF_UNLIKELY(_cur_block->next == nullptr))
                 _cur_block->next = block::allocate();
 
             _cur_block = _cur_block->next;
