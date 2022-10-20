@@ -56,7 +56,7 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
            || fn->insts[start_index].op() == lauf::asm_op::local_storage)
         ++start_index;
 
-    auto end_index = fn->insts_count - 1;
+    auto end_index = fn->inst_count - 1;
     for (auto i = start_index; i != end_index; ++i)
         if (fn->insts[i].op() != lauf::asm_op::block)
             result.push_back(fn->insts[i]);

@@ -110,7 +110,7 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
     writer->write("\n{\n");
 
     auto last_debug_location = lauf_asm_debug_location{0, 0, true};
-    for (auto ip = fn->insts; ip != fn->insts + fn->insts_count; ++ip)
+    for (auto ip = fn->insts; ip != fn->insts + fn->inst_count; ++ip)
     {
         if (ip->op() == lauf::asm_op::block)
         {

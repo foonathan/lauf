@@ -91,7 +91,7 @@ struct lauf_asm_function
     bool               exported = false;
 
     lauf_asm_inst* insts           = nullptr;
-    std::uint16_t  insts_count     = 0;
+    std::uint16_t  inst_count      = 0;
     std::uint16_t  function_idx    = UINT16_MAX;
     std::uint16_t  max_vstack_size = 0;
     // Includes size for stack frame as well.

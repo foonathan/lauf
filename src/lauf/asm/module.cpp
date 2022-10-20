@@ -52,7 +52,7 @@ const lauf_asm_function* lauf_asm_find_function_of_instruction(const lauf_asm_mo
                                                                const lauf_asm_inst*   ip)
 {
     for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
-        if (ip >= fn->insts && ip < fn->insts + fn->insts_count)
+        if (ip >= fn->insts && ip < fn->insts + fn->inst_count)
             return fn;
 
     return nullptr;
@@ -148,7 +148,7 @@ bool lauf_asm_function_has_definition(const lauf_asm_function* fn)
 
 size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const lauf_asm_inst* ip)
 {
-    assert(ip >= fn->insts && ip < fn->insts + fn->insts_count);
+    assert(ip >= fn->insts && ip < fn->insts + fn->inst_count);
     return size_t(ip - fn->insts);
 }
 
@@ -164,6 +164,6 @@ lauf_asm_signature lauf_asm_chunk_signature(const lauf_asm_chunk* chunk)
 
 bool lauf_asm_chunk_is_empty(const lauf_asm_chunk* chunk)
 {
-    return chunk->fn->insts_count == 0;
+    return chunk->fn->inst_count == 0;
 }
 

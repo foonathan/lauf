@@ -244,7 +244,7 @@ void mark_reachable_blocks(lauf_asm_builder* b)
 
 template <typename Iterator, typename Sink>
 void generate_terminator(const char* context, lauf_asm_builder* b, Iterator block, Iterator end,
-                         bool need_to_free_locals, Sink sink)
+                         Sink sink)
 {
     auto get_next_block = [&] {
         auto next_iter = block;
@@ -267,10 +267,7 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
         break;
 
     case lauf_asm_block::return_:
-        if (need_to_free_locals)
-            sink(lauf::asm_op::return_free, nullptr);
-        else
-            sink(lauf::asm_op::return_, nullptr);
+        sink(lauf::asm_op::return_, nullptr);
         break;
     case lauf_asm_block::panic:
         sink(lauf::asm_op::panic, nullptr);
@@ -328,43 +325,45 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
     }
 }
 
-void generate_bytecode(const char* context, lauf_asm_builder* b, bool need_to_free_locals)
+std::size_t compute_block_offset(const char* context, lauf_asm_builder* b)
 {
-    auto insts_count = [&] {
-        auto result = std::size_t(0);
-        for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
+    auto total_inst_count = std::size_t(0);
+    for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
+    {
+        if (!block->reachable)
+            continue;
+
+        auto inst_count = block->insts.size();
+        generate_terminator(context, b, block, b->blocks.end(),
+                            [&](lauf::asm_op, const lauf_asm_block*) { ++inst_count; });
+
+        if (inst_count > 0)
         {
-            if (!block->reachable)
-                continue;
-
-            auto inst_count = block->insts.size();
-            generate_terminator(context, b, block, b->blocks.end(), need_to_free_locals,
-                                [&](lauf::asm_op, const lauf_asm_block*) { ++inst_count; });
-
-            if (inst_count > 0)
-            {
-                ++result; // block instruction
-                block->offset = std::uint16_t(result);
-                result += inst_count;
-            }
-            else
-            {
-                // It does not generate any instructions and thus does not need to be considered.
-                // We still need to set the offset, so we can correctly jump there.
-                block->reachable = false;
-                block->offset    = std::uint16_t(result);
-            }
+            ++total_inst_count; // block instruction
+            block->offset = std::uint16_t(total_inst_count);
+            total_inst_count += inst_count;
         }
-        return result;
-    }();
+        else
+        {
+            // It does not generate any instructions and thus does not need to be considered.
+            // We still need to set the offset, so we can correctly jump there.
+            block->reachable = false;
+            block->offset    = std::uint16_t(total_inst_count);
+        }
+    }
+    return total_inst_count;
+}
 
+void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t inst_count,
+                       bool need_to_free_locals)
+{
     auto insts = [&] {
         if (b->chunk != nullptr)
             // If we have a chunk, we allocate the memory for the instructions there.
-            return b->chunk->allocate<lauf_asm_inst>(insts_count);
+            return b->chunk->allocate<lauf_asm_inst>(inst_count);
         else
             // For a normal function, we allocate the memory from the module.
-            return b->mod->allocate<lauf_asm_inst>(insts_count);
+            return b->mod->allocate<lauf_asm_inst>(inst_count);
     }();
     auto ip = insts;
     for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
@@ -376,17 +375,20 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, bool need_to_fr
             = LAUF_BUILD_INST_SIGNATURE(block, block->sig.input_count, block->sig.output_count, 0);
         ip = block->insts.copy_to(ip);
 
-        generate_terminator(context, b, block, b->blocks.end(), need_to_free_locals,
+        generate_terminator(context, b, block, b->blocks.end(),
                             [&](lauf::asm_op op, const lauf_asm_block* dest) {
                                 ip[0].nop.op = op;
                                 switch (op)
                                 {
-                                case lauf::asm_op::return_:
                                 case lauf::asm_op::panic:
                                     break;
 
-                                case lauf::asm_op::return_free:
-                                    ip[0].return_free.value = std::uint32_t(b->locals.size());
+                                case lauf::asm_op::return_:
+                                    if (need_to_free_locals)
+                                    {
+                                        ip[0].return_free.op    = lauf::asm_op::return_free;
+                                        ip[0].return_free.value = std::uint32_t(b->locals.size());
+                                    }
                                     break;
 
                                 case lauf::asm_op::jump:
@@ -414,9 +416,9 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, bool need_to_fr
         }
     } // namespace
 
-    b->fn->insts       = insts;
-    b->fn->insts_count = std::uint16_t(insts_count);
-    if (b->fn->insts_count != insts_count)
+    b->fn->insts      = insts;
+    b->fn->inst_count = std::uint16_t(inst_count);
+    if (b->fn->inst_count != inst_count)
         b->error(context, "too many instructions");
 }
 
@@ -446,8 +448,11 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
     mark_reachable_blocks(b);
 
     auto need_to_free_locals = create_prologue(b);
-    generate_bytecode(context, b, need_to_free_locals);
+    auto inst_count          = compute_block_offset(context, b);
+
+    generate_bytecode(context, b, inst_count, need_to_free_locals);
     finalize_function(context, b);
+
     return !b->errored;
 }
 

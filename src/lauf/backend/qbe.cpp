@@ -89,7 +89,7 @@ void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& 
     };
     auto push_reg = [&] { return lauf::qbe_reg(vstack++); };
 
-    auto next_block = [id = fn->insts_count]() mutable { return lauf::qbe_block(id++); };
+    auto next_block = [id = fn->inst_count]() mutable { return lauf::qbe_block(id++); };
     auto next_alloc = [id = 0]() mutable { return lauf::qbe_alloc(id++); };
 
     auto write_call
@@ -123,7 +123,7 @@ void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& 
           };
 
     auto dead_code = false;
-    for (auto ip = fn->insts; ip != fn->insts + fn->insts_count; ++ip)
+    for (auto ip = fn->insts; ip != fn->insts + fn->inst_count; ++ip)
     {
         if (dead_code)
         {
