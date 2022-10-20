@@ -246,14 +246,14 @@ template <typename Iterator, typename Sink>
 void generate_terminator(const char* context, lauf_asm_builder* b, Iterator block, Iterator end,
                          bool need_to_free_locals, Sink sink)
 {
-    auto next_block = [&] {
+    auto get_next_block = [&] {
         auto next_iter = block;
         do
         {
             ++next_iter;
         } while (next_iter != end && !next_iter->reachable);
         return next_iter == end ? nullptr : &*next_iter;
-    }();
+    };
 
     switch (block->terminator)
     {
@@ -277,11 +277,11 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
         break;
 
     case lauf_asm_block::jump:
-        if (block->next[0] != next_block)
+        if (block->next[0] != get_next_block())
             sink(lauf::asm_op::jump, block->next[0]);
         break;
     case lauf_asm_block::branch_ne_eq:
-        if (block->next[0] == next_block)
+        if (auto next_block = get_next_block(); block->next[0] == next_block)
         {
             sink(lauf::asm_op::branch_eq, block->next[1]);
         }
@@ -296,7 +296,7 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
         }
         break;
     case lauf_asm_block::branch_lt_ge:
-        if (block->next[0] == next_block)
+        if (auto next_block = get_next_block(); block->next[0] == next_block)
         {
             sink(lauf::asm_op::branch_ge, block->next[1]);
         }
@@ -311,7 +311,7 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
         }
         break;
     case lauf_asm_block::branch_le_gt:
-        if (block->next[0] == next_block)
+        if (auto next_block = get_next_block(); block->next[0] == next_block)
         {
             sink(lauf::asm_op::branch_gt, block->next[1]);
         }
