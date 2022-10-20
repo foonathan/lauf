@@ -150,7 +150,6 @@ struct lauf_asm_block
     enum
     {
         unterminated,
-        fallthrough,
         return_,
         jump,
         branch_ne_eq,
@@ -183,8 +182,7 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
     lauf_asm_chunk*        chunk = nullptr;
 
     lauf::array_list<lauf_asm_block> blocks;
-    lauf_asm_block*                  prologue = nullptr;
-    lauf_asm_block*                  cur      = nullptr;
+    lauf_asm_block*                  cur = nullptr;
 
     lauf::array_list<lauf_asm_local> locals;
     std::uint16_t                    local_allocation_size = 0;
@@ -210,9 +208,6 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         errored               = false;
 
         this->clear();
-
-        prologue             = &blocks.emplace_back(*this, *this, fn->sig.input_count);
-        prologue->terminator = lauf_asm_block::fallthrough;
     }
 };
 

@@ -263,8 +263,7 @@ LAUF_VM_EXECUTE(call)
 
     // And start executing the function.
     frame_ptr = new_frame;
-    assert(callee->insts->op() == lauf::asm_op::block);
-    ip = callee->insts + 1;
+    ip        = callee->insts;
     LAUF_VM_DISPATCH;
 }
 

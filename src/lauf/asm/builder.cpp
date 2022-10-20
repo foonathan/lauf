@@ -150,59 +150,11 @@ void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_ch
 
 namespace
 {
-bool create_prologue(lauf_asm_builder* b)
-{
-    if (b->locals.empty())
-        return false;
-
-    auto prologue                    = b->prologue;
-    auto any_local_has_address_taken = [&] {
-        for (auto& local : b->locals)
-            if (local.address_count > 0)
-                return true;
-        return false;
-    }();
-
-    if (any_local_has_address_taken)
-        prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(setup_local_alloc, b->locals.size()));
-
-    for (auto& local : b->locals)
-    {
-        assert(local.layout.alignment >= alignof(void*));
-
-        // As soon as we have one variable whose address is taken, we have to setup allocations for
-        // all of them. This is because the index in local_addr is wrong otherwise.
-        if (any_local_has_address_taken)
-        {
-            if (local.layout.alignment == alignof(void*))
-                b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout));
-            else
-                b->prologue->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(local_alloc_aligned,
-                                                                        local.layout));
-        }
-        else
-        {
-            assert(local.address_count == 0);
-            auto space = local.layout.size;
-            if (local.layout.alignment > alignof(void*))
-                space += local.layout.alignment;
-
-            // Note that this will simply bump the stack space and not compute the correct
-            // offset for over-aligned data. However, we do not promote over-aligned locals to
-            // load/store_local_value, so if they're accessed, they have their address taken.
-            //
-            // The only way an over-aligned local ends up here is if it's unused,
-            // in which case we need to reserve the space to keep offsets correct,
-            // but don't care where exactly it lives in the memory.
-            prologue->insts.push_back(*b, LAUF_BUILD_INST_VALUE(local_storage, space));
-        }
-    }
-
-    return any_local_has_address_taken;
-}
-
 void mark_reachable_blocks(lauf_asm_builder* b)
 {
+    if (b->blocks.empty())
+        return;
+
     auto mark = [&](auto recurse, const lauf_asm_block* cur) {
         if (cur->reachable)
             return;
@@ -214,10 +166,6 @@ void mark_reachable_blocks(lauf_asm_builder* b)
         case lauf_asm_block::unterminated:
         case lauf_asm_block::return_:
         case lauf_asm_block::panic:
-            break;
-        case lauf_asm_block::fallthrough:
-            // Only the prologue uses it, which is already dealt with.
-            assert(false);
             break;
 
         case lauf_asm_block::jump:
@@ -232,14 +180,8 @@ void mark_reachable_blocks(lauf_asm_builder* b)
         }
     };
 
-    b->prologue->reachable = true;
-    if (b->blocks.size() == 1)
-        return;
-
-    // The real entry block is reachable.
-    auto entry = b->blocks.begin();
-    ++entry;
-    mark(mark, &*entry);
+    // The entry block is reachable.
+    mark(mark, &*b->blocks.begin());
 }
 
 template <typename Iterator, typename Sink>
@@ -261,9 +203,6 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
         // We allow unterminated blocks that we haven't actually built yet.
         if (!block->insts.empty())
             b->error(context, "unterminated block");
-        break;
-
-    case lauf_asm_block::fallthrough:
         break;
 
     case lauf_asm_block::return_:
@@ -325,9 +264,14 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
     }
 }
 
-std::size_t compute_block_offset(const char* context, lauf_asm_builder* b)
+std::size_t compute_block_offset(const char* context, lauf_asm_builder* b,
+                                 bool any_local_has_address_taken)
 {
     auto total_inst_count = std::size_t(0);
+    if (any_local_has_address_taken)
+        ++total_inst_count; // setup_local_alloc
+    total_inst_count += b->locals.size();
+
     for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
     {
         if (!block->reachable)
@@ -354,8 +298,48 @@ std::size_t compute_block_offset(const char* context, lauf_asm_builder* b)
     return total_inst_count;
 }
 
+lauf_asm_inst* create_prologue(lauf_asm_inst* ip, lauf_asm_builder* b,
+                               bool any_local_has_address_taken)
+{
+    if (any_local_has_address_taken)
+        *ip++ = LAUF_BUILD_INST_VALUE(setup_local_alloc, b->locals.size());
+
+    for (auto& local : b->locals)
+    {
+        assert(local.layout.alignment >= alignof(void*));
+
+        // As soon as we have one variable whose address is taken, we have to setup allocations for
+        // all of them. This is because the index in local_addr is wrong otherwise.
+        if (any_local_has_address_taken)
+        {
+            if (local.layout.alignment == alignof(void*))
+                *ip++ = LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout);
+            else
+                *ip++ = LAUF_BUILD_INST_LAYOUT(local_alloc_aligned, local.layout);
+        }
+        else
+        {
+            assert(local.address_count == 0);
+            auto space = local.layout.size;
+            if (local.layout.alignment > alignof(void*))
+                space += local.layout.alignment;
+
+            // Note that this will simply bump the stack space and not compute the correct
+            // offset for over-aligned data. However, we do not promote over-aligned locals to
+            // load/store_local_value, so if they're accessed, they have their address taken.
+            //
+            // The only way an over-aligned local ends up here is if it's unused,
+            // in which case we need to reserve the space to keep offsets correct,
+            // but don't care where exactly it lives in the memory.
+            *ip++ = LAUF_BUILD_INST_VALUE(local_storage, space);
+        }
+    }
+
+    return ip;
+}
+
 void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t inst_count,
-                       bool need_to_free_locals)
+                       bool any_local_has_address_taken)
 {
     auto insts = [&] {
         if (b->chunk != nullptr)
@@ -365,7 +349,8 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t ins
             // For a normal function, we allocate the memory from the module.
             return b->mod->allocate<lauf_asm_inst>(inst_count);
     }();
-    auto ip = insts;
+
+    auto ip = create_prologue(insts, b, any_local_has_address_taken);
     for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
     {
         if (!block->reachable)
@@ -384,7 +369,7 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t ins
                                     break;
 
                                 case lauf::asm_op::return_:
-                                    if (need_to_free_locals)
+                                    if (any_local_has_address_taken)
                                     {
                                         ip[0].return_free.op    = lauf::asm_op::return_free;
                                         ip[0].return_free.value = std::uint32_t(b->locals.size());
@@ -447,10 +432,16 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 
     mark_reachable_blocks(b);
 
-    auto need_to_free_locals = create_prologue(b);
-    auto inst_count          = compute_block_offset(context, b);
+    auto any_local_has_address_taken = [&] {
+        for (auto& local : b->locals)
+            if (local.address_count > 0)
+                return true;
 
-    generate_bytecode(context, b, inst_count, need_to_free_locals);
+        return false;
+    }();
+    auto inst_count = compute_block_offset(context, b, any_local_has_address_taken);
+
+    generate_bytecode(context, b, inst_count, any_local_has_address_taken);
     finalize_function(context, b);
 
     return !b->errored;
@@ -509,7 +500,7 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
 lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, size_t input_count)
 {
     LAUF_BUILD_ASSERT(input_count <= UINT8_MAX, "too many input values for block");
-    if (b->blocks.size() == 1u)
+    if (b->blocks.empty())
         LAUF_BUILD_ASSERT(input_count == b->fn->sig.input_count,
                           "requested entry block has different input count from function");
 
