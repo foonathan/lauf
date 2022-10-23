@@ -171,8 +171,6 @@ const lauf_runtime_value* lauf_runtime_get_vstack_base(const lauf_runtime_fiber*
 bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* fn,
                        const lauf_runtime_value* input, lauf_runtime_value* output)
 {
-    auto sig = lauf_asm_function_signature(fn);
-
     // Save current processor state.
     auto regs                 = process->regs;
     auto cur_fiber            = process->cur_fiber;
@@ -184,7 +182,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
     // We need to manually transfer arguments as the order is different.
     auto& vstack_ptr = fiber->suspension_point.vstack_ptr;
-    for (auto i = 0u; i != sig.input_count; ++i)
+    for (auto i = 0u; i != fn->sig.input_count; ++i)
     {
         --vstack_ptr;
         vstack_ptr[0] = input[i];
@@ -192,27 +190,27 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
     // Execute the fiber until it is done.
     auto success = true;
-    while (fiber->status != lauf_runtime_fiber::done)
+    do
     {
         if (!lauf_runtime_resume(process, fiber))
         {
             success = false;
             break;
         }
-
         fiber = process->cur_fiber;
-    }
-    if (success)
+    } while (fiber->status != lauf_runtime_fiber::done);
+
+    if (LAUF_LIKELY(success))
     {
         // The fiber could have changed, so we need to check that the output count still matches.
-        if (fiber->root_function()->sig.output_count != sig.output_count)
+        if (fiber->root_function()->sig.output_count != fn->sig.output_count)
             return lauf_runtime_panic(process, "invalid output count in call");
 
         // Copy the output values over.
-        vstack_ptr = fiber->vstack.base() - sig.output_count;
-        for (auto i = 0u; i != sig.output_count; ++i)
+        vstack_ptr = fiber->vstack.base() - fn->sig.output_count;
+        for (auto i = 0u; i != fn->sig.output_count; ++i)
         {
-            output[sig.output_count - i - 1] = vstack_ptr[0];
+            output[fn->sig.output_count - i - 1] = vstack_ptr[0];
             ++vstack_ptr;
         }
     }

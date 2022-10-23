@@ -41,6 +41,7 @@ typedef uint64_t lauf_uint;
 #endif
 
 //=== optimizations ===//
+#define LAUF_LIKELY(Cond) __builtin_expect((Cond), 1)
 #define LAUF_UNLIKELY(Cond) __builtin_expect((Cond), 0)
 #define LAUF_TAIL_CALL [[clang::musttail]]
 #define LAUF_NOINLINE [[gnu::noinline]]
