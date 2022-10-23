@@ -58,8 +58,8 @@ void lauf_runtime_fiber::destroy(lauf_runtime_process* process, lauf_runtime_fib
     fiber->cstack.clear(process->vm->page_allocator);
 }
 
-void lauf_runtime_process::create(lauf_runtime_process* process, lauf_vm* vm,
-                                  const lauf_asm_program* program)
+void lauf_runtime_process::init(lauf_runtime_process* process, lauf_vm* vm,
+                                const lauf_asm_program* program)
 {
     process->vm      = vm;
     process->program = *program;
@@ -72,18 +72,17 @@ void lauf_runtime_process::create(lauf_runtime_process* process, lauf_vm* vm,
     process->remaining_steps = vm->step_limit;
 }
 
-void lauf_runtime_process::destroy(lauf_runtime_process* process)
+LAUF_NOINLINE void lauf_runtime_process::do_cleanup(lauf_runtime_process* process)
 {
     auto vm = process->vm;
 
-    // Destroy all fibers.
-    while (auto fiber = process->fiber_list)
-        lauf_runtime_fiber::destroy(process, fiber);
-
-    // Free allocated heap memory.
+    // Free allocated heap and fiber memory that was leaked.
     for (auto alloc : process->memory)
-        if (alloc.source == lauf::allocation_source::heap_memory
-            && alloc.status != lauf::allocation_status::freed)
+    {
+        if (alloc.status == lauf::allocation_status::freed)
+            continue;
+
+        if (alloc.source == lauf::allocation_source::heap_memory)
         {
             if (alloc.split == lauf::allocation_split::unsplit)
                 vm->heap_allocator.free_alloc(vm->heap_allocator.user_data, alloc.ptr, alloc.size);
@@ -93,6 +92,11 @@ void lauf_runtime_process::destroy(lauf_runtime_process* process)
             else
                 ; // We don't know the starting address of the allocation.
         }
+        else if (alloc.source == lauf::allocation_source::fiber_memory)
+        {
+            lauf_runtime_fiber::destroy(process, static_cast<lauf_runtime_fiber*>(alloc.ptr));
+        }
+    }
 
     process->memory.clear(vm);
 }
@@ -231,12 +235,11 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
                 alloc.gc     = lauf::gc_tracking::unreachable;
             }
         }
-
-        // We also manually do a cleanup of the allocations now.
-        process->memory.remove_freed();
     }
 
     lauf_runtime_fiber::destroy(process, fiber);
+    // We also manually do a cleanup of the allocations now.
+    process->memory.remove_freed();
 
     // Restore processor state.
     process->regs      = regs;
@@ -276,7 +279,7 @@ void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fibe
 
 void lauf_runtime_destroy_process(lauf_runtime_process* process)
 {
-    lauf_runtime_process::destroy(process);
+    lauf_runtime_process::cleanup(process);
 }
 
 bool lauf_runtime_set_step_limit(lauf_runtime_process* process, size_t new_limit)

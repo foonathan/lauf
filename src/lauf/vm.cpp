@@ -74,7 +74,7 @@ lauf_runtime_process* lauf_vm_start_process(lauf_vm* vm, const lauf_asm_program*
 {
     auto fn = program->_entry;
 
-    lauf_runtime_process::create(&vm->process, vm, program);
+    lauf_runtime_process::init(&vm->process, vm, program);
     vm->process.cur_fiber = lauf_runtime_create_fiber(&vm->process, fn);
     return &vm->process;
 }
@@ -84,9 +84,9 @@ bool lauf_vm_execute(lauf_vm* vm, const lauf_asm_program* program, const lauf_ru
 {
     auto fn = program->_entry;
 
-    lauf_runtime_process::create(&vm->process, vm, program);
+    lauf_runtime_process::init(&vm->process, vm, program);
     auto result = lauf_runtime_call(&vm->process, fn, input, output);
-    lauf_runtime_destroy_process(&vm->process);
+    lauf_runtime_process::cleanup(&vm->process);
 
     return result;
 }

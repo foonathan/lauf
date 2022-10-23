@@ -140,8 +140,17 @@ struct lauf_runtime_process
 
     std::size_t remaining_steps;
 
-    static void create(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program);
-    static void destroy(lauf_runtime_process* process);
+    static void init(lauf_runtime_process* process, lauf_vm* vm, const lauf_asm_program* program);
+
+    static void do_cleanup(lauf_runtime_process* process);
+    static void cleanup(lauf_runtime_process* process)
+    {
+        if (LAUF_UNLIKELY(!process->memory.empty()))
+            do_cleanup(process);
+
+        assert(process->fiber_list == nullptr);
+        assert(process->memory.empty());
+    }
 };
 
 namespace lauf

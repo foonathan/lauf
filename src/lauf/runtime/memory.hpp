@@ -177,6 +177,11 @@ public:
     void destroy(lauf_vm* vm);
 
     //=== container interface ===//
+    bool empty() const
+    {
+        return _allocations.empty();
+    }
+
     auto begin()
     {
         return _allocations.begin();
