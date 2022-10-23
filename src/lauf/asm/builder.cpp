@@ -145,48 +145,64 @@ void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_ch
 namespace
 {
 // Returns an upper bound on the number of reachable instructions.
-// Also validates terminator of blocks.
+// Also validates terminator of blocks and sets reachable information.
 std::size_t estimate_inst_count(const char* context, lauf_asm_builder* b)
 {
     // setup_local_alloc + local_alloc instructions
     auto result = 1 + b->locals.size();
 
-    auto visit = [&](auto recurse, const lauf_asm_block* cur) {
-        if (cur->reachable)
-            return;
+    if (b->blocks.size() == 1)
+    {
+        auto entry       = &b->blocks.front();
+        entry->reachable = true;
 
-        const_cast<lauf_asm_block*>(cur)->reachable = true;
-        if (!cur->insts.empty())
-        {
-            result += 1; // block instruction
-            result += cur->insts.size();
-        }
+        result += 1; // block instruction
+        result += entry->insts.size();
+        result += 2; // at most two terminator instructions
 
-        switch (cur->terminator)
-        {
-        case lauf_asm_block::unterminated:
+        if (entry->terminator == lauf_asm_block::unterminated)
             b->error(context, "unterminated block");
-            break;
+    }
+    else
+    {
+        auto visit = [&](auto recurse, const lauf_asm_block* cur) {
+            if (cur->reachable)
+                return;
 
-        case lauf_asm_block::return_:
-        case lauf_asm_block::panic:
-            ++result;
-            break;
+            const_cast<lauf_asm_block*>(cur)->reachable = true;
+            if (!cur->insts.empty())
+            {
+                result += 1; // block instruction
+                result += cur->insts.size();
+            }
 
-        case lauf_asm_block::jump:
-            recurse(recurse, cur->next[0]);
-            ++result;
-            break;
-        case lauf_asm_block::branch_ne_eq:
-        case lauf_asm_block::branch_lt_ge:
-        case lauf_asm_block::branch_le_gt:
-            recurse(recurse, cur->next[0]);
-            recurse(recurse, cur->next[1]);
             result += 2;
-            break;
-        }
-    };
-    visit(visit, &b->blocks.front());
+            switch (cur->terminator)
+            {
+            case lauf_asm_block::unterminated:
+                b->error(context, "unterminated block");
+                break;
+
+            case lauf_asm_block::return_:
+            case lauf_asm_block::panic:
+                ++result;
+                break;
+
+            case lauf_asm_block::jump:
+                recurse(recurse, cur->next[0]);
+                ++result;
+                break;
+            case lauf_asm_block::branch_ne_eq:
+            case lauf_asm_block::branch_lt_ge:
+            case lauf_asm_block::branch_le_gt:
+                recurse(recurse, cur->next[0]);
+                recurse(recurse, cur->next[1]);
+                result += 2;
+                break;
+            }
+        };
+        visit(visit, &b->blocks.front());
+    }
 
     return result;
 }
@@ -229,6 +245,7 @@ lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b)
     return ip;
 }
 
+// Also sets offset of basic blocks.
 lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_inst* insts)
 {
     auto get_next_block = [end = b->blocks.end()](auto next_iter) {
@@ -332,12 +349,6 @@ lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_
             }
             break;
         }
-
-        for (auto loc : block->debug_locations)
-        {
-            loc.inst_idx += block->offset;
-            b->mod->inst_debug_locations.push_back(*b->mod, loc);
-        }
     }
 
     for (auto [jump, dest] : patches)
@@ -351,6 +362,68 @@ lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_
     }
 
     return ip;
+}
+
+// Optimized version if the function only has a single basic block.
+lauf_asm_inst* emit_linear_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_inst* insts)
+{
+    assert(b->blocks.size() == 1);
+
+    auto entry    = &b->blocks.front();
+    entry->offset = std::uint16_t(ip - insts);
+
+    auto sig = entry->sig;
+    *ip++    = LAUF_BUILD_INST_SIGNATURE(block, sig.input_count, sig.output_count, 0);
+
+    ip = entry->insts.copy_to(ip);
+
+    switch (entry->terminator)
+    {
+    case lauf_asm_block::unterminated:
+        break;
+
+    case lauf_asm_block::return_:
+        if (b->local_addr_count > 0)
+            *ip++ = LAUF_BUILD_INST_VALUE(return_free, b->locals.size());
+        else
+            *ip++ = LAUF_BUILD_INST_NONE(return_);
+        break;
+    case lauf_asm_block::panic:
+        *ip++ = LAUF_BUILD_INST_NONE(panic);
+        break;
+
+    case lauf_asm_block::branch_ne_eq:
+    case lauf_asm_block::branch_lt_ge:
+    case lauf_asm_block::branch_le_gt:
+        // Consume condition.
+        *ip++ = LAUF_BUILD_INST_STACK_IDX(pop, 0);
+        // Fallthrough.
+    case lauf_asm_block::jump: {
+        // We always jump to the beginning of the basic block again, since it's the only one.
+        auto cur_offset  = ip - insts;
+        auto dest_offset = entry->offset + 1;
+        *ip++            = LAUF_BUILD_INST_OFFSET(jump, dest_offset - cur_offset);
+        break;
+    }
+    }
+
+    return ip;
+}
+
+// Precondition: offset has been computed during body emission.
+void emit_debug_location(lauf_asm_builder* b)
+{
+    for (auto& block : b->blocks)
+    {
+        if (!block.reachable)
+            continue;
+
+        for (auto loc : block.debug_locations)
+        {
+            loc.inst_idx += block.offset;
+            b->mod->inst_debug_locations.push_back(*b->mod, loc);
+        }
+    }
 }
 } // namespace
 
@@ -368,10 +441,15 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
             return b->mod->allocate<lauf_asm_inst>(inst_count);
     }();
 
-    auto ip         = insts;
-    ip              = emit_prologue(insts, b);
-    ip              = emit_body(ip, b, insts);
+    auto ip = insts;
+    ip      = emit_prologue(insts, b);
+    if (b->blocks.size() == 1)
+        ip = emit_linear_body(ip, b, insts);
+    else
+        ip = emit_body(ip, b, insts);
     auto inst_count = ip - insts;
+
+    emit_debug_location(b);
 
     b->fn->insts      = insts;
     b->fn->inst_count = std::uint16_t(inst_count);
