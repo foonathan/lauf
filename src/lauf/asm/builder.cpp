@@ -8,6 +8,7 @@
 
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/stack.hpp>
+#include <lauf/support/array.hpp>
 
 void lauf_asm_builder::error(const char* context, const char* msg)
 {
@@ -150,154 +151,63 @@ void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_ch
 
 namespace
 {
-void mark_reachable_blocks(lauf_asm_builder* b)
+// Returns an upper bound on the number of reachable instructions.
+// Also validates terminator of blocks.
+std::size_t estimate_inst_count(const char* context, lauf_asm_builder* b)
 {
-    auto mark = [&](auto recurse, const lauf_asm_block* cur) {
+    // setup_local_alloc + local_alloc instructions
+    auto result = 1 + b->locals.size();
+
+    auto visit = [&](auto recurse, const lauf_asm_block* cur) {
         if (cur->reachable)
             return;
 
         const_cast<lauf_asm_block*>(cur)->reachable = true;
+        if (!cur->insts.empty())
+        {
+            result += 1; // block instruction
+            result += cur->insts.size();
+        }
 
         switch (cur->terminator)
         {
         case lauf_asm_block::unterminated:
+            b->error(context, "unterminated block");
+            break;
+
         case lauf_asm_block::return_:
         case lauf_asm_block::panic:
+            ++result;
             break;
 
         case lauf_asm_block::jump:
             recurse(recurse, cur->next[0]);
+            ++result;
             break;
         case lauf_asm_block::branch_ne_eq:
         case lauf_asm_block::branch_lt_ge:
         case lauf_asm_block::branch_le_gt:
             recurse(recurse, cur->next[0]);
             recurse(recurse, cur->next[1]);
+            result += 2;
             break;
         }
     };
+    visit(visit, &b->blocks.front());
 
-    // The entry block is reachable.
-    mark(mark, &*b->blocks.begin());
+    return result;
 }
 
-template <typename Iterator, typename Sink>
-void generate_terminator(const char* context, lauf_asm_builder* b, Iterator block, Iterator end,
-                         Sink sink)
+lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b,
+                             bool& any_local_has_address_taken)
 {
-    auto get_next_block = [&] {
-        auto next_iter = block;
-        do
-        {
-            ++next_iter;
-        } while (next_iter != end && !next_iter->reachable);
-        return next_iter == end ? nullptr : &*next_iter;
-    };
+    any_local_has_address_taken = [&] {
+        for (auto& local : b->locals)
+            if (local.address_count > 0)
+                return true;
 
-    switch (block->terminator)
-    {
-    case lauf_asm_block::unterminated:
-        // We allow unterminated blocks that aren't reachable.
-        if (block->reachable)
-            b->error(context, "unterminated block");
-        break;
-
-    case lauf_asm_block::return_:
-        sink(lauf::asm_op::return_, nullptr);
-        break;
-    case lauf_asm_block::panic:
-        sink(lauf::asm_op::panic, nullptr);
-        break;
-
-    case lauf_asm_block::jump:
-        if (block->next[0] != get_next_block())
-            sink(lauf::asm_op::jump, block->next[0]);
-        break;
-    case lauf_asm_block::branch_ne_eq:
-        if (auto next_block = get_next_block(); block->next[0] == next_block)
-        {
-            sink(lauf::asm_op::branch_eq, block->next[1]);
-        }
-        else if (block->next[1] == next_block)
-        {
-            sink(lauf::asm_op::branch_ne, block->next[0]);
-        }
-        else
-        {
-            sink(lauf::asm_op::branch_eq, block->next[1]);
-            sink(lauf::asm_op::jump, block->next[0]);
-        }
-        break;
-    case lauf_asm_block::branch_lt_ge:
-        if (auto next_block = get_next_block(); block->next[0] == next_block)
-        {
-            sink(lauf::asm_op::branch_ge, block->next[1]);
-        }
-        else if (block->next[1] == next_block)
-        {
-            sink(lauf::asm_op::branch_lt, block->next[0]);
-        }
-        else
-        {
-            sink(lauf::asm_op::branch_ge, block->next[1]);
-            sink(lauf::asm_op::jump, block->next[0]);
-        }
-        break;
-    case lauf_asm_block::branch_le_gt:
-        if (auto next_block = get_next_block(); block->next[0] == next_block)
-        {
-            sink(lauf::asm_op::branch_gt, block->next[1]);
-        }
-        else if (block->next[1] == next_block)
-        {
-            sink(lauf::asm_op::branch_le, block->next[0]);
-        }
-        else
-        {
-            sink(lauf::asm_op::branch_gt, block->next[1]);
-            sink(lauf::asm_op::jump, block->next[0]);
-        }
-        break;
-    }
-}
-
-std::size_t compute_block_offset(const char* context, lauf_asm_builder* b,
-                                 bool any_local_has_address_taken)
-{
-    auto total_inst_count = std::size_t(0);
-    if (any_local_has_address_taken)
-        ++total_inst_count; // setup_local_alloc
-    total_inst_count += b->locals.size();
-
-    for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
-    {
-        if (!block->reachable)
-            continue;
-
-        auto inst_count = block->insts.size();
-        generate_terminator(context, b, block, b->blocks.end(),
-                            [&](lauf::asm_op, const lauf_asm_block*) { ++inst_count; });
-
-        if (inst_count > 0)
-        {
-            ++total_inst_count; // block instruction
-            block->offset = std::uint16_t(total_inst_count);
-            total_inst_count += inst_count;
-        }
-        else
-        {
-            // It does not generate any instructions and thus does not need to be considered.
-            // We still need to set the offset, so we can correctly jump there.
-            block->reachable = false;
-            block->offset    = std::uint16_t(total_inst_count);
-        }
-    }
-    return total_inst_count;
-}
-
-lauf_asm_inst* create_prologue(lauf_asm_inst* ip, lauf_asm_builder* b,
-                               bool any_local_has_address_taken)
-{
+        return false;
+    }();
     if (any_local_has_address_taken)
         *ip++ = LAUF_BUILD_INST_VALUE(setup_local_alloc, b->locals.size());
 
@@ -335,10 +245,138 @@ lauf_asm_inst* create_prologue(lauf_asm_inst* ip, lauf_asm_builder* b,
     return ip;
 }
 
-void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t inst_count,
-                       bool any_local_has_address_taken)
+lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_inst* insts,
+                         bool need_return_free)
 {
+    auto get_next_block = [end = b->blocks.end()](auto next_iter) {
+        do
+        {
+            ++next_iter;
+        } while (next_iter != end && !next_iter->reachable);
+        return next_iter == end ? nullptr : &*next_iter;
+    };
+
+    struct patch
+    {
+        lauf_asm_inst*        inst;
+        const lauf_asm_block* dest;
+    };
+
+    lauf::array<patch> patches;
+    // A block has at most two successors, so we need at most that many patches.
+    patches.reserve(*b, 2 * b->blocks.size());
+
+    auto emit_jump = [&](lauf::asm_op op, const lauf_asm_block* dest) {
+        ip->jump.op = op;
+        patches.push_back_unchecked({ip, dest});
+        ++ip;
+    };
+
+    for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
+    {
+        if (!block->reachable)
+            continue;
+        block->offset = std::uint16_t(ip - insts);
+
+        auto sig = block->sig;
+        *ip++    = LAUF_BUILD_INST_SIGNATURE(block, sig.input_count, sig.output_count, 0);
+
+        ip = block->insts.copy_to(ip);
+
+        switch (block->terminator)
+        {
+        case lauf_asm_block::unterminated:
+            break;
+
+        case lauf_asm_block::return_:
+            if (need_return_free)
+                *ip++ = LAUF_BUILD_INST_VALUE(return_free, b->locals.size());
+            else
+                *ip++ = LAUF_BUILD_INST_NONE(return_);
+            break;
+        case lauf_asm_block::panic:
+            *ip++ = LAUF_BUILD_INST_NONE(panic);
+            break;
+
+        case lauf_asm_block::jump:
+            if (block->next[0] != get_next_block(block))
+                emit_jump(lauf::asm_op::jump, block->next[0]);
+            break;
+
+        case lauf_asm_block::branch_ne_eq:
+            if (auto next_block = get_next_block(block); block->next[0] == next_block)
+            {
+                emit_jump(lauf::asm_op::branch_eq, block->next[1]);
+            }
+            else if (block->next[1] == next_block)
+            {
+                emit_jump(lauf::asm_op::branch_ne, block->next[0]);
+            }
+            else
+            {
+                emit_jump(lauf::asm_op::branch_eq, block->next[1]);
+                emit_jump(lauf::asm_op::jump, block->next[0]);
+            }
+            break;
+        case lauf_asm_block::branch_lt_ge:
+            if (auto next_block = get_next_block(block); block->next[0] == next_block)
+            {
+                emit_jump(lauf::asm_op::branch_ge, block->next[1]);
+            }
+            else if (block->next[1] == next_block)
+            {
+                emit_jump(lauf::asm_op::branch_lt, block->next[0]);
+            }
+            else
+            {
+                emit_jump(lauf::asm_op::branch_ge, block->next[1]);
+                emit_jump(lauf::asm_op::jump, block->next[0]);
+            }
+            break;
+        case lauf_asm_block::branch_le_gt:
+            if (auto next_block = get_next_block(block); block->next[0] == next_block)
+            {
+                emit_jump(lauf::asm_op::branch_gt, block->next[1]);
+            }
+            else if (block->next[1] == next_block)
+            {
+                emit_jump(lauf::asm_op::branch_le, block->next[0]);
+            }
+            else
+            {
+                emit_jump(lauf::asm_op::branch_gt, block->next[1]);
+                emit_jump(lauf::asm_op::jump, block->next[0]);
+            }
+            break;
+        }
+
+        for (auto loc : block->debug_locations)
+        {
+            loc.inst_idx += block->offset;
+            b->mod->inst_debug_locations.push_back(*b->mod, loc);
+        }
+    }
+
+    for (auto [jump, dest] : patches)
+    {
+        auto cur_offset = jump - insts;
+
+        assert(insts[dest->offset].op() == lauf::asm_op::block);
+        auto dest_offset = dest->offset + 1;
+
+        jump->jump.offset = std::int32_t(dest_offset - cur_offset);
+    }
+
+    return ip;
+}
+} // namespace
+
+bool lauf_asm_build_finish(lauf_asm_builder* b)
+{
+    constexpr auto context = LAUF_BUILD_ASSERT_CONTEXT;
+
     auto insts = [&] {
+        auto inst_count = estimate_inst_count(context, b);
         if (b->chunk != nullptr)
             // If we have a chunk, we allocate the memory for the instructions there.
             return b->chunk->allocate<lauf_asm_inst>(inst_count);
@@ -346,66 +384,18 @@ void generate_bytecode(const char* context, lauf_asm_builder* b, std::size_t ins
             // For a normal function, we allocate the memory from the module.
             return b->mod->allocate<lauf_asm_inst>(inst_count);
     }();
+    auto ip = insts;
 
-    auto ip = create_prologue(insts, b, any_local_has_address_taken);
-    for (auto block = b->blocks.begin(); block != b->blocks.end(); ++block)
-    {
-        if (!block->reachable)
-            continue;
-
-        *ip++
-            = LAUF_BUILD_INST_SIGNATURE(block, block->sig.input_count, block->sig.output_count, 0);
-        ip = block->insts.copy_to(ip);
-
-        generate_terminator(context, b, block, b->blocks.end(),
-                            [&](lauf::asm_op op, const lauf_asm_block* dest) {
-                                ip[0].nop.op = op;
-                                switch (op)
-                                {
-                                case lauf::asm_op::panic:
-                                    break;
-
-                                case lauf::asm_op::return_:
-                                    if (any_local_has_address_taken)
-                                    {
-                                        ip[0].return_free.op    = lauf::asm_op::return_free;
-                                        ip[0].return_free.value = std::uint32_t(b->locals.size());
-                                    }
-                                    break;
-
-                                case lauf::asm_op::jump:
-                                case lauf::asm_op::branch_eq:
-                                case lauf::asm_op::branch_ne:
-                                case lauf::asm_op::branch_lt:
-                                case lauf::asm_op::branch_le:
-                                case lauf::asm_op::branch_ge:
-                                case lauf::asm_op::branch_gt:
-                                    assert(dest != nullptr);
-                                    ip[0].jump.offset = std::int32_t(dest->offset - (ip - insts));
-                                    break;
-
-                                default:
-                                    assert(false);
-                                    break;
-                                }
-                                ++ip;
-                            });
-
-        for (auto loc : block->debug_locations)
-        {
-            loc.inst_idx += block->offset;
-            b->mod->inst_debug_locations.push_back(*b->mod, loc);
-        }
-    } // namespace
+    auto any_local_has_address_taken = false;
+    ip                               = emit_prologue(insts, b, any_local_has_address_taken);
+    ip                               = emit_body(ip, b, insts, any_local_has_address_taken);
+    auto inst_count                  = ip - insts;
 
     b->fn->insts      = insts;
     b->fn->inst_count = std::uint16_t(inst_count);
     if (b->fn->inst_count != inst_count)
         b->error(context, "too many instructions");
-}
 
-void finalize_function(const char* context, lauf_asm_builder* b)
-{
     b->fn->max_vstack_size = [&] {
         auto result = std::size_t(0);
 
@@ -418,28 +408,7 @@ void finalize_function(const char* context, lauf_asm_builder* b)
 
         return std::uint16_t(result);
     }();
-
     b->fn->max_cstack_size = sizeof(lauf_runtime_stack_frame) + b->local_allocation_size;
-}
-} // namespace
-
-bool lauf_asm_build_finish(lauf_asm_builder* b)
-{
-    constexpr auto context = LAUF_BUILD_ASSERT_CONTEXT;
-
-    mark_reachable_blocks(b);
-
-    auto any_local_has_address_taken = [&] {
-        for (auto& local : b->locals)
-            if (local.address_count > 0)
-                return true;
-
-        return false;
-    }();
-    auto inst_count = compute_block_offset(context, b, any_local_has_address_taken);
-
-    generate_bytecode(context, b, inst_count, any_local_has_address_taken);
-    finalize_function(context, b);
 
     return !b->errored;
 }

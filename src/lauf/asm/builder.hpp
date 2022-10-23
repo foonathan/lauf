@@ -140,10 +140,10 @@ private:
 struct lauf_asm_block
 {
     lauf_asm_signature   sig;
+    bool                 reachable = false;
+    std::uint16_t        offset    = 0;
     lauf::builder_vstack vstack;
 
-    std::uint16_t                               offset    = 0;
-    bool                                        reachable = false;
     lauf::array_list<lauf_asm_inst>             insts;
     lauf::array_list<lauf::inst_debug_location> debug_locations;
 
@@ -186,7 +186,8 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
     lauf::array_list<lauf_asm_local> locals;
     std::uint16_t                    local_allocation_size = 0;
-    bool                             errored               = false;
+
+    bool errored = false;
 
     explicit lauf_asm_builder(lauf::arena_key key, lauf_asm_build_options options)
     : lauf::intrinsic_arena<lauf_asm_builder>(key), options(options)
@@ -207,7 +208,8 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
         locals.reset();
         local_allocation_size = 0;
-        errored               = false;
+
+        errored = false;
     }
 };
 
