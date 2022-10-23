@@ -196,18 +196,18 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
     void reset(lauf_asm_module* mod, lauf_asm_function* fn, lauf_asm_chunk* chunk)
     {
+        this->clear();
+
         this->mod   = mod;
         this->fn    = fn;
         this->chunk = chunk;
 
         blocks.reset();
-        cur = nullptr;
+        cur = &blocks.emplace_back(*this, *this, fn->sig.input_count);
 
         locals.reset();
         local_allocation_size = 0;
         errored               = false;
-
-        this->clear();
     }
 };
 

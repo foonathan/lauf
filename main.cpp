@@ -107,7 +107,7 @@ void dump_module(lauf_asm_module* mod)
     lauf_destroy_writer(writer);
 }
 
-void execute(lauf_asm_program* program)
+void execute(lauf_asm_program program)
 {
     auto vm = lauf_create_vm(lauf_default_vm_options);
 
@@ -120,13 +120,12 @@ void execute(lauf_asm_program* program)
     lauf_destroy_vm(vm);
 }
 
-lauf_asm_program* create_program(lauf_asm_module* mod)
+lauf_asm_program create_program(lauf_asm_module* mod)
 {
     auto chunk = lauf_asm_create_chunk(mod);
 
     auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
     lauf_asm_build_chunk(b, mod, chunk, 1);
-    lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     lauf_asm_inst_uint(b, 3);
     lauf_asm_inst_call(b, lauf_asm_find_function_by_name(mod, "fib"));
     lauf_asm_inst_return(b);

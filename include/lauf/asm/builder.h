@@ -51,6 +51,7 @@ void              lauf_asm_destroy_builder(lauf_asm_builder* b);
 /// Starts building the function body for the specified function.
 ///
 /// If a previous build wasn't finished yet; discards it.
+/// It will automatically create an entry block where instructions will be added to.
 void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function* fn);
 
 /// Starts building a chunk of code.
@@ -85,10 +86,12 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
 /// A basic block inside a function.
 typedef struct lauf_asm_block lauf_asm_block;
 
+/// Returns the entry block of a function.
+lauf_asm_block* lauf_asm_entry_block(lauf_asm_builder* b);
+
 /// Declares a new basic block with the specified signature.
 ///
 /// It is only valid inside the current function.
-/// If it's the first block, it becomes the entry block.
 lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, size_t input_count);
 
 /// Sets the insertion point of the builder to append instruction to the end of the block.

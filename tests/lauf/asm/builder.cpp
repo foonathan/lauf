@@ -31,8 +31,6 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
             return opts;
         }());
         lauf_asm_build(builder, mod, fn);
-        auto block = lauf_asm_declare_block(builder, sig.input_count);
-        lauf_asm_build_block(builder, block);
 
         builder_fn(mod, builder);
 

@@ -32,6 +32,11 @@ template <typename T>
 class symbol_table
 {
 public:
+    bool empty() const
+    {
+        return map.empty();
+    }
+
     const T* try_lookup(std::string_view name) const
     {
         auto iter = map.find(name);
@@ -690,7 +695,12 @@ struct block
         static constexpr auto value
             = callback([](parse_state& state, const std::string& name, lauf_asm_signature sig) {
                   lauf_asm_block* block;
-                  if (auto b = state.blocks.try_lookup(name))
+                  if (state.blocks.empty())
+                  {
+                      block = lauf_asm_entry_block(state.builder);
+                      state.blocks.insert(name, block);
+                  }
+                  else if (auto b = state.blocks.try_lookup(name))
                   {
                       block = *b;
                   }
@@ -757,19 +767,10 @@ struct function_decl
 
     struct body
     {
-        static void create_entry_block(parse_state& state)
-        {
-            auto block = lauf_asm_declare_block(state.builder,
-                                                lauf_asm_function_signature(state.fn).input_count);
-            lauf_asm_build_block(state.builder, block);
-            state.blocks.insert("", block);
-        }
-
         static constexpr auto rule = [] {
             auto block_list = dsl::peek(LAUF_KEYWORD("block"))
                               >> dsl::curly_bracketed.as_terminator().list(dsl::p<block>);
-            auto inst_list = dsl::effect<create_entry_block> //
-                             + dsl::curly_bracketed.as_terminator().list(dsl::p<instruction>);
+            auto inst_list = dsl::curly_bracketed.as_terminator().list(dsl::p<instruction>);
 
             auto locals = dsl::if_(dsl::list(dsl::p<local_decl>));
 

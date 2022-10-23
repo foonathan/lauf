@@ -152,9 +152,6 @@ namespace
 {
 void mark_reachable_blocks(lauf_asm_builder* b)
 {
-    if (b->blocks.empty())
-        return;
-
     auto mark = [&](auto recurse, const lauf_asm_block* cur) {
         if (cur->reachable)
             return;
@@ -200,8 +197,8 @@ void generate_terminator(const char* context, lauf_asm_builder* b, Iterator bloc
     switch (block->terminator)
     {
     case lauf_asm_block::unterminated:
-        // We allow unterminated blocks that we haven't actually built yet.
-        if (!block->insts.empty())
+        // We allow unterminated blocks that aren't reachable.
+        if (block->reachable)
             b->error(context, "unterminated block");
         break;
 
@@ -497,13 +494,14 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
     return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset, 0});
 }
 
+lauf_asm_block* lauf_asm_entry_block(lauf_asm_builder* b)
+{
+    return &b->blocks.front();
+}
+
 lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, size_t input_count)
 {
     LAUF_BUILD_ASSERT(input_count <= UINT8_MAX, "too many input values for block");
-    if (b->blocks.empty())
-        LAUF_BUILD_ASSERT(input_count == b->fn->sig.input_count,
-                          "requested entry block has different input count from function");
-
     return &b->blocks.emplace_back(*b, *b, std::uint8_t(input_count));
 }
 
@@ -519,8 +517,8 @@ size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b)
 {
     if (b->cur == nullptr)
         return 0;
-
-    return b->cur->vstack.size();
+    else
+        return b->cur->vstack.size();
 }
 
 void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location loc)

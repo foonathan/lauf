@@ -24,14 +24,12 @@
 
 void bm_constant(lauf_asm_builder* b)
 {
-    lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     lauf_asm_inst_sint(b, 42);
     lauf_asm_inst_return(b);
 }
 
 void bm_add(lauf_asm_builder* b)
 {
-    lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     lauf_asm_inst_sint(b, 42);
     lauf_asm_inst_sint(b, 11);
     lauf_asm_inst_call_builtin(b, lauf_lib_int_sadd(LAUF_LIB_INT_OVERFLOW_PANIC));
@@ -40,7 +38,6 @@ void bm_add(lauf_asm_builder* b)
 
 void bm_multiply(lauf_asm_builder* b)
 {
-    lauf_asm_build_block(b, lauf_asm_declare_block(b, 0));
     lauf_asm_inst_sint(b, 4);
     lauf_asm_inst_sint(b, 1024);
     lauf_asm_inst_call_builtin(b, lauf_lib_int_smul(LAUF_LIB_INT_OVERFLOW_PANIC));
