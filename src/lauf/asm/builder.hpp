@@ -170,8 +170,6 @@ struct lauf_asm_local
     std::uint16_t   index;
     // UINT16_MAX if unknown for layout.alignment > alignof(void*)
     std::uint16_t offset;
-    // How often its address was taken in the function.
-    std::uint16_t address_count;
 };
 
 struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
@@ -186,6 +184,8 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
     lauf::array_list<lauf_asm_local> locals;
     std::uint16_t                    local_allocation_size = 0;
+    // Number of local_addr instructions.
+    std::uint16_t local_addr_count = 0;
 
     bool errored = false;
 
@@ -208,6 +208,7 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 
         locals.reset();
         local_allocation_size = 0;
+        local_addr_count      = 0;
 
         errored = false;
     }

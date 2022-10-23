@@ -48,16 +48,9 @@ void add_pop_top_n(lauf_asm_builder* b, std::size_t count)
             assert(false && "not added at this point");
             break;
 
-        case lauf::asm_op::local_addr: {
-            auto inst = b->cur->insts.back();
-            for (auto& local : b->locals)
-                if (local.index == inst.local_addr.index)
-                {
-                    --local.address_count;
-                    break;
-                }
+        case lauf::asm_op::local_addr:
+            --b->local_addr_count;
             // fallthrough
-        }
         case lauf::asm_op::push:
         case lauf::asm_op::pushn:
         case lauf::asm_op::global_addr:
@@ -198,17 +191,9 @@ std::size_t estimate_inst_count(const char* context, lauf_asm_builder* b)
     return result;
 }
 
-lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b,
-                             bool& any_local_has_address_taken)
+lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b)
 {
-    any_local_has_address_taken = [&] {
-        for (auto& local : b->locals)
-            if (local.address_count > 0)
-                return true;
-
-        return false;
-    }();
-    if (any_local_has_address_taken)
+    if (b->local_addr_count > 0)
         *ip++ = LAUF_BUILD_INST_VALUE(setup_local_alloc, b->locals.size());
 
     for (auto& local : b->locals)
@@ -217,7 +202,7 @@ lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b,
 
         // As soon as we have one variable whose address is taken, we have to setup allocations for
         // all of them. This is because the index in local_addr is wrong otherwise.
-        if (any_local_has_address_taken)
+        if (b->local_addr_count > 0)
         {
             if (local.layout.alignment == alignof(void*))
                 *ip++ = LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout);
@@ -226,7 +211,6 @@ lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b,
         }
         else
         {
-            assert(local.address_count == 0);
             auto space = local.layout.size;
             if (local.layout.alignment > alignof(void*))
                 space += local.layout.alignment;
@@ -245,8 +229,7 @@ lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b,
     return ip;
 }
 
-lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_inst* insts,
-                         bool need_return_free)
+lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_inst* insts)
 {
     auto get_next_block = [end = b->blocks.end()](auto next_iter) {
         do
@@ -289,7 +272,7 @@ lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_
             break;
 
         case lauf_asm_block::return_:
-            if (need_return_free)
+            if (b->local_addr_count > 0)
                 *ip++ = LAUF_BUILD_INST_VALUE(return_free, b->locals.size());
             else
                 *ip++ = LAUF_BUILD_INST_NONE(return_);
@@ -384,12 +367,11 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
             // For a normal function, we allocate the memory from the module.
             return b->mod->allocate<lauf_asm_inst>(inst_count);
     }();
-    auto ip = insts;
 
-    auto any_local_has_address_taken = false;
-    ip                               = emit_prologue(insts, b, any_local_has_address_taken);
-    ip                               = emit_body(ip, b, insts, any_local_has_address_taken);
-    auto inst_count                  = ip - insts;
+    auto ip         = insts;
+    ip              = emit_prologue(insts, b);
+    ip              = emit_body(ip, b, insts);
+    auto inst_count = ip - insts;
 
     b->fn->insts      = insts;
     b->fn->inst_count = std::uint16_t(inst_count);
@@ -460,7 +442,7 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
     }
 
     auto index = b->locals.size();
-    return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset, 0});
+    return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset});
 }
 
 lauf_asm_block* lauf_asm_entry_block(lauf_asm_builder* b)
@@ -875,8 +857,7 @@ void lauf_asm_inst_local_addr(lauf_asm_builder* b, lauf_asm_local* local)
 {
     LAUF_BUILD_CHECK_CUR;
 
-    ++local->address_count;
-
+    ++b->local_addr_count;
     b->cur->insts.push_back(*b,
                             LAUF_BUILD_INST_LOCAL_ADDR(local_addr, local->index, local->offset));
     b->cur->vstack.push(*b, [&] {
