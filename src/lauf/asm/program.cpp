@@ -16,7 +16,10 @@ lauf_asm_program lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
     return lauf_asm_create_program(mod, chunk->fn);
 }
 
-void lauf_asm_destroy_program(lauf_asm_program) {}
+void lauf_asm_destroy_program(lauf_asm_program)
+{
+    // NOTE: If this gets a body, it needs to be called in `lauf_vm_execute_oneshot()`.
+}
 
 const char* lauf_asm_program_debug_path(const lauf_asm_program* program, const lauf_asm_function*)
 {
