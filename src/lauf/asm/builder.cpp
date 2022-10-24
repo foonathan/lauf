@@ -210,23 +210,26 @@ std::size_t estimate_inst_count(const char* context, lauf_asm_builder* b)
 lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b)
 {
     if (b->local_addr_count > 0)
-        *ip++ = LAUF_BUILD_INST_VALUE(setup_local_alloc, b->locals.size());
-
-    for (auto& local : b->locals)
     {
-        assert(local.layout.alignment >= alignof(void*));
-
         // As soon as we have one variable whose address is taken, we have to setup allocations for
         // all of them. This is because the index in local_addr is wrong otherwise.
-        if (b->local_addr_count > 0)
+        *ip++ = LAUF_BUILD_INST_VALUE(setup_local_alloc, b->locals.size());
+
+        for (auto& local : b->locals)
         {
+            assert(local.layout.alignment >= alignof(void*));
             if (local.layout.alignment == alignof(void*))
                 *ip++ = LAUF_BUILD_INST_LAYOUT(local_alloc, local.layout);
             else
                 *ip++ = LAUF_BUILD_INST_LAYOUT(local_alloc_aligned, local.layout);
         }
-        else
+    }
+    else
+    {
+        for (auto& local : b->locals)
         {
+            assert(local.layout.alignment >= alignof(void*));
+
             auto space = local.layout.size;
             if (local.layout.alignment > alignof(void*))
                 space += local.layout.alignment;
@@ -246,7 +249,8 @@ lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b)
 }
 
 // Also sets offset of basic blocks.
-lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b, const lauf_asm_inst* insts)
+LAUF_NOINLINE lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b,
+                                       const lauf_asm_inst* insts)
 {
     auto get_next_block = [end = b->blocks.end()](auto next_iter) {
         do
