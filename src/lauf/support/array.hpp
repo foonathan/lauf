@@ -232,7 +232,9 @@ public:
     template <typename Allocator>
     void push_back(Allocator& alloc, const T& obj)
     {
-        reserve(alloc, _size + 1);
+        if (LAUF_UNLIKELY(_size + 1 > _capacity))
+            reserve(alloc, _size + 1);
+
         push_back_unchecked(obj);
     }
 
