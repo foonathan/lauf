@@ -38,6 +38,9 @@ if(NOT LAUF_DISPATCH_JUMP_TABLE)
     target_compile_definitions(lauf_core PUBLIC LAUF_CONFIG_DISPATCH_JUMP_TABLE=0)
     target_compile_options(lauf_core PRIVATE -fno-jump-tables)
 endif()
+# Since we're using tail calls for dispatching, we don't want to add frame pointers, ever.
+# They would record all previously executed instructions in the call stack.
+target_compile_options(lauf_core PRIVATE -fomit-frame-pointer)
 
 target_sources(lauf_core PUBLIC
                 ${include_dir}/config.h
