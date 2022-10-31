@@ -34,6 +34,11 @@ target_include_directories(lauf_core SYSTEM INTERFACE ../include)
 target_include_directories(lauf_core PRIVATE ../include .)
 target_link_libraries(lauf_core PRIVATE lauf_warnings foonathan::lexy)
 
+if(NOT LAUF_DISPATCH_JUMP_TABLE)
+    target_compile_definitions(lauf_core PUBLIC LAUF_CONFIG_DISPATCH_JUMP_TABLE=0)
+    target_compile_options(lauf_core PRIVATE -fno-jump-tables)
+endif()
+
 target_sources(lauf_core PUBLIC
                 ${include_dir}/config.h
                 ${include_dir}/reader.h

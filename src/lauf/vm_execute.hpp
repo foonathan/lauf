@@ -10,17 +10,27 @@
 
 namespace lauf
 {
-extern lauf_runtime_builtin_impl* const dispatch[std::size_t(asm_op::count)];
+#if LAUF_CONFIG_DISPATCH_JUMP_TABLE
 
-#define LAUF_VM_DISPATCH                                                                           \
-    LAUF_TAIL_CALL return lauf::dispatch[std::size_t(ip->op())](ip, vstack_ptr, frame_ptr, process)
+extern lauf_runtime_builtin_impl* const _vm_dispatch_table[];
 
-inline bool execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
-                    lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
+#    define LAUF_VM_DISPATCH                                                                       \
+        LAUF_TAIL_CALL return lauf::_vm_dispatch_table[int(ip->op())](ip, vstack_ptr, frame_ptr,   \
+                                                                      process)
+
+#else
+
+bool _vm_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                  lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process);
+
+#    define LAUF_VM_DISPATCH                                                                       \
+        LAUF_TAIL_CALL return lauf::_vm_dispatch(ip, vstack_ptr, frame_ptr, process)
+
+#endif
+} // namespace lauf
+
+namespace lauf
 {
-    LAUF_VM_DISPATCH;
-}
-
 constexpr lauf_asm_inst trampoline_code[3] = {
     // We need one nop instruction in front, so we can use it for fiber creation.
     // (Resume will always increment the ip first, which goes to the real call instruction)
@@ -39,6 +49,12 @@ constexpr lauf_asm_inst trampoline_code[3] = {
         return result;
     }(),
 };
+
+inline bool execute(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                    lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
+{
+    LAUF_VM_DISPATCH;
+}
 } // namespace lauf
 
 inline bool lauf_runtime_builtin_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,

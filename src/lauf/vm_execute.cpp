@@ -11,22 +11,44 @@
 #include <utility>
 
 //=== execute ===//
-#define LAUF_VM_EXECUTE(Name)                                                                      \
-    static bool execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,            \
-                               lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
-
 #define LAUF_ASM_INST(Name, Type)                                                                  \
-    static bool execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,            \
-                               lauf_runtime_stack_frame* frame_ptr,                                \
-                               lauf_runtime_process*     process);
+    LAUF_NOINLINE static bool execute_##Name(const lauf_asm_inst*      ip,                         \
+                                             lauf_runtime_value*       vstack_ptr,                 \
+                                             lauf_runtime_stack_frame* frame_ptr,                  \
+                                             lauf_runtime_process*     process);
 #include <lauf/asm/instruction.def.hpp>
 #undef LAUF_ASM_INST
 
-lauf_runtime_builtin_impl* const lauf::dispatch[] = {
-#define LAUF_ASM_INST(Name, Type) &execute_##Name,
-#include <lauf/asm/instruction.def.hpp>
-#undef LAUF_ASM_INST
+#if LAUF_CONFIG_DISPATCH_JUMP_TABLE
+
+lauf_runtime_builtin_impl* const lauf::_vm_dispatch_table[] = {
+#    define LAUF_ASM_INST(Name, Type) &execute_##Name,
+#    include <lauf/asm/instruction.def.hpp>
+#    undef LAUF_ASM_INST
 };
+
+#else
+
+LAUF_FORCE_INLINE bool lauf::_vm_dispatch(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                          lauf_runtime_stack_frame* frame_ptr,
+                                          lauf_runtime_process*     process)
+{
+    // Note that we're using a switch here, which the compiler could also lower to a jump table.
+    // If jump tables are disabled using CMake, it also adds the corresponding optimization flag to
+    // disable that.
+    switch (ip->op())
+    {
+#    define LAUF_ASM_INST(Name, Type)                                                              \
+    case lauf::asm_op::Name:                                                                       \
+        LAUF_TAIL_CALL return execute_##Name(ip, vstack_ptr, frame_ptr, process);
+#    include <lauf/asm/instruction.def.hpp>
+#    undef LAUF_ASM_INST
+
+    default:
+        LAUF_UNREACHABLE;
+    }
+}
+#endif
 
 //=== helper functions ===//
 // We move expensive calls into a separate function that is tail called.
@@ -75,6 +97,10 @@ LAUF_NOINLINE bool grow_allocation_array(const lauf_asm_inst* ip, lauf_runtime_v
     LAUF_VM_DISPATCH;
 }
 } // namespace
+
+#define LAUF_VM_EXECUTE(Name)                                                                      \
+    bool execute_##Name(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,                   \
+                        lauf_runtime_stack_frame* frame_ptr, lauf_runtime_process* process)
 
 //=== control flow ===//
 LAUF_VM_EXECUTE(nop)

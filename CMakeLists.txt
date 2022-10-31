@@ -4,6 +4,8 @@
 cmake_minimum_required(VERSION 3.8)
 project(lauf VERSION 0.0.0 LANGUAGES C CXX)
 
+option(LAUF_DISPATCH_JUMP_TABLE "whether or not to use a jump table for dispatching bytecode instructions" ON)
+
 add_subdirectory(src)
 
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)

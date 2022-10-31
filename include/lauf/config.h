@@ -28,23 +28,29 @@
 
 #endif
 
+typedef int64_t  lauf_sint;
+typedef uint64_t lauf_uint;
+
 //=== compatibility checks ===//
 #if CHAR_BIT != 8
 #    error "lauf assumes 8 bit bytes"
 #endif
 
-#if !defined(__GNUC__)
-#    error "lauf currently requires GCC or GCC compatible compilers"
+#if !defined(__clang__)
+#    error "lauf currently requires clang"
 #endif
 
 //=== optimizations ===//
 #define LAUF_UNLIKELY(Cond) __builtin_expect((Cond), 0)
 #define LAUF_TAIL_CALL [[clang::musttail]]
 #define LAUF_NOINLINE [[gnu::noinline]]
+#define LAUF_FORCE_INLINE [[gnu::always_inline]]
+#define LAUF_UNREACHABLE __builtin_unreachable()
 
-//=== basic types ===//
-typedef int64_t  lauf_sint;
-typedef uint64_t lauf_uint;
+//=== configurations ===//
+#ifndef LAUF_CONFIG_DISPATCH_JUMP_TABLE
+#    define LAUF_CONFIG_DISPATCH_JUMP_TABLE 1
+#endif
 
 #endif // LAUF_CONFIG_H_INCLUDED
 
