@@ -221,14 +221,14 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
 #define LAUF_BUILD_ASSERT(Cond, Msg)                                                               \
     do                                                                                             \
     {                                                                                              \
-        if (!(Cond))                                                                               \
+        if (LAUF_UNLIKELY(!(Cond)))                                                                \
             b->error(LAUF_BUILD_ASSERT_CONTEXT, Msg);                                              \
     } while (0)
 
 #define LAUF_BUILD_CHECK_CUR                                                                       \
     do                                                                                             \
     {                                                                                              \
-        if (b->cur == nullptr)                                                                     \
+        if (LAUF_UNLIKELY(b->cur == nullptr))                                                      \
             return;                                                                                \
     } while (0)
 
