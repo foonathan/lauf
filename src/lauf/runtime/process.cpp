@@ -249,7 +249,8 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
 bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
 {
-    assert(process->cur_fiber == nullptr);
+    assert(process->cur_fiber == nullptr
+           || process->cur_fiber->status == lauf_runtime_fiber::suspended);
 
     fiber->resume_by(nullptr);
     process->cur_fiber = fiber;

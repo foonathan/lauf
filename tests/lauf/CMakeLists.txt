@@ -4,6 +4,7 @@
 set(tests
         reader.cpp
         writer.cpp
+        vm.cpp
 
         asm/builder.cpp
 
