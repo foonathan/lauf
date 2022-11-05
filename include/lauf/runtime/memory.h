@@ -85,7 +85,18 @@ typedef struct lauf_runtime_allocation
 bool lauf_runtime_get_allocation(lauf_runtime_process* p, lauf_runtime_address addr,
                                  lauf_runtime_allocation* result);
 
+/// Adds a new static immutable allocation and returns its address.
+/// Bytecode can read it.
+lauf_runtime_address lauf_runtime_add_static_const_allocation(lauf_runtime_process* p,
+                                                              const void* ptr, size_t size);
+
+/// Adds a new static immutable allocation and returns its address.
+/// Bytecode can read and write it.
+lauf_runtime_address lauf_runtime_add_static_mut_allocation(lauf_runtime_process* p, void* ptr,
+                                                            size_t size);
+
 /// Adds a new heap allocation and returns its address.
+/// Bytecode can read, write, and free this allocation using the allocator of the VM.
 lauf_runtime_address lauf_runtime_add_heap_allocation(lauf_runtime_process* p, void* ptr,
                                                       size_t size);
 

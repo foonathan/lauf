@@ -138,13 +138,6 @@ lauf_runtime_fiber* lauf_runtime_get_fiber_ptr(lauf_runtime_process* p, lauf_run
     return lauf::get_fiber(p, addr);
 }
 
-lauf_runtime_address lauf_runtime_add_heap_allocation(lauf_runtime_process* p, void* ptr,
-                                                      size_t size)
-{
-    auto alloc = lauf::make_heap_alloc(ptr, size, p->memory.cur_generation());
-    return p->memory.new_allocation(p->vm->page_allocator, alloc);
-}
-
 bool lauf_runtime_get_allocation(lauf_runtime_process* p, lauf_runtime_address addr,
                                  lauf_runtime_allocation* result)
 {
@@ -187,6 +180,48 @@ bool lauf_runtime_get_allocation(lauf_runtime_process* p, lauf_runtime_address a
     }
 
     return true;
+}
+
+lauf_runtime_address lauf_runtime_add_static_const_allocation(lauf_runtime_process* p,
+                                                              const void* ptr, size_t size)
+{
+    lauf::allocation alloc;
+
+    // Runtime check ensures its not written.
+    alloc.ptr = const_cast<void*>(ptr);
+    // If bigger than 32bit, only the lower parts are addressable.
+    alloc.size = std::uint32_t(size);
+
+    alloc.source     = lauf::allocation_source::static_const_memory;
+    alloc.status     = lauf::allocation_status::allocated;
+    alloc.gc         = lauf::gc_tracking::reachable_explicit;
+    alloc.generation = p->memory.cur_generation();
+
+    return p->memory.new_allocation(p->vm->page_allocator, alloc);
+}
+
+lauf_runtime_address lauf_runtime_add_static_mut_allocation(lauf_runtime_process* p, void* ptr,
+                                                            size_t size)
+{
+    lauf::allocation alloc;
+
+    alloc.ptr = ptr;
+    // If bigger than 32bit, only the lower parts are addressable.
+    alloc.size = std::uint32_t(size);
+
+    alloc.source     = lauf::allocation_source::static_mut_memory;
+    alloc.status     = lauf::allocation_status::allocated;
+    alloc.gc         = lauf::gc_tracking::reachable_explicit;
+    alloc.generation = p->memory.cur_generation();
+
+    return p->memory.new_allocation(p->vm->page_allocator, alloc);
+}
+
+lauf_runtime_address lauf_runtime_add_heap_allocation(lauf_runtime_process* p, void* ptr,
+                                                      size_t size)
+{
+    auto alloc = lauf::make_heap_alloc(ptr, size, p->memory.cur_generation());
+    return p->memory.new_allocation(p->vm->page_allocator, alloc);
 }
 
 bool lauf_runtime_leak_heap_allocation(lauf_runtime_process* p, lauf_runtime_address addr)
