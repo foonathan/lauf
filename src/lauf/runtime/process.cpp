@@ -113,7 +113,8 @@ const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process)
 
 lauf_runtime_fiber* lauf_runtime_get_current_fiber(lauf_runtime_process* process)
 {
-    assert(process->cur_fiber->status == lauf_runtime_fiber::running);
+    assert(process->cur_fiber->status == lauf_runtime_fiber::running
+           || process->cur_fiber->status == lauf_runtime_fiber::ready);
     return process->cur_fiber;
 }
 
@@ -186,14 +187,15 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
 
     // Resume the fiber at least once.
     auto success = false;
-    if (LAUF_LIKELY(lauf_runtime_resume(process, fiber, input, fn->sig.input_count)))
+    if (LAUF_LIKELY(lauf_runtime_resume(process, fiber, input, fn->sig.input_count, output,
+                                        fn->sig.output_count)))
     {
         success = true;
 
         // Then repeatedly until it is done.
         while (fiber->status != lauf_runtime_fiber::done)
         {
-            if (!lauf_runtime_resume(process, fiber, nullptr, 0))
+            if (!lauf_runtime_resume(process, fiber, nullptr, 0, output, fn->sig.output_count))
             {
                 success = false;
                 break;
@@ -202,21 +204,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
         }
     }
 
-    if (LAUF_LIKELY(success))
-    {
-        // The fiber could have changed, so we need to check that the output count still matches.
-        if (fiber->root_function()->sig.output_count != fn->sig.output_count)
-            return lauf_runtime_panic(process, "invalid output count in call");
-
-        // Copy the output values over.
-        auto vstack_ptr = fiber->vstack.base() - fn->sig.output_count;
-        for (auto i = 0u; i != fn->sig.output_count; ++i)
-        {
-            output[fn->sig.output_count - i - 1] = vstack_ptr[0];
-            ++vstack_ptr;
-        }
-    }
-    else
+    if (LAUF_UNLIKELY(!success))
     {
         // We paniced, so we manually need to mark all local memory allocations as freed before we
         // destroy the fiber. We don't need to worry about the split status, as the fiber is dead
@@ -235,8 +223,8 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
         }
     }
 
+    // Destroy fiber and remove freed allocations.
     lauf_runtime_fiber::destroy(process, fiber);
-    // We also manually do a cleanup of the allocations now.
     process->memory.remove_freed();
 
     // Restore processor state.
@@ -245,12 +233,19 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     return success;
 }
 
+lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
+                                              const lauf_asm_function* fn)
+{
+    return lauf_runtime_fiber::create(process, fn);
+}
+
 bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber,
-                         const lauf_runtime_value* input, size_t input_count)
+                         const lauf_runtime_value* input, size_t input_count,
+                         lauf_runtime_value* output, size_t output_count)
 {
     assert(process->cur_fiber == nullptr
-           || process->cur_fiber->status == lauf_runtime_fiber::suspended);
-    if (LAUF_UNLIKELY(fiber->expected_argument_count != input_count))
+           || process->cur_fiber->status != lauf_runtime_fiber::running);
+    if (LAUF_UNLIKELY(fiber->expected_argument_count > input_count))
         return lauf_runtime_panic(process, "mismatched signature for fiber resume");
 
     fiber->resume_by(nullptr);
@@ -264,14 +259,49 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
         vstack_ptr[0] = input[i];
     }
 
-    return lauf::execute(fiber->suspension_point.ip + 1, fiber->suspension_point.vstack_ptr,
-                         fiber->suspension_point.frame_ptr, process);
+    auto success = lauf::execute(fiber->suspension_point.ip + 1, fiber->suspension_point.vstack_ptr,
+                                 fiber->suspension_point.frame_ptr, process);
+    if (LAUF_LIKELY(success))
+    {
+        // fiber could have changed, so reset back to the current fiber.
+        fiber = process->cur_fiber;
+
+        if (fiber->status == lauf_runtime_fiber::done)
+        {
+            // Copy the final arguments.
+            auto actual_output_count = fiber->root_function()->sig.output_count;
+            if (LAUF_UNLIKELY(actual_output_count > output_count))
+                return lauf_runtime_panic(process, "mismatched signature for fiber resume");
+
+            auto vstack_ptr = fiber->vstack.base() - actual_output_count;
+            for (auto i = 0u; i != actual_output_count; ++i)
+            {
+                output[actual_output_count - i - 1] = vstack_ptr[0];
+                ++vstack_ptr;
+            }
+        }
+        else
+        {
+            // Copy the output values after resume.
+            assert(fiber->status == lauf_runtime_fiber::suspended);
+            auto actual_output_count = fiber->suspension_point.ip->fiber_suspend.input_count;
+            if (LAUF_UNLIKELY(actual_output_count > output_count))
+                return lauf_runtime_panic(process, "mismatched signature for fiber resume");
+
+            auto& vstack_ptr = fiber->suspension_point.vstack_ptr;
+            for (auto i = 0u; i != actual_output_count; ++i)
+            {
+                output[actual_output_count - i - 1] = vstack_ptr[0];
+                ++vstack_ptr;
+            }
+        }
+    }
+    return success;
 }
 
-lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
-                                              const lauf_asm_function* fn)
+void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
 {
-    return lauf_runtime_fiber::create(process, fn);
+    lauf_runtime_fiber::destroy(process, fiber);
 }
 
 bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
@@ -280,11 +310,6 @@ bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
     if (process != nullptr)
         process->vm->panic_handler(process, msg);
     return false;
-}
-
-void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
-{
-    lauf_runtime_fiber::destroy(process, fiber);
 }
 
 void lauf_runtime_destroy_process(lauf_runtime_process* process)

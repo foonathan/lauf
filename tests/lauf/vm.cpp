@@ -8,6 +8,7 @@
 #include <lauf/asm/program.h>
 #include <lauf/frontend/text.h>
 #include <lauf/reader.h>
+#include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
 
 namespace
@@ -152,6 +153,116 @@ TEST_CASE("lauf_vm_execute_oneshot")
         lauf_runtime_value output;
         auto               result = lauf_vm_execute_oneshot(vm, prog, &input, &output);
         CHECK(!result);
+    }
+
+    lauf_destroy_vm(vm);
+    lauf_asm_destroy_module(mod);
+}
+
+TEST_CASE("lauf_vm_start_process")
+{
+    auto mod = test_module();
+    auto vm  = lauf_create_vm(lauf_default_vm_options);
+
+    SUBCASE("noop")
+    {
+        auto prog  = test_program(mod, "noop");
+        auto proc  = lauf_vm_start_process(vm, &prog);
+        auto fiber = lauf_runtime_get_current_fiber(proc);
+
+        CHECK(lauf_runtime_resume(proc, fiber, nullptr, 0, nullptr, 0));
+
+        lauf_runtime_destroy_process(proc);
+        lauf_asm_destroy_program(prog);
+    }
+    SUBCASE("panic")
+    {
+        lauf_vm_set_panic_handler(vm, [](lauf_runtime_process*, const char*) {});
+
+        auto prog  = test_program(mod, "panic");
+        auto proc  = lauf_vm_start_process(vm, &prog);
+        auto fiber = lauf_runtime_get_current_fiber(proc);
+
+        CHECK(!lauf_runtime_resume(proc, fiber, nullptr, 0, nullptr, 0));
+
+        lauf_runtime_destroy_process(proc);
+        lauf_asm_destroy_program(prog);
+    }
+    SUBCASE("id1")
+    {
+        auto prog  = test_program(mod, "id1");
+        auto proc  = lauf_vm_start_process(vm, &prog);
+        auto fiber = lauf_runtime_get_current_fiber(proc);
+
+        lauf_runtime_value input = {11};
+        lauf_runtime_value output;
+        CHECK(lauf_runtime_resume(proc, fiber, &input, 1, &output, 1));
+        CHECK(output.as_uint == 11);
+
+        lauf_runtime_destroy_process(proc);
+        lauf_asm_destroy_program(prog);
+    }
+    SUBCASE("id2")
+    {
+        auto prog  = test_program(mod, "id2");
+        auto proc  = lauf_vm_start_process(vm, &prog);
+        auto fiber = lauf_runtime_get_current_fiber(proc);
+
+        lauf_runtime_value input[2] = {{11}, {42}};
+        lauf_runtime_value output[2];
+        CHECK(lauf_runtime_resume(proc, fiber, input, 2, output, 2));
+        CHECK(output[0].as_uint == 11);
+        CHECK(output[1].as_uint == 42);
+
+        lauf_runtime_destroy_process(proc);
+        lauf_asm_destroy_program(prog);
+    }
+    SUBCASE("input")
+    {
+        auto prog  = test_program(mod, "input");
+        auto proc  = lauf_vm_start_process(vm, &prog);
+        auto fiber = lauf_runtime_get_current_fiber(proc);
+
+        lauf_runtime_value input[3] = {{0}, {1}, {2}};
+        CHECK(lauf_runtime_resume(proc, fiber, input, 3, nullptr, 0));
+
+        lauf_runtime_destroy_process(proc);
+        lauf_asm_destroy_program(prog);
+    }
+    SUBCASE("output")
+    {
+        auto prog  = test_program(mod, "output");
+        auto proc  = lauf_vm_start_process(vm, &prog);
+        auto fiber = lauf_runtime_get_current_fiber(proc);
+
+        lauf_runtime_value output[3];
+        CHECK(lauf_runtime_resume(proc, fiber, nullptr, 0, output, 3));
+        CHECK(output[0].as_uint == 0);
+        CHECK(output[1].as_uint == 1);
+        CHECK(output[2].as_uint == 2);
+
+        lauf_runtime_destroy_process(proc);
+        lauf_asm_destroy_program(prog);
+    }
+    SUBCASE("suspending_values")
+    {
+        auto prog  = test_program(mod, "suspending_values");
+        auto proc  = lauf_vm_start_process(vm, &prog);
+        auto fiber = lauf_runtime_get_current_fiber(proc);
+
+        lauf_runtime_value input = {0};
+        lauf_runtime_value output;
+        CHECK(lauf_runtime_resume(proc, fiber, &input, 1, &output, 1));
+        CHECK(output.as_uint == 1);
+
+        CHECK(lauf_runtime_resume(proc, fiber, nullptr, 0, nullptr, 0));
+
+        input.as_uint = 2;
+        CHECK(lauf_runtime_resume(proc, fiber, &input, 1, &output, 1));
+        CHECK(output.as_uint == 3);
+
+        lauf_runtime_destroy_process(proc);
+        lauf_asm_destroy_program(prog);
     }
 
     lauf_destroy_vm(vm);
