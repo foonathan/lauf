@@ -245,7 +245,7 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
 {
     assert(process->cur_fiber == nullptr
            || process->cur_fiber->status != lauf_runtime_fiber::running);
-    if (LAUF_UNLIKELY(fiber->expected_argument_count > input_count))
+    if (LAUF_UNLIKELY(fiber->expected_argument_count != input_count))
         return lauf_runtime_panic(process, "mismatched signature for fiber resume");
 
     fiber->resume_by(nullptr);
@@ -270,7 +270,7 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
         {
             // Copy the final arguments.
             auto actual_output_count = fiber->root_function()->sig.output_count;
-            if (LAUF_UNLIKELY(actual_output_count > output_count))
+            if (LAUF_UNLIKELY(actual_output_count != output_count))
                 return lauf_runtime_panic(process, "mismatched signature for fiber resume");
 
             auto vstack_ptr = fiber->vstack.base() - actual_output_count;
@@ -283,16 +283,22 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
         else
         {
             // Copy the output values after resume.
+            // If we don't have output values, we allow arbitrary output_count in call, otherwise,
+            // it has to be strict. This makes it possible to just call it in a loop if the fiber
+            // suspends without producing values.
             assert(fiber->status == lauf_runtime_fiber::suspended);
             auto actual_output_count = fiber->suspension_point.ip->fiber_suspend.input_count;
-            if (LAUF_UNLIKELY(actual_output_count > output_count))
-                return lauf_runtime_panic(process, "mismatched signature for fiber resume");
-
-            auto& vstack_ptr = fiber->suspension_point.vstack_ptr;
-            for (auto i = 0u; i != actual_output_count; ++i)
+            if (actual_output_count > 0)
             {
-                output[actual_output_count - i - 1] = vstack_ptr[0];
-                ++vstack_ptr;
+                if (LAUF_UNLIKELY(actual_output_count != output_count))
+                    return lauf_runtime_panic(process, "mismatched signature for fiber resume");
+
+                auto& vstack_ptr = fiber->suspension_point.vstack_ptr;
+                for (auto i = 0u; i != actual_output_count; ++i)
+                {
+                    output[actual_output_count - i - 1] = vstack_ptr[0];
+                    ++vstack_ptr;
+                }
             }
         }
     }
