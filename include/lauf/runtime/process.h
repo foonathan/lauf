@@ -89,9 +89,11 @@ lauf_runtime_fiber* lauf_runtime_create_fiber(lauf_runtime_process*    process,
 ///
 /// This activates the fiber and executes it until it suspends again.
 /// It returns false if it panics, true otherwise.
+/// The input values are passed to the fiber.
 ///
 /// It must only be called when no fiber is currently running.
-bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber);
+bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber,
+                         const lauf_runtime_value* input, size_t input_count);
 
 /// Destroys a fiber.
 ///

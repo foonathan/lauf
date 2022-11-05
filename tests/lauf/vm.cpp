@@ -142,6 +142,10 @@ TEST_CASE("lauf_vm_execute_oneshot")
     }
     SUBCASE("suspending_values")
     {
+        lauf_vm_set_panic_handler(vm, [](lauf_runtime_process*, const char* msg) {
+            CHECK(msg == doctest::String("mismatched signature for fiber resume"));
+        });
+
         auto prog = test_program(mod, "suspending_values");
 
         lauf_runtime_value input = {0};

@@ -184,25 +184,23 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     // Create a new fiber.
     auto fiber = lauf_runtime_fiber::create(process, fn);
 
-    // We need to manually transfer arguments as the order is different.
-    auto& vstack_ptr = fiber->suspension_point.vstack_ptr;
-    for (auto i = 0u; i != fn->sig.input_count; ++i)
+    // Resume the fiber at least once.
+    auto success = false;
+    if (LAUF_LIKELY(lauf_runtime_resume(process, fiber, input, fn->sig.input_count)))
     {
-        --vstack_ptr;
-        vstack_ptr[0] = input[i];
-    }
+        success = true;
 
-    // Execute the fiber until it is done.
-    auto success = true;
-    do
-    {
-        if (!lauf_runtime_resume(process, fiber))
+        // Then repeatedly until it is done.
+        while (fiber->status != lauf_runtime_fiber::done)
         {
-            success = false;
-            break;
+            if (!lauf_runtime_resume(process, fiber, nullptr, 0))
+            {
+                success = false;
+                break;
+            }
+            fiber = process->cur_fiber;
         }
-        fiber = process->cur_fiber;
-    } while (fiber->status != lauf_runtime_fiber::done);
+    }
 
     if (LAUF_LIKELY(success))
     {
@@ -211,7 +209,7 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
             return lauf_runtime_panic(process, "invalid output count in call");
 
         // Copy the output values over.
-        vstack_ptr = fiber->vstack.base() - fn->sig.output_count;
+        auto vstack_ptr = fiber->vstack.base() - fn->sig.output_count;
         for (auto i = 0u; i != fn->sig.output_count; ++i)
         {
             output[fn->sig.output_count - i - 1] = vstack_ptr[0];
@@ -247,13 +245,24 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     return success;
 }
 
-bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
+bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fiber,
+                         const lauf_runtime_value* input, size_t input_count)
 {
     assert(process->cur_fiber == nullptr
            || process->cur_fiber->status == lauf_runtime_fiber::suspended);
+    if (LAUF_UNLIKELY(fiber->expected_argument_count != input_count))
+        return lauf_runtime_panic(process, "mismatched signature for fiber resume");
 
     fiber->resume_by(nullptr);
     process->cur_fiber = fiber;
+
+    // We can't call fiber->transfer_arguments() as the order is different.
+    auto& vstack_ptr = fiber->suspension_point.vstack_ptr;
+    for (auto i = 0u; i != input_count; ++i)
+    {
+        --vstack_ptr;
+        vstack_ptr[0] = input[i];
+    }
 
     return lauf::execute(fiber->suspension_point.ip + 1, fiber->suspension_point.vstack_ptr,
                          fiber->suspension_point.frame_ptr, process);
