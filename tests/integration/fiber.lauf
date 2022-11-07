@@ -65,15 +65,27 @@ function @access_local() {
     $lauf.fiber.destroy; return;
 }
 
+function @cancel_fiber() {
+    function_addr @escape_local_variable; $lauf.fiber.create;
+    pick 0; fiber_resume (0 => 1); roll 1; $lauf.fiber.destroy;
+
+    # Fiber has been destroyed when we access the local here.
+    uint 11; roll 1; store_field $lauf.Value 0;
+    return;
+}
+
+global const @msg_invalid_address = "invalid address", 0;
+
 function @main(0 => 1) export {
     block %entry() {
         $lauf.platform.vm;
         branch %vm() %exit(0 => 1);
     }
     block %vm() {
-        call @resume_and_suspend;
-        call @transfer_and_back;
-        call @access_local;
+        #call @resume_and_suspend;
+        #call @transfer_and_back;
+        #call @access_local;
+        function_addr @cancel_fiber; global_addr @msg_invalid_address; $lauf.test.assert_panic;
         jump %exit(0 => 1);
     }
     block %exit(0 => 1){

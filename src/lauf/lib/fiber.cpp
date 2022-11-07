@@ -32,7 +32,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_fiber_destroy, 1, 0, LAUF_RUNTIME_BUILTIN_DEFAULT,
     if (LAUF_UNLIKELY(fiber == nullptr))
         return lauf_runtime_panic(process, "invalid fiber handle");
 
-    lauf_runtime_destroy_fiber(process, fiber);
+    if (LAUF_UNLIKELY(!lauf_runtime_destroy_fiber(process, fiber)))
+        return false;
 
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }

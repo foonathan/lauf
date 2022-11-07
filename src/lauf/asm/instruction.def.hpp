@@ -106,6 +106,7 @@ LAUF_ASM_INST(select, asm_inst_stack_idx)
 //=== memory ===//
 // Setups a call frame for local allocations.
 // Value is the number of local_alloc[_aligned] instructions.
+// Invariant: this is the first instruction of a function, if it is present.
 LAUF_ASM_INST(setup_local_alloc, asm_inst_value)
 // Allocate memory for a local variable and creates an allocation for it.
 // First version assumes alignment of 8, second one allows bigger alignments.

@@ -99,7 +99,8 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
 /// Destroys a fiber.
 ///
 /// If the fiber is not yet done, it will cancel it.
-void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber);
+/// It panics if any local memory cannot be freed.
+bool lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber);
 
 /// Triggers a panic.
 ///

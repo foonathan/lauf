@@ -177,10 +177,9 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
                        const lauf_runtime_value* input, lauf_runtime_value* output)
 {
     // Save current processor state.
-    auto regs                 = process->regs;
-    auto cur_fiber            = process->cur_fiber;
-    auto cur_allocation_index = process->memory.next_index();
-    process->cur_fiber        = nullptr;
+    auto regs          = process->regs;
+    auto cur_fiber     = process->cur_fiber;
+    process->cur_fiber = nullptr;
 
     // Create a new fiber.
     auto fiber = lauf_runtime_fiber::create(process, fn);
@@ -192,40 +191,21 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     {
         success = true;
 
-        // Then repeatedly until it is done.
-        while (fiber->status != lauf_runtime_fiber::done)
+        // Then we repeatedly resume the current fiber until it is done.
+        while (process->cur_fiber->status != lauf_runtime_fiber::done)
         {
-            if (!lauf_runtime_resume(process, fiber, nullptr, 0, output, fn->sig.output_count))
+            if (!lauf_runtime_resume(process, process->cur_fiber, nullptr, 0, output,
+                                     fn->sig.output_count))
             {
                 success = false;
                 break;
             }
-            fiber = process->cur_fiber;
         }
     }
 
-    if (LAUF_UNLIKELY(!success))
-    {
-        // We paniced, so we manually need to mark all local memory allocations as freed before we
-        // destroy the fiber. We don't need to worry about the split status, as the fiber is dead
-        // anyway.
-        for (auto alloc_idx = cur_allocation_index; alloc_idx != process->memory.next_index();
-             ++alloc_idx)
-        {
-            auto& alloc = process->memory[alloc_idx];
-            if (alloc.source == lauf::allocation_source::local_memory
-                && alloc.status != lauf::allocation_status::freed)
-            {
-                alloc.status = lauf::allocation_status::freed;
-                alloc.split  = lauf::allocation_split::unsplit;
-                alloc.gc     = lauf::gc_tracking::unreachable;
-            }
-        }
-    }
-
-    // Destroy fiber and remove freed allocations.
-    lauf_runtime_fiber::destroy(process, fiber);
-    process->memory.remove_freed();
+    // Destroy the fiber.
+    // If it paniced, it will also cancel it.
+    lauf_runtime_destroy_fiber(process, fiber);
 
     // Restore processor state.
     process->regs      = regs;
@@ -245,11 +225,11 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
 {
     assert(process->cur_fiber == nullptr
            || process->cur_fiber->status != lauf_runtime_fiber::running);
-    if (LAUF_UNLIKELY(fiber->expected_argument_count != input_count))
-        return lauf_runtime_panic(process, "mismatched signature for fiber resume");
 
     fiber->resume_by(nullptr);
     process->cur_fiber = fiber;
+    if (LAUF_UNLIKELY(fiber->expected_argument_count != input_count))
+        return lauf_runtime_panic(process, "mismatched signature for fiber resume");
 
     // We can't call fiber->transfer_arguments() as the order is different.
     auto& vstack_ptr = fiber->suspension_point.vstack_ptr;
@@ -305,16 +285,59 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
     return success;
 }
 
-void lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
+bool lauf_runtime_destroy_fiber(lauf_runtime_process* process, lauf_runtime_fiber* fiber)
 {
+    if (LAUF_UNLIKELY(fiber->status != lauf_runtime_fiber::done
+                      && fiber->status != lauf_runtime_fiber::ready))
+    {
+        assert(fiber->status == lauf_runtime_fiber::suspended);
+        // The fiber is being canceled, which means we need to manually mark its local memory as
+        // freed. Normally, this would be done by the return instruction, but they aren't executed.
+        // If we don't do it, we have memory that is going to be freed by the destroy call below but
+        // not marked as freed.
+
+        for (auto frame_ptr                                   = fiber->suspension_point.frame_ptr;
+             frame_ptr != &fiber->trampoline_frame; frame_ptr = frame_ptr->prev)
+        {
+            auto first_inst        = frame_ptr->function->insts;
+            auto local_alloc_count = first_inst->op() == lauf::asm_op::setup_local_alloc
+                                         ? first_inst->setup_local_alloc.value
+                                         : 0u;
+            for (auto i = 0u; i != local_alloc_count; ++i)
+            {
+                auto  index = frame_ptr->first_local_alloc + i;
+                auto& alloc = process->memory[index];
+                assert(alloc.source == lauf::allocation_source::local_memory);
+                assert(alloc.status != lauf::allocation_status::freed);
+                if (LAUF_UNLIKELY(alloc.split != lauf::allocation_split::unsplit))
+                    return lauf_runtime_panic(process, "cannot free split allocation");
+
+                alloc.status = lauf::allocation_status::freed;
+            }
+        }
+    }
+
     lauf_runtime_fiber::destroy(process, fiber);
+    process->memory.remove_freed();
+    return true;
 }
 
 bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
 {
     // The process is nullptr during constant folding.
     if (process != nullptr)
+    {
         process->vm->panic_handler(process, msg);
+
+        // The current fiber can be null if we're panicing, while processing a panic.
+        if (process->cur_fiber != nullptr)
+        {
+            // We no longer have a running fiber.
+            // We do it at this point, to be able to detect the current fiber during panicing.
+            process->cur_fiber->suspend(process->regs, 0);
+            process->cur_fiber = nullptr;
+        }
+    }
     return false;
 }
 
