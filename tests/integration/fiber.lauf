@@ -22,16 +22,16 @@ function @resume_and_suspend() {
     function_addr @generator; $lauf.fiber.create;
 
     pick 0; $lauf.fiber.done; sint -1; $lauf.bits.xor; $lauf.test.assert;
-    pick 0; fiber_resume (0 => 1); uint 0; $lauf.test.assert_eq; 
+    pick 0; fiber_resume (0 => 1); uint 0; $lauf.test.assert_eq;
 
     pick 0; $lauf.fiber.done; sint -1; $lauf.bits.xor; $lauf.test.assert;
-    pick 0; fiber_resume (0 => 1); uint 1; $lauf.test.assert_eq; 
+    pick 0; fiber_resume (0 => 1); uint 1; $lauf.test.assert_eq;
 
     pick 0; $lauf.fiber.done; sint -1; $lauf.bits.xor; $lauf.test.assert;
-    pick 0; fiber_resume (0 => 1); uint 2; $lauf.test.assert_eq; 
-    
+    pick 0; fiber_resume (0 => 1); uint 2; $lauf.test.assert_eq;
+
     pick 0; $lauf.fiber.done; sint -1; $lauf.bits.xor; $lauf.test.assert;
-    pick 0; fiber_resume (0 => 0); 
+    pick 0; fiber_resume (0 => 0);
 
     pick 0; $lauf.fiber.done; $lauf.test.assert;
     $lauf.fiber.destroy; return;
@@ -50,14 +50,30 @@ function @transfer_and_back() {
     return;
 }
 
+function @escape_local_variable() {
+    local %value : $lauf.Value;
+    local_addr %value; fiber_suspend (1 => 0);
+    local_addr %value; load_field $lauf.Value 0; uint 11; $lauf.test.assert_eq;
+    return;
+}
+
+function @access_local() {
+    function_addr @escape_local_variable; $lauf.fiber.create;
+    pick 0; fiber_resume (0 => 1); uint 11; roll 1; store_field $lauf.Value 0;
+    pick 0; fiber_resume (0 => 0);
+    pick 0; $lauf.fiber.done; $lauf.test.assert;
+    $lauf.fiber.destroy; return;
+}
+
 function @main(0 => 1) export {
     block %entry() {
         $lauf.platform.vm;
         branch %vm() %exit(0 => 1);
     }
     block %vm() {
-        call @resume_and_suspend; 
+        call @resume_and_suspend;
         call @transfer_and_back;
+        call @access_local;
         jump %exit(0 => 1);
     }
     block %exit(0 => 1){
