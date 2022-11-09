@@ -32,14 +32,6 @@ extern const lauf_runtime_builtin lauf_lib_heap_alloc_array;
 /// Signature: addr:address => _
 extern const lauf_runtime_builtin lauf_lib_heap_free;
 
-/// Marks heap memory as freed without it being actually freed.
-///
-/// This prevents code from ever accessing it again.
-/// It also allows heap memory to live after VM execution has finished.
-///
-/// Signature: addr:address => _
-extern const lauf_runtime_builtin lauf_lib_heap_leak;
-
 /// Transfers a local variable to the heap by memcpy'ing it.
 ///
 /// If the address points to heap or global memory, returns it unchanged.

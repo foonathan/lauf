@@ -61,20 +61,8 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_heap_free, 1, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "fr
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_heap_leak, 1, 0, LAUF_RUNTIME_BUILTIN_VM_DIRECTIVE, "leak",
-                     &lauf_lib_heap_free)
-{
-    auto address = vstack_ptr[0].as_address;
-    ++vstack_ptr;
-
-    if (!lauf_runtime_leak_heap_allocation(process, address))
-        return lauf_runtime_panic(process, "invalid heap address");
-
-    LAUF_RUNTIME_BUILTIN_DISPATCH;
-}
-
 LAUF_RUNTIME_BUILTIN(lauf_lib_heap_transfer_local, 1, 1, LAUF_RUNTIME_BUILTIN_DEFAULT,
-                     "transfer_local", &lauf_lib_heap_leak)
+                     "transfer_local", &lauf_lib_heap_free)
 {
     auto address = vstack_ptr[0].as_address;
 
