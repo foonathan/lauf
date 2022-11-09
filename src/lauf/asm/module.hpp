@@ -49,6 +49,7 @@ struct lauf_asm_global
     std::uint16_t alignment;
     enum permissions : std::uint8_t
     {
+        declaration,
         read_only,
         read_write,
     } perms;
@@ -57,7 +58,7 @@ struct lauf_asm_global
 
     explicit lauf_asm_global(lauf_asm_module* mod)
     : next(mod->globals), memory(nullptr), size(0), allocation_idx(mod->globals_count),
-      alignment(alignof(lauf_uint)), perms(read_only)
+      alignment(alignof(lauf_uint)), perms(declaration)
     {
         mod->globals = this;
         ++mod->globals_count;

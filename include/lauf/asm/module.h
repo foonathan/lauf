@@ -95,10 +95,15 @@ lauf_asm_global* lauf_asm_add_global_const_data(lauf_asm_module* mod, const void
 lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* data,
                                               lauf_asm_layout layout);
 
+/// Adds a global that is a view onto native memory.
+/// It is just a declaration that requires a definition when creating the program.
+lauf_asm_global* lauf_asm_add_global_native_data(lauf_asm_module* mod);
+
 /// Set a name of a global variable.
 /// This is only used for debugging purposes.
-void        lauf_asm_set_global_debug_name(lauf_asm_module* mod, lauf_asm_global* global,
-                                           const char* name);
+void lauf_asm_set_global_debug_name(lauf_asm_module* mod, lauf_asm_global* global,
+                                    const char* name);
+
 const char* lauf_asm_global_debug_name(const lauf_asm_global* global);
 
 //=== functions ===//

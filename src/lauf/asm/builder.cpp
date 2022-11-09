@@ -1175,7 +1175,8 @@ load_store_constant load_store_constant_folding(lauf_asm_module*            mod,
             return load_store_dynamic;
 
         for (auto global = mod->globals; global != nullptr; global = global->next)
-            if (global->allocation_idx == constant_addr.allocation)
+            if (global->allocation_idx == constant_addr.allocation
+                && global->perms != lauf_asm_global::declaration)
             {
                 if (store && global->perms == lauf_asm_global::read_only)
                     return load_store_dynamic;

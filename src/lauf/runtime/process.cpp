@@ -68,7 +68,7 @@ void lauf_runtime_process::init(lauf_runtime_process* process, lauf_vm* vm,
     process->fiber_list = nullptr;
     process->regs       = {};
 
-    process->memory.init(vm, program->_mod);
+    process->memory.init(vm, program);
     process->remaining_steps = vm->step_limit;
 }
 

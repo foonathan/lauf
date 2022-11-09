@@ -4,10 +4,14 @@
 #include <lauf/vm.h>
 
 #include <doctest/doctest.h>
+#include <lauf/asm/builder.h>
 #include <lauf/asm/module.h>
 #include <lauf/asm/program.h>
+#include <lauf/asm/type.h>
 #include <lauf/frontend/text.h>
+#include <lauf/lib/test.h>
 #include <lauf/reader.h>
+#include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
 #include <lauf/runtime/value.h>
 
@@ -266,6 +270,47 @@ TEST_CASE("lauf_vm_start_process")
     }
 
     lauf_destroy_vm(vm);
+    lauf_asm_destroy_module(mod);
+}
+
+TEST_CASE("lauf_asm_global_definition")
+{
+    auto mod    = lauf_asm_create_module("test");
+    auto fn     = lauf_asm_add_function(mod, "test", {0, 0});
+    auto global = lauf_asm_add_global_native_data(mod);
+
+    {
+        auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
+        lauf_asm_build(b, mod, fn);
+
+        lauf_asm_inst_global_addr(b, global);
+        lauf_asm_inst_load_field(b, lauf_asm_type_value, 0);
+        lauf_asm_inst_uint(b, 11);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+
+        lauf_asm_inst_uint(b, 42);
+        lauf_asm_inst_global_addr(b, global);
+        lauf_asm_inst_store_field(b, lauf_asm_type_value, 0);
+
+        lauf_asm_inst_return(b);
+
+        lauf_asm_build_finish(b);
+        lauf_asm_destroy_builder(b);
+    }
+
+    auto                       program = lauf_asm_create_program(mod, fn);
+    lauf_runtime_value         global_val;
+    lauf_asm_global_definition global_def;
+    lauf_asm_define_global(&global_def, &program, global, &global_val, sizeof(global_val));
+
+    global_val.as_uint = 11;
+
+    auto vm = lauf_create_vm(lauf_default_vm_options);
+    CHECK(lauf_vm_execute_oneshot(vm, program, nullptr, nullptr));
+    lauf_destroy_vm(vm);
+
+    CHECK(global_val.as_uint == 42);
+
     lauf_asm_destroy_module(mod);
 }
 

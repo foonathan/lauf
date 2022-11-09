@@ -9,39 +9,63 @@
 
 namespace
 {
-lauf::allocation allocate_global(lauf::arena_base& arena, lauf_asm_global global)
+lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program& program,
+                                 const lauf_asm_global& global)
 {
     lauf::allocation result;
-
-    if (global.memory != nullptr)
-    {
-        result.ptr = arena.memdup(global.memory, global.size, global.alignment);
-    }
-    else
-    {
-        result.ptr = arena.allocate(global.size, global.alignment);
-        std::memset(result.ptr, 0, global.size);
-    }
-
-    // If bigger than 32bit, only the lower parts are addressable.
-    result.size = std::uint32_t(global.size);
-
-    result.source     = global.perms == lauf_asm_global::read_write
-                            ? lauf::allocation_source::static_mut_memory
-                            : lauf::allocation_source::static_const_memory;
+    result.source     = global.perms == lauf_asm_global::read_only
+                            ? lauf::allocation_source::static_const_memory
+                            : lauf::allocation_source::static_mut_memory;
     result.status     = lauf::allocation_status::allocated;
     result.gc         = lauf::gc_tracking::reachable_explicit;
     result.generation = 0;
+
+    if (global.perms == lauf_asm_global::declaration)
+    {
+        auto definition = [&]() -> const lauf_asm_global_definition* {
+            for (auto def = program._global_defs; def != nullptr; def = def->_next)
+                if (def->_global == &global)
+                    return def;
+            return nullptr;
+        }();
+
+        if (definition != nullptr)
+        {
+            result.ptr = definition->_ptr;
+            // If bigger than 32bit, only the lower parts are addressable.
+            result.size = std::uint32_t(definition->_size);
+        }
+        else
+        {
+            result.ptr  = nullptr;
+            result.size = 0;
+        }
+    }
+    else
+    {
+        if (global.memory != nullptr)
+        {
+            result.ptr = arena.memdup(global.memory, global.size, global.alignment);
+        }
+        else
+        {
+            result.ptr = arena.allocate(global.size, global.alignment);
+            std::memset(result.ptr, 0, global.size);
+        }
+
+        // If bigger than 32bit, only the lower parts are addressable.
+        result.size = std::uint32_t(global.size);
+    }
 
     return result;
 }
 } // namespace
 
-void lauf::memory::init(lauf_vm* vm, const lauf_asm_module* mod)
+void lauf::memory::init(lauf_vm* vm, const lauf_asm_program* program)
 {
-    _allocations.resize_uninitialized(vm->page_allocator, mod->globals_count);
-    for (auto global = mod->globals; global != nullptr; global = global->next)
-        _allocations[global->allocation_idx] = allocate_global(*vm, *global);
+    _allocations.resize_uninitialized(vm->page_allocator, program->_mod->globals_count);
+    for (auto global = program->_mod->globals; global != nullptr; global = global->next)
+        _allocations[global->allocation_idx] = allocate_global(*vm, *program, *global);
 }
 
 void lauf::memory::clear(lauf_vm* vm)

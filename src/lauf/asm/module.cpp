@@ -110,6 +110,11 @@ lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* 
                                            lauf_asm_global::read_write);
 }
 
+lauf_asm_global* lauf_asm_add_global_native_data(lauf_asm_module* mod)
+{
+    return mod->construct<lauf_asm_global>(mod);
+}
+
 void lauf_asm_set_global_debug_name(lauf_asm_module* mod, lauf_asm_global* global, const char* name)
 {
     global->name = mod->strdup(name);

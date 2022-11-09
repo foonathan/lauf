@@ -33,6 +33,10 @@ namespace
 void codegen_global(lauf::qbe_writer&      writer, const lauf_backend_qbe_options&,
                     const lauf_asm_global* global)
 {
+    if (global->perms == lauf_asm_global::declaration)
+        // Not a definition.
+        return;
+
     writer.begin_data(lauf::qbe_data(global->allocation_idx), global->alignment);
 
     if (global->memory == nullptr)

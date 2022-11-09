@@ -12,7 +12,7 @@
 #include <lauf/support/align.hpp>
 #include <lauf/support/array.hpp>
 
-typedef struct lauf_asm_module    lauf_asm_module;
+typedef struct lauf_asm_program   lauf_asm_program;
 typedef struct lauf_vm            lauf_vm;
 typedef struct lauf_runtime_fiber lauf_runtime_fiber;
 
@@ -172,7 +172,7 @@ public:
     memory(const memory&)            = delete;
     memory& operator=(const memory&) = delete;
 
-    void init(lauf_vm* vm, const lauf_asm_module* mod);
+    void init(lauf_vm* vm, const lauf_asm_program* program);
     void clear(lauf_vm* vm);
     void destroy(lauf_vm* vm);
 
