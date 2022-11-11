@@ -36,7 +36,11 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
         writer->format("@global_%u", global->allocation_idx);
     writer->write(" = ");
 
-    if (global->memory == nullptr)
+    if (global->perms == lauf_asm_global::declaration)
+    {
+        writer->write("native");
+    }
+    else if (global->memory == nullptr)
     {
         writer->format("[00] * %zu", std::size_t(global->size));
     }

@@ -434,11 +434,19 @@ struct global_decl
     {
         static constexpr auto rule = [] {
             auto decl = dsl::p<global_identifier> + dsl::opt(dsl::colon >> dsl::p<layout_expr>)
-                        + dsl::equal_sign + dsl::p<data_expr>;
+                        + dsl::equal_sign
+                        + (LAUF_KEYWORD("native") | dsl::else_ >> dsl::p<data_expr>);
             return dsl::else_ >> dsl::position + decl;
         }();
 
         static constexpr auto value = callback(
+            [](parse_state& state, auto pos, const std::string& name,
+               std::optional<lauf_asm_layout>) {
+                auto g = lauf_asm_add_global_native_data(state.mod);
+                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
+                if (!state.globals.insert(name, g))
+                    state.duplicate_declaration(pos, "global", name.c_str());
+            },
             [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout,
                std::string data) {
                 data.resize(layout.size);
