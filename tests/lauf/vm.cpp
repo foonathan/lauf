@@ -89,7 +89,7 @@ TEST_CASE("lauf_vm_execute_oneshot")
     }
     SUBCASE("panic")
     {
-        lauf_vm_set_panic_handler(vm, [](lauf_runtime_process*, const char*) {});
+        lauf_vm_set_panic_handler(vm, {nullptr, [](void*, lauf_runtime_process*, const char*) {}});
 
         auto prog   = test_program(mod, "panic");
         auto result = lauf_vm_execute_oneshot(vm, prog, nullptr, nullptr);
@@ -147,9 +147,11 @@ TEST_CASE("lauf_vm_execute_oneshot")
     }
     SUBCASE("suspending_values")
     {
-        lauf_vm_set_panic_handler(vm, [](lauf_runtime_process*, const char* msg) {
-            CHECK(msg == doctest::String("mismatched signature for fiber resume"));
-        });
+        lauf_vm_set_panic_handler(vm, {nullptr, [](void*, lauf_runtime_process*, const char* msg) {
+                                           CHECK(msg
+                                                 == doctest::String(
+                                                     "mismatched signature for fiber resume"));
+                                       }});
 
         auto prog = test_program(mod, "suspending_values");
 
@@ -181,7 +183,7 @@ TEST_CASE("lauf_vm_start_process")
     }
     SUBCASE("panic")
     {
-        lauf_vm_set_panic_handler(vm, [](lauf_runtime_process*, const char*) {});
+        lauf_vm_set_panic_handler(vm, {nullptr, [](void*, lauf_runtime_process*, const char*) {}});
 
         auto prog  = test_program(mod, "panic");
         auto proc  = lauf_vm_start_process(vm, &prog);

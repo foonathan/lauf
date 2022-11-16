@@ -13,7 +13,11 @@ typedef struct lauf_runtime_process lauf_runtime_process;
 typedef union lauf_runtime_value    lauf_runtime_value;
 
 //=== vm options ===//
-typedef void (*lauf_vm_panic_handler)(lauf_runtime_process* p, const char* msg);
+typedef struct lauf_vm_panic_handler
+{
+    void* user_data;
+    void (*callback)(void* user_data, lauf_runtime_process* p, const char* msg);
+} lauf_vm_panic_handler;
 
 typedef struct lauf_vm_allocator
 {

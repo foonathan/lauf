@@ -72,9 +72,9 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_test_assert_panic, 2, 0, LAUF_RUNTIME_BUILTIN_DEFA
     // We temporarily replace the panic handler with one that simply remembers the message.
     auto                            vm = lauf_runtime_get_vm(process);
     static thread_local const char* panic_msg;
-    auto handler = lauf_vm_set_panic_handler(vm, [](lauf_runtime_process*, const char* msg) {
-        panic_msg = msg;
-    });
+    auto                            handler
+        = lauf_vm_set_panic_handler(vm, {nullptr, [](void*, lauf_runtime_process*,
+                                                     const char* msg) { panic_msg = msg; }});
 
     auto did_not_panic = lauf_runtime_call(process, fn, nullptr, nullptr);
 

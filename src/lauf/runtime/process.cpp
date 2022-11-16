@@ -327,7 +327,7 @@ bool lauf_runtime_panic(lauf_runtime_process* process, const char* msg)
     // The process is nullptr during constant folding.
     if (process != nullptr)
     {
-        process->vm->panic_handler(process, msg);
+        process->vm->panic_handler.callback(process->vm->panic_handler.user_data, process, msg);
 
         // The current fiber can be null if we're panicing, while processing a panic.
         if (process->cur_fiber != nullptr)
