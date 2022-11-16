@@ -89,40 +89,143 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_int_to_addr, 2, 1, LAUF_RUNTIME_BUILTIN_DEF
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_add, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "addr_add",
-                     &lauf_lib_memory_int_to_addr)
+namespace
+{
+std::uint32_t addr_offset(lauf_runtime_address addr, lauf_sint offset)
+{
+    lauf_sint result;
+    auto      overflow = __builtin_add_overflow(lauf_sint(addr.offset), offset, &result);
+    if (LAUF_UNLIKELY(overflow || result < 0 || result > UINT32_MAX))
+        result = UINT32_MAX;
+
+    return std::uint32_t(result);
+}
+
+template <bool Strict>
+bool validate_addr_offset(lauf_runtime_process* process, lauf_runtime_address addr,
+                          std::uint32_t new_offset)
+{
+    lauf_runtime_allocation alloc;
+    if (!lauf_runtime_get_allocation(process, addr, &alloc))
+        return lauf_runtime_panic(process, "invalid address");
+
+    if ((Strict && new_offset >= alloc.size) || (!Strict && new_offset > alloc.size))
+        return lauf_runtime_panic(process, "address overflow");
+
+    return true;
+}
+
+LAUF_RUNTIME_BUILTIN(addr_add_invalidate, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC,
+                     "addr_add_invalidate", &lauf_lib_memory_int_to_addr)
 {
     auto addr   = vstack_ptr[1].as_address;
     auto offset = vstack_ptr[0].as_sint;
 
-    lauf_sint result;
-    auto      overflow = __builtin_add_overflow(lauf_sint(addr.offset), offset, &result);
-    if (overflow || result < 0 || result > UINT32_MAX)
-        result = UINT32_MAX;
+    auto new_offset = addr_offset(addr, offset);
 
     ++vstack_ptr;
-    vstack_ptr[0].as_address = {addr.allocation, addr.generation, std::uint32_t(result)};
+    vstack_ptr[0].as_address = {addr.allocation, addr.generation, new_offset};
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(addr_add_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "addr_add_panic",
+                     &addr_add_invalidate)
+{
+    auto addr   = vstack_ptr[1].as_address;
+    auto offset = vstack_ptr[0].as_sint;
+
+    auto new_offset = addr_offset(addr, offset);
+    if (!validate_addr_offset<false>(process, addr, new_offset))
+        return false;
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = {addr.allocation, addr.generation, new_offset};
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(addr_add_panic_strict, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT,
+                     "addr_add_panic_strict", &addr_add_panic)
+{
+    auto addr   = vstack_ptr[1].as_address;
+    auto offset = vstack_ptr[0].as_sint;
+
+    auto new_offset = addr_offset(addr, offset);
+    if (!validate_addr_offset<true>(process, addr, new_offset))
+        return false;
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = {addr.allocation, addr.generation, new_offset};
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_sub, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC, "addr_sub",
-                     &lauf_lib_memory_addr_add)
+LAUF_RUNTIME_BUILTIN(addr_sub_invalidate, 2, 1, LAUF_RUNTIME_BUILTIN_NO_PANIC,
+                     "addr_sub_invalidate", &addr_add_panic_strict)
 {
     auto addr   = vstack_ptr[1].as_address;
     auto offset = vstack_ptr[0].as_sint;
 
-    lauf_sint result;
-    auto      overflow = __builtin_sub_overflow(lauf_sint(addr.offset), offset, &result);
-    if (overflow || result < 0 || result > UINT32_MAX)
-        result = UINT32_MAX;
+    auto new_offset = addr_offset(addr, -offset);
 
     ++vstack_ptr;
-    vstack_ptr[0].as_address = {addr.allocation, addr.generation, std::uint32_t(result)};
+    vstack_ptr[0].as_address = {addr.allocation, addr.generation, new_offset};
     LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(addr_sub_panic, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "addr_sub_panic",
+                     &addr_sub_invalidate)
+{
+    auto addr   = vstack_ptr[1].as_address;
+    auto offset = vstack_ptr[0].as_sint;
+
+    auto new_offset = addr_offset(addr, -offset);
+    if (!validate_addr_offset<false>(process, addr, new_offset))
+        return false;
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = {addr.allocation, addr.generation, new_offset};
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+LAUF_RUNTIME_BUILTIN(addr_sub_panic_strict, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT,
+                     "addr_sub_panic_strict", &addr_sub_panic)
+{
+    auto addr   = vstack_ptr[1].as_address;
+    auto offset = vstack_ptr[0].as_sint;
+
+    auto new_offset = addr_offset(addr, -offset);
+    if (!validate_addr_offset<true>(process, addr, new_offset))
+        return false;
+
+    ++vstack_ptr;
+    vstack_ptr[0].as_address = {addr.allocation, addr.generation, new_offset};
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+} // namespace
+
+lauf_runtime_builtin lauf_lib_memory_addr_add(lauf_lib_memory_addr_overflow overflow)
+{
+    switch (overflow)
+    {
+    case LAUF_LIB_MEMORY_ADDR_OVERFLOW_INVALIDATE:
+        return addr_add_invalidate;
+    case LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC:
+        return addr_add_panic;
+    case LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC_STRICT:
+        return addr_add_panic_strict;
+    }
+}
+
+lauf_runtime_builtin lauf_lib_memory_addr_sub(lauf_lib_memory_addr_overflow overflow)
+{
+    switch (overflow)
+    {
+    case LAUF_LIB_MEMORY_ADDR_OVERFLOW_INVALIDATE:
+        return addr_sub_invalidate;
+    case LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC:
+        return addr_sub_panic;
+    case LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC_STRICT:
+        return addr_sub_panic_strict;
+    }
 }
 
 LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_distance, 2, 1, LAUF_RUNTIME_BUILTIN_DEFAULT,
-                     "addr_distance", &lauf_lib_memory_addr_sub)
+                     "addr_distance", &addr_sub_panic_strict)
 {
     auto lhs = vstack_ptr[1].as_address;
     auto rhs = vstack_ptr[0].as_address;

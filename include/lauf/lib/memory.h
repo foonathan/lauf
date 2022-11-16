@@ -38,6 +38,19 @@ extern const lauf_runtime_builtin lauf_lib_memory_split;
 extern const lauf_runtime_builtin lauf_lib_memory_merge;
 
 //=== address manipulation ===//
+/// Controls overflow behavior of arithmetic on memory addresses.
+/// Overflow occurrs when the offset within an allocation exceeds the allocation boundary.
+typedef enum lauf_lib_memory_addr_overflow
+{
+    /// Overflow invalidates the address, but does not panic (yet).
+    LAUF_LIB_MEMORY_ADDR_OVERFLOW_INVALIDATE,
+    /// Overflow panics. It is allowed to form an offset to the end of the allocation.
+    LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC,
+    /// Overflow panics. It is not allowed to form an offset to the end of the allocatio; address
+    /// will remain valid.
+    LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC_STRICT,
+} lauf_lib_memory_addr_overflow;
+
 /// Converts an address to an integer.
 ///
 /// In addition to the integer it returns provenance information that must be kept available to
@@ -54,16 +67,13 @@ extern const lauf_runtime_builtin lauf_lib_memory_int_to_addr;
 
 /// Adds an offset to an address.
 ///
-/// This may invalidate the address.
-///
 /// Signature: addr:address offset:sint => (addr + offset):address
-extern const lauf_runtime_builtin lauf_lib_memory_addr_add;
+lauf_runtime_builtin lauf_lib_memory_addr_add(lauf_lib_memory_addr_overflow overflow);
+
 /// Subtracts an offset from an address.
 ///
-/// This may invalidate the address.
-///
 /// Signature: addr:address offset:sint => (addr - offset):address
-extern const lauf_runtime_builtin lauf_lib_memory_addr_sub;
+lauf_runtime_builtin lauf_lib_memory_addr_sub(lauf_lib_memory_addr_overflow overflow);
 
 /// Returns the distance in bytes between two addresses.
 ///

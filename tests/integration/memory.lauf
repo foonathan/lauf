@@ -145,8 +145,8 @@ function @addr_to_ptr() {
 function @addr_arithmetic() {
     layout $lauf.Value; uint 10; $lauf.heap.alloc_array;
 
-    pick 0; uint 10; $lauf.memory.addr_add;
-    uint 2; $lauf.memory.addr_sub;
+    pick 0; uint 10; $lauf.memory.addr_add_panic;
+    uint 2; $lauf.memory.addr_sub_panic_strict;
 
     # addr (addr + 8) => addr (addr + 8)
     pick 0; pick 2; uint 1; array_element $lauf.Value; $lauf.test.assert_eq;

@@ -549,13 +549,21 @@ void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& 
                 pop_reg();
                 writer.copy(push_reg(), lauf::qbe_type::value, integer);
             }
-            else if (callee == lauf_lib_memory_addr_add.impl)
+            else if ( // clang-format off
+                callee == lauf_lib_memory_addr_add(LAUF_LIB_MEMORY_ADDR_OVERFLOW_INVALIDATE).impl
+                || callee == lauf_lib_memory_addr_add(LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC).impl
+                || callee == lauf_lib_memory_addr_add(LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC_STRICT).impl)
+            // clang-format on
             {
                 auto offset = pop_reg();
                 auto addr   = pop_reg();
                 writer.binary_op(push_reg(), lauf::qbe_type::value, "add", addr, offset);
             }
-            else if (callee == lauf_lib_memory_addr_sub.impl)
+            else if ( // clang-format off
+                callee == lauf_lib_memory_addr_sub(LAUF_LIB_MEMORY_ADDR_OVERFLOW_INVALIDATE).impl
+                 || callee == lauf_lib_memory_addr_sub(LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC).impl
+                 || callee == lauf_lib_memory_addr_sub(LAUF_LIB_MEMORY_ADDR_OVERFLOW_PANIC_STRICT).impl)
+            // clang-format on
             {
                 auto offset = pop_reg();
                 auto addr   = pop_reg();
