@@ -424,7 +424,8 @@ void emit_debug_location(lauf_asm_builder* b)
 
         for (auto loc : block.debug_locations)
         {
-            loc.inst_idx += block.offset;
+            // We also have the initial block instruction that affects the inst_idx.
+            loc.inst_idx += block.offset + 1;
             b->mod->inst_debug_locations.push_back(*b->mod, loc);
         }
     }
