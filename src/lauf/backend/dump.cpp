@@ -25,10 +25,10 @@ namespace
 void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_global* global)
 {
     writer->write("global ");
-    if (global->perms == lauf_asm_global::read_only)
-        writer->write("const ");
-    else
+    if (global->is_mutable)
         writer->write("mut ");
+    else
+        writer->write("const ");
 
     if (auto name = lauf_asm_global_debug_name(global))
         writer->format("@'%s'", name);

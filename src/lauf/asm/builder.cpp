@@ -483,7 +483,7 @@ lauf_asm_global* lauf_asm_build_string_literal(lauf_asm_builder* b, const char* 
     auto str_size = std::strlen(str) + 1; // include null
     for (auto global = b->mod->globals; global != nullptr; global = global->next)
     {
-        if (global->perms != lauf_asm_global::read_only)
+        if (global->is_mutable)
             // Can't use a mutable global.
             continue;
 
@@ -1180,7 +1180,7 @@ load_store_constant load_store_constant_folding(lauf_asm_module*            mod,
         for (auto global = mod->globals; global != nullptr; global = global->next)
             if (global->allocation_idx == constant_addr.allocation && !global->is_native_global())
             {
-                if (store && global->perms == lauf_asm_global::read_only)
+                if (store && !global->is_mutable)
                     return load_store_dynamic;
 
                 if (global->size < type.layout.size || global->alignment < type.layout.alignment)

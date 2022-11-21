@@ -13,9 +13,8 @@ lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program
                                  const lauf_asm_global& global)
 {
     lauf::allocation result;
-    result.source     = global.perms == lauf_asm_global::read_only
-                            ? lauf::allocation_source::static_const_memory
-                            : lauf::allocation_source::static_mut_memory;
+    result.source     = global.is_mutable ? lauf::allocation_source::static_mut_memory
+                                          : lauf::allocation_source::static_const_memory;
     result.status     = lauf::allocation_status::allocated;
     result.gc         = lauf::gc_tracking::reachable_explicit;
     result.generation = 0;
