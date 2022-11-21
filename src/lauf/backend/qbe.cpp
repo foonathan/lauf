@@ -33,7 +33,7 @@ namespace
 void codegen_global(lauf::qbe_writer&      writer, const lauf_backend_qbe_options&,
                     const lauf_asm_global* global)
 {
-    if (global->perms == lauf_asm_global::declaration)
+    if (global->is_native_global())
         // Not a definition.
         return;
 

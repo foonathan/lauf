@@ -91,28 +91,24 @@ lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_a
     return result;
 }
 
-lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, lauf_asm_layout layout)
+lauf_asm_global* lauf_asm_add_global(lauf_asm_module* mod, lauf_asm_layout layout, bool is_mutable)
 {
-    return mod->construct<lauf_asm_global>(mod, layout.size, layout.alignment);
+    assert(layout.size > 0);
+    return mod->construct<lauf_asm_global>(mod, layout.size, layout.alignment,
+                                           is_mutable ? lauf_asm_global::read_write
+                                                      : lauf_asm_global::read_only);
 }
 
-lauf_asm_global* lauf_asm_add_global_const_data(lauf_asm_module* mod, const void* data,
-                                                lauf_asm_layout layout)
+lauf_asm_global* lauf_asm_add_native_global(lauf_asm_module* mod, bool is_mutable)
 {
-    return mod->construct<lauf_asm_global>(mod, data, layout.size, layout.alignment,
-                                           lauf_asm_global::read_only);
+    return mod->construct<lauf_asm_global>(mod, is_mutable ? lauf_asm_global::read_write
+                                                           : lauf_asm_global::read_only);
 }
 
-lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* data,
-                                              lauf_asm_layout layout)
+void lauf_asm_set_global_initializer(lauf_asm_module* mod, lauf_asm_global* global,
+                                     const void* data)
 {
-    return mod->construct<lauf_asm_global>(mod, data, layout.size, layout.alignment,
-                                           lauf_asm_global::read_write);
-}
-
-lauf_asm_global* lauf_asm_add_global_native_data(lauf_asm_module* mod)
-{
-    return mod->construct<lauf_asm_global>(mod);
+    global->memory = mod->memdup(data, global->size);
 }
 
 void lauf_asm_set_global_debug_name(lauf_asm_module* mod, lauf_asm_global* global, const char* name)

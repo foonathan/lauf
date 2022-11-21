@@ -49,37 +49,31 @@ struct lauf_asm_global
     std::uint16_t alignment;
     enum permissions : std::uint8_t
     {
-        declaration,
         read_only,
         read_write,
     } perms;
 
     const char* name = nullptr;
 
-    explicit lauf_asm_global(lauf_asm_module* mod)
+    explicit lauf_asm_global(lauf_asm_module* mod, permissions perms)
     : next(mod->globals), memory(nullptr), size(0), allocation_idx(mod->globals_count),
-      alignment(alignof(lauf_uint)), perms(declaration)
+      alignment(alignof(lauf_uint)), perms(perms)
     {
         mod->globals = this;
         ++mod->globals_count;
     }
 
-    explicit lauf_asm_global(lauf_asm_module* mod, std::size_t size, std::size_t alignment)
-    : lauf_asm_global(mod)
+    explicit lauf_asm_global(lauf_asm_module* mod, std::size_t size, std::size_t alignment,
+                             permissions perms)
+    : lauf_asm_global(mod, perms)
     {
         this->size      = size;
         this->alignment = std::uint16_t(alignment);
-        this->perms     = read_write;
     }
 
-    explicit lauf_asm_global(lauf_asm_module* mod, const void* memory, std::size_t size,
-                             std::size_t alignment, permissions p)
-    : lauf_asm_global(mod)
+    bool is_native_global() const
     {
-        this->memory    = mod->memdup(memory, size);
-        this->size      = size;
-        this->alignment = std::uint16_t(alignment);
-        this->perms     = p;
+        return memory == nullptr && size == 0;
     }
 };
 

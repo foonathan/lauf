@@ -415,16 +415,20 @@ struct global_decl
             [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout,
                std::string data) {
                 data.resize(layout.size);
-                auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(), layout);
+
+                auto g = lauf_asm_add_global(state.mod, layout, false);
+                lauf_asm_set_global_initializer(state.mod, g, data.c_str());
                 lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
+
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
             },
             [](parse_state& state, auto pos, const std::string& name, lexy::nullopt,
                const std::string& data) {
-                auto g = lauf_asm_add_global_const_data(state.mod, data.c_str(),
-                                                        {data.size(), alignof(void*)});
+                auto g = lauf_asm_add_global(state.mod, {data.size(), alignof(void*)}, false);
+                lauf_asm_set_global_initializer(state.mod, g, data.c_str());
                 lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
+
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
             });
@@ -442,7 +446,7 @@ struct global_decl
         static constexpr auto value = callback(
             [](parse_state& state, auto pos, const std::string& name,
                std::optional<lauf_asm_layout>) {
-                auto g = lauf_asm_add_global_native_data(state.mod);
+                auto g = lauf_asm_add_native_global(state.mod, true);
                 lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
@@ -450,16 +454,20 @@ struct global_decl
             [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout,
                std::string data) {
                 data.resize(layout.size);
-                auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(), layout);
+
+                auto g = lauf_asm_add_global(state.mod, layout, true);
+                lauf_asm_set_global_initializer(state.mod, g, data.c_str());
                 lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
+
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
             },
             [](parse_state& state, auto pos, const std::string& name, lexy::nullopt,
                const std::string& data) {
-                auto g = lauf_asm_add_global_mut_data(state.mod, data.c_str(),
-                                                      {data.size(), alignof(void*)});
+                auto g = lauf_asm_add_global(state.mod, {data.size(), alignof(void*)}, true);
+                lauf_asm_set_global_initializer(state.mod, g, data.c_str());
                 lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
+
                 if (!state.globals.insert(name, g))
                     state.duplicate_declaration(pos, "global", name.c_str());
             });

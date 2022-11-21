@@ -279,7 +279,7 @@ TEST_CASE("lauf_asm_global_definition")
 {
     auto mod    = lauf_asm_create_module("test");
     auto fn     = lauf_asm_add_function(mod, "test", {0, 0});
-    auto global = lauf_asm_add_global_native_data(mod);
+    auto global = lauf_asm_add_native_global(mod, true);
 
     {
         auto b = lauf_asm_create_builder(lauf_asm_default_build_options);

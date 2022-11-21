@@ -20,7 +20,7 @@ lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program
     result.gc         = lauf::gc_tracking::reachable_explicit;
     result.generation = 0;
 
-    if (global.perms == lauf_asm_global::declaration)
+    if (global.is_native_global())
     {
         auto definition = [&]() -> const lauf_asm_global_definition* {
             for (auto def = program._global_defs; def != nullptr; def = def->_next)

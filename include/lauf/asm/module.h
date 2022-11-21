@@ -84,20 +84,16 @@ lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_a
                                                                     const lauf_asm_inst*   ip);
 
 //=== global memory ===//
-/// Adds zero-initialized, mutable global memory of the specified size to the module.
-lauf_asm_global* lauf_asm_add_global_zero_data(lauf_asm_module* mod, lauf_asm_layout layout);
+/// Adds global memory with the specified layout.
+/// It is zero-initialized by default.
+lauf_asm_global* lauf_asm_add_global(lauf_asm_module* mod, lauf_asm_layout layout, bool is_mutable);
 
-/// Adds the specified data as constant global memory to the module.
-lauf_asm_global* lauf_asm_add_global_const_data(lauf_asm_module* mod, const void* data,
-                                                lauf_asm_layout layout);
+/// Adds a global memory that is a view into native data.
+lauf_asm_global* lauf_asm_add_native_global(lauf_asm_module* mod, bool is_mutable);
 
-/// Adds the specified data as mutable global memory to the module.
-lauf_asm_global* lauf_asm_add_global_mut_data(lauf_asm_module* mod, const void* data,
-                                              lauf_asm_layout layout);
-
-/// Adds a global that is a view onto native memory.
-/// It is just a declaration that requires a definition when creating the program.
-lauf_asm_global* lauf_asm_add_global_native_data(lauf_asm_module* mod);
+/// Initializes the non-native global to the specified data.
+void lauf_asm_set_global_initializer(lauf_asm_module* mod, lauf_asm_global* global,
+                                     const void* data);
 
 /// Set a name of a global variable.
 /// This is only used for debugging purposes.

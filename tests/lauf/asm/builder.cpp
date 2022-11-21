@@ -66,9 +66,13 @@ std::vector<lauf_asm_inst> build(lauf_asm_signature sig, BuilderFn builder_fn)
 
 TEST_CASE("lauf_asm_build_string_literal")
 {
-    auto mod         = lauf_asm_create_module("test");
-    auto mut_abc     = lauf_asm_add_global_mut_data(mod, "abc", {4, 1});
-    auto no_null_abc = lauf_asm_add_global_const_data(mod, "abc", {3, 1});
+    auto mod = lauf_asm_create_module("test");
+
+    auto mut_abc = lauf_asm_add_global(mod, {4, 1}, true);
+    lauf_asm_set_global_initializer(mod, mut_abc, "abc");
+
+    auto no_null_abc = lauf_asm_add_global(mod, {3, 1}, false);
+    lauf_asm_set_global_initializer(mod, no_null_abc, "abc");
 
     auto fn = lauf_asm_add_function(mod, "test", {0, 0});
     auto b  = lauf_asm_create_builder(lauf_asm_default_build_options);
@@ -295,7 +299,7 @@ TEST_CASE("lauf_asm_inst_null")
 TEST_CASE("lauf_asm_inst_global_addr")
 {
     auto single = build({0, 1}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
-        auto glob = lauf_asm_add_global_zero_data(mod, lauf_asm_layout{42, 1});
+        auto glob = lauf_asm_add_global(mod, lauf_asm_layout{42, 1}, true);
         lauf_asm_inst_global_addr(b, glob);
     });
     REQUIRE(single.size() == 1);
@@ -303,9 +307,9 @@ TEST_CASE("lauf_asm_inst_global_addr")
     CHECK(single[0].global_addr.value == 0);
 
     auto multiple = build({0, 1}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
-        lauf_asm_add_global_zero_data(mod, lauf_asm_layout{11, 1});
-        auto glob = lauf_asm_add_global_zero_data(mod, lauf_asm_layout{42, 1});
-        lauf_asm_add_global_zero_data(mod, lauf_asm_layout{66, 1});
+        lauf_asm_add_global(mod, lauf_asm_layout{11, 1}, true);
+        auto glob = lauf_asm_add_global(mod, lauf_asm_layout{42, 1}, true);
+        lauf_asm_add_global(mod, lauf_asm_layout{66, 1}, true);
         lauf_asm_inst_global_addr(b, glob);
     });
     REQUIRE(multiple.size() == 1);
@@ -388,7 +392,7 @@ TEST_CASE("lauf_asm_inst_pop")
     });
     REQUIRE(pop_pushn.empty());
     auto pop_global_addr = build({0, 0}, [](lauf_asm_module* mod, lauf_asm_builder* b) {
-        auto glob = lauf_asm_add_global_zero_data(mod, {1, 1});
+        auto glob = lauf_asm_add_global(mod, {1, 1}, true);
         lauf_asm_inst_global_addr(b, glob);
         lauf_asm_inst_pop(b, 0);
     });
