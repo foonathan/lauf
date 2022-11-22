@@ -36,7 +36,7 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
         writer->format("@global_%u", global->allocation_idx);
     writer->write(" = ");
 
-    if (global->is_native_global())
+    if (!global->has_definition())
     {
         writer->write("native");
     }

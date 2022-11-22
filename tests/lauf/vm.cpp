@@ -279,7 +279,7 @@ TEST_CASE("lauf_asm_global_definition")
 {
     auto mod    = lauf_asm_create_module("test");
     auto fn     = lauf_asm_add_function(mod, "test", {0, 0});
-    auto global = lauf_asm_add_native_global(mod, true);
+    auto global = lauf_asm_add_global(mod, LAUF_ASM_GLOBAL_READ_WRITE);
 
     {
         auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
@@ -300,10 +300,10 @@ TEST_CASE("lauf_asm_global_definition")
         lauf_asm_destroy_builder(b);
     }
 
-    auto                       program = lauf_asm_create_program(mod, fn);
-    lauf_runtime_value         global_val;
-    lauf_asm_global_definition global_def;
-    lauf_asm_define_global(&global_def, &program, global, &global_val, sizeof(global_val));
+    auto                   program = lauf_asm_create_program(mod, fn);
+    lauf_runtime_value     global_val;
+    lauf_asm_native_global global_def;
+    lauf_asm_define_native_global(&global_def, &program, global, &global_val, sizeof(global_val));
 
     global_val.as_uint = 11;
 

@@ -19,9 +19,9 @@ lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program
     result.gc         = lauf::gc_tracking::reachable_explicit;
     result.generation = 0;
 
-    if (global.is_native_global())
+    if (!global.has_definition())
     {
-        auto definition = [&]() -> const lauf_asm_global_definition* {
+        auto definition = [&]() -> const lauf_asm_native_global* {
             for (auto def = program._global_defs; def != nullptr; def = def->_next)
                 if (def->_global == &global)
                     return def;

@@ -84,22 +84,34 @@ lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_a
                                                                     const lauf_asm_inst*   ip);
 
 //=== global memory ===//
-/// Adds global memory with the specified layout.
-/// It is zero-initialized by default.
-lauf_asm_global* lauf_asm_add_global(lauf_asm_module* mod, lauf_asm_layout layout, bool is_mutable);
+typedef enum lauf_asm_global_permissions
+{
+    LAUF_ASM_GLOBAL_READ_ONLY,
+    LAUF_ASM_GLOBAL_READ_WRITE,
+} lauf_asm_global_permissions;
 
-/// Adds a global memory that is a view into native data.
-lauf_asm_global* lauf_asm_add_native_global(lauf_asm_module* mod, bool is_mutable);
+/// Adds a new global variable with the specified permissions.
+/// It is only a declaration of a memory location that is not resolved yet.
+/// It can be either resolved to native memory when creating the program, or by specifying data.
+lauf_asm_global* lauf_asm_add_global(lauf_asm_module* mod, lauf_asm_global_permissions perms);
 
-/// Initializes the non-native global to the specified data.
-void lauf_asm_set_global_initializer(lauf_asm_module* mod, lauf_asm_global* global,
-                                     const void* data);
+/// Defines an undeclared global variable to contain the specified memory (initially).
+/// If `data == nullptr`, it is zero-initialized.
+void lauf_asm_define_data_global(lauf_asm_module* mod, lauf_asm_global* global,
+                                 lauf_asm_layout layout, const void* data);
 
 /// Set a name of a global variable.
 /// This is only used for debugging purposes.
 void lauf_asm_set_global_debug_name(lauf_asm_module* mod, lauf_asm_global* global,
                                     const char* name);
 
+/// Whether or not the global is defined.
+bool lauf_asm_global_has_definition(const lauf_asm_global* global);
+
+/// Returns the layout of a defined global.
+lauf_asm_layout lauf_asm_global_layout(const lauf_asm_global* global);
+
+/// Returns the debug name, or nullptr if none was given.
 const char* lauf_asm_global_debug_name(const lauf_asm_global* global);
 
 //=== functions ===//

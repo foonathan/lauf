@@ -491,8 +491,8 @@ lauf_asm_global* lauf_asm_build_string_literal(lauf_asm_builder* b, const char* 
             return global;
     }
 
-    auto global = lauf_asm_add_global(b->mod, {str_size, 1}, false);
-    lauf_asm_set_global_initializer(b->mod, global, str);
+    auto global = lauf_asm_add_global(b->mod, LAUF_ASM_GLOBAL_READ_ONLY);
+    lauf_asm_define_data_global(b->mod, global, {str_size, 1}, str);
     return global;
 }
 
@@ -1178,7 +1178,7 @@ load_store_constant load_store_constant_folding(lauf_asm_module*            mod,
             return load_store_dynamic;
 
         for (auto global = mod->globals; global != nullptr; global = global->next)
-            if (global->allocation_idx == constant_addr.allocation && !global->is_native_global())
+            if (global->allocation_idx == constant_addr.allocation && global->has_definition())
             {
                 if (store && !global->is_mutable)
                     return load_store_dynamic;

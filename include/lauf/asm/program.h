@@ -23,9 +23,9 @@ typedef union lauf_asm_inst            lauf_asm_inst;
 /// This is done by matching the names.
 typedef struct lauf_asm_program
 {
-    const lauf_asm_module*                   _mod;
-    const lauf_asm_function*                 _entry;
-    const struct lauf_asm_global_definition* _global_defs;
+    const lauf_asm_module*               _mod;
+    const lauf_asm_function*             _entry;
+    const struct lauf_asm_native_global* _global_defs;
 } lauf_asm_program;
 
 /// Creates a program that consists of a single module only.
@@ -39,20 +39,20 @@ lauf_asm_program lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
 void lauf_asm_destroy_program(lauf_asm_program program);
 
 //=== global definition ===//
-typedef struct lauf_asm_global_definition
+typedef struct lauf_asm_native_global
 {
-    const struct lauf_asm_global_definition* _next;
-    const lauf_asm_global*                   _global;
-    void*                                    _ptr;
-    size_t                                   _size;
-} lauf_asm_global_definition;
+    const struct lauf_asm_native_global* _next;
+    const lauf_asm_global*               _global;
+    void*                                _ptr;
+    size_t                               _size;
+} lauf_asm_native_global;
 
 /// Defines a global that previously just declared to the native memory [ptr, ptr + size).
 ///
 /// It will populate `lauf_asm_global_definition` to store information about the global.
 /// Both `result` and `ptr` must live as long as the program and any process executing it.
-void lauf_asm_define_global(lauf_asm_global_definition* result, lauf_asm_program* program,
-                            const lauf_asm_global* global, void* ptr, size_t size);
+void lauf_asm_define_native_global(lauf_asm_native_global* result, lauf_asm_program* program,
+                                   const lauf_asm_global* global, void* ptr, size_t size);
 
 //=== queries ===//
 const char* lauf_asm_program_debug_path(const lauf_asm_program*  program,

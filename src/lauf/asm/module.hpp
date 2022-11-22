@@ -59,17 +59,9 @@ struct lauf_asm_global
         ++mod->globals_count;
     }
 
-    explicit lauf_asm_global(lauf_asm_module* mod, std::size_t size, std::size_t alignment,
-                             bool is_mutable)
-    : lauf_asm_global(mod, is_mutable)
+    bool has_definition() const
     {
-        this->size      = size;
-        this->alignment = std::uint16_t(alignment);
-    }
-
-    bool is_native_global() const
-    {
-        return memory == nullptr && size == 0;
+        return size != 0;
     }
 };
 
