@@ -34,27 +34,26 @@ void dump_global(lauf_writer* writer, lauf_backend_dump_options, const lauf_asm_
         writer->format("@'%s'", name);
     else
         writer->format("@global_%u", global->allocation_idx);
-    writer->write(" = ");
 
-    if (!global->has_definition())
+    if (global->has_definition())
     {
-        writer->write("native");
-    }
-    else if (global->memory == nullptr)
-    {
-        writer->format("[00] * %zu", std::size_t(global->size));
-    }
-    else
-    {
-        writer->write("[");
-        for (auto i = 0u; i != global->size; ++i)
+        writer->format(": (%zu, %zu) = ", std::size_t(global->size),
+                       std::size_t(global->alignment));
+
+        if (global->memory == nullptr)
+            writer->write("zero");
+        else
         {
-            if (i > 0)
-                writer->write(",");
+            writer->write("[");
+            for (auto i = 0u; i != global->size; ++i)
+            {
+                if (i > 0)
+                    writer->write(",");
 
-            writer->format("%02X", global->memory[i]);
+                writer->format("%02X", global->memory[i]);
+            }
+            writer->write("]");
         }
-        writer->write("]");
     }
 
     writer->write(";\n");

@@ -403,81 +403,45 @@ struct data_expr
 
 struct global_decl
 {
-    struct const_global
-    {
-        static constexpr auto rule = [] {
-            auto decl = dsl::p<global_identifier> + dsl::opt(dsl::colon >> dsl::p<layout_expr>)
-                        + dsl::equal_sign + dsl::p<data_expr>;
-            return LAUF_KEYWORD("const") >> dsl::position + decl;
-        }();
-
-        static constexpr auto value = callback(
-            [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout,
-               std::string data) {
-                data.resize(layout.size);
-
-                auto g = lauf_asm_add_global(state.mod, LAUF_ASM_GLOBAL_READ_ONLY);
-                lauf_asm_define_data_global(state.mod, g, layout, data.c_str());
-                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
-
-                if (!state.globals.insert(name, g))
-                    state.duplicate_declaration(pos, "global", name.c_str());
-            },
-            [](parse_state& state, auto pos, const std::string& name, lexy::nullopt,
-               const std::string& data) {
-                auto g = lauf_asm_add_global(state.mod, LAUF_ASM_GLOBAL_READ_ONLY);
-                lauf_asm_define_data_global(state.mod, g, {data.size(), alignof(void*)},
-                                            data.c_str());
-                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
-
-                if (!state.globals.insert(name, g))
-                    state.duplicate_declaration(pos, "global", name.c_str());
-            });
-    };
-
-    struct mut_global
-    {
-        static constexpr auto rule = [] {
-            auto decl = dsl::p<global_identifier> + dsl::opt(dsl::colon >> dsl::p<layout_expr>)
-                        + dsl::equal_sign
-                        + (LAUF_KEYWORD("native") | dsl::else_ >> dsl::p<data_expr>);
-            return dsl::else_ >> dsl::position + decl;
-        }();
-
-        static constexpr auto value = callback(
-            [](parse_state& state, auto pos, const std::string& name,
-               std::optional<lauf_asm_layout>) {
-                auto g = lauf_asm_add_global(state.mod, LAUF_ASM_GLOBAL_READ_WRITE);
-                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
-                if (!state.globals.insert(name, g))
-                    state.duplicate_declaration(pos, "global", name.c_str());
-            },
-            [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout,
-               std::string data) {
-                data.resize(layout.size);
-
-                auto g = lauf_asm_add_global(state.mod, LAUF_ASM_GLOBAL_READ_WRITE);
-                lauf_asm_define_data_global(state.mod, g, layout, data.c_str());
-                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
-
-                if (!state.globals.insert(name, g))
-                    state.duplicate_declaration(pos, "global", name.c_str());
-            },
-            [](parse_state& state, auto pos, const std::string& name, lexy::nullopt,
-               const std::string& data) {
-                auto g = lauf_asm_add_global(state.mod, LAUF_ASM_GLOBAL_READ_WRITE);
-                lauf_asm_define_data_global(state.mod, g, {data.size(), alignof(void*)},
-                                            data.c_str());
-                lauf_asm_set_global_debug_name(state.mod, g, name.c_str());
-
-                if (!state.globals.insert(name, g))
-                    state.duplicate_declaration(pos, "global", name.c_str());
-            });
-    };
+    static constexpr auto perms = lexy::symbol_table<lauf_asm_global_permissions> //
+                                      .map(LEXY_LIT("mut"), LAUF_ASM_GLOBAL_READ_WRITE)
+                                      .map(LEXY_LIT("const"), LAUF_ASM_GLOBAL_READ_ONLY);
 
     static constexpr auto rule
-        = LAUF_KEYWORD("global") >> (dsl::p<const_global> | dsl::p<mut_global>)+dsl::semicolon;
-    static constexpr auto value = lexy::forward<void>;
+        = LAUF_KEYWORD("global") >> dsl::symbol<perms> + dsl::position(dsl::p<global_identifier>)
+                                        + dsl::opt(dsl::colon >> dsl::p<layout_expr>)
+                                        + dsl::opt(dsl::equal_sign >> dsl::p<data_expr>)
+                                        + dsl::semicolon;
+
+    static constexpr auto value = callback(
+        [](parse_state& state, lauf_asm_global_permissions perms, auto pos, const std::string& name,
+           std::optional<lauf_asm_layout> layout, std::optional<std::string>&& data) {
+            auto global = lauf_asm_add_global(state.mod, perms);
+
+            if (layout && data)
+            {
+                data->resize(layout->size);
+                lauf_asm_define_data_global(state.mod, global, layout.value(), data->c_str());
+            }
+            else if (!layout && data)
+            {
+                lauf_asm_define_data_global(state.mod, global, {data->size(), alignof(void*)},
+                                            data->c_str());
+            }
+            else if (layout && !data)
+            {
+                lauf_asm_define_data_global(state.mod, global, layout.value(), nullptr);
+            }
+            else
+            {
+                /* no definition */
+            }
+
+            lauf_asm_set_global_debug_name(state.mod, global, name.c_str());
+
+            if (!state.globals.insert(name, global))
+                state.duplicate_declaration(pos, "global", name.c_str());
+        });
 };
 
 //=== instruction ===//

@@ -1,6 +1,6 @@
 module @fiber;
 
-global @fiber_handle : $lauf.Value = 0;
+global mut @fiber_handle : $lauf.Value;
 
 function @inner_suspend(1 => 0) {
     fiber_suspend (1 => 0);

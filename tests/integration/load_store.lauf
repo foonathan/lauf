@@ -1,7 +1,7 @@
 module @load_store;
 
 #=== Valid ===#
-global @value : $lauf.Value = 0;
+global mut @value : $lauf.Value;
 
 function @set_pointer(1 => 0) {
     # We add an unused local so that a dangling local's memory index gets reused.
@@ -66,9 +66,9 @@ function @load_store_local_mixed_allocation() {
 #== Invalid global addresses ===#
 # Order matters to ensure that the misaligned ends up misaligned.
 # (Globals happen to be allocated in reverse order)
-global @misaligned : (8, 4) = 0;
-global @small : (4, 8) = 0;
-global const @value_const : $lauf.Value = 0;
+global mut @misaligned : (8, 4);
+global mut @small : (4, 8);
+global const @value_const : $lauf.Value;
 
 function @store_const() {
     uint 42; global_addr @value_const; store_field $lauf.Value 0;

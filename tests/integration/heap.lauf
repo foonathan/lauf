@@ -40,7 +40,7 @@ function @heap_transfer_local_from_heap() {
     return;
 }
 
-global @address : $lauf.Value = 0;
+global mut @address : $lauf.Value;
 
 function @heap_gc() {
     local %address : $lauf.Value;
