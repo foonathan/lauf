@@ -89,6 +89,9 @@ TEST_CASE("lauf_asm_build_string_literal")
 
     auto abc2 = lauf_asm_build_string_literal(b, "abc");
     CHECK(abc2 == abc);
+
+    lauf_asm_destroy_builder(b);
+    lauf_asm_destroy_module(mod);
 }
 
 TEST_CASE("lauf_asm_inst_jump")
