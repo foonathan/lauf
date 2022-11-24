@@ -373,6 +373,7 @@ TEST_CASE("lauf_asm_define_native_function")
             auto st = lauf_runtime_get_stacktrace(process, lauf_runtime_get_current_fiber(process));
             auto fn = lauf_runtime_stacktrace_function(st);
             CHECK(lauf_asm_function_name(fn) == doctest::String("test"));
+            lauf_runtime_destroy_stacktrace(st);
 
             output[0].as_uint = 11;
             output[1].as_uint = 22;

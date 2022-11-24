@@ -22,17 +22,24 @@ typedef struct lauf_runtime_stacktrace lauf_runtime_stacktrace;
 
 /// Returns the stacktrace of the fiber.
 /// This returns nullptr if the fiber is neither running nor suspended.
+///
+/// If it returns a non-null value, it must either be iterated until the parent is found,
+/// or manually destroyed.
 lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p,
                                                      const lauf_runtime_fiber* fiber);
 
 /// Returns the function of the current stacktrace entry.
-const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt);
+const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* st);
 
 /// Returns the address of the instruction of the current stacktrace entry.
-const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace* bt);
+const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace* st);
 
 /// Returns the parent call of the current stacktrace entry, or NULL if no parent exists.
-lauf_runtime_stacktrace* lauf_runtime_stacktrace_parent(lauf_runtime_stacktrace* bt);
+/// If it returns NULL, the stacktrace is also destroyed.
+lauf_runtime_stacktrace* lauf_runtime_stacktrace_parent(lauf_runtime_stacktrace* st);
+
+/// Destroys a stacktrace.
+void lauf_runtime_destroy_stacktrace(lauf_runtime_stacktrace* st);
 
 LAUF_HEADER_END
 

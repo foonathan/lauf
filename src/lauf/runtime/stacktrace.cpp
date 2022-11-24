@@ -31,28 +31,33 @@ lauf_runtime_stacktrace* lauf_runtime_get_stacktrace(lauf_runtime_process*     p
     }
 }
 
-const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* bt)
+const lauf_asm_function* lauf_runtime_stacktrace_function(lauf_runtime_stacktrace* st)
 {
-    return bt->frame->function;
+    return st->frame->function;
 }
 
-const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace* bt)
+const lauf_asm_inst* lauf_runtime_stacktrace_instruction(lauf_runtime_stacktrace* st)
 {
-    return bt->ip;
+    return st->ip;
 }
 
-lauf_runtime_stacktrace* lauf_runtime_stacktrace_parent(lauf_runtime_stacktrace* bt)
+lauf_runtime_stacktrace* lauf_runtime_stacktrace_parent(lauf_runtime_stacktrace* st)
 {
-    if (bt->frame->prev == nullptr || bt->frame->is_root_frame())
+    if (st->frame->prev == nullptr || st->frame->is_root_frame())
     {
-        delete bt;
+        delete st;
         return nullptr;
     }
     else
     {
-        bt->ip    = bt->frame->return_ip - 1;
-        bt->frame = bt->frame->prev;
-        return bt;
+        st->ip    = st->frame->return_ip - 1;
+        st->frame = st->frame->prev;
+        return st;
     }
+}
+
+void lauf_runtime_destroy_stacktrace(lauf_runtime_stacktrace* st)
+{
+    delete st;
 }
 
