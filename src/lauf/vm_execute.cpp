@@ -96,8 +96,8 @@ LAUF_NOINLINE bool call_native_function(const lauf_asm_inst* ip, lauf_runtime_va
     vstack_ptr -= callee->sig.output_count;
 
     // Call the function.
-    auto native_callee = reinterpret_cast<lauf_asm_native_function>(definition->_ptr);
-    if (!native_callee(process, input, vstack_ptr))
+    auto native_callee = reinterpret_cast<lauf_asm_native_function>(definition->_ptr1);
+    if (!native_callee(definition->_ptr2, process, input, vstack_ptr))
         return false;
 
     // We need to reverse the order of output arguments.

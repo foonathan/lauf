@@ -30,9 +30,9 @@ lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program
 
         if (definition != nullptr)
         {
-            result.ptr = definition->_ptr;
+            result.ptr = definition->_ptr1;
             // If bigger than 32bit, only the lower parts are addressable.
-            result.size = std::uint32_t(definition->_size);
+            result.size = std::uint32_t(reinterpret_cast<std::uintptr_t>(definition->_ptr2));
         }
         else
         {

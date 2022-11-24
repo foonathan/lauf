@@ -45,11 +45,11 @@ typedef struct lauf_asm_native
 {
     const struct lauf_asm_native* _next;
     const void*                   _decl;
-    void*                         _ptr;
-    size_t                        _size;
+    void*                         _ptr1;
+    void*                         _ptr2;
 } lauf_asm_native;
 
-typedef bool (*lauf_asm_native_function)(lauf_runtime_process*     process,
+typedef bool (*lauf_asm_native_function)(void* user_data, lauf_runtime_process* process,
                                          const lauf_runtime_value* input,
                                          lauf_runtime_value*       output);
 
@@ -71,7 +71,7 @@ void lauf_asm_define_native_global(lauf_asm_native* result, lauf_asm_program* pr
 /// `result` must live as long as the program and any process executing it.
 void lauf_asm_define_native_function(lauf_asm_native* result, lauf_asm_program* program,
                                      const lauf_asm_function* fn,
-                                     lauf_asm_native_function native_fn);
+                                     lauf_asm_native_function native_fn, void* user_data);
 
 //=== queries ===//
 const char* lauf_asm_program_debug_path(const lauf_asm_program*  program,

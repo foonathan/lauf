@@ -362,11 +362,13 @@ TEST_CASE("lauf_asm_define_native_function")
     lauf_asm_native native_fn_def;
     lauf_asm_define_native_function(
         &native_fn_def, &program, native_fn,
-        [](lauf_runtime_process* process, const lauf_runtime_value* input,
+        [](void* user_data, lauf_runtime_process* process, const lauf_runtime_value* input,
            lauf_runtime_value* output) {
             CHECK(input[0].as_uint == 1);
             CHECK(input[1].as_uint == 2);
             CHECK(input[2].as_uint == 3);
+
+            CHECK(reinterpret_cast<std::uintptr_t>(user_data) == 42);
 
             auto st = lauf_runtime_get_stacktrace(process, lauf_runtime_get_current_fiber(process));
             auto fn = lauf_runtime_stacktrace_function(st);
@@ -383,7 +385,8 @@ TEST_CASE("lauf_asm_define_native_function")
             CHECK(input[2].as_uint == 3);
 
             return true;
-        });
+        },
+        reinterpret_cast<void*>(42));
 
     auto vm = lauf_create_vm(lauf_default_vm_options);
     CHECK(lauf_vm_execute_oneshot(vm, program, nullptr, nullptr));

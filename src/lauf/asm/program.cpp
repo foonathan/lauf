@@ -26,20 +26,20 @@ void lauf_asm_define_native_global(lauf_asm_native* result, lauf_asm_program* pr
 {
     result->_next = program->_native_defs;
     result->_decl = global;
-    result->_ptr  = ptr;
-    result->_size = size;
+    result->_ptr1 = ptr;
+    result->_ptr2 = reinterpret_cast<void*>(std::uintptr_t(size)); // NOLINT
 
     program->_native_defs = result;
 }
 
 void lauf_asm_define_native_function(lauf_asm_native* result, lauf_asm_program* program,
                                      const lauf_asm_function* fn,
-                                     lauf_asm_native_function native_fn)
+                                     lauf_asm_native_function native_fn, void* user_data)
 {
     result->_next = program->_native_defs;
     result->_decl = fn;
-    result->_ptr  = reinterpret_cast<void*>(native_fn);
-    result->_size = 0;
+    result->_ptr1 = reinterpret_cast<void*>(native_fn);
+    result->_ptr2 = user_data;
 
     program->_native_defs = result;
 }
