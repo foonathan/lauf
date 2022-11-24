@@ -250,6 +250,8 @@ LAUF_VM_EXECUTE(call)
 {
     auto callee
         = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
+    if (LAUF_UNLIKELY(callee->insts == nullptr))
+        LAUF_DO_PANIC("undefined function");
 
     // Check that we have enough space left on the vstack.
     if (auto remaining = vstack_ptr - process->cur_fiber->vstack.limit();
@@ -273,7 +275,7 @@ LAUF_VM_EXECUTE(call_indirect)
     auto callee = lauf_runtime_get_function_ptr(process, ptr,
                                                 {ip->call_indirect.input_count,
                                                  ip->call_indirect.output_count});
-    if (LAUF_UNLIKELY(callee == nullptr))
+    if (LAUF_UNLIKELY(callee == nullptr || callee->insts == nullptr))
         LAUF_DO_PANIC("invalid function address");
 
     // Check that we have enough space left on the vstack.
