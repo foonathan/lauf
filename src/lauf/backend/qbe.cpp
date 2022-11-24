@@ -66,6 +66,10 @@ const char* extern_function_name(const lauf_backend_qbe_options& opts,
 void codegen_function(lauf::qbe_writer& writer, const lauf_backend_qbe_options& opts,
                       const lauf_asm_function* fn)
 {
+    if (fn->insts == nullptr)
+        // Not a definition.
+        return;
+
     if (fn->exported)
         writer.export_();
 
