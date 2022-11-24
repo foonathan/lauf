@@ -21,15 +21,27 @@ void lauf_asm_destroy_program(lauf_asm_program)
     // NOTE: If this gets a body, it needs to be called in `lauf_vm_execute_oneshot()`.
 }
 
-void lauf_asm_define_native_global(lauf_asm_native_global* result, lauf_asm_program* program,
+void lauf_asm_define_native_global(lauf_asm_native* result, lauf_asm_program* program,
                                    const lauf_asm_global* global, void* ptr, size_t size)
 {
-    result->_next   = program->_global_defs;
-    result->_global = global;
-    result->_ptr    = ptr;
-    result->_size   = size;
+    result->_next = program->_native_defs;
+    result->_decl = global;
+    result->_ptr  = ptr;
+    result->_size = size;
 
-    program->_global_defs = result;
+    program->_native_defs = result;
+}
+
+void lauf_asm_define_native_function(lauf_asm_native* result, lauf_asm_program* program,
+                                     const lauf_asm_function* fn,
+                                     lauf_asm_native_function native_fn)
+{
+    result->_next = program->_native_defs;
+    result->_decl = fn;
+    result->_ptr  = reinterpret_cast<void*>(native_fn);
+    result->_size = 0;
+
+    program->_native_defs = result;
 }
 
 const char* lauf_asm_program_debug_path(const lauf_asm_program* program, const lauf_asm_function*)

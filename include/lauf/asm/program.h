@@ -14,6 +14,8 @@ typedef struct lauf_asm_function       lauf_asm_function;
 typedef struct lauf_asm_chunk          lauf_asm_chunk;
 typedef struct lauf_asm_debug_location lauf_asm_location;
 typedef union lauf_asm_inst            lauf_asm_inst;
+typedef struct lauf_runtime_process    lauf_runtime_process;
+typedef union lauf_runtime_value       lauf_runtime_value;
 
 //=== program ===//
 /// A program that can be executed.
@@ -23,9 +25,9 @@ typedef union lauf_asm_inst            lauf_asm_inst;
 /// This is done by matching the names.
 typedef struct lauf_asm_program
 {
-    const lauf_asm_module*               _mod;
-    const lauf_asm_function*             _entry;
-    const struct lauf_asm_native_global* _global_defs;
+    const lauf_asm_module*        _mod;
+    const lauf_asm_function*      _entry;
+    const struct lauf_asm_native* _native_defs;
 } lauf_asm_program;
 
 /// Creates a program that consists of a single module only.
@@ -38,21 +40,38 @@ lauf_asm_program lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
 
 void lauf_asm_destroy_program(lauf_asm_program program);
 
-//=== global definition ===//
-typedef struct lauf_asm_native_global
+//=== native definition ===//
+typedef struct lauf_asm_native
 {
-    const struct lauf_asm_native_global* _next;
-    const lauf_asm_global*               _global;
-    void*                                _ptr;
-    size_t                               _size;
-} lauf_asm_native_global;
+    const struct lauf_asm_native* _next;
+    const void*                   _decl;
+    void*                         _ptr;
+    size_t                        _size;
+} lauf_asm_native;
 
-/// Defines a global that previously just declared to the native memory [ptr, ptr + size).
+typedef bool (*lauf_asm_native_function)(lauf_runtime_process*     process,
+                                         const lauf_runtime_value* input,
+                                         lauf_runtime_value*       output);
+
+/// Defines a previously declared global as native memory [ptr, ptr + size).
 ///
-/// It will populate `lauf_asm_global_definition` to store information about the global.
+/// It will populate `lauf_asm_native` to store information about the global.
 /// Both `result` and `ptr` must live as long as the program and any process executing it.
-void lauf_asm_define_native_global(lauf_asm_native_global* result, lauf_asm_program* program,
+void lauf_asm_define_native_global(lauf_asm_native* result, lauf_asm_program* program,
                                    const lauf_asm_global* global, void* ptr, size_t size);
+
+/// Defines a previously declared function as the specified native function.
+///
+/// The native function will be invoked with the input arguments in `input` (top of the stack at
+/// high index). On success, it shall return true and write the output values to `output` (top of
+/// the stack at high index). On error, it may panic by returning `lauf_runtime_panic()`.
+/// `input` and `output` do not alias.
+///
+/// It will populate `lauf_asm_native` to store information about the global.
+/// `result` must live as long as the program and any process executing it.
+void lauf_asm_define_native_function(lauf_asm_native* result, lauf_asm_program* program,
+                                     const lauf_asm_function* fn,
+                                     lauf_asm_native_function native_fn);
 
 //=== queries ===//
 const char* lauf_asm_program_debug_path(const lauf_asm_program*  program,

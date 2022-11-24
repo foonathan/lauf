@@ -13,6 +13,7 @@
 #include <lauf/reader.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/process.h>
+#include <lauf/runtime/stacktrace.h>
 #include <lauf/runtime/value.h>
 
 namespace
@@ -275,7 +276,7 @@ TEST_CASE("lauf_vm_start_process")
     lauf_asm_destroy_module(mod);
 }
 
-TEST_CASE("lauf_asm_global_definition")
+TEST_CASE("lauf_asm_define_native_global")
 {
     auto mod    = lauf_asm_create_module("test");
     auto fn     = lauf_asm_add_function(mod, "test", {0, 0});
@@ -300,9 +301,9 @@ TEST_CASE("lauf_asm_global_definition")
         lauf_asm_destroy_builder(b);
     }
 
-    auto                   program = lauf_asm_create_program(mod, fn);
-    lauf_runtime_value     global_val;
-    lauf_asm_native_global global_def;
+    auto               program = lauf_asm_create_program(mod, fn);
+    lauf_runtime_value global_val;
+    lauf_asm_native    global_def;
     lauf_asm_define_native_global(&global_def, &program, global, &global_val, sizeof(global_val));
 
     global_val.as_uint = 11;
@@ -312,6 +313,81 @@ TEST_CASE("lauf_asm_global_definition")
     lauf_destroy_vm(vm);
 
     CHECK(global_val.as_uint == 42);
+
+    lauf_asm_destroy_module(mod);
+}
+
+TEST_CASE("lauf_asm_define_native_function")
+{
+    auto mod       = lauf_asm_create_module("test");
+    auto native_fn = lauf_asm_add_function(mod, "native_fn", {3, 5});
+    auto fn        = lauf_asm_add_function(mod, "test", {0, 0});
+
+    {
+        auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
+        lauf_asm_build(b, mod, fn);
+
+        lauf_asm_inst_uint(b, 1);
+        lauf_asm_inst_uint(b, 2);
+        lauf_asm_inst_uint(b, 3);
+
+        SUBCASE("direct")
+        {
+            lauf_asm_inst_call(b, native_fn);
+        }
+        SUBCASE("indirect")
+        {
+            lauf_asm_inst_function_addr(b, native_fn);
+            lauf_asm_inst_call_indirect(b, {3, 5});
+        }
+
+        lauf_asm_inst_uint(b, 55);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 44);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 33);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 22);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 11);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+
+        lauf_asm_inst_return(b);
+
+        lauf_asm_build_finish(b);
+        lauf_asm_destroy_builder(b);
+    }
+
+    auto            program = lauf_asm_create_program(mod, fn);
+    lauf_asm_native native_fn_def;
+    lauf_asm_define_native_function(
+        &native_fn_def, &program, native_fn,
+        [](lauf_runtime_process* process, const lauf_runtime_value* input,
+           lauf_runtime_value* output) {
+            CHECK(input[0].as_uint == 1);
+            CHECK(input[1].as_uint == 2);
+            CHECK(input[2].as_uint == 3);
+
+            auto st = lauf_runtime_get_stacktrace(process, lauf_runtime_get_current_fiber(process));
+            auto fn = lauf_runtime_stacktrace_function(st);
+            CHECK(lauf_asm_function_name(fn) == doctest::String("test"));
+
+            output[0].as_uint = 11;
+            output[1].as_uint = 22;
+            output[2].as_uint = 33;
+            output[3].as_uint = 44;
+            output[4].as_uint = 55;
+
+            CHECK(input[0].as_uint == 1);
+            CHECK(input[1].as_uint == 2);
+            CHECK(input[2].as_uint == 3);
+
+            return true;
+        });
+
+    auto vm = lauf_create_vm(lauf_default_vm_options);
+    CHECK(lauf_vm_execute_oneshot(vm, program, nullptr, nullptr));
+    lauf_destroy_vm(vm);
 
     lauf_asm_destroy_module(mod);
 }

@@ -65,6 +65,51 @@ LAUF_NOINLINE bool do_panic(const lauf_asm_inst* ip, lauf_runtime_value* vstack_
 #define LAUF_DO_PANIC(Msg)                                                                         \
     LAUF_TAIL_CALL return do_panic(ip, (lauf_runtime_value*)(Msg), frame_ptr, process)
 
+LAUF_NOINLINE bool call_native_function(const lauf_asm_inst* ip, lauf_runtime_value* vstack_ptr,
+                                        lauf_runtime_stack_frame* frame_ptr,
+                                        lauf_runtime_process*     process)
+{
+    auto callee
+        = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
+    assert(ip->op() == lauf::asm_op::call && callee->insts == nullptr);
+
+    auto definition = [&]() -> const lauf_asm_native* {
+        for (auto def = process->program._native_defs; def != nullptr; def = def->_next)
+            if (def->_decl == callee)
+                return def;
+        return nullptr;
+    }();
+
+    // We save the state before we modify the vstack.
+    // Logically, the inputs are still on the vstack until the call succeeds.
+    process->regs = {ip, vstack_ptr, frame_ptr};
+
+    // Copy the input arguments into a temporary buffer.
+    // This ensures that it does not alias the output parameter.
+    lauf_runtime_value input[UINT8_MAX];
+    for (auto i = 0u; i != callee->sig.input_count; ++i)
+        input[callee->sig.input_count - 1 - i] = *vstack_ptr++;
+
+    // Reserve space on the vstack for the call.
+    // (We checked that there is space for it, as the output arguments are included in the vstack of
+    // the current function.)
+    vstack_ptr -= callee->sig.output_count;
+
+    // Call the function.
+    auto native_callee = reinterpret_cast<lauf_asm_native_function>(definition->_ptr);
+    if (!native_callee(process, input, vstack_ptr))
+        return false;
+
+    // We need to reverse the order of output arguments.
+    for (auto lhs = vstack_ptr, rhs = vstack_ptr + callee->sig.output_count - 1; lhs < rhs;
+         ++lhs, --rhs)
+        std::swap(*lhs, *rhs);
+
+    // Continue after the call, as we know completely took care of it.
+    ++ip;
+    LAUF_VM_DISPATCH;
+}
+
 LAUF_NOINLINE bool allocate_more_vstack_space(const lauf_asm_inst*      ip,
                                               lauf_runtime_value*       vstack_ptr,
                                               lauf_runtime_stack_frame* frame_ptr,
@@ -250,8 +295,10 @@ LAUF_VM_EXECUTE(call)
 {
     auto callee
         = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
+
+    // Call a native implementation if necessary.
     if (LAUF_UNLIKELY(callee->insts == nullptr))
-        LAUF_DO_PANIC("undefined function");
+        LAUF_TAIL_CALL return call_native_function(ip, vstack_ptr, frame_ptr, process);
 
     // Check that we have enough space left on the vstack.
     if (auto remaining = vstack_ptr - process->cur_fiber->vstack.limit();
@@ -275,8 +322,12 @@ LAUF_VM_EXECUTE(call_indirect)
     auto callee = lauf_runtime_get_function_ptr(process, ptr,
                                                 {ip->call_indirect.input_count,
                                                  ip->call_indirect.output_count});
-    if (LAUF_UNLIKELY(callee == nullptr || callee->insts == nullptr))
+    if (LAUF_UNLIKELY(callee == nullptr))
         LAUF_DO_PANIC("invalid function address");
+
+    // Call a native implementation if necessary.
+    if (LAUF_UNLIKELY(callee->insts == nullptr))
+        LAUF_TAIL_CALL return call_native_function(ip, vstack_ptr, frame_ptr, process);
 
     // Check that we have enough space left on the vstack.
     if (auto remaining = vstack_ptr - process->cur_fiber->vstack.limit();

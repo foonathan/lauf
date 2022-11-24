@@ -21,9 +21,9 @@ lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program
 
     if (!global.has_definition())
     {
-        auto definition = [&]() -> const lauf_asm_native_global* {
-            for (auto def = program._global_defs; def != nullptr; def = def->_next)
-                if (def->_global == &global)
+        auto definition = [&]() -> const lauf_asm_native* {
+            for (auto def = program._native_defs; def != nullptr; def = def->_next)
+                if (def->_decl == &global)
                     return def;
             return nullptr;
         }();
