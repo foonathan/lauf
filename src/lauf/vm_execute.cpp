@@ -79,6 +79,8 @@ LAUF_NOINLINE bool call_native_function(const lauf_asm_inst* ip, lauf_runtime_va
                 return def;
         return nullptr;
     }();
+    if (LAUF_UNLIKELY(definition == nullptr))
+        LAUF_DO_PANIC("calling undefined function");
 
     // We save the state before we modify the vstack.
     // Logically, the inputs are still on the vstack until the call succeeds.
