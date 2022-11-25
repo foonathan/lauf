@@ -36,8 +36,9 @@ lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program
         }
         else
         {
-            result.ptr  = nullptr;
-            result.size = 0;
+            result.status = lauf::allocation_status::freed;
+            result.ptr    = nullptr;
+            result.size   = 0;
         }
     }
     else
