@@ -82,6 +82,22 @@ lauf_runtime_builtin lauf_lib_memory_addr_sub(lauf_lib_memory_addr_overflow over
 /// Signature: addr1:address addr2:address => (addr1 - addr2):sint
 extern const lauf_runtime_builtin lauf_lib_memory_addr_distance;
 
+//=== memcpy/memset/memcmp ===//
+/// Copies `count` bytes from `src` to `dest` by calling `std::memmove()`.
+///
+/// Signature: dest:address src:address count:uint => _
+extern const lauf_runtime_builtin lauf_lib_memory_copy;
+
+/// Sets `count` bytes from `dest` to `byte` by calling `std::memset()`.
+///
+/// Signature: dest:address byte:uint count:uint => _
+extern const lauf_runtime_builtin lauf_lib_memory_fill;
+
+/// Compares `count` bytes between `lhs` and `rhs` by calling `std::memcmp()`.
+///
+/// Signature: lhs:address rhs:address count:uint => sint
+extern const lauf_runtime_builtin lauf_lib_memory_cmp;
+
 LAUF_HEADER_END
 
 #endif // LAUF_LIB_MEMORY_H_INCLUDED

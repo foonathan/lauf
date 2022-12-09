@@ -158,6 +158,24 @@ function @addr_arithmetic() {
     return;
 }
 
+global const @const_buffer : $lauf.Value;
+
+function @buffer() {
+    layout $lauf.Value; $lauf.heap.alloc;
+
+    pick 0; uint 0; uint 8; $lauf.memory.fill;
+    pick 0; global_addr @const_buffer; uint 8; $lauf.memory.cmp; cc eq; $lauf.test.assert;
+
+    pick 0; uint 1; uint 8; $lauf.memory.fill;
+    pick 0; global_addr @const_buffer; uint 8; $lauf.memory.cmp; cc gt; $lauf.test.assert;
+
+    pick 0; global_addr @const_buffer; uint 8; $lauf.memory.copy;
+    pick 0; global_addr @const_buffer; uint 8; $lauf.memory.cmp; cc eq; $lauf.test.assert;
+
+    $lauf.heap.free;
+    return;
+}
+
 global const @msg_invalid_address = "invalid address", 0;
 global const @msg_invalid_heap_address = "invalid heap address", 0;
 global const @msg_invalid_free = "cannot free split allocation", 0;
@@ -171,6 +189,7 @@ function @main(0 => 1) export {
 
         call @addr_to_ptr;
         call @addr_arithmetic;
+        call @buffer;
 
         $lauf.platform.vm;
         branch %vm() %exit(0 => 1);

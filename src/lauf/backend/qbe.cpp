@@ -18,11 +18,15 @@
 
 namespace
 {
-constexpr lauf_backend_qbe_extern_function default_externs[]
-    = {{"lauf_heap_alloc", &lauf_lib_heap_alloc},
-       {"lauf_heap_alloc_array", &lauf_lib_heap_alloc_array},
-       {"lauf_heap_free", &lauf_lib_heap_free},
-       {"lauf_heap_gc", &lauf_lib_heap_gc}};
+constexpr lauf_backend_qbe_extern_function default_externs[] = {
+    {"lauf_heap_alloc", &lauf_lib_heap_alloc},
+    {"lauf_heap_alloc_array", &lauf_lib_heap_alloc_array},
+    {"lauf_heap_free", &lauf_lib_heap_free},
+    {"lauf_heap_gc", &lauf_lib_heap_gc},
+    {"lauf_memory_copy", &lauf_lib_memory_copy},
+    {"lauf_memory_fill", &lauf_lib_memory_fill},
+    {"lauf_memory_cmp", &lauf_lib_memory_cmp},
+};
 }
 
 const lauf_backend_qbe_options lauf_backend_default_qbe_options

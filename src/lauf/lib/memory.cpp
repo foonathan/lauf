@@ -3,6 +3,7 @@
 
 #include <lauf/lib/memory.h>
 
+#include <cstring>
 #include <lauf/asm/type.h>
 #include <lauf/runtime/builtin.h>
 #include <lauf/runtime/memory.h>
@@ -240,6 +241,59 @@ LAUF_RUNTIME_BUILTIN(lauf_lib_memory_addr_distance, 2, 1, LAUF_RUNTIME_BUILTIN_D
     LAUF_RUNTIME_BUILTIN_DISPATCH;
 }
 
-const lauf_runtime_builtin_library lauf_lib_memory
-    = {"lauf.memory", &lauf_lib_memory_addr_distance, nullptr};
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_copy, 3, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "copy",
+                     &lauf_lib_memory_addr_distance)
+{
+    auto dest  = vstack_ptr[2].as_address;
+    auto src   = vstack_ptr[1].as_address;
+    auto count = vstack_ptr[0].as_uint;
+
+    auto dest_ptr = lauf_runtime_get_mut_ptr(process, dest, {count, 1});
+    auto src_ptr  = lauf_runtime_get_const_ptr(process, src, {count, 1});
+    if (dest_ptr == nullptr || src_ptr == nullptr)
+        return lauf_runtime_panic(process, "invalid address");
+
+    std::memmove(dest_ptr, src_ptr, count);
+
+    vstack_ptr += 3;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_fill, 3, 0, LAUF_RUNTIME_BUILTIN_DEFAULT, "fill",
+                     &lauf_lib_memory_copy)
+{
+    auto dest  = vstack_ptr[2].as_address;
+    auto byte  = vstack_ptr[1].as_uint;
+    auto count = vstack_ptr[0].as_uint;
+
+    auto dest_ptr = lauf_runtime_get_mut_ptr(process, dest, {count, 1});
+    if (dest_ptr == nullptr)
+        return lauf_runtime_panic(process, "invalid address");
+
+    std::memset(dest_ptr, static_cast<unsigned char>(byte), count);
+
+    vstack_ptr += 3;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+LAUF_RUNTIME_BUILTIN(lauf_lib_memory_cmp, 3, 1, LAUF_RUNTIME_BUILTIN_DEFAULT, "cmp",
+                     &lauf_lib_memory_fill)
+{
+    auto lhs   = vstack_ptr[2].as_address;
+    auto rhs   = vstack_ptr[1].as_address;
+    auto count = vstack_ptr[0].as_uint;
+
+    auto lhs_ptr = lauf_runtime_get_const_ptr(process, lhs, {count, 1});
+    auto rhs_ptr = lauf_runtime_get_const_ptr(process, rhs, {count, 1});
+    if (lhs_ptr == nullptr || rhs_ptr == nullptr)
+        return lauf_runtime_panic(process, "invalid address");
+
+    auto result = std::memcmp(lhs_ptr, rhs_ptr, count);
+
+    vstack_ptr += 2;
+    vstack_ptr[0].as_sint = result;
+    LAUF_RUNTIME_BUILTIN_DISPATCH;
+}
+
+const lauf_runtime_builtin_library lauf_lib_memory = {"lauf.memory", &lauf_lib_memory_cmp, nullptr};
 
