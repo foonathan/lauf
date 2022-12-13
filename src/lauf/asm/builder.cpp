@@ -478,22 +478,29 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
     return !b->errored;
 }
 
-lauf_asm_global* lauf_asm_build_string_literal(lauf_asm_builder* b, const char* str)
+lauf_asm_global* lauf_asm_build_data_literal(lauf_asm_builder* b, const unsigned char* ptr,
+                                             size_t size)
 {
-    auto str_size = std::strlen(str) + 1; // include null
     for (auto global = b->mod->globals; global != nullptr; global = global->next)
     {
         if (global->is_mutable)
             // Can't use a mutable global.
             continue;
 
-        if (str_size == global->size && std::memcmp(global->memory, str, global->size) == 0)
+        if (size == global->size && std::memcmp(global->memory, ptr, global->size) == 0)
             return global;
     }
 
     auto global = lauf_asm_add_global(b->mod, LAUF_ASM_GLOBAL_READ_ONLY);
-    lauf_asm_define_data_global(b->mod, global, {str_size, 1}, str);
+    lauf_asm_define_data_global(b->mod, global, {size, lauf_asm_type_value.layout.alignment}, ptr);
     return global;
+}
+
+lauf_asm_global* lauf_asm_build_string_literal(lauf_asm_builder* b, const char* str)
+{
+    // +1 to include null-terminator.
+    return lauf_asm_build_data_literal(b, reinterpret_cast<const unsigned char*>(str),
+                                       std::strlen(str) + 1);
 }
 
 lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout)

@@ -68,10 +68,14 @@ void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_ch
 bool lauf_asm_build_finish(lauf_asm_builder* b);
 
 //=== global data ===//
-/// Adds a constant global containing a null-terminated string literal to the module of the builder.
+/// Adds a constant global containing the specified data to the module of the builder.
 ///
 /// It will iterate over constant global variables of the module to search for one that contains the
-/// string literal. If it exists, returns it address. Otherwise, adds a new global.
+/// data already. If it exists, returns it address. Otherwise, adds a new global.
+lauf_asm_global* lauf_asm_build_data_literal(lauf_asm_builder* b, const unsigned char* ptr,
+                                             size_t size);
+
+/// Returns `lauf_asm_build_string_literal(b, str, strlen(str) + 1)`.
 lauf_asm_global* lauf_asm_build_string_literal(lauf_asm_builder* b, const char* str);
 
 //=== local variables ===//
