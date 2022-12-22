@@ -181,15 +181,22 @@ void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig);
 void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b, lauf_asm_signature sig);
 
 //=== value instructions ===//
+/// Pushes an unsigned integer onto the stack.
+///
+/// Signature: _ => value:uint
+void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value);
+
 /// Pushes an signed integer onto the stack.
 ///
 /// Signature: _ => value:sint
 void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value);
 
-/// Pushes an unsigned integer onto the stack.
+/// Pushes `sizeof(lauf_uint)` raw bytes onto the stack.
+///
+/// They will be memcpy'd into a `lauf_uint`.
 ///
 /// Signature: _ => value:uint
-void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value);
+void lauf_asm_inst_bytes(lauf_asm_builder* b, const void* ptr);
 
 /// Pushes the null address onto the stack.
 ///

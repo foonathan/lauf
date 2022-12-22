@@ -875,14 +875,6 @@ void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b, lauf_asm_signature sig)
     b->cur->vstack.push(*b, sig.output_count);
 }
 
-void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value)
-{
-    LAUF_BUILD_CHECK_CUR;
-
-    // We treat negative values as large positive values.
-    lauf_asm_inst_uint(b, lauf_uint(value));
-}
-
 void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
 {
     LAUF_BUILD_CHECK_CUR;
@@ -920,6 +912,23 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
         result.as_uint = value;
         return result;
     }());
+}
+
+void lauf_asm_inst_sint(lauf_asm_builder* b, lauf_sint value)
+{
+    LAUF_BUILD_CHECK_CUR;
+
+    // We treat negative values as large positive values.
+    lauf_asm_inst_uint(b, lauf_uint(value));
+}
+
+void lauf_asm_inst_bytes(lauf_asm_builder* b, const void* ptr)
+{
+    LAUF_BUILD_CHECK_CUR;
+
+    lauf_uint value;
+    std::memcpy(&value, ptr, sizeof(lauf_uint));
+    lauf_asm_inst_uint(b, value);
 }
 
 void lauf_asm_inst_null(lauf_asm_builder* b)

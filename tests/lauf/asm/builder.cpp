@@ -159,6 +159,67 @@ TEST_CASE("lauf_asm_inst_branch2")
     CHECK(same[0].pop_top.idx == 0);
 }
 
+TEST_CASE("lauf_asm_inst_uint")
+{
+    auto build_uint = [](lauf_uint value) {
+        return build({0, 1},
+                     [=](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_uint(b, value); });
+    };
+
+    auto zero = build_uint(0);
+    REQUIRE(zero.size() == 1);
+    CHECK(zero[0].op() == lauf::asm_op::push);
+    CHECK(zero[0].push.value == 0);
+
+    auto small = build_uint(0x12'3456);
+    REQUIRE(small.size() == 1);
+    CHECK(small[0].op() == lauf::asm_op::push);
+    CHECK(small[0].push.value == 0x12'3456);
+
+    auto max24 = build_uint(0xFF'FFFF);
+    REQUIRE(max24.size() == 1);
+    CHECK(max24[0].op() == lauf::asm_op::push);
+    CHECK(max24[0].push.value == 0xFF'FFFF);
+
+    auto bigger24 = build_uint(0xABFF'FFFF);
+    REQUIRE(bigger24.size() == 2);
+    CHECK(bigger24[0].op() == lauf::asm_op::push);
+    CHECK(bigger24[0].push.value == 0xFF'FFFF);
+    CHECK(bigger24[1].op() == lauf::asm_op::push2);
+    CHECK(bigger24[1].push2.value == 0xAB);
+
+    auto max48 = build_uint(0xFFFF'FFFF'FFFF);
+    REQUIRE(max48.size() == 2);
+    CHECK(max48[0].op() == lauf::asm_op::push);
+    CHECK(max48[0].push.value == 0xFF'FFFF);
+    CHECK(max48[1].op() == lauf::asm_op::push2);
+    CHECK(max48[1].push2.value == 0xFF'FFFF);
+
+    auto bigger48 = build_uint(0x0123'4567'89AB'CDEF);
+    REQUIRE(bigger48.size() == 3);
+    CHECK(bigger48[0].op() == lauf::asm_op::push);
+    CHECK(bigger48[0].push.value == 0xAB'CDEF);
+    CHECK(bigger48[1].op() == lauf::asm_op::push2);
+    CHECK(bigger48[1].push2.value == 0x45'6789);
+    CHECK(bigger48[2].op() == lauf::asm_op::push3);
+    CHECK(bigger48[2].push2.value == 0x0123);
+
+    auto neg_zero = build_uint(0xFFFF'FFFF'FF00'0000);
+    REQUIRE(neg_zero.size() == 1);
+    CHECK(neg_zero[0].op() == lauf::asm_op::pushn);
+    CHECK(neg_zero[0].push.value == 0xFF'FFFF);
+
+    auto neg_small = build_uint(0xFFFF'FFFF'FF12'3456);
+    REQUIRE(neg_small.size() == 1);
+    CHECK(neg_small[0].op() == lauf::asm_op::pushn);
+    CHECK(neg_small[0].push.value == 0xED'CBA9);
+
+    auto neg_max = build_uint(0xFFFF'FFFF'FFFF'FFFF);
+    REQUIRE(neg_max.size() == 1);
+    CHECK(neg_max[0].op() == lauf::asm_op::pushn);
+    CHECK(neg_max[0].push.value == 0);
+}
+
 TEST_CASE("lauf_asm_inst_sint")
 {
     auto build_sint = [](lauf_sint value) {
@@ -229,43 +290,44 @@ TEST_CASE("lauf_asm_inst_sint")
     CHECK(neg_bigger24[2].push3.value == 0xFFFF);
 }
 
-TEST_CASE("lauf_asm_inst_uint")
+TEST_CASE("lauf_asm_inst_bytes")
 {
-    auto build_uint = [](lauf_uint value) {
-        return build({0, 1},
-                     [=](lauf_asm_module*, lauf_asm_builder* b) { lauf_asm_inst_uint(b, value); });
+    auto build_bytes = [](lauf_uint value) {
+        return build({0, 1}, [=](lauf_asm_module*, lauf_asm_builder* b) {
+            lauf_asm_inst_bytes(b, &value);
+        });
     };
 
-    auto zero = build_uint(0);
+    auto zero = build_bytes(0);
     REQUIRE(zero.size() == 1);
     CHECK(zero[0].op() == lauf::asm_op::push);
     CHECK(zero[0].push.value == 0);
 
-    auto small = build_uint(0x12'3456);
+    auto small = build_bytes(0x12'3456);
     REQUIRE(small.size() == 1);
     CHECK(small[0].op() == lauf::asm_op::push);
     CHECK(small[0].push.value == 0x12'3456);
 
-    auto max24 = build_uint(0xFF'FFFF);
+    auto max24 = build_bytes(0xFF'FFFF);
     REQUIRE(max24.size() == 1);
     CHECK(max24[0].op() == lauf::asm_op::push);
     CHECK(max24[0].push.value == 0xFF'FFFF);
 
-    auto bigger24 = build_uint(0xABFF'FFFF);
+    auto bigger24 = build_bytes(0xABFF'FFFF);
     REQUIRE(bigger24.size() == 2);
     CHECK(bigger24[0].op() == lauf::asm_op::push);
     CHECK(bigger24[0].push.value == 0xFF'FFFF);
     CHECK(bigger24[1].op() == lauf::asm_op::push2);
     CHECK(bigger24[1].push2.value == 0xAB);
 
-    auto max48 = build_uint(0xFFFF'FFFF'FFFF);
+    auto max48 = build_bytes(0xFFFF'FFFF'FFFF);
     REQUIRE(max48.size() == 2);
     CHECK(max48[0].op() == lauf::asm_op::push);
     CHECK(max48[0].push.value == 0xFF'FFFF);
     CHECK(max48[1].op() == lauf::asm_op::push2);
     CHECK(max48[1].push2.value == 0xFF'FFFF);
 
-    auto bigger48 = build_uint(0x0123'4567'89AB'CDEF);
+    auto bigger48 = build_bytes(0x0123'4567'89AB'CDEF);
     REQUIRE(bigger48.size() == 3);
     CHECK(bigger48[0].op() == lauf::asm_op::push);
     CHECK(bigger48[0].push.value == 0xAB'CDEF);
@@ -274,17 +336,17 @@ TEST_CASE("lauf_asm_inst_uint")
     CHECK(bigger48[2].op() == lauf::asm_op::push3);
     CHECK(bigger48[2].push2.value == 0x0123);
 
-    auto neg_zero = build_uint(0xFFFF'FFFF'FF00'0000);
+    auto neg_zero = build_bytes(0xFFFF'FFFF'FF00'0000);
     REQUIRE(neg_zero.size() == 1);
     CHECK(neg_zero[0].op() == lauf::asm_op::pushn);
     CHECK(neg_zero[0].push.value == 0xFF'FFFF);
 
-    auto neg_small = build_uint(0xFFFF'FFFF'FF12'3456);
+    auto neg_small = build_bytes(0xFFFF'FFFF'FF12'3456);
     REQUIRE(neg_small.size() == 1);
     CHECK(neg_small[0].op() == lauf::asm_op::pushn);
     CHECK(neg_small[0].push.value == 0xED'CBA9);
 
-    auto neg_max = build_uint(0xFFFF'FFFF'FFFF'FFFF);
+    auto neg_max = build_bytes(0xFFFF'FFFF'FFFF'FFFF);
     REQUIRE(neg_max.size() == 1);
     CHECK(neg_max[0].op() == lauf::asm_op::pushn);
     CHECK(neg_max[0].push.value == 0);
