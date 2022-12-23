@@ -91,12 +91,18 @@ lauf_asm_debug_location lauf_asm_program_find_debug_location_of_instruction(
     auto module = [&] {
         if (lauf_asm_find_function_of_instruction(program->_mod, ip) != nullptr)
             return program->_mod;
+        if (lauf_asm_find_chunk_of_instruction(program->_mod, ip) != nullptr)
+            return program->_mod;
 
         if (auto extra = lauf::try_get_extra_data(*program))
         {
             for (auto submod : extra->submodules)
+            {
                 if (lauf_asm_find_function_of_instruction(submod.mod, ip) != nullptr)
                     return submod.mod;
+                if (lauf_asm_find_chunk_of_instruction(submod.mod, ip) != nullptr)
+                    return submod.mod;
+            }
         }
 
         // We haven't found it, return main module, which then fails organically.

@@ -71,11 +71,13 @@ const char* lauf_asm_module_debug_path(lauf_asm_module* mod);
 const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* mod,
                                                         const char*            name);
 
-/// Retrieves the function that contains the instruction.
+/// Retrieves the function or chunk that contains the instruction.
 ///
 /// This is not optimized.
 const lauf_asm_function* lauf_asm_find_function_of_instruction(const lauf_asm_module* mod,
                                                                const lauf_asm_inst*   ip);
+const lauf_asm_chunk*    lauf_asm_find_chunk_of_instruction(const lauf_asm_module* mod,
+                                                            const lauf_asm_inst*   ip);
 
 /// Retrieves the associated debug location of an instruction.
 ///

@@ -103,6 +103,9 @@ struct lauf_asm_chunk : lauf::intrinsic_arena<lauf_asm_chunk>
     // arena, not as part of the module.
     lauf_asm_function* fn;
 
+    // Since a chunk is temporary, we can't store the debug locations in the module.
+    lauf::array_list<lauf::inst_debug_location> inst_debug_locations;
+
     explicit lauf_asm_chunk(lauf::arena_key key, lauf_asm_module* mod)
     : lauf::intrinsic_arena<lauf_asm_chunk>(key), next(mod->chunks),
       // We allocate the function as part of the module, to ensure that its address is closer to the

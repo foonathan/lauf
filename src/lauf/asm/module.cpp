@@ -58,23 +58,28 @@ const lauf_asm_function* lauf_asm_find_function_of_instruction(const lauf_asm_mo
     return nullptr;
 }
 
-lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_asm_module* mod,
-                                                                    const lauf_asm_inst*   ip)
+const lauf_asm_chunk* lauf_asm_find_chunk_of_instruction(const lauf_asm_module* mod,
+                                                         const lauf_asm_inst*   ip)
 {
-    if (mod->inst_debug_locations.empty())
-        return {0, 0, false};
+    for (auto chunk = mod->chunks; chunk != nullptr; chunk = chunk->next)
+        if (ip >= chunk->fn->insts && ip < chunk->fn->insts + chunk->fn->inst_count)
+            return chunk;
 
-    auto fn = lauf_asm_find_function_of_instruction(mod, ip);
-    if (fn == nullptr)
-        // The instruction is part of a chunk, not actual code.
-        return {0, 0, true};
+    return nullptr;
+}
 
+namespace
+{
+lauf_asm_debug_location find_debug_location(
+    const lauf::array_list<lauf::inst_debug_location>& locations, const lauf_asm_function* fn,
+    const lauf_asm_inst* ip)
+{
     auto fn_idx = fn->function_idx;
     auto ip_idx = uint16_t(lauf_asm_get_instruction_index(fn, ip));
 
     auto have_found_fn = false;
     auto result        = lauf_asm_debug_location{0, 0, false};
-    for (auto loc : mod->inst_debug_locations)
+    for (auto loc : locations)
     {
         if (loc.function_idx == fn_idx)
         {
@@ -89,6 +94,24 @@ lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_a
             break;
     }
     return result;
+}
+} // namespace
+
+lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_asm_module* mod,
+                                                                    const lauf_asm_inst*   ip)
+{
+    if (mod->inst_debug_locations.empty() && mod->chunks == nullptr)
+        // Early exit, no debug locations are stored anywhere.
+        return {0, 0, false};
+
+    if (auto fn = lauf_asm_find_function_of_instruction(mod, ip))
+        return find_debug_location(mod->inst_debug_locations, fn, ip);
+
+    if (auto chunk = lauf_asm_find_chunk_of_instruction(mod, ip))
+        return find_debug_location(chunk->inst_debug_locations, chunk->fn, ip);
+
+    // We don't have a debug location for it.
+    return {0, 0, false};
 }
 
 lauf_asm_global* lauf_asm_add_global(lauf_asm_module* mod, lauf_asm_global_permissions perms)

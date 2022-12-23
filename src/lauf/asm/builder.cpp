@@ -428,7 +428,11 @@ void emit_debug_location(lauf_asm_builder* b)
         {
             // We also have the initial block instruction that affects the inst_idx.
             loc.inst_idx += block.offset + 1;
-            b->mod->inst_debug_locations.push_back(*b->mod, loc);
+
+            if (b->chunk != nullptr)
+                b->chunk->inst_debug_locations.push_back(*b->chunk, loc);
+            else
+                b->mod->inst_debug_locations.push_back(*b->mod, loc);
         }
     }
 }
@@ -569,7 +573,6 @@ size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b)
 void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location loc)
 {
     LAUF_BUILD_CHECK_CUR;
-    LAUF_BUILD_ASSERT(b->chunk == nullptr, "cannot add debug locations to a chunk of code");
 
     if (b->cur->debug_locations.empty()
         || b->cur->debug_locations.back().location.line_nr != loc.line_nr
