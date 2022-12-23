@@ -114,6 +114,14 @@ struct lauf_asm_chunk : lauf::intrinsic_arena<lauf_asm_chunk>
     {
         mod->chunks = this;
     }
+
+    void reset()
+    {
+        clear();
+        inst_debug_locations.reset();
+
+        *fn = lauf_asm_function(this, fn->module, "<chunk>", lauf_asm_signature{0, 0});
+    }
 };
 
 #endif // SRC_LAUF_ASM_MODULE_HPP_INCLUDED

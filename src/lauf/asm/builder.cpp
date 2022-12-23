@@ -140,7 +140,7 @@ void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_ch
 {
     LAUF_BUILD_ASSERT(chunk->fn->module == mod, "invalid module");
     b->reset(mod, chunk->fn, chunk);
-    chunk->clear();
+    chunk->reset();
     chunk->fn->sig.output_count = uint8_t(output_count);
 }
 
