@@ -283,8 +283,15 @@ TEST_CASE("lauf_asm_link_module")
     auto fn        = lauf_asm_add_function(mod, "test", {0, 0});
 
     {
+        auto global = lauf_asm_add_global(mod, LAUF_ASM_GLOBAL_READ_WRITE);
+        lauf_asm_define_data_global(mod, global, {8, 8}, nullptr);
+
         auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
         lauf_asm_build(b, mod, fn);
+
+        lauf_asm_inst_uint(b, 42);
+        lauf_asm_inst_global_addr(b, global);
+        lauf_asm_inst_store_field(b, lauf_asm_type_value, 0);
 
         lauf_asm_inst_uint(b, 1);
         lauf_asm_inst_uint(b, 2);
@@ -311,6 +318,11 @@ TEST_CASE("lauf_asm_link_module")
         lauf_asm_inst_uint(b, 11);
         lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
 
+        lauf_asm_inst_uint(b, 42);
+        lauf_asm_inst_global_addr(b, global);
+        lauf_asm_inst_load_field(b, lauf_asm_type_value, 0);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+
         lauf_asm_inst_return(b);
 
         lauf_asm_build_finish(b);
@@ -319,6 +331,9 @@ TEST_CASE("lauf_asm_link_module")
 
     auto submod = lauf_asm_create_module("other");
     {
+        auto global = lauf_asm_add_global(submod, LAUF_ASM_GLOBAL_READ_WRITE);
+        lauf_asm_define_data_global(submod, global, {8, 8}, nullptr);
+
         auto fn_def = lauf_asm_add_function(submod, "extern_fn", {3, 5});
         auto b      = lauf_asm_create_builder(lauf_asm_default_build_options);
         lauf_asm_build(b, submod, fn_def);
@@ -328,6 +343,15 @@ TEST_CASE("lauf_asm_link_module")
         lauf_asm_inst_uint(b, 2);
         lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
         lauf_asm_inst_uint(b, 1);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+
+        lauf_asm_inst_uint(b, 11);
+        lauf_asm_inst_global_addr(b, global);
+        lauf_asm_inst_store_field(b, lauf_asm_type_value, 0);
+
+        lauf_asm_inst_uint(b, 11);
+        lauf_asm_inst_global_addr(b, global);
+        lauf_asm_inst_load_field(b, lauf_asm_type_value, 0);
         lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
 
         lauf_asm_inst_uint(b, 11);

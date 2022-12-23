@@ -68,6 +68,7 @@ struct lauf_asm_global
 struct lauf_asm_function
 {
     lauf_asm_function* next;
+    lauf_asm_module*   module;
 
     const char*        name;
     lauf_asm_signature sig;
@@ -81,7 +82,7 @@ struct lauf_asm_function
     std::uint16_t max_cstack_size = 0;
 
     explicit lauf_asm_function(lauf_asm_module* mod, const char* name, lauf_asm_signature sig)
-    : next(mod->functions), name(mod->strdup(name)), sig(sig),
+    : next(mod->functions), module(mod), name(mod->strdup(name)), sig(sig),
       function_idx(std::uint16_t(mod->functions_count))
     {
         mod->functions = this;

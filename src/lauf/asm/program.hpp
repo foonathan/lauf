@@ -46,9 +46,15 @@ struct native_global_definition
     size_t                 size;
 };
 
+struct submodule
+{
+    const lauf_asm_module* mod;
+    std::size_t            global_allocation_offset;
+};
+
 struct program_extra_data : lauf::intrinsic_arena<program_extra_data>
 {
-    lauf::array_list<const lauf_asm_module*>     submodules;
+    lauf::array_list<submodule>                  submodules;
     lauf::array_list<extern_function_definition> fn_defs;
     lauf::array_list<native_global_definition>   global_defs;
 
@@ -56,7 +62,7 @@ struct program_extra_data : lauf::intrinsic_arena<program_extra_data>
 
     void add_module(const lauf_asm_module* mod)
     {
-        submodules.push_back(*this, mod);
+        submodules.push_back(*this, {mod, 0});
     }
 
     void add_definition(extern_function_definition fn_def)
@@ -81,6 +87,14 @@ struct program_extra_data : lauf::intrinsic_arena<program_extra_data>
             if (def.global_decl == global)
                 return &def;
         return nullptr;
+    }
+
+    std::size_t global_allocation_offset_of(const lauf_asm_module* mod) const
+    {
+        for (auto submod : submodules)
+            if (submod.mod == mod)
+                return submod.global_allocation_offset;
+        return 0;
     }
 };
 

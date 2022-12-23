@@ -168,6 +168,22 @@ LAUF_NOINLINE bool grow_allocation_array(const lauf_asm_inst* ip, lauf_runtime_v
     process->memory.grow(process->vm->page_allocator);
     LAUF_VM_DISPATCH;
 }
+
+LAUF_FORCE_INLINE std::size_t get_global_allocation_idx(lauf_runtime_stack_frame* frame_ptr,
+                                                        lauf_runtime_process*     process,
+                                                        std::size_t               base_idx)
+{
+    if (auto cur_mod = frame_ptr->function->module; LAUF_LIKELY(cur_mod == process->program._mod))
+    {
+        return base_idx;
+    }
+    else
+    {
+        auto extra = lauf::try_get_extra_data(process->program);
+        assert(extra); // We have more than one module, so extra data.
+        return base_idx + extra->global_allocation_offset_of(cur_mod);
+    }
+}
 } // namespace
 
 #define LAUF_VM_EXECUTE(Name)                                                                      \
@@ -481,7 +497,9 @@ LAUF_VM_EXECUTE(push3)
 LAUF_VM_EXECUTE(global_addr)
 {
     --vstack_ptr;
-    vstack_ptr[0].as_address.allocation = ip->global_addr.value;
+
+    vstack_ptr[0].as_address.allocation
+        = get_global_allocation_idx(frame_ptr, process, ip->global_addr.value);
     vstack_ptr[0].as_address.offset     = 0;
     vstack_ptr[0].as_address.generation = 0; // Always true for globals.
 
@@ -791,7 +809,8 @@ LAUF_VM_EXECUTE(store_local_value)
 
 LAUF_VM_EXECUTE(load_global_value)
 {
-    auto memory = process->memory[ip->load_global_value.value].ptr;
+    auto allocation = get_global_allocation_idx(frame_ptr, process, ip->load_global_value.value);
+    auto memory     = process->memory[allocation].ptr;
 
     --vstack_ptr;
     vstack_ptr[0] = *reinterpret_cast<lauf_runtime_value*>(memory);
@@ -802,7 +821,8 @@ LAUF_VM_EXECUTE(load_global_value)
 
 LAUF_VM_EXECUTE(store_global_value)
 {
-    auto memory = process->memory[ip->store_global_value.value].ptr;
+    auto allocation = get_global_allocation_idx(frame_ptr, process, ip->store_global_value.value);
+    auto memory     = process->memory[allocation].ptr;
 
     *reinterpret_cast<lauf_runtime_value*>(memory) = vstack_ptr[0];
     ++vstack_ptr;

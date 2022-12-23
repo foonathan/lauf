@@ -34,8 +34,8 @@ void lauf_asm_link_modules(lauf_asm_program* program, const lauf_asm_module* con
             if (fn->insts == nullptr)
                 undef_fn.emplace(fn->name, fn);
 
-        for (auto mod : extra.submodules)
-            for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
+        for (auto submod : extra.submodules)
+            for (auto fn = submod.mod->functions; fn != nullptr; fn = fn->next)
                 if (fn->insts == nullptr)
                     undef_fn.emplace(fn->name, fn);
     }
