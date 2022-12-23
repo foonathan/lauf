@@ -80,14 +80,29 @@ void lauf_asm_define_native_function(lauf_asm_program* program, const lauf_asm_f
     extra.add_definition(lauf::extern_function_definition{fn, native_fn, user_data});
 }
 
-const char* lauf_asm_program_debug_path(const lauf_asm_program* program, const lauf_asm_function*)
+const char* lauf_asm_program_debug_path(const lauf_asm_program*, const lauf_asm_function* fn)
 {
-    return program->_mod->debug_path;
+    return fn->module->debug_path;
 }
 
 lauf_asm_debug_location lauf_asm_program_find_debug_location_of_instruction(
     const lauf_asm_program* program, const lauf_asm_inst* ip)
 {
-    return lauf_asm_find_debug_location_of_instruction(program->_mod, ip);
+    auto module = [&] {
+        if (lauf_asm_find_function_of_instruction(program->_mod, ip) != nullptr)
+            return program->_mod;
+
+        if (auto extra = lauf::try_get_extra_data(*program))
+        {
+            for (auto submod : extra->submodules)
+                if (lauf_asm_find_function_of_instruction(submod.mod, ip) != nullptr)
+                    return submod.mod;
+        }
+
+        // We haven't found it, return main module, which then fails organically.
+        return program->_mod;
+    }();
+
+    return lauf_asm_find_debug_location_of_instruction(module, ip);
 }
 
