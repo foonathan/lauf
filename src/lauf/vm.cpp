@@ -94,7 +94,9 @@ bool lauf_vm_execute(lauf_vm* vm, const lauf_asm_program* program, const lauf_ru
 bool lauf_vm_execute_oneshot(lauf_vm* vm, lauf_asm_program program, const lauf_runtime_value* input,
                              lauf_runtime_value* output)
 {
-    // lauf_asm_destroy_program() is a no-op, so we don't actually need to do anything.
-    return lauf_vm_execute(vm, &program, input, output);
+    auto result = lauf_vm_execute(vm, &program, input, output);
+    if (program._extra_data != nullptr)
+        lauf_asm_destroy_program(program);
+    return result;
 }
 

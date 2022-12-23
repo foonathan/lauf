@@ -4,6 +4,7 @@
 #include <lauf/asm/program.h>
 
 #include <lauf/asm/module.hpp>
+#include <lauf/asm/program.hpp>
 
 lauf_asm_program lauf_asm_create_program(const lauf_asm_module* mod, const lauf_asm_function* entry)
 {
@@ -16,32 +17,24 @@ lauf_asm_program lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
     return lauf_asm_create_program(mod, chunk->fn);
 }
 
-void lauf_asm_destroy_program(lauf_asm_program)
+void lauf_asm_destroy_program(lauf_asm_program program)
 {
-    // NOTE: If this gets a body, it needs to be called in `lauf_vm_execute_oneshot()`.
+    if (auto extra = lauf::try_get_extra_data(program))
+        lauf::program_extra_data::destroy(extra);
 }
 
-void lauf_asm_define_native_global(lauf_asm_native* result, lauf_asm_program* program,
-                                   const lauf_asm_global* global, void* ptr, size_t size)
+void lauf_asm_define_native_global(lauf_asm_program* program, const lauf_asm_global* global,
+                                   void* ptr, size_t size)
 {
-    result->_next = program->_native_defs;
-    result->_decl = global;
-    result->_ptr1 = ptr;
-    result->_ptr2 = reinterpret_cast<void*>(std::uintptr_t(size)); // NOLINT
-
-    program->_native_defs = result;
+    auto& extra = lauf::get_extra_data(program);
+    extra.add_definition(lauf::native_global_definition{global, ptr, size});
 }
 
-void lauf_asm_define_native_function(lauf_asm_native* result, lauf_asm_program* program,
-                                     const lauf_asm_function* fn,
+void lauf_asm_define_native_function(lauf_asm_program* program, const lauf_asm_function* fn,
                                      lauf_asm_native_function native_fn, void* user_data)
 {
-    result->_next = program->_native_defs;
-    result->_decl = fn;
-    result->_ptr1 = reinterpret_cast<void*>(native_fn);
-    result->_ptr2 = user_data;
-
-    program->_native_defs = result;
+    auto& extra = lauf::get_extra_data(program);
+    extra.add_definition(lauf::native_function_definition{fn, native_fn, user_data});
 }
 
 const char* lauf_asm_program_debug_path(const lauf_asm_program* program, const lauf_asm_function*)

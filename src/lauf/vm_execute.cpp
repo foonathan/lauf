@@ -6,6 +6,7 @@
 #include <cassert>
 #include <lauf/asm/builder.h>
 #include <lauf/asm/module.hpp>
+#include <lauf/asm/program.hpp>
 #include <lauf/runtime/builtin.h>
 #include <lauf/vm_execute.hpp>
 #include <utility>
@@ -73,11 +74,9 @@ LAUF_NOINLINE bool call_native_function(const lauf_asm_inst* ip, lauf_runtime_va
         = lauf::uncompress_pointer_offset<lauf_asm_function>(frame_ptr->function, ip->call.offset);
     assert(ip->op() == lauf::asm_op::call && callee->insts == nullptr);
 
-    auto definition = [&]() -> const lauf_asm_native* {
-        for (auto def = process->program._native_defs; def != nullptr; def = def->_next)
-            if (def->_decl == callee)
-                return def;
-        return nullptr;
+    auto definition = [&] {
+        auto extra = lauf::try_get_extra_data(process->program);
+        return extra == nullptr ? nullptr : extra->find_definition(callee);
     }();
     if (LAUF_UNLIKELY(definition == nullptr))
         LAUF_DO_PANIC("calling undefined function");
@@ -98,8 +97,7 @@ LAUF_NOINLINE bool call_native_function(const lauf_asm_inst* ip, lauf_runtime_va
     vstack_ptr -= callee->sig.output_count;
 
     // Call the function.
-    auto native_callee = reinterpret_cast<lauf_asm_native_function>(definition->_ptr1);
-    if (!native_callee(definition->_ptr2, process, input, vstack_ptr))
+    if (!definition->native_fn(definition->user_data, process, input, vstack_ptr))
         return false;
 
     // We need to reverse the order of output arguments.

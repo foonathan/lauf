@@ -303,8 +303,7 @@ TEST_CASE("lauf_asm_define_native_global")
 
     auto               program = lauf_asm_create_program(mod, fn);
     lauf_runtime_value global_val;
-    lauf_asm_native    global_def;
-    lauf_asm_define_native_global(&global_def, &program, global, &global_val, sizeof(global_val));
+    lauf_asm_define_native_global(&program, global, &global_val, sizeof(global_val));
 
     global_val.as_uint = 11;
 
@@ -358,10 +357,9 @@ TEST_CASE("lauf_asm_define_native_function")
         lauf_asm_destroy_builder(b);
     }
 
-    auto            program = lauf_asm_create_program(mod, fn);
-    lauf_asm_native native_fn_def;
+    auto program = lauf_asm_create_program(mod, fn);
     lauf_asm_define_native_function(
-        &native_fn_def, &program, native_fn,
+        &program, native_fn,
         [](void* user_data, lauf_runtime_process* process, const lauf_runtime_value* input,
            lauf_runtime_value* output) {
             CHECK(input[0].as_uint == 1);

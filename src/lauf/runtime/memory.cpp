@@ -4,6 +4,7 @@
 #include <lauf/runtime/memory.hpp>
 
 #include <lauf/asm/module.hpp>
+#include <lauf/asm/program.hpp>
 #include <lauf/runtime/process.hpp>
 #include <lauf/vm.hpp>
 
@@ -21,18 +22,16 @@ lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program
 
     if (!global.has_definition())
     {
-        auto definition = [&]() -> const lauf_asm_native* {
-            for (auto def = program._native_defs; def != nullptr; def = def->_next)
-                if (def->_decl == &global)
-                    return def;
-            return nullptr;
+        auto definition = [&] {
+            auto extra = lauf::try_get_extra_data(program);
+            return extra == nullptr ? nullptr : extra->find_definition(&global);
         }();
 
         if (definition != nullptr)
         {
-            result.ptr = definition->_ptr1;
+            result.ptr = definition->ptr;
             // If bigger than 32bit, only the lower parts are addressable.
-            result.size = std::uint32_t(reinterpret_cast<std::uintptr_t>(definition->_ptr2));
+            result.size = std::uint32_t(definition->size);
         }
         else
         {
