@@ -278,9 +278,8 @@ TEST_CASE("lauf_vm_start_process")
 
 TEST_CASE("lauf_asm_link_module")
 {
-    auto mod       = lauf_asm_create_module("test");
-    auto extern_fn = lauf_asm_add_function(mod, "extern_fn", {3, 5});
-    auto fn        = lauf_asm_add_function(mod, "test", {0, 0});
+    auto mod = lauf_asm_create_module("test");
+    auto fn  = lauf_asm_add_function(mod, "test", {0, 0});
 
     {
         auto global = lauf_asm_add_global(mod, LAUF_ASM_GLOBAL_READ_WRITE);
@@ -299,10 +298,11 @@ TEST_CASE("lauf_asm_link_module")
 
         SUBCASE("direct")
         {
-            lauf_asm_inst_call(b, extern_fn);
+            lauf_asm_inst_call_extern(b, "extern_fn", {3, 5});
         }
         SUBCASE("indirect")
         {
+            auto extern_fn = lauf_asm_add_function(mod, "extern_fn", {3, 5});
             lauf_asm_inst_function_addr(b, extern_fn);
             lauf_asm_inst_call_indirect(b, {3, 5});
         }

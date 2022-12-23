@@ -837,6 +837,26 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     }
 }
 
+lauf_asm_function* lauf_asm_inst_call_extern(lauf_asm_builder* b, const char* name,
+                                             lauf_asm_signature sig)
+{
+    if (auto fn = lauf_asm_find_function_by_name(b->mod, name))
+    {
+        LAUF_BUILD_ASSERT(fn->insts == nullptr, "function with that name already defined");
+        LAUF_BUILD_ASSERT(fn->sig.input_count == sig.input_count
+                              && fn->sig.output_count == sig.output_count,
+                          "function with that name has a different signature");
+        lauf_asm_inst_call(b, fn);
+        return const_cast<lauf_asm_function*>(fn);
+    }
+    else
+    {
+        fn = lauf_asm_add_function(b->mod, name, sig);
+        lauf_asm_inst_call(b, fn);
+        return const_cast<lauf_asm_function*>(fn);
+    }
+}
+
 void lauf_asm_inst_panic_if(lauf_asm_builder* b)
 {
     LAUF_BUILD_CHECK_CUR;

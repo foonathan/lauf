@@ -154,6 +154,16 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig);
 /// Signature: in_N ... in_0 => out_M ... out_0
 void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee);
 
+/// Calls a function that is defined in a different module or natively.
+///
+/// It will declare a function with the specified name, if a declaration doesn't already exist,
+/// then adds a call instruction.
+/// It returns the function it just declared.
+///
+/// Signature: in_N ... in_0 => out_M ... out_0
+lauf_asm_function* lauf_asm_inst_call_extern(lauf_asm_builder* b, const char* name,
+                                             lauf_asm_signature sig);
+
 /// If a condition is non-zero, invokes the panic handler with a message, and terminates execution.
 ///
 /// Signature: condition:bool msg:address => _
