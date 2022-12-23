@@ -130,6 +130,7 @@ void lauf_asm_destroy_builder(lauf_asm_builder* b)
 
 void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function* fn)
 {
+    LAUF_BUILD_ASSERT(fn->module == mod, "invalid module");
     LAUF_BUILD_ASSERT(!lauf_asm_function_has_definition(fn), "function already has a definition");
     b->reset(mod, fn, nullptr);
 }
@@ -137,6 +138,7 @@ void lauf_asm_build(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_function
 void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_chunk* chunk,
                           size_t output_count)
 {
+    LAUF_BUILD_ASSERT(chunk->fn->module == mod, "invalid module");
     b->reset(mod, chunk->fn, chunk);
     chunk->clear();
     chunk->fn->sig.output_count = uint8_t(output_count);

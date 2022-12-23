@@ -10,6 +10,7 @@
 
 lauf_asm_program lauf_asm_create_program(const lauf_asm_module* mod, const lauf_asm_function* entry)
 {
+    assert(entry->module == mod);
     return {mod, entry, nullptr};
 }
 
