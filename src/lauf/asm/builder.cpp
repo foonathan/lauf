@@ -12,7 +12,7 @@
 
 void lauf_asm_builder::error(const char* context, const char* msg)
 {
-    options.error_handler(fn->name, context, msg);
+    options.error_handler(fn == nullptr ? "<global>" : fn->name, context, msg);
     errored = true;
 }
 
