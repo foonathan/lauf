@@ -4,6 +4,7 @@
 #ifndef SRC_LAUF_ASM_PROGRAM_HPP_INCLUDED
 #define SRC_LAUF_ASM_PROGRAM_HPP_INCLUDED
 
+#include <lauf/asm/module.hpp>
 #include <lauf/asm/program.h>
 #include <lauf/support/arena.hpp>
 #include <lauf/support/array_list.hpp>
@@ -12,9 +13,30 @@ namespace lauf
 {
 struct native_function_definition
 {
-    const lauf_asm_function* fn_decl;
-    lauf_asm_native_function native_fn;
+    lauf_asm_native_function fn;
     void*                    user_data;
+};
+
+struct extern_function_definition
+{
+    const lauf_asm_function* fn_decl;
+    bool                     is_native;
+    union
+    {
+        native_function_definition native;
+        const lauf_asm_function*   external;
+    };
+
+    extern_function_definition(const lauf_asm_function* fn_decl, lauf_asm_native_function native_fn,
+                               void* user_data)
+    : fn_decl(fn_decl), is_native(true), native{native_fn, user_data}
+    {}
+    extern_function_definition(const lauf_asm_function* fn_decl, const lauf_asm_function* extern_fn)
+    : fn_decl(fn_decl), is_native(false), external(extern_fn)
+    {
+        assert(fn_decl->sig.input_count == extern_fn->sig.input_count);
+        assert(fn_decl->sig.output_count == extern_fn->sig.output_count);
+    }
 };
 
 struct native_global_definition
@@ -26,12 +48,18 @@ struct native_global_definition
 
 struct program_extra_data : lauf::intrinsic_arena<program_extra_data>
 {
-    lauf::array_list<native_function_definition> fn_defs;
+    lauf::array_list<const lauf_asm_module*>     submodules;
+    lauf::array_list<extern_function_definition> fn_defs;
     lauf::array_list<native_global_definition>   global_defs;
 
     program_extra_data(lauf::arena_key key) : lauf::intrinsic_arena<program_extra_data>(key) {}
 
-    void add_definition(native_function_definition fn_def)
+    void add_module(const lauf_asm_module* mod)
+    {
+        submodules.push_back(*this, mod);
+    }
+
+    void add_definition(extern_function_definition fn_def)
     {
         fn_defs.push_back(*this, fn_def);
     }
@@ -40,7 +68,7 @@ struct program_extra_data : lauf::intrinsic_arena<program_extra_data>
         global_defs.push_back(*this, global_def);
     }
 
-    const native_function_definition* find_definition(const lauf_asm_function* fn) const
+    const extern_function_definition* find_definition(const lauf_asm_function* fn) const
     {
         for (auto& def : fn_defs)
             if (def.fn_decl == fn)

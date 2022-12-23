@@ -276,6 +276,82 @@ TEST_CASE("lauf_vm_start_process")
     lauf_asm_destroy_module(mod);
 }
 
+TEST_CASE("lauf_asm_link_module")
+{
+    auto mod       = lauf_asm_create_module("test");
+    auto extern_fn = lauf_asm_add_function(mod, "extern_fn", {3, 5});
+    auto fn        = lauf_asm_add_function(mod, "test", {0, 0});
+
+    {
+        auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
+        lauf_asm_build(b, mod, fn);
+
+        lauf_asm_inst_uint(b, 1);
+        lauf_asm_inst_uint(b, 2);
+        lauf_asm_inst_uint(b, 3);
+
+        SUBCASE("direct")
+        {
+            lauf_asm_inst_call(b, extern_fn);
+        }
+        SUBCASE("indirect")
+        {
+            lauf_asm_inst_function_addr(b, extern_fn);
+            lauf_asm_inst_call_indirect(b, {3, 5});
+        }
+
+        lauf_asm_inst_uint(b, 55);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 44);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 33);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 22);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 11);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+
+        lauf_asm_inst_return(b);
+
+        lauf_asm_build_finish(b);
+        lauf_asm_destroy_builder(b);
+    }
+
+    auto submod = lauf_asm_create_module("other");
+    {
+        auto fn_def = lauf_asm_add_function(submod, "extern_fn", {3, 5});
+        auto b      = lauf_asm_create_builder(lauf_asm_default_build_options);
+        lauf_asm_build(b, submod, fn_def);
+
+        lauf_asm_inst_uint(b, 3);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 2);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+        lauf_asm_inst_uint(b, 1);
+        lauf_asm_inst_call_builtin(b, lauf_lib_test_assert_eq);
+
+        lauf_asm_inst_uint(b, 11);
+        lauf_asm_inst_uint(b, 22);
+        lauf_asm_inst_uint(b, 33);
+        lauf_asm_inst_uint(b, 44);
+        lauf_asm_inst_uint(b, 55);
+
+        lauf_asm_inst_return(b);
+
+        lauf_asm_build_finish(b);
+        lauf_asm_destroy_builder(b);
+    }
+
+    auto program = lauf_asm_create_program(mod, fn);
+    lauf_asm_link_module(&program, submod);
+
+    auto vm = lauf_create_vm(lauf_default_vm_options);
+    CHECK(lauf_vm_execute_oneshot(vm, program, nullptr, nullptr));
+    lauf_destroy_vm(vm);
+
+    lauf_asm_destroy_module(mod);
+}
+
 TEST_CASE("lauf_asm_define_native_global")
 {
     auto mod    = lauf_asm_create_module("test");

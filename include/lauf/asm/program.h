@@ -38,6 +38,11 @@ lauf_asm_program lauf_asm_create_program(const lauf_asm_module*   mod,
 lauf_asm_program lauf_asm_create_program_from_chunk(const lauf_asm_module* mod,
                                                     const lauf_asm_chunk*  chunk);
 
+/// Links other modules to the program.
+void lauf_asm_link_modules(lauf_asm_program* program, const lauf_asm_module* const* mods,
+                           size_t size);
+void lauf_asm_link_module(lauf_asm_program* program, const lauf_asm_module* mod);
+
 void lauf_asm_destroy_program(lauf_asm_program program);
 
 //=== native definition ===//
