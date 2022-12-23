@@ -89,8 +89,9 @@ struct lauf_asm_function
         ++mod->functions_count;
     }
 
-    explicit lauf_asm_function(const char* name, lauf_asm_signature sig)
-    : next(nullptr), name(name), sig(sig)
+    explicit lauf_asm_function(lauf_asm_chunk*, lauf_asm_module* mod, const char* name,
+                               lauf_asm_signature sig)
+    : next(nullptr), module(mod), name(name), sig(sig)
     {}
 };
 
@@ -106,7 +107,7 @@ struct lauf_asm_chunk : lauf::intrinsic_arena<lauf_asm_chunk>
     : lauf::intrinsic_arena<lauf_asm_chunk>(key), next(mod->chunks),
       // We allocate the function as part of the module, to ensure that its address is closer to the
       // addresses of the functions it calls. This is required by the offsets.
-      fn(mod->construct<lauf_asm_function>("<chunk>", lauf_asm_signature{0, 0}))
+      fn(mod->construct<lauf_asm_function>(this, mod, "<chunk>", lauf_asm_signature{0, 0}))
     {
         mod->chunks = this;
     }
