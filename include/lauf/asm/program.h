@@ -70,6 +70,8 @@ const char* lauf_asm_program_debug_path(const lauf_asm_program*  program,
 lauf_asm_debug_location lauf_asm_program_find_debug_location_of_instruction(
     const lauf_asm_program* program, const lauf_asm_inst* ip);
 
+const lauf_asm_function* lauf_asm_program_entry_function(const lauf_asm_program* program);
+
 LAUF_HEADER_END
 
 #endif // LAUF_ASM_PROGRAM_H_INCLUDED

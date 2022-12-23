@@ -106,3 +106,8 @@ lauf_asm_debug_location lauf_asm_program_find_debug_location_of_instruction(
     return lauf_asm_find_debug_location_of_instruction(module, ip);
 }
 
+const lauf_asm_function* lauf_asm_program_entry_function(const lauf_asm_program* program)
+{
+    return program->_entry;
+}
+
