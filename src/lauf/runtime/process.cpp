@@ -181,31 +181,10 @@ bool lauf_runtime_call(lauf_runtime_process* process, const lauf_asm_function* f
     auto cur_fiber     = process->cur_fiber;
     process->cur_fiber = nullptr;
 
-    // Create a new fiber.
-    auto fiber = lauf_runtime_fiber::create(process, fn);
-
-    // Resume the fiber at least once.
-    auto success = false;
-    if (LAUF_LIKELY(lauf_runtime_resume(process, fiber, input, fn->sig.input_count, output,
-                                        fn->sig.output_count)))
-    {
-        success = true;
-
-        // Then we repeatedly resume the current fiber until it is done.
-        while (process->cur_fiber->status != lauf_runtime_fiber::done)
-        {
-            if (!lauf_runtime_resume(process, process->cur_fiber, nullptr, 0, output,
-                                     fn->sig.output_count))
-            {
-                success = false;
-                break;
-            }
-        }
-    }
-
-    // Destroy the fiber.
-    // If it paniced, it will also cancel it.
-    lauf_runtime_destroy_fiber(process, fiber);
+    // Create a new fiber and resume it until completion.
+    auto fiber   = lauf_runtime_fiber::create(process, fn);
+    auto success = lauf_runtime_resume_until_completion(process, fiber, input, fn->sig.input_count,
+                                                        output, fn->sig.output_count);
 
     // Restore processor state.
     process->regs      = regs;
@@ -282,6 +261,36 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
             }
         }
     }
+    return success;
+}
+
+bool lauf_runtime_resume_until_completion(lauf_runtime_process* process, lauf_runtime_fiber* fiber,
+                                          const lauf_runtime_value* input, size_t input_count,
+                                          lauf_runtime_value* output, size_t output_count)
+{
+    auto success = false;
+
+    // Resume the fiber at least once.
+    if (LAUF_LIKELY(lauf_runtime_resume(process, fiber, input, input_count, output, output_count)))
+    {
+        success = true;
+
+        // Then we repeatedly resume the current fiber until it is done.
+        while (process->cur_fiber->status != lauf_runtime_fiber::done)
+        {
+            if (LAUF_UNLIKELY(!lauf_runtime_resume(process, process->cur_fiber, nullptr, 0, output,
+                                                   output_count)))
+            {
+                success = false;
+                break;
+            }
+        }
+    }
+
+    // Destroy the fiber.
+    // If it paniced, it will also cancel it.
+    lauf_runtime_destroy_fiber(process, fiber);
+
     return success;
 }
 

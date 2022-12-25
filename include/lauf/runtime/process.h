@@ -96,6 +96,19 @@ bool lauf_runtime_resume(lauf_runtime_process* process, lauf_runtime_fiber* fibe
                          const lauf_runtime_value* input, size_t input_count,
                          lauf_runtime_value* output, size_t output_count);
 
+/// Resumes the specified fiber in a loop until completion.
+///
+/// It calls `lauf_runtime_resume()` to resume the fiber once.
+/// If it returns and the current fiber (which may have changed) is not done, repeatedly calls it
+/// again in a loop, until the current fiber is done. The final current fiber is then destroyed.
+///
+/// Depending on the fiber transfers, it does not mean that all fibers of the process are done.
+///
+/// It returns false if any fiber has paniced (at which point it stops resuming), true otherwise.
+bool lauf_runtime_resume_until_completion(lauf_runtime_process* process, lauf_runtime_fiber* fiber,
+                                          const lauf_runtime_value* input, size_t input_count,
+                                          lauf_runtime_value* output, size_t output_count);
+
 /// Destroys a fiber.
 ///
 /// If the fiber is not yet done, it will cancel it.
