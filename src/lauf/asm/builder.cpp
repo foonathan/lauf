@@ -139,9 +139,9 @@ void lauf_asm_build_chunk(lauf_asm_builder* b, lauf_asm_module* mod, lauf_asm_ch
                           lauf_asm_signature sig)
 {
     LAUF_BUILD_ASSERT(chunk->fn->module == mod, "invalid module");
-    b->reset(mod, chunk->fn, chunk);
     chunk->reset();
     chunk->fn->sig = sig;
+    b->reset(mod, chunk->fn, chunk);
 }
 
 namespace
