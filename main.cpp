@@ -125,7 +125,7 @@ lauf_asm_program create_program(lauf_asm_module* mod)
     auto chunk = lauf_asm_create_chunk(mod);
 
     auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
-    lauf_asm_build_chunk(b, mod, chunk, 1);
+    lauf_asm_build_chunk(b, mod, chunk, {0, 1});
     lauf_asm_inst_uint(b, 3);
     lauf_asm_inst_call(b, lauf_asm_find_function_by_name(mod, "fib"));
     lauf_asm_inst_return(b);

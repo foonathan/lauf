@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
     b.minEpochTime(std::chrono::milliseconds(500));
     auto benchmark = [&](const char* name, auto fn) {
         auto runner = [&] {
-            lauf_asm_build_chunk(builder, mod, chunk, 1);
+            lauf_asm_build_chunk(builder, mod, chunk, {0, 1});
             fn(builder);
             lauf_asm_build_finish(builder);
             auto program = lauf_asm_create_program_from_chunk(mod, chunk);
