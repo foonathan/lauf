@@ -185,6 +185,9 @@ std::size_t estimate_inst_count(const char* context, lauf_asm_builder* b)
                 b->error(context, "unterminated block");
                 break;
 
+            case lauf_asm_block::terminated:
+                break;
+
             case lauf_asm_block::return_:
             case lauf_asm_block::panic:
                 ++result;
@@ -292,6 +295,7 @@ LAUF_NOINLINE lauf_asm_inst* emit_body(lauf_asm_inst* ip, lauf_asm_builder* b,
         switch (block->terminator)
         {
         case lauf_asm_block::unterminated:
+        case lauf_asm_block::terminated:
             break;
 
         case lauf_asm_block::return_:
@@ -386,6 +390,7 @@ lauf_asm_inst* emit_linear_body(lauf_asm_inst* ip, lauf_asm_builder* b, const la
     switch (entry->terminator)
     {
     case lauf_asm_block::unterminated:
+    case lauf_asm_block::terminated:
         break;
 
     case lauf_asm_block::return_:
@@ -837,6 +842,12 @@ void lauf_asm_inst_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_functi
     else
     {
         add_call_builtin(b, callee);
+    }
+
+    if ((callee.flags & LAUF_RUNTIME_BUILTIN_ALWAYS_PANIC) != 0)
+    {
+        b->cur->terminator = lauf_asm_block::terminated;
+        b->cur             = nullptr;
     }
 }
 

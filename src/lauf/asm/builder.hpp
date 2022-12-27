@@ -150,6 +150,7 @@ struct lauf_asm_block
     enum
     {
         unterminated,
+        terminated,
         return_,
         jump,
         branch_ne_eq,

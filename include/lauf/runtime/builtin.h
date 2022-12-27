@@ -32,6 +32,9 @@ typedef enum lauf_runtime_builtin_flags
     /// The builtin can be constant folded.
     /// Builtin can only access `vstack_ptr`; everything else is `nullptr`.
     LAUF_RUNTIME_BUILTIN_CONSTANT_FOLD = 1 << 3,
+    /// The builtin will always panic.
+    /// Calls to it are treated as a block terminator.
+    LAUF_RUNTIME_BUILTIN_ALWAYS_PANIC = 1 << 4,
 } lauf_runtime_builtin_flags;
 
 /// Must be tail-called when a buitlin finishes succesfully.
