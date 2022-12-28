@@ -659,3 +659,4 @@ TEST_CASE("lauf_asm_inst_aggregate_member")
     CHECK(third[0].op() == lauf::asm_op::aggregate_member);
     CHECK(third[0].aggregate_member.value == 16);
 }
+

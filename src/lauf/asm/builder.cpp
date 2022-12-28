@@ -1270,6 +1270,11 @@ void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t fi
                                                           addr->as_constant.as_address.allocation));
         b->cur->vstack.push(*b, 1);
     }
+    else if (type.layout.size == 0 && type.load_fn == nullptr)
+    {
+        add_pop_top_n(b, 1);
+        lauf_asm_inst_uint(b, 0);
+    }
     else
     {
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_const, type.layout));
@@ -1308,6 +1313,11 @@ void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t f
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(store_global_value,
                                                           addr->as_constant.as_address.allocation));
         LAUF_BUILD_ASSERT(b->cur->vstack.pop(1), "missing value");
+    }
+    else if (type.layout.size == 0 && type.store_fn == nullptr)
+    {
+        LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing value");
+        add_pop_top_n(b, 2);
     }
     else
     {
