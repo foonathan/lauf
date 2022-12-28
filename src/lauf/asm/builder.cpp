@@ -239,6 +239,10 @@ lauf_asm_inst* emit_prologue(lauf_asm_inst* ip, lauf_asm_builder* b)
             if (local.layout.alignment > alignof(void*))
                 space += local.layout.alignment;
 
+            if (space == 0)
+                // If they don't take up space, we don't need to issue an instruction.
+                continue;
+
             // Note that this will simply bump the stack space and not compute the correct
             // offset for over-aligned data. However, we do not promote over-aligned locals to
             // load/store_local_value, so if they're accessed, they have their address taken.
