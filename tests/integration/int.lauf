@@ -390,7 +390,7 @@ function @uabs() {
     return;
 }
 
-function @s8() {
+function @int_s8() {
     local %i : $lauf.int.S8;
 
     sint 11; $lauf.test.dynamic; $lauf.int.s8_overflow; uint 0; $lauf.test.assert_eq;
@@ -407,7 +407,7 @@ function @s8() {
 
     return;
 }
-function @s16() {
+function @int_s16() {
     local %i : $lauf.int.S16;
 
     sint 11; $lauf.test.dynamic; $lauf.int.s16_overflow; uint 0; $lauf.test.assert_eq;
@@ -424,7 +424,7 @@ function @s16() {
 
     return;
 }
-function @s32() {
+function @int_s32() {
     local %i : $lauf.int.S32;
 
     sint 11; $lauf.test.dynamic; $lauf.int.s32_overflow; uint 0; $lauf.test.assert_eq;
@@ -441,7 +441,7 @@ function @s32() {
 
     return;
 }
-function @s64() {
+function @int_s64() {
     local %i : $lauf.int.S64;
 
     sint 11; $lauf.test.dynamic; $lauf.int.s64_overflow; uint 0; $lauf.test.assert_eq;
@@ -451,7 +451,7 @@ function @s64() {
     return;
 }
 
-function @u8() {
+function @int_u8() {
     local %i : $lauf.int.U8;
 
     uint 11; $lauf.test.dynamic; $lauf.int.u8_overflow; uint 0; $lauf.test.assert_eq;
@@ -464,7 +464,7 @@ function @u8() {
 
     return;
 }
-function @u16() {
+function @int_u16() {
     local %i : $lauf.int.U16;
 
     uint 11; $lauf.test.dynamic; $lauf.int.u16_overflow; uint 0; $lauf.test.assert_eq;
@@ -477,7 +477,7 @@ function @u16() {
 
     return;
 }
-function @u32() {
+function @int_u32() {
     local %i : $lauf.int.U32;
 
     uint 11; $lauf.test.dynamic; $lauf.int.u32_overflow; uint 0; $lauf.test.assert_eq;
@@ -490,7 +490,7 @@ function @u32() {
 
     return;
 }
-function @u64() {
+function @int_u64() {
     local %i : $lauf.int.U64;
 
     uint 11; $lauf.test.dynamic; $lauf.int.u32_overflow; uint 0; $lauf.test.assert_eq;
@@ -515,8 +515,8 @@ function @main(0 => 1) export {
         call @stou_panic; call @utos_panic;
         call @sabs_wrap; call @sabs_panic; call @uabs;
 
-        call @s8; call @s16; call @s32; call @s64;
-        call @u8; call @u16; call @u32; call @u64;
+        call @int_s8; call @int_s16; call @int_s32; call @int_s64;
+        call @int_u8; call @int_u16; call @int_u32; call @int_u64;
 
         $lauf.platform.vm;
         branch %vm() %exit(0 => 1);
