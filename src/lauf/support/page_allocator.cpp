@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Jonathan Müller and lauf contributors
+// Copyright (C) 2022-2023 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
 #include <lauf/support/page_allocator.hpp>
@@ -7,7 +7,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-//#define LAUF_PAGE_ALLOCATOR_LOG
+// #define LAUF_PAGE_ALLOCATOR_LOG
 #ifdef LAUF_PAGE_ALLOCATOR_LOG
 
 #    include <cstdio>

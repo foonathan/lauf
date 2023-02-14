@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Jonathan Müller and lauf contributors
+// Copyright (C) 2022-2023 Jonathan Müller and lauf contributors
 // SPDX-License-Identifier: BSL-1.0
 
 #include <lauf/frontend/text.h>
@@ -648,18 +648,18 @@ struct instruction
     static constexpr auto rule = [] {
         auto nested = dsl::square_bracketed.list(dsl::recurse<instruction>);
 
-        auto single
-            = dsl::p<inst_return> | dsl::p<inst_panic> | dsl::p<inst_panic_if>             //
-              | dsl::p<inst_jump> | dsl::p<inst_branch>                                    //
-              | dsl::p<inst_sint> | dsl::p<inst_uint>                                      //
-              | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr>     //
-              | dsl::p<inst_function_addr> | dsl::p<inst_layout> | dsl::p<inst_cc>         //
-              | dsl::p<inst_stack_op>                                                      //
-              | dsl::p<inst_call> | dsl::p<inst_call_indirect> | dsl::p<inst_call_builtin> //
-              | dsl::p<inst_fiber_resume> | dsl::p<inst_fiber_transfer>                    //
-              | dsl::p<inst_fiber_suspend>                                                 //
-              | dsl::p<inst_array_element> | dsl::p<inst_aggregate_member>                 //
-              | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
+        auto single = dsl::p<inst_return> | dsl::p<inst_panic> | dsl::p<inst_panic_if>         //
+                      | dsl::p<inst_jump> | dsl::p<inst_branch>                                //
+                      | dsl::p<inst_sint> | dsl::p<inst_uint>                                  //
+                      | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr> //
+                      | dsl::p<inst_function_addr> | dsl::p<inst_layout> | dsl::p<inst_cc>     //
+                      | dsl::p<inst_stack_op>                                                  //
+                      | dsl::p<inst_call> | dsl::p<inst_call_indirect>
+                      | dsl::p<inst_call_builtin>                                  //
+                      | dsl::p<inst_fiber_resume> | dsl::p<inst_fiber_transfer>    //
+                      | dsl::p<inst_fiber_suspend>                                 //
+                      | dsl::p<inst_array_element> | dsl::p<inst_aggregate_member> //
+                      | dsl::p<inst_load_field> | dsl::p<inst_store_field>;
 
         return nested | dsl::else_ >> dsl::p<location> + single + dsl::semicolon;
     }();
@@ -702,9 +702,9 @@ struct block
 
 struct local_decl
 {
-    static constexpr auto rule
-        = LAUF_KEYWORD("local") >> dsl::position + dsl::p<local_identifier> + dsl::colon
-                                       + dsl::p<layout_expr> + dsl::semicolon;
+    static constexpr auto rule = LAUF_KEYWORD("local") >> dsl::position + dsl::p<local_identifier>
+                                                              + dsl::colon + dsl::p<layout_expr>
+                                                              + dsl::semicolon;
     static constexpr auto value = callback(
         [](parse_state& state, auto pos, const std::string& name, lauf_asm_layout layout) {
             auto local = lauf_asm_build_local(state.builder, layout);
@@ -764,9 +764,9 @@ struct function_decl
                                       });
     };
 
-    static constexpr auto rule
-        = LAUF_KEYWORD("function")
-          >> dsl::p<header> + dsl::if_(dsl::p<export_>) + (dsl::semicolon | dsl::p<body>);
+    static constexpr auto rule = LAUF_KEYWORD("function") >> dsl::p<header>
+                                                                 + dsl::if_(dsl::p<export_>)
+                                                                 + (dsl::semicolon | dsl::p<body>);
     static constexpr auto value = lexy::forward<void>;
 };
 

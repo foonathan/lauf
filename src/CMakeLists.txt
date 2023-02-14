@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Jonathan Müller and lauf contributors
+# Copyright (C) 2022-2023 Jonathan Müller and lauf contributors
 # SPDX-License-Identifier: BSL-1.0
 
 get_filename_component(include_dir ${CMAKE_CURRENT_SOURCE_DIR}/../include/lauf ABSOLUTE)
