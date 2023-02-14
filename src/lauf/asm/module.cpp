@@ -6,6 +6,14 @@
 #include <lauf/asm/type.h>
 #include <string_view>
 
+const lauf_asm_debug_location lauf_asm_debug_location_null = {uint16_t(-1), 0, 0, false};
+
+bool lauf_asm_debug_location_eq(lauf_asm_debug_location lhs, lauf_asm_debug_location rhs)
+{
+    return lhs.file_id == rhs.file_id && lhs.line_nr == rhs.line_nr
+           && lhs.column_nr == rhs.column_nr && lhs.is_synthetic == rhs.is_synthetic;
+}
+
 lauf_asm_module::~lauf_asm_module()
 {
     auto chunk = chunks;
@@ -78,7 +86,7 @@ lauf_asm_debug_location find_debug_location(
     auto ip_idx = uint16_t(lauf_asm_get_instruction_index(fn, ip));
 
     auto have_found_fn = false;
-    auto result        = lauf_asm_debug_location{0, 0, false};
+    auto result        = lauf_asm_debug_location_null;
     for (auto loc : locations)
     {
         if (loc.function_idx == fn_idx)
@@ -102,7 +110,7 @@ lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_a
 {
     if (mod->inst_debug_locations.empty() && mod->chunks == nullptr)
         // Early exit, no debug locations are stored anywhere.
-        return {0, 0, false};
+        return lauf_asm_debug_location_null;
 
     if (auto fn = lauf_asm_find_function_of_instruction(mod, ip))
         return find_debug_location(mod->inst_debug_locations, fn, ip);
@@ -111,7 +119,7 @@ lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_a
         return find_debug_location(chunk->inst_debug_locations, chunk->fn, ip);
 
     // We don't have a debug location for it.
-    return {0, 0, false};
+    return lauf_asm_debug_location_null;
 }
 
 lauf_asm_global* lauf_asm_add_global(lauf_asm_module* mod, lauf_asm_global_permissions perms)

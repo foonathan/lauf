@@ -16,6 +16,11 @@ struct inst_debug_location
     std::uint16_t           function_idx;
     std::uint16_t           inst_idx;
     lauf_asm_debug_location location;
+
+    bool matches(lauf_asm_debug_location other) const
+    {
+        return lauf_asm_debug_location_eq(location, other);
+    }
 };
 } // namespace lauf
 

@@ -46,10 +46,9 @@ void lauf::debug_print_cstack(lauf_runtime_process* process, const lauf_runtime_
         std::fprintf(stderr, " %4d. %s\n", index, lauf_asm_function_name(fn));
 
         if (auto loc = lauf_asm_program_find_debug_location_of_instruction(program, ip);
-            loc.line_nr != 0 && loc.column_nr != 0)
+            !lauf_asm_debug_location_eq(loc, lauf_asm_debug_location_null))
         {
-            auto path = lauf_asm_program_debug_path(program, fn);
-            std::fprintf(stderr, "       at %s:%u:%u\n", path, loc.line_nr, loc.column_nr);
+            std::fprintf(stderr, "       at %u:%u:%u\n", loc.file_id, loc.line_nr, loc.column_nr);
         }
         else
         {

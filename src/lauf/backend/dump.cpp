@@ -112,7 +112,7 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
 
     writer->write("\n{\n");
 
-    auto last_debug_location = lauf_asm_debug_location{0, 0, true};
+    auto last_debug_location = lauf_asm_debug_location_null;
     for (auto ip = fn->insts; ip != fn->insts + fn->inst_count; ++ip)
     {
         if (ip->op() == lauf::asm_op::block)
@@ -123,10 +123,10 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
         }
 
         auto debug_location = lauf_asm_find_debug_location_of_instruction(mod, ip);
-        if (debug_location.line_nr != last_debug_location.line_nr
-            || debug_location.column_nr != last_debug_location.column_nr)
+        if (!lauf_asm_debug_location_eq(last_debug_location, debug_location))
         {
-            writer->format("    # at %u:%u%s\n", debug_location.line_nr, debug_location.column_nr,
+            writer->format("    # at %u:%u:%u%s\n", debug_location.file_id, debug_location.line_nr,
+                           debug_location.column_nr,
                            debug_location.is_synthetic ? " [synthetic]" : "");
             last_debug_location = debug_location;
         }

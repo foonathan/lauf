@@ -583,9 +583,7 @@ void lauf_asm_build_debug_location(lauf_asm_builder* b, lauf_asm_debug_location 
 {
     LAUF_BUILD_CHECK_CUR;
 
-    if (b->cur->debug_locations.empty()
-        || b->cur->debug_locations.back().location.line_nr != loc.line_nr
-        || b->cur->debug_locations.back().location.column_nr != loc.column_nr)
+    if (b->cur->debug_locations.empty() || !b->cur->debug_locations.back().matches(loc))
         b->cur->debug_locations.push_back(*b, {b->fn->function_idx, uint16_t(b->cur->insts.size()),
                                                loc});
 }

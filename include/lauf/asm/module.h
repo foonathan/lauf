@@ -46,10 +46,15 @@ typedef struct lauf_asm_signature
 /// The debug location of an entity.
 typedef struct lauf_asm_debug_location
 {
+    uint16_t file_id;          /// No meaning prescribed by lauf.
     uint16_t line_nr;          /// 1 based, 0 means unknown
     uint16_t column_nr : 15;   /// 1 based, 0 means unknown
     bool     is_synthetic : 1; /// true if code was injected
 } lauf_asm_debug_location;
+
+extern const lauf_asm_debug_location lauf_asm_debug_location_null;
+
+bool lauf_asm_debug_location_eq(lauf_asm_debug_location lhs, lauf_asm_debug_location rhs);
 
 //=== module ===//
 /// Creates an empty module giving its name.
