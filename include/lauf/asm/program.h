@@ -12,7 +12,7 @@ typedef struct lauf_asm_module         lauf_asm_module;
 typedef struct lauf_asm_global         lauf_asm_global;
 typedef struct lauf_asm_function       lauf_asm_function;
 typedef struct lauf_asm_chunk          lauf_asm_chunk;
-typedef struct lauf_asm_debug_location lauf_asm_location;
+typedef struct lauf_asm_debug_location lauf_asm_debug_location;
 typedef union lauf_asm_inst            lauf_asm_inst;
 typedef struct lauf_runtime_process    lauf_runtime_process;
 typedef union lauf_runtime_value       lauf_runtime_value;
