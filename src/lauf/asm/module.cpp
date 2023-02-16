@@ -6,12 +6,13 @@
 #include <lauf/asm/type.h>
 #include <string_view>
 
-const lauf_asm_debug_location lauf_asm_debug_location_null = {uint16_t(-1), 0, 0, false};
+const lauf_asm_debug_location lauf_asm_debug_location_null = {uint16_t(-1), 0, 0, false, 0};
 
 bool lauf_asm_debug_location_eq(lauf_asm_debug_location lhs, lauf_asm_debug_location rhs)
 {
     return lhs.file_id == rhs.file_id && lhs.line_nr == rhs.line_nr
-           && lhs.column_nr == rhs.column_nr && lhs.is_synthetic == rhs.is_synthetic;
+           && lhs.column_nr == rhs.column_nr && lhs.is_synthetic == rhs.is_synthetic
+           && lhs.length == rhs.length;
 }
 
 lauf_asm_module::~lauf_asm_module()

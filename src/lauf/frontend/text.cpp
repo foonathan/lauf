@@ -638,7 +638,7 @@ struct location
     static constexpr auto value = callback([](parse_state& state, auto pos) {
         auto loc = lexy::get_input_location(state.input->buffer, pos, state.anchor);
         lauf_asm_build_debug_location(state.builder, {0, std::uint16_t(loc.line_nr()),
-                                                      std::uint16_t(loc.column_nr()), false});
+                                                      std::uint16_t(loc.column_nr()), false, 0});
         state.anchor = loc.anchor();
     });
 };

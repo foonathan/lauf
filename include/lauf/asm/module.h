@@ -50,6 +50,7 @@ typedef struct lauf_asm_debug_location
     uint16_t line_nr;          /// 1 based, 0 means unknown
     uint16_t column_nr : 15;   /// 1 based, 0 means unknown
     bool     is_synthetic : 1; /// true if code was injected
+    uint16_t length;           /// length in number of bytes
 } lauf_asm_debug_location;
 
 extern const lauf_asm_debug_location lauf_asm_debug_location_null;
