@@ -103,6 +103,9 @@ lauf_asm_block* lauf_asm_declare_block(lauf_asm_builder* b, size_t input_count);
 /// Blocks don't need to be built at once; the builder can switch between them at will.
 void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block);
 
+/// Returns the current function that is being built.
+lauf_asm_function* lauf_asm_build_get_function(lauf_asm_builder* b);
+
 /// Returns the current size of the vstack for the active block.
 size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b);
 

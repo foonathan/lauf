@@ -571,6 +571,11 @@ void lauf_asm_build_block(lauf_asm_builder* b, lauf_asm_block* block)
     b->cur = block;
 }
 
+lauf_asm_function* lauf_asm_build_get_function(lauf_asm_builder* b)
+{
+    return b->fn;
+}
+
 size_t lauf_asm_build_get_vstack_size(lauf_asm_builder* b)
 {
     if (b->cur == nullptr)
