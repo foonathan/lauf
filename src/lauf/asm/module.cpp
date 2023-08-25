@@ -3,46 +3,64 @@
 
 #include <lauf/asm/module.hpp>
 
-#include <lauf/asm/type.h>
+#include <atomic>
+#include <mutex>
+#include <shared_mutex>
 #include <string_view>
+
+#include <lauf/asm/type.h>
 
 struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
 {
-    const char*        name;
-    lauf_asm_global*   globals         = nullptr;
-    lauf_asm_function* functions       = nullptr;
-    lauf_asm_chunk*    chunks          = nullptr;
-    std::uint32_t      globals_count   = 0;
-    std::uint32_t      functions_count = 0;
+    std::atomic<const char*> name;
+    std::atomic<const char*> debug_path = nullptr;
 
-    const char*                                 debug_path = nullptr;
+    mutable std::shared_mutex                   mutex;
+    lauf_asm_global*                            globals         = nullptr;
+    lauf_asm_function*                          functions       = nullptr;
+    lauf_asm_chunk*                             chunks          = nullptr;
+    std::uint32_t                               globals_count   = 0;
+    std::uint32_t                               functions_count = 0;
     lauf::array_list<lauf::inst_debug_location> inst_debug_locations;
 
     lauf_asm_module(lauf::arena_key key, const char* name)
     : lauf::intrinsic_arena<lauf_asm_module>(key), name(this->strdup(name))
     {}
 
-    ~lauf_asm_module();
+    ~lauf_asm_module()
+    {
+        auto chunk = chunks;
+        while (chunk != nullptr)
+        {
+            auto next = chunk->next;
+            lauf_asm_chunk::destroy(chunk);
+            chunk = next;
+        }
+    }
 };
 
 void lauf::add_debug_locations(lauf_asm_module* mod, const inst_debug_location* ptr, size_t count)
 {
+    std::unique_lock lock(mod->mutex);
     for (auto i = 0u; i != count; ++i)
         mod->inst_debug_locations.push_back(*mod, ptr[i]);
 }
 
 lauf_asm_inst* lauf::allocate_instructions(lauf_asm_module* mod, size_t inst_count)
 {
+    std::unique_lock lock(mod->mutex);
     return mod->allocate<lauf_asm_inst>(inst_count);
 }
 
 lauf::module_list<lauf_asm_global> lauf::get_globals(const lauf_asm_module* mod)
 {
+    std::shared_lock lock(mod->mutex);
     return {mod->globals, mod->globals_count};
 }
 
 lauf::module_list<lauf_asm_function> lauf::get_functions(const lauf_asm_module* mod)
 {
+    std::shared_lock lock(mod->mutex);
     return {mod->functions, mod->functions_count};
 }
 
@@ -80,17 +98,6 @@ bool lauf_asm_debug_location_eq(lauf_asm_debug_location lhs, lauf_asm_debug_loca
            && lhs.length == rhs.length;
 }
 
-lauf_asm_module::~lauf_asm_module()
-{
-    auto chunk = chunks;
-    while (chunk != nullptr)
-    {
-        auto next = chunk->next;
-        lauf_asm_chunk::destroy(chunk);
-        chunk = next;
-    }
-}
-
 lauf_asm_module* lauf_asm_create_module(const char* name)
 {
     return lauf_asm_module::create(name);
@@ -103,6 +110,7 @@ void lauf_asm_destroy_module(lauf_asm_module* mod)
 
 void lauf_asm_set_module_debug_path(lauf_asm_module* mod, const char* path)
 {
+    std::unique_lock lock(mod->mutex);
     mod->debug_path = mod->strdup(path);
 }
 
@@ -119,6 +127,8 @@ const char* lauf_asm_module_debug_path(const lauf_asm_module* mod)
 const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* mod,
                                                         const char*            _name)
 {
+    std::shared_lock lock(mod->mutex);
+
     auto name = std::string_view(_name);
     for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
         if (fn->name == name)
@@ -130,6 +140,8 @@ const lauf_asm_function* lauf_asm_find_function_by_name(const lauf_asm_module* m
 const lauf_asm_function* lauf_asm_find_function_of_instruction(const lauf_asm_module* mod,
                                                                const lauf_asm_inst*   ip)
 {
+    std::shared_lock lock(mod->mutex);
+
     for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
         if (ip >= fn->insts && ip < fn->insts + fn->inst_count)
             return fn;
@@ -140,6 +152,8 @@ const lauf_asm_function* lauf_asm_find_function_of_instruction(const lauf_asm_mo
 const lauf_asm_chunk* lauf_asm_find_chunk_of_instruction(const lauf_asm_module* mod,
                                                          const lauf_asm_inst*   ip)
 {
+    std::shared_lock lock(mod->mutex);
+
     for (auto chunk = mod->chunks; chunk != nullptr; chunk = chunk->next)
         if (ip >= chunk->fn->insts && ip < chunk->fn->insts + chunk->fn->inst_count)
             return chunk;
@@ -179,6 +193,8 @@ lauf_asm_debug_location find_debug_location(
 lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_asm_module* mod,
                                                                     const lauf_asm_inst*   ip)
 {
+    std::shared_lock lock(mod->mutex);
+
     if (mod->inst_debug_locations.empty() && mod->chunks == nullptr)
         // Early exit, no debug locations are stored anywhere.
         return lauf_asm_debug_location_null;
@@ -195,6 +211,7 @@ lauf_asm_debug_location lauf_asm_find_debug_location_of_instruction(const lauf_a
 
 lauf_asm_global* lauf_asm_add_global(lauf_asm_module* mod, lauf_asm_global_permissions perms)
 {
+    std::unique_lock lock(mod->mutex);
     return mod->construct<lauf_asm_global>(mod, perms == LAUF_ASM_GLOBAL_READ_WRITE);
 }
 
@@ -206,11 +223,15 @@ void lauf_asm_define_data_global(lauf_asm_module* mod, lauf_asm_global* global,
     global->alignment = std::uint16_t(layout.alignment);
 
     if (data != nullptr)
+    {
+        std::unique_lock lock(mod->mutex);
         global->memory = mod->memdup(data, layout.size);
+    }
 }
 
 void lauf_asm_set_global_debug_name(lauf_asm_module* mod, lauf_asm_global* global, const char* name)
 {
+    std::unique_lock lock(mod->mutex);
     global->name = mod->strdup(name);
 }
 
@@ -233,6 +254,7 @@ const char* lauf_asm_global_debug_name(const lauf_asm_global* global)
 lauf_asm_function* lauf_asm_add_function(lauf_asm_module* mod, const char* name,
                                          lauf_asm_signature sig)
 {
+    std::unique_lock lock(mod->mutex);
     return mod->construct<lauf_asm_function>(mod, name, sig);
 }
 
@@ -264,6 +286,7 @@ size_t lauf_asm_get_instruction_index(const lauf_asm_function* fn, const lauf_as
 
 lauf_asm_chunk* lauf_asm_create_chunk(lauf_asm_module* mod)
 {
+    std::unique_lock lock(mod->mutex);
     return lauf_asm_chunk::create(mod);
 }
 

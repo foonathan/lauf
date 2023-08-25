@@ -14,7 +14,10 @@ typedef struct lauf_asm_layout lauf_asm_layout;
 /// A module, which is a self-contained unit of lauf ASM.
 ///
 /// It consists of function definitions, declarations of externally provided functions, and global
-/// memory. Each module corresponds to one (physical/virtual) source file.
+/// memory.
+///
+/// This is the only data structure that is thread-safe: multiple threads can each build part of it.
+/// Note that `lauf_asm_builder` is not thread-safe; each thread needs their own.
 typedef struct lauf_asm_module lauf_asm_module;
 
 /// Global memory of a module.
