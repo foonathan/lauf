@@ -62,21 +62,20 @@ lauf::allocation allocate_global(lauf::arena_base& arena, const lauf_asm_program
 
 void lauf::memory::init(lauf_vm* vm, const lauf_asm_program* program)
 {
-    _allocations.resize_uninitialized(vm->page_allocator, program->_mod->globals_count);
-    for (auto global = program->_mod->globals; global != nullptr; global = global->next)
-        _allocations[global->allocation_idx] = allocate_global(*vm, *program, *global);
+    auto add_globals = [&](const lauf_asm_module* mod, std::size_t offset) {
+        auto globals = lauf::get_globals(mod);
+        _allocations.resize_uninitialized(vm->page_allocator, _allocations.size() + globals.count);
+        for (auto global = globals.first; global != nullptr; global = global->next)
+            _allocations[offset + global->allocation_idx] = allocate_global(*vm, *program, *global);
+    };
 
+    add_globals(program->_mod, 0);
     if (auto extra = lauf::try_get_extra_data(*program))
     {
         for (auto& submod : extra->submodules)
         {
             submod.global_allocation_offset = _allocations.size();
-
-            _allocations.resize_uninitialized(vm->page_allocator,
-                                              _allocations.size() + submod.mod->globals_count);
-            for (auto global = submod.mod->globals; global != nullptr; global = global->next)
-                _allocations[submod.global_allocation_offset + global->allocation_idx]
-                    = allocate_global(*vm, *program, *global);
+            add_globals(submod.mod, submod.global_allocation_offset);
         }
     }
 }
@@ -153,7 +152,8 @@ const char* lauf_runtime_get_cstr(lauf_runtime_process* p, lauf_runtime_address 
 const lauf_asm_function* lauf_runtime_get_function_ptr_any(lauf_runtime_process*         p,
                                                            lauf_runtime_function_address addr)
 {
-    for (auto fn = p->program._mod->functions; fn != nullptr; fn = fn->next)
+    auto list = lauf::get_functions(p->program._mod);
+    for (auto fn = list.first; fn != nullptr; fn = fn->next)
         if (fn->function_idx == addr.index)
             return fn;
 

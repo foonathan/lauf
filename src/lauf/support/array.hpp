@@ -124,6 +124,15 @@ public:
         return _ptr + _size;
     }
 
+    T* data()
+    {
+        return _ptr;
+    }
+    const T* data() const
+    {
+        return _ptr;
+    }
+
     //=== modifiers ===//
     void clear(arena_base&)
     {

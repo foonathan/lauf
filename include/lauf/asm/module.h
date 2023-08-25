@@ -68,8 +68,8 @@ void lauf_asm_destroy_module(lauf_asm_module* mod);
 /// This is only used for debug information.
 void lauf_asm_set_module_debug_path(lauf_asm_module* mod, const char* path);
 
-/// Returns the debug path of the module.
-const char* lauf_asm_module_debug_path(lauf_asm_module* mod);
+const char* lauf_asm_module_name(const lauf_asm_module* mod);
+const char* lauf_asm_module_debug_path(const lauf_asm_module* mod);
 
 /// Searches for a function by name.
 ///

@@ -87,7 +87,7 @@ std::string find_builtin_name(lauf_backend_dump_options opts, lauf_runtime_built
 
 std::string find_global_name(const lauf_asm_module* mod, unsigned idx)
 {
-    for (auto global = mod->globals; global != nullptr; global = global->next)
+    for (auto global = lauf::get_globals(mod).first; global != nullptr; global = global->next)
         if (global->allocation_idx == idx)
         {
             auto name = lauf_asm_global_debug_name(global);
@@ -339,19 +339,20 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
 void lauf_backend_dump(lauf_writer* writer, lauf_backend_dump_options options,
                        const lauf_asm_module* mod)
 {
-    writer->format("module @'%s';\n", mod->name);
-    if (mod->debug_path != nullptr)
-        writer->format("debug_path \"%s\";\n", mod->debug_path);
+    writer->format("module @'%s';\n", lauf_asm_module_name(mod));
+    if (auto debug_path = lauf_asm_module_debug_path(mod))
+        writer->format("debug_path \"%s\";\n", debug_path);
     writer->write("\n");
 
-    if (mod->globals != nullptr)
+    if (auto globals = lauf::get_globals(mod); globals.count > 0)
     {
-        for (auto global = mod->globals; global != nullptr; global = global->next)
+        for (auto global = globals.first; global != nullptr; global = global->next)
             dump_global(writer, options, global);
         writer->write("\n");
     }
 
-    for (auto function = mod->functions; function != nullptr; function = function->next)
+    for (auto function = lauf::get_functions(mod).first; function != nullptr;
+         function      = function->next)
     {
         dump_function(writer, options, mod, function);
         writer->write("\n");

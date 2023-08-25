@@ -858,17 +858,11 @@ void lauf_backend_qbe(lauf_writer* _writer, lauf_backend_qbe_options options,
 {
     lauf::qbe_writer writer;
 
-    if (mod->globals != nullptr)
-    {
-        for (auto global = mod->globals; global != nullptr; global = global->next)
-            codegen_global(writer, options, global);
-    }
+    for (auto global = lauf::get_globals(mod).first; global != nullptr; global = global->next)
+        codegen_global(writer, options, global);
 
-    if (mod->functions != nullptr)
-    {
-        for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
-            codegen_function(writer, options, fn);
-    }
+    for (auto fn = lauf::get_functions(mod).first; fn != nullptr; fn = fn->next)
+        codegen_function(writer, options, fn);
 
     std::move(writer).finish(_writer);
 }

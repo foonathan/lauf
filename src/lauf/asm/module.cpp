@@ -6,6 +6,71 @@
 #include <lauf/asm/type.h>
 #include <string_view>
 
+struct lauf_asm_module : lauf::intrinsic_arena<lauf_asm_module>
+{
+    const char*        name;
+    lauf_asm_global*   globals         = nullptr;
+    lauf_asm_function* functions       = nullptr;
+    lauf_asm_chunk*    chunks          = nullptr;
+    std::uint32_t      globals_count   = 0;
+    std::uint32_t      functions_count = 0;
+
+    const char*                                 debug_path = nullptr;
+    lauf::array_list<lauf::inst_debug_location> inst_debug_locations;
+
+    lauf_asm_module(lauf::arena_key key, const char* name)
+    : lauf::intrinsic_arena<lauf_asm_module>(key), name(this->strdup(name))
+    {}
+
+    ~lauf_asm_module();
+};
+
+void lauf::add_debug_locations(lauf_asm_module* mod, const inst_debug_location* ptr, size_t count)
+{
+    for (auto i = 0u; i != count; ++i)
+        mod->inst_debug_locations.push_back(*mod, ptr[i]);
+}
+
+lauf_asm_inst* lauf::allocate_instructions(lauf_asm_module* mod, size_t inst_count)
+{
+    return mod->allocate<lauf_asm_inst>(inst_count);
+}
+
+lauf::module_list<lauf_asm_global> lauf::get_globals(const lauf_asm_module* mod)
+{
+    return {mod->globals, mod->globals_count};
+}
+
+lauf::module_list<lauf_asm_function> lauf::get_functions(const lauf_asm_module* mod)
+{
+    return {mod->functions, mod->functions_count};
+}
+
+lauf_asm_global::lauf_asm_global(lauf_asm_module* mod, bool is_mutable)
+: next(mod->globals), memory(nullptr), size(0), allocation_idx(mod->globals_count),
+  alignment(alignof(lauf_uint)), is_mutable(is_mutable)
+{
+    mod->globals = this;
+    ++mod->globals_count;
+}
+
+lauf_asm_function::lauf_asm_function(lauf_asm_module* mod, const char* name, lauf_asm_signature sig)
+: next(mod->functions), module(mod), name(mod->strdup(name)), sig(sig),
+  function_idx(std::uint16_t(mod->functions_count))
+{
+    mod->functions = this;
+    ++mod->functions_count;
+}
+
+lauf_asm_chunk::lauf_asm_chunk(lauf::arena_key key, lauf_asm_module* mod)
+: lauf::intrinsic_arena<lauf_asm_chunk>(key), next(mod->chunks),
+  // We allocate the function as part of the module, to ensure that its address is closer to the
+  // addresses of the functions it calls. This is required by the offsets.
+  fn(mod->construct<lauf_asm_function>(this, mod, "<chunk>", lauf_asm_signature{0, 0}))
+{
+    mod->chunks = this;
+}
+
 const lauf_asm_debug_location lauf_asm_debug_location_null = {uint16_t(-1), 0, 0, false, 0};
 
 bool lauf_asm_debug_location_eq(lauf_asm_debug_location lhs, lauf_asm_debug_location rhs)
@@ -41,7 +106,12 @@ void lauf_asm_set_module_debug_path(lauf_asm_module* mod, const char* path)
     mod->debug_path = mod->strdup(path);
 }
 
-const char* lauf_asm_module_debug_path(lauf_asm_module* mod)
+const char* lauf_asm_module_name(const lauf_asm_module* mod)
+{
+    return mod->name;
+}
+
+const char* lauf_asm_module_debug_path(const lauf_asm_module* mod)
 {
     return mod->debug_path;
 }

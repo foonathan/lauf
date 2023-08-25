@@ -428,21 +428,30 @@ lauf_asm_inst* emit_linear_body(lauf_asm_inst* ip, lauf_asm_builder* b, const la
 // Precondition: offset has been computed during body emission.
 void emit_debug_location(lauf_asm_builder* b)
 {
-    for (auto& block : b->blocks)
-    {
-        if (!block.reachable)
-            continue;
-
-        for (auto loc : block.debug_locations)
+    auto impl = [&](auto& cont, lauf::arena_base& arena) {
+        for (auto& block : b->blocks)
         {
-            // We also have the initial block instruction that affects the inst_idx.
-            loc.inst_idx += block.offset + 1;
+            if (!block.reachable)
+                continue;
 
-            if (b->chunk != nullptr)
-                b->chunk->inst_debug_locations.push_back(*b->chunk, loc);
-            else
-                b->mod->inst_debug_locations.push_back(*b->mod, loc);
+            for (auto loc : block.debug_locations)
+            {
+                // We also have the initial block instruction that affects the inst_idx.
+                loc.inst_idx += block.offset + 1;
+                cont.push_back(arena, loc);
+            }
         }
+    };
+
+    if (b->chunk != nullptr)
+    {
+        impl(b->chunk->inst_debug_locations, *b->chunk);
+    }
+    else
+    {
+        lauf::array<lauf::inst_debug_location> cont;
+        impl(cont, *b);
+        lauf::add_debug_locations(b->mod, cont.data(), cont.size());
     }
 }
 } // namespace
@@ -458,7 +467,7 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
             return b->chunk->allocate<lauf_asm_inst>(inst_count);
         else
             // For a normal function, we allocate the memory from the module.
-            return b->mod->allocate<lauf_asm_inst>(inst_count);
+            return lauf::allocate_instructions(b->mod, inst_count);
     }();
 
     auto ip = insts;
@@ -496,7 +505,8 @@ bool lauf_asm_build_finish(lauf_asm_builder* b)
 lauf_asm_global* lauf_asm_build_data_literal(lauf_asm_builder* b, const unsigned char* ptr,
                                              size_t size)
 {
-    for (auto global = b->mod->globals; global != nullptr; global = global->next)
+    // TODO: avoid TOCTOU.
+    for (auto global = lauf::get_globals(b->mod).first; global != nullptr; global = global->next)
     {
         if (global->is_mutable)
             // Can't use a mutable global.
@@ -740,7 +750,8 @@ lauf_asm_function* get_constant_function(lauf_asm_module* mod, lauf::builder_vst
     if (addr.input_count != sig.input_count || addr.output_count != sig.output_count)
         return nullptr;
 
-    for (auto fn = mod->functions; fn != nullptr; fn = fn->next)
+    // TOCTOU is okay, we just can't constant fold because of it.
+    for (auto fn = lauf::get_functions(mod).first; fn != nullptr; fn = fn->next)
         if (fn->function_idx == addr.index)
             return fn;
 
@@ -1231,12 +1242,15 @@ load_store_constant load_store_constant_folding(lauf_asm_module*            mod,
     }
     else if (addr.type == addr.constant)
     {
+        // TOCTOU is okay, we just can't constant fold because of it.
+        auto globals = lauf::get_globals(mod);
+
         auto constant_addr = addr.as_constant.as_address;
-        if (constant_addr.allocation >= mod->globals_count && constant_addr.generation != 0
+        if (constant_addr.allocation >= globals.count && constant_addr.generation != 0
             && constant_addr.offset != 0)
             return load_store_dynamic;
 
-        for (auto global = mod->globals; global != nullptr; global = global->next)
+        for (auto global = globals.first; global != nullptr; global = global->next)
             if (global->allocation_idx == constant_addr.allocation && global->has_definition())
             {
                 if (store && !global->is_mutable)

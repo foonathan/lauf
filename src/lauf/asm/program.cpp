@@ -31,12 +31,12 @@ void lauf_asm_link_modules(lauf_asm_program* program, const lauf_asm_module* con
     // Generate a list of all functions that are currently not defined.
     std::unordered_map<std::string_view, const lauf_asm_function*> undef_fn;
     {
-        for (auto fn = program->_mod->functions; fn != nullptr; fn = fn->next)
+        for (auto fn = lauf::get_functions(program->_mod).first; fn != nullptr; fn = fn->next)
             if (fn->insts == nullptr)
                 undef_fn.emplace(fn->name, fn);
 
         for (auto submod : extra.submodules)
-            for (auto fn = submod.mod->functions; fn != nullptr; fn = fn->next)
+            for (auto fn = lauf::get_functions(submod.mod).first; fn != nullptr; fn = fn->next)
                 if (fn->insts == nullptr)
                     undef_fn.emplace(fn->name, fn);
     }
@@ -44,7 +44,7 @@ void lauf_asm_link_modules(lauf_asm_program* program, const lauf_asm_module* con
     // Attempt to resolve the new functions.
     for (auto i = 0u; i != size; ++i)
     {
-        for (auto fn = mods[i]->functions; fn != nullptr; fn = fn->next)
+        for (auto fn = lauf::get_functions(mods[i]).first; fn != nullptr; fn = fn->next)
         {
             auto iter = undef_fn.find(fn->name);
             if (iter != undef_fn.end())
@@ -82,7 +82,7 @@ void lauf_asm_define_native_function(lauf_asm_program* program, const lauf_asm_f
 
 const char* lauf_asm_program_debug_path(const lauf_asm_program*, const lauf_asm_function* fn)
 {
-    return fn->module->debug_path;
+    return lauf_asm_module_debug_path(fn->module);
 }
 
 lauf_asm_debug_location lauf_asm_program_find_debug_location_of_instruction(
