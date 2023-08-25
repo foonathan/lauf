@@ -373,6 +373,7 @@ TEST_CASE("lauf_asm_link_module")
     CHECK(lauf_vm_execute_oneshot(vm, program, nullptr, nullptr));
     lauf_destroy_vm(vm);
 
+    lauf_asm_destroy_module(submod);
     lauf_asm_destroy_module(mod);
 }
 
