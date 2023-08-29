@@ -3,6 +3,7 @@
 
 #include <lauf/writer.hpp>
 
+#include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <string>
