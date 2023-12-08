@@ -38,6 +38,8 @@ typedef enum lauf_runtime_fiber_status
 //=== queries ===//
 /// The VM that is executing the program.
 lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* process);
+/// The user data of the VM that is executing the program.
+void* lauf_runtime_get_vm_user_data(lauf_runtime_process* process);
 
 /// The program that is running.
 const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process);

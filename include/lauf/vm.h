@@ -50,6 +50,9 @@ typedef struct lauf_vm_options
     lauf_vm_panic_handler panic_handler;
     /// The allocator used when the program wants to allocate heap memory.
     lauf_vm_allocator allocator;
+
+    // Arbitrary user data.
+    void* user_data;
 } lauf_vm_options;
 
 extern const lauf_vm_options lauf_default_vm_options;
@@ -67,6 +70,11 @@ lauf_vm_panic_handler lauf_vm_set_panic_handler(lauf_vm* vm, lauf_vm_panic_handl
 lauf_vm_allocator lauf_vm_set_allocator(lauf_vm* vm, lauf_vm_allocator a);
 /// Returns the allocator.
 lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm);
+
+/// Exchanges the user data.
+void* lauf_vm_set_user_data(lauf_vm* vm, void* user_data);
+/// Returns the user data.
+void* lauf_vm_get_user_data(lauf_vm* vm);
 
 /// Starts a new process for the program.
 ///

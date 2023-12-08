@@ -20,7 +20,7 @@ const lauf_vm_allocator lauf_vm_malloc_allocator
        [](void*, void* memory, size_t) { std::free(memory); }};
 
 const lauf_vm_options lauf_default_vm_options = [] {
-    lauf_vm_options result;
+    lauf_vm_options result{};
 
     result.initial_vstack_size_in_elements = 1024ull;
     result.max_vstack_size_in_elements     = 16 * 1024ull;
@@ -37,6 +37,8 @@ const lauf_vm_options lauf_default_vm_options = [] {
                             }};
 
     result.allocator = lauf_vm_malloc_allocator;
+
+    result.user_data = nullptr;
 
     return result;
 }();
@@ -68,6 +70,18 @@ lauf_vm_allocator lauf_vm_set_allocator(lauf_vm* vm, lauf_vm_allocator a)
 lauf_vm_allocator lauf_vm_get_allocator(lauf_vm* vm)
 {
     return vm->heap_allocator;
+}
+
+void* lauf_vm_set_user_data(lauf_vm* vm, void* user_data)
+{
+    auto old      = vm->user_data;
+    vm->user_data = user_data;
+    return old;
+}
+
+void* lauf_vm_get_user_data(lauf_vm* vm)
+{
+    return vm->user_data;
 }
 
 lauf_runtime_process* lauf_vm_start_process(lauf_vm* vm, const lauf_asm_program* program)

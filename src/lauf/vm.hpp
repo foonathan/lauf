@@ -26,6 +26,7 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
     std::size_t step_limit;
 
     lauf_runtime_process process;
+    void*                user_data;
 
     explicit lauf_vm(lauf::arena_key key, lauf_vm_options options)
     : lauf::intrinsic_arena<lauf_vm>(key), panic_handler(options.panic_handler),
@@ -33,7 +34,8 @@ struct lauf_vm : lauf::intrinsic_arena<lauf_vm>
       initial_vstack_size(options.initial_vstack_size_in_elements),
       max_vstack_size(options.max_vstack_size_in_elements),
       initial_cstack_size(options.initial_cstack_size_in_bytes),
-      max_cstack_size(options.max_cstack_size_in_bytes), step_limit(options.step_limit)
+      max_cstack_size(options.max_cstack_size_in_bytes), step_limit(options.step_limit),
+      user_data(options.user_data)
     {}
 
     ~lauf_vm()

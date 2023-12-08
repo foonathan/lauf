@@ -106,6 +106,11 @@ lauf_vm* lauf_runtime_get_vm(lauf_runtime_process* process)
     return process->vm;
 }
 
+void* lauf_runtime_get_vm_user_data(lauf_runtime_process* process)
+{
+    return process->vm->user_data;
+}
+
 const lauf_asm_program* lauf_runtime_get_program(lauf_runtime_process* process)
 {
     return &process->program;
