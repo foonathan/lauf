@@ -21,7 +21,7 @@ jobs:
       run: cmake -E make_directory build
 
     - name: Download QBE
-      run: wget https://c9x.me/compile/release/qbe-1.0.tar.xz && tar xf qbe-1.0.tar.xz
+      run: curl https://c9x.me/compile/release/qbe-1.0.tar.xz -o qbe.tar.xz && tar xf qbe.tar.xz
     - name: Build QBE
       working-directory: qbe-1.0/
       run: apt-get install -y --no-install-recommends make && make install
