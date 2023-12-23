@@ -334,16 +334,20 @@ void dump_function(lauf_writer* writer, lauf_backend_dump_options opts, const la
 
     writer->write("}\n");
 }
-} // namespace
 
-void lauf_backend_dump(lauf_writer* writer, lauf_backend_dump_options options,
-                       const lauf_asm_module* mod)
+void dump_module_header(lauf_writer* writer, const lauf_asm_module* mod)
 {
     writer->format("module @'%s';\n", lauf_asm_module_name(mod));
     if (auto debug_path = lauf_asm_module_debug_path(mod))
         writer->format("debug_path \"%s\";\n", debug_path);
     writer->write("\n");
+}
+} // namespace
 
+void lauf_backend_dump(lauf_writer* writer, lauf_backend_dump_options options,
+                       const lauf_asm_module* mod)
+{
+    dump_module_header(writer, mod);
     if (auto globals = lauf::get_globals(mod); globals.count > 0)
     {
         for (auto global = globals.first; global != nullptr; global = global->next)
@@ -357,5 +361,12 @@ void lauf_backend_dump(lauf_writer* writer, lauf_backend_dump_options options,
         dump_function(writer, options, mod, function);
         writer->write("\n");
     }
+}
+
+void lauf_backend_dump_chunk(lauf_writer* writer, lauf_backend_dump_options options,
+                             const lauf_asm_module* mod, const lauf_asm_chunk* chunk)
+{
+    dump_module_header(writer, mod);
+    dump_function(writer, options, mod, chunk->fn);
 }
 
