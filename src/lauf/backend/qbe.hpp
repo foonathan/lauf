@@ -90,7 +90,7 @@ public:
     {
         for (auto& [str, id] : _literals)
         {
-            out->format("data $lit_%u = {", id);
+            out->format("data $lit_%u = {", static_cast<unsigned>(id));
             for (auto c : str)
                 out->format("b %d, ", c);
             out->write("}\n");
@@ -123,7 +123,7 @@ public:
     //=== data ===//
     void begin_data(qbe_data id, std::size_t alignment)
     {
-        _writer->format("data $data_%u = align %zu\n", id, alignment);
+        _writer->format("data $data_%u = align %zu\n", static_cast<unsigned>(id), alignment);
         _writer->write("{\n");
     }
 
@@ -157,7 +157,8 @@ public:
         else if (std::holds_alternative<qbe_type>(ty))
             _writer->format("function %s $%s(", type_name(std::get<qbe_type>(ty)), name);
         else
-            _writer->format("function :tuple_%u $%s(", std::get<qbe_tuple>(ty), name);
+            _writer->format("function :tuple_%u $%s(",
+                            static_cast<unsigned>(std::get<qbe_tuple>(ty)), name);
     }
 
     void param(qbe_type ty, std::size_t idx)
@@ -174,7 +175,7 @@ public:
 
     void block(qbe_block id)
     {
-        _writer->format("@block_%zu\n", id);
+        _writer->format("@block_%zu\n", static_cast<std::size_t>(id));
     }
 
     void end_function()
@@ -187,14 +188,15 @@ public:
     //=== instructions ===//
     void jmp(qbe_block block)
     {
-        _writer->format("  jmp @block_%zu\n", block);
+        _writer->format("  jmp @block_%zu\n", static_cast<std::size_t>(block));
     }
 
     void jnz(qbe_reg reg, qbe_block block1, qbe_block block2)
     {
         _writer->write("  jnz ");
         write_reg(reg);
-        _writer->format(", @block_%zu, @block_%zu\n", block1, block2);
+        _writer->format(", @block_%zu, @block_%zu\n", static_cast<std::size_t>(block1),
+                        static_cast<std::size_t>(block2));
     }
 
     void ret()
@@ -346,7 +348,7 @@ public:
         else
         {
             write_reg(dest);
-            _writer->format(" =:tuple_%u call ", std::get<qbe_tuple>(ty));
+            _writer->format(" =:tuple_%u call ", static_cast<unsigned>(std::get<qbe_tuple>(ty)));
         }
 
         write_value(fn);
@@ -378,7 +380,7 @@ private:
         if (a == qbe_alloc::return_)
             _writer->write("%return");
         else
-            _writer->format("%%a%u", a);
+            _writer->format("%%a%u", static_cast<unsigned>(a));
     }
 
     void write_reg(qbe_reg reg)
@@ -388,7 +390,7 @@ private:
         else if (reg == qbe_reg::tmp2)
             _writer->write("%tmp2");
         else
-            _writer->format("%%r%u", reg);
+            _writer->format("%%r%u", static_cast<unsigned>(reg));
     }
 
     void write_value(const qbe_value& value)
@@ -400,9 +402,9 @@ private:
         else if (std::holds_alternative<std::uintmax_t>(value))
             _writer->format("%" PRIuMAX, std::get<std::uintmax_t>(value));
         else if (std::holds_alternative<qbe_data>(value))
-            _writer->format("$data_%u", std::get<qbe_data>(value));
+            _writer->format("$data_%u", static_cast<unsigned>(std::get<qbe_data>(value)));
         else if (std::holds_alternative<qbe_literal>(value))
-            _writer->format("$lit_%u", std::get<qbe_literal>(value));
+            _writer->format("$lit_%u", static_cast<unsigned>(std::get<qbe_literal>(value)));
         else
             _writer->format("$%s", std::get<const char*>(value));
     }
