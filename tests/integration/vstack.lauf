@@ -130,6 +130,22 @@ function @select(1 => 1) {
     return;
 }
 
+function @let() {
+    uint 0; let %a;
+    uint 1; let %b;
+    uint 2; let %c;
+
+    pick %c; uint 2; $lauf.test.assert_eq;
+    pick %b; uint 1; $lauf.test.assert_eq;
+    pick %a; uint 0; $lauf.test.assert_eq;
+
+    roll %c; uint 2; $lauf.test.assert_eq;
+    roll %a; uint 0; $lauf.test.assert_eq;
+    roll %b; uint 1; $lauf.test.assert_eq;
+
+    return;
+}
+
 function @main(0 => 1) export {
     call @pop0;
     call @pop1;
@@ -145,6 +161,8 @@ function @main(0 => 1) export {
 
     [ uint 0; call @select; ] uint 1; $lauf.test.assert_eq;
     [ uint 1; call @select; ] uint 0; $lauf.test.assert_eq;
+
+    call @let;
 
     uint 0; return;
 }

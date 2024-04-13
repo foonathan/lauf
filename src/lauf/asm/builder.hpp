@@ -10,23 +10,36 @@
 #include <lauf/asm/type.h>
 #include <lauf/runtime/value.h>
 #include <lauf/support/arena.hpp>
+#include <lauf/support/array.hpp>
 #include <lauf/support/array_list.hpp>
 #include <optional>
 
 //=== vstack ===//
+namespace
+{
+constexpr bool operator==(lauf_asm_value lhs, lauf_asm_value rhs) noexcept
+{
+    return lhs._id == rhs._id;
+}
+} // namespace
+
 namespace lauf
 {
+constexpr lauf_asm_value invalid_asm_value = {._id = uint32_t(-1)};
+
 class builder_vstack
 {
 public:
     struct value
     {
-        enum
+        enum type_t
         {
             unknown,
             constant,
             local_addr,
-        } type;
+        };
+        type_t         type = unknown;
+        lauf_asm_value id   = invalid_asm_value;
         union
         {
             char                  as_unknown;
@@ -38,7 +51,7 @@ public:
     explicit builder_vstack(arena_base& arena, std::size_t input_count) : _max(input_count)
     {
         for (auto i = 0u; i != input_count; ++i)
-            _stack.push_back(arena, {value::unknown, {}});
+            _stack.push_back(arena, {});
     }
 
     std::size_t size() const
@@ -56,12 +69,12 @@ public:
         if (size() > _max)
             _max = size();
     }
-    void push(arena_base& arena, std::size_t n)
+    void push_output(arena_base& arena, std::size_t n)
     {
         for (auto i = 0u; i != n; ++i)
-            push(arena, {value::unknown, {}});
+            push(arena, {});
     }
-    void push(arena_base& arena, lauf_runtime_value constant)
+    void push_constant(arena_base& arena, lauf_runtime_value constant)
     {
         value v;
         v.type        = value::constant;
@@ -115,6 +128,26 @@ public:
             cur  = next;
         }
         *cur = save;
+    }
+
+    lauf_asm_value& id(std::size_t stack_idx)
+    {
+        return _stack.back(stack_idx).id;
+    }
+
+    std::optional<std::uint16_t> find_stack_idx_of(lauf_asm_value id) const
+    {
+        auto cur = _stack.end();
+        --cur;
+        for (std::uint16_t i = 0u; i != _stack.size(); ++i)
+        {
+            if (cur->id == id)
+                return i;
+
+            --cur;
+        }
+
+        return std::nullopt;
     }
 
     bool finish(uint8_t& output_count)
@@ -184,6 +217,8 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
     // Number of local_addr instructions.
     std::uint16_t local_addr_count = 0;
 
+    lauf_asm_value next_value = {0};
+
     bool errored = false;
 
     explicit lauf_asm_builder(lauf::arena_key key, lauf_asm_build_options options)
@@ -207,7 +242,14 @@ struct lauf_asm_builder : lauf::intrinsic_arena<lauf_asm_builder>
         local_allocation_size = 0;
         local_addr_count      = 0;
 
+        next_value._id = 0;
+
         errored = false;
+    }
+
+    lauf_asm_value allocate_value_id() noexcept
+    {
+        return {next_value._id++};
     }
 };
 

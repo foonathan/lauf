@@ -740,7 +740,7 @@ void lauf_asm_inst_call(lauf_asm_builder* b, const lauf_asm_function* callee)
     auto offset = lauf::compress_pointer_offset(b->fn, callee);
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(call, offset));
 
-    b->cur->vstack.push(*b, callee->sig.output_count);
+    b->cur->vstack.push_output(*b, callee->sig.output_count);
 }
 
 namespace
@@ -784,7 +784,7 @@ void lauf_asm_inst_call_indirect(lauf_asm_builder* b, lauf_asm_signature sig)
                                                               sig.output_count, 0));
     }
 
-    b->cur->vstack.push(*b, sig.output_count);
+    b->cur->vstack.push_output(*b, sig.output_count);
 }
 
 namespace
@@ -801,7 +801,7 @@ void add_call_builtin(lauf_asm_builder* b, lauf_runtime_builtin_function callee)
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(call_builtin_sig, callee.input_count,
                                                           callee.output_count, callee.flags));
 
-    b->cur->vstack.push(*b, callee.output_count);
+    b->cur->vstack.push_output(*b, callee.output_count);
 }
 } // namespace
 
@@ -910,7 +910,7 @@ void lauf_asm_inst_fiber_resume(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_resume, sig.input_count,
                                                           sig.output_count, 0));
-    b->cur->vstack.push(*b, sig.output_count);
+    b->cur->vstack.push_output(*b, sig.output_count);
 }
 
 void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig)
@@ -921,7 +921,7 @@ void lauf_asm_inst_fiber_transfer(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(), "missing handle");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_transfer, sig.input_count,
                                                           sig.output_count, 0));
-    b->cur->vstack.push(*b, sig.output_count);
+    b->cur->vstack.push_output(*b, sig.output_count);
 }
 
 void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b, lauf_asm_signature sig)
@@ -931,7 +931,7 @@ void lauf_asm_inst_fiber_suspend(lauf_asm_builder* b, lauf_asm_signature sig)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(sig.input_count), "missing inputs");
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_SIGNATURE(fiber_suspend, sig.input_count,
                                                           sig.output_count, 0));
-    b->cur->vstack.push(*b, sig.output_count);
+    b->cur->vstack.push_output(*b, sig.output_count);
 }
 
 void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
@@ -966,7 +966,7 @@ void lauf_asm_inst_uint(lauf_asm_builder* b, lauf_uint value)
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push3, value >> 48));
     }
 
-    b->cur->vstack.push(*b, [&] {
+    b->cur->vstack.push_constant(*b, [&] {
         lauf_runtime_value result;
         result.as_uint = value;
         return result;
@@ -996,7 +996,7 @@ void lauf_asm_inst_null(lauf_asm_builder* b)
 
     // NULL has all bits set.
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(pushn, 0));
-    b->cur->vstack.push(*b, lauf_runtime_value{});
+    b->cur->vstack.push_constant(*b, lauf_runtime_value{});
 }
 
 void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* global)
@@ -1004,7 +1004,7 @@ void lauf_asm_inst_global_addr(lauf_asm_builder* b, const lauf_asm_global* globa
     LAUF_BUILD_CHECK_CUR;
 
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(global_addr, global->allocation_idx));
-    b->cur->vstack.push(*b, [&] {
+    b->cur->vstack.push_constant(*b, [&] {
         lauf_runtime_value result;
         result.as_address.allocation = global->allocation_idx;
         result.as_address.offset     = 0;
@@ -1034,7 +1034,7 @@ void lauf_asm_inst_function_addr(lauf_asm_builder* b, const lauf_asm_function* f
 
     auto offset = lauf::compress_pointer_offset(b->fn, function);
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_OFFSET(function_addr, offset));
-    b->cur->vstack.push(*b, [&] {
+    b->cur->vstack.push_constant(*b, [&] {
         lauf_runtime_value result;
         result.as_function_address.index        = function->function_idx;
         result.as_function_address.input_count  = function->sig.input_count;
@@ -1101,13 +1101,35 @@ void lauf_asm_inst_cc(lauf_asm_builder* b, lauf_asm_inst_condition_code cc)
 
         add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(push, value.as_uint));
-        b->cur->vstack.push(*b, value);
+        b->cur->vstack.push_constant(*b, value);
     }
     else
     {
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(cc, unsigned(cc)));
-        b->cur->vstack.push(*b, 1);
+        b->cur->vstack.push_output(*b, 1);
     }
+}
+
+lauf_asm_value lauf_asm_inst_value(lauf_asm_builder* b, uint16_t stack_index)
+{
+    if (LAUF_UNLIKELY(b->cur == nullptr))
+        return lauf::invalid_asm_value;
+    LAUF_BUILD_ASSERT(stack_index < b->cur->vstack.size(), "invalid stack index");
+
+    auto& id = b->cur->vstack.id(stack_index);
+    if (id == lauf::invalid_asm_value)
+        id = b->allocate_value_id();
+    return id;
+}
+
+uint16_t lauf_asm_inst_value_stack_index(lauf_asm_builder* b, lauf_asm_value value)
+{
+    if (LAUF_UNLIKELY(b->cur == nullptr))
+        return UINT16_MAX;
+
+    auto idx = b->cur->vstack.find_stack_idx_of(value);
+    LAUF_BUILD_ASSERT(idx, "value is already popped from the stack");
+    return *idx;
 }
 
 void lauf_asm_inst_pop(lauf_asm_builder* b, uint16_t stack_index)
@@ -1167,7 +1189,7 @@ void lauf_asm_inst_select(lauf_asm_builder* b, uint16_t count)
     LAUF_BUILD_ASSERT(b->cur->vstack.pop(count), "missing alternative values");
 
     b->cur->insts.push_back(*b, LAUF_BUILD_INST_STACK_IDX(select, uint16_t(count - 1)));
-    b->cur->vstack.push(*b, 1);
+    b->cur->vstack.push_output(*b, 1);
 }
 
 void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_layout)
@@ -1187,12 +1209,12 @@ void lauf_asm_inst_array_element(lauf_asm_builder* b, lauf_asm_layout element_la
         auto offset = index->as_constant.as_sint * lauf_sint(multiple);
         if (offset > 0)
             b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(aggregate_member, lauf_uint(offset)));
-        b->cur->vstack.push(*b, 1);
+        b->cur->vstack.push_output(*b, 1);
     }
     else
     {
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(array_element, multiple));
-        b->cur->vstack.push(*b, 1);
+        b->cur->vstack.push_output(*b, 1);
     }
 }
 
@@ -1212,7 +1234,7 @@ void lauf_asm_inst_aggregate_member(lauf_asm_builder* b, size_t member_index,
     {
         LAUF_BUILD_ASSERT(b->cur->vstack.pop(1), "missing address");
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(aggregate_member, offset));
-        b->cur->vstack.push(*b, 1);
+        b->cur->vstack.push_output(*b, 1);
     }
 }
 
@@ -1287,14 +1309,14 @@ void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t fi
         b->cur->insts.push_back(*b,
                                 LAUF_BUILD_INST_LOCAL_ADDR(load_local_value, addr->as_local->index,
                                                            addr->as_local->offset));
-        b->cur->vstack.push(*b, 1);
+        b->cur->vstack.push_output(*b, 1);
     }
     else if (constant_folding == load_store_global)
     {
         add_pop_top_n(b, 1);
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_VALUE(load_global_value,
                                                           addr->as_constant.as_address.allocation));
-        b->cur->vstack.push(*b, 1);
+        b->cur->vstack.push_output(*b, 1);
     }
     else if (type.layout.size == 0 && type.load_fn == nullptr)
     {
@@ -1304,7 +1326,7 @@ void lauf_asm_inst_load_field(lauf_asm_builder* b, lauf_asm_type type, size_t fi
     else
     {
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_const, type.layout));
-        b->cur->vstack.push(*b, 1);
+        b->cur->vstack.push_output(*b, 1);
 
         lauf_asm_inst_uint(b, field_index);
 
@@ -1348,7 +1370,7 @@ void lauf_asm_inst_store_field(lauf_asm_builder* b, lauf_asm_type type, size_t f
     else
     {
         b->cur->insts.push_back(*b, LAUF_BUILD_INST_LAYOUT(deref_mut, type.layout));
-        b->cur->vstack.push(*b, 1);
+        b->cur->vstack.push_output(*b, 1);
 
         lauf_asm_inst_uint(b, field_index);
 

@@ -74,6 +74,7 @@ struct parse_state
     symbol_table<lauf_asm_function*> functions;
     symbol_table<lauf_asm_block*>    blocks;
     symbol_table<lauf_asm_local*>    locals;
+    symbol_table<lauf_asm_value>     values;
 
     lexy::input_location_anchor<lexy::buffer<lexy::utf8_encoding>> anchor;
 
@@ -275,6 +276,17 @@ struct local_ref
                 state.unknown_identifier(pos, "local", name.c_str());
             return *result;
         });
+};
+struct value_ref
+{
+    static constexpr auto rule = dsl::position(dsl::p<local_identifier>);
+    static constexpr auto value
+        = callback<lauf_asm_value>([](const parse_state& state, auto pos, const std::string& name) {
+              auto result = state.values.try_lookup(name);
+              if (result == nullptr)
+                  state.unknown_identifier(pos, "value", name.c_str());
+              return *result;
+          });
 };
 struct function_ref
 {
@@ -553,17 +565,38 @@ struct inst_cc
     static constexpr auto value = inst(&lauf_asm_inst_cc);
 };
 
+struct inst_let
+{
+    static constexpr auto rule
+        = LAUF_KEYWORD("let") >> dsl::position + dsl::p<local_identifier>
+                                     + dsl::if_(dsl::equal_sign >> dsl::integer<std::uint16_t>);
+    static constexpr auto value = callback(
+        [](parse_state& state, auto pos, const std::string& name, std::uint16_t idx = 0) {
+            auto value = lauf_asm_inst_value(state.builder, idx);
+            if (!state.values.insert(name, value))
+                state.duplicate_declaration(pos, "value", name.c_str());
+        });
+};
 struct inst_stack_op
 {
     static constexpr auto insts = lexy::symbol_table<void(*)(lauf_asm_builder*, std::uint16_t)>
         .map(LEXY_LIT("pop"), &lauf_asm_inst_pop)
         .map(LEXY_LIT("pick"), &lauf_asm_inst_pick)
-        .map(LEXY_LIT("roll"), &lauf_asm_inst_roll)
-        .map(LEXY_LIT("select"), &lauf_asm_inst_select);
+        .map(LEXY_LIT("roll"), &lauf_asm_inst_roll);
 
-    static constexpr auto rule
-        = dsl::symbol<insts>(identifier::unquoted) >> dsl::integer<std::uint16_t>;
-    static constexpr auto value = inst();
+    static constexpr auto rule = dsl::symbol<insts>(identifier::unquoted)
+                                 >> (dsl::integer<std::uint16_t> | dsl::p<value_ref>);
+    static constexpr auto value
+        = callback([](const parse_state& state, auto fn,
+                      std::uint16_t idx) { fn(state.builder, idx); },
+                   [](const parse_state& state, auto fn, lauf_asm_value value) {
+                       fn(state.builder, lauf_asm_inst_value_stack_index(state.builder, value));
+                   });
+};
+struct inst_select
+{
+    static constexpr auto rule  = LAUF_KEYWORD("select") >> dsl::integer<std::uint16_t>;
+    static constexpr auto value = inst(&lauf_asm_inst_select);
 };
 
 struct inst_call
@@ -653,7 +686,7 @@ struct instruction
                       | dsl::p<inst_sint> | dsl::p<inst_uint>                                  //
                       | dsl::p<inst_null> | dsl::p<inst_global_addr> | dsl::p<inst_local_addr> //
                       | dsl::p<inst_function_addr> | dsl::p<inst_layout> | dsl::p<inst_cc>     //
-                      | dsl::p<inst_stack_op>                                                  //
+                      | dsl::p<inst_let> | dsl::p<inst_stack_op> | dsl::p<inst_select>         //
                       | dsl::p<inst_call> | dsl::p<inst_call_indirect>
                       | dsl::p<inst_call_builtin>                                  //
                       | dsl::p<inst_fiber_resume> | dsl::p<inst_fiber_transfer>    //
@@ -737,6 +770,7 @@ struct function_decl
             lauf_asm_build(state.builder, state.mod, state.fn);
             state.blocks.clear();
             state.locals.clear();
+            state.values.clear();
         });
     };
 

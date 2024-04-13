@@ -18,6 +18,11 @@ typedef struct lauf_asm_type           lauf_asm_type;
 typedef struct lauf_asm_layout         lauf_asm_layout;
 typedef struct lauf_runtime_builtin    lauf_runtime_builtin_function;
 
+typedef struct lauf_asm_value
+{
+    uint32_t _id;
+} lauf_asm_value;
+
 typedef enum lauf_asm_inst_condition_code
 {
     LAUF_ASM_INST_CC_EQ,
@@ -249,6 +254,15 @@ void lauf_asm_inst_layout(lauf_asm_builder* b, lauf_asm_layout layout);
 void lauf_asm_inst_cc(lauf_asm_builder* b, lauf_asm_inst_condition_code cc);
 
 //=== stack manipulation instructions ===//
+/// Returns a stable id for the value at the given stack idx.
+/// As long as the corresponding value remains on the stack, it can be referenced using that id,
+/// even if it is shifted around on the stack due to other stack manipulation instructions.
+lauf_asm_value lauf_asm_inst_value(lauf_asm_builder* b, uint16_t stack_index);
+
+/// Returns the stack index of the value with the given id.
+/// The value must still be on the stack.
+uint16_t lauf_asm_inst_value_stack_index(lauf_asm_builder* b, lauf_asm_value value);
+
 /// Pops the Nth value of the stack.
 ///
 /// Signature: x_N+1 x_N x_N-1 ... x_0 => x_N+1 x_N-1 ... x_0
