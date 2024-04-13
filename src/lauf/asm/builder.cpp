@@ -562,6 +562,11 @@ lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout
     return &b->locals.push_back(*b, {layout, std::uint16_t(index), offset});
 }
 
+lauf_asm_layout lauf_asm_local_layout(lauf_asm_builder*, lauf_asm_local* local)
+{
+    return local->layout;
+}
+
 lauf_asm_block* lauf_asm_entry_block(lauf_asm_builder* b)
 {
     return &b->blocks.front();

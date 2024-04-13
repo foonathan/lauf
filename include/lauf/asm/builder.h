@@ -86,6 +86,9 @@ typedef struct lauf_asm_local lauf_asm_local;
 /// They are allocated when the function is initially called, and freed at the end.
 lauf_asm_local* lauf_asm_build_local(lauf_asm_builder* b, lauf_asm_layout layout);
 
+/// Returns the layout of the local.
+lauf_asm_layout lauf_asm_local_layout(lauf_asm_builder* b, lauf_asm_local* local);
+
 //=== blocks ===//
 /// A basic block inside a function.
 typedef struct lauf_asm_block lauf_asm_block;
