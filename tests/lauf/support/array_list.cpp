@@ -4,6 +4,7 @@
 #include <lauf/support/array_list.hpp>
 
 #include <doctest/doctest.h>
+#include <initializer_list>
 
 namespace
 {
@@ -13,18 +14,28 @@ void check_range(const List& list, const T... t)
     CHECK(!list.empty());
     CHECK(list.size() == sizeof...(T));
 
-    auto begin = list.begin();
-    auto end   = list.end();
-
-    auto cur = begin;
-    ((REQUIRE(cur != end), CHECK(*cur == t), ++cur), ...);
-
-    for (auto i = 0u; i != sizeof...(t); ++i)
     {
-        REQUIRE(cur != begin);
-        --cur;
+        auto begin = list.begin();
+        auto end   = list.end();
+
+        auto cur = begin;
+        ((REQUIRE(cur != end), CHECK(*cur == t), ++cur), ...);
+
+        for (auto i = 0u; i != sizeof...(t); ++i)
+        {
+            REQUIRE(cur != begin);
+            --cur;
+        }
+        REQUIRE(cur == begin);
     }
-    REQUIRE(cur == begin);
+    {
+        auto i = 0u;
+        ((REQUIRE(list.front(i) == t), ++i), ...);
+    }
+    {
+        auto i = 0u;
+        ((REQUIRE(list.back(list.size() - i - 1) == t), ++i), ...);
+    }
 }
 } // namespace
 
@@ -60,6 +71,12 @@ TEST_CASE("array_list")
         {
             for (auto i = 0; i != 1024; ++i)
                 list.push_back(*arena, 42);
+
+            for (auto idx : {0u, 1u, 500u, 1000u, 1022u, 1023u})
+            {
+                CHECK(list.front(idx) == 42);
+                CHECK(list.back(idx) == 42);
+            }
 
             SUBCASE("pop_back")
             {

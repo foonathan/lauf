@@ -152,6 +152,25 @@ public:
         return _first_block->array[0];
     }
 
+    T& front(std::size_t idx)
+    {
+        return const_cast<T&>(static_cast<const array_list*>(this)->front(idx));
+    }
+    const T& front(std::size_t idx) const
+    {
+        if (LAUF_LIKELY(idx < elems_per_block))
+            return _first_block->array[idx];
+
+        auto block = _first_block;
+        do
+        {
+            idx -= elems_per_block;
+            assert(block);
+            block = block->next;
+        } while (idx >= elems_per_block);
+        return block->array[idx];
+    }
+
     T& back()
     {
         return _cur_block->array[_next_idx - 1];
@@ -159,6 +178,26 @@ public:
     const T& back() const
     {
         return _cur_block->array[_next_idx - 1];
+    }
+
+    T& back(std::size_t idx)
+    {
+        return const_cast<T&>(static_cast<const array_list*>(this)->back(idx));
+    }
+    const T& back(std::size_t idx) const
+    {
+        if (LAUF_LIKELY(idx < _next_idx))
+            return _cur_block->array[_next_idx - idx - 1];
+
+        auto block = _cur_block->prev;
+        idx -= _next_idx;
+        while (idx >= elems_per_block)
+        {
+            idx -= elems_per_block;
+            assert(block);
+            block = block->prev;
+        }
+        return block->array[elems_per_block - idx - 1];
     }
 
     //=== modifiers ===//
@@ -229,6 +268,34 @@ private:
             _next_idx = 0;
             ++_block_count;
         }
+    }
+
+    block* get_front_block(std::size_t block_idx) const
+    {
+        assert(block_idx > 0);
+        if (LAUF_LIKELY(block_idx == 0))
+            return _first_block;
+
+        auto cur = _first_block->next;
+        while (--block_idx != 0)
+        {
+            assert(cur);
+            cur = cur->next;
+        }
+        return cur;
+    }
+    block* get_back_block(std::size_t block_idx) const
+    {
+        if (LAUF_LIKELY(block_idx == 0))
+            return _cur_block;
+
+        auto cur = _cur_block->prev;
+        while (--block_idx != 0)
+        {
+            assert(cur);
+            cur = cur->prev;
+        }
+        return cur;
     }
 
     block*        _first_block;

@@ -93,11 +93,7 @@ public:
 
     value pick(std::size_t stack_idx)
     {
-        auto cur = _stack.end();
-        --cur;
-        for (auto i = 0u; i != stack_idx; ++i)
-            --cur;
-        return *cur;
+        return _stack.back(stack_idx);
     }
 
     void roll(std::size_t stack_idx)
