@@ -31,7 +31,6 @@ lauf_asm_module* example_module()
             block %recurse(1 => 1) {
                 pick 0; sint 1; $lauf.int.ssub_wrap; call @fib;
                 roll 1; sint 2; $lauf.int.ssub_wrap; call @fib;
-                uint 0; uint 1; $lauf.int.usub_panic; pop 0;
                 $lauf.int.sadd_wrap;
                 return;
             }
@@ -126,8 +125,8 @@ lauf_asm_program create_program(lauf_asm_module* mod)
 
     auto b = lauf_asm_create_builder(lauf_asm_default_build_options);
     lauf_asm_build_chunk(b, mod, chunk, {0, 1});
-    lauf_asm_inst_uint(b, 3);
-    lauf_asm_inst_call(b, lauf_asm_find_function_by_name(mod, "fib"));
+    lauf_asm_inst_uint(b, 10);
+    lauf_asm_inst_call(b, lauf_asm_find_function_by_name(mod, "print_n_fibs"));
     lauf_asm_inst_return(b);
     lauf_asm_build_finish(b);
     lauf_asm_destroy_builder(b);
